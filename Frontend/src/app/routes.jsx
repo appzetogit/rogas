@@ -9,6 +9,7 @@ const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 const FoodApp = lazy(() => import('../modules/Food/routes'))
 const AuthApp = lazy(() => import('../modules/auth/routes'))
 const CustomerApp = lazy(() => import('../modules/CustomerApp/routes'))
+const VendorApp = lazy(() => import('../modules/Vendor/routes'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
 
 const PageLoader = () => <AppShellSkeleton />
@@ -39,6 +40,14 @@ const CustomerAppWrapper = () => {
   return (
     <Suspense fallback={<CustomerAppLoader />}>
       <CustomerApp />
+    </Suspense>
+  )
+}
+
+const VendorAppWrapper = () => {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <VendorApp />
     </Suspense>
   )
 }
@@ -85,6 +94,9 @@ const AppRoutes = () => {
 
       {/* Customer Module */}
       <Route path="/user/*" element={<CustomerAppWrapper />} />
+
+      {/* Vendor Module */}
+      <Route path="/vendor/*" element={<VendorAppWrapper />} />
 
       {/* Food Module - Handle both /food and root / for the user app */}
       <Route path="/food/*" element={<FoodAppWrapper />} />

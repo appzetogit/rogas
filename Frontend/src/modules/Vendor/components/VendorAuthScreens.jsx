@@ -1,0 +1,374 @@
+import React, { useState, useRef } from 'react';
+
+
+
+
+
+
+
+
+export function PhoneScreen({ mode, onBack, onSendOtp }) {
+  const [phone, setPhone] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (phone.trim().length >= 6) {
+      onSendOtp(phone);
+    }
+  };
+
+  return (
+    <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
+      <header className="px-5 h-14 flex items-center">
+        <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
+          <span className="material-symbols-outlined text-primary">arrow_back</span>
+        </button>
+      </header>
+
+      <main className="px-5 flex-1 flex flex-col pb-6">
+        <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ"
+            alt="Vendor Banner"
+            className="w-full h-full object-cover" />
+          
+        </div>
+
+        <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight">
+          {mode === 'login' ? 'Welcome back!' : 'Create an account'}
+        </h1>
+        <p className="text-[13px] text-outline mt-1 mb-6">
+          {mode === 'login' ? 'Log in with your phone number' : 'Sign up with your phone number'}
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+          <div className="mb-8">
+            <label className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2 block">
+              Mobile Number
+            </label>
+            <div className="flex h-14 bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+              <div className="flex items-center justify-center px-4 border-r border-outline-variant text-on-surface-variant font-semibold text-[14px]">
+                +48
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="000 000 000"
+                className="flex-1 px-4 text-[14px] font-semibold text-on-surface focus:outline-none bg-white"
+                autoFocus />
+              
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-col gap-5">
+            <button
+              type="submit"
+              disabled={phone.trim().length < 6}
+              className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
+              
+              Send OTP
+            </button>
+            <p className="text-[10px] text-center text-outline px-4 mt-2">
+              By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+            </p>
+          </div>
+        </form>
+      </main>
+    </div>);
+
+}
+
+
+
+
+
+
+
+export function OtpScreen({ phone, onVerify, onBack }) {
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+
+  const handleChange = (index, value) => {
+    if (value.length > 1) value = value.slice(-1);
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    if (value && index < 3) {
+      inputRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handleSubmit = () => {
+    onVerify();
+  };
+
+  return (
+    <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
+      <header className="px-5 h-14 flex items-center">
+        <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
+          <span className="material-symbols-outlined text-primary">arrow_back</span>
+        </button>
+      </header>
+
+      <main className="px-5 flex-1 flex flex-col items-center pt-8">
+        <div className="w-20 h-20 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center mb-6 border-dashed">
+          <span className="material-symbols-outlined text-4xl text-primary">admin_panel_settings</span>
+        </div>
+
+        <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight mb-2">
+          Verify OTP
+        </h1>
+        <p className="text-[13px] text-outline text-center px-4 mb-8 leading-relaxed">
+          Enter the 4-digit code sent to <span className="text-primary font-semibold">+48 {phone || '000 000 000'}</span>
+        </p>
+
+        <div className="flex gap-4 mb-6">
+          {otp.map((digit, i) =>
+          <input
+            key={i}
+            ref={inputRefs[i]}
+            type="text"
+            inputMode="numeric"
+            value={digit}
+            onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            className="w-14 h-14 bg-white border border-outline-variant rounded-2xl text-center text-xl font-bold text-primary shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+
+          )}
+        </div>
+
+        <p className="text-[12px] text-outline mb-10">
+          Hint: Try <span className="font-bold text-primary">1234</span>
+        </p>
+
+        <div className="w-full mt-auto mb-8 flex flex-col gap-5">
+          <button
+            onClick={handleSubmit}
+            disabled={otp.join('').length < 4}
+            className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
+            
+            Verify OTP
+          </button>
+          <button className="text-primary text-[13px] font-semibold hover:underline text-center">
+            Resend code
+          </button>
+        </div>
+      </main>
+    </div>);
+
+}
+
+
+
+
+
+
+export function RegisterFormScreen({ onContinue, onBack }) {
+  const [kitchenName, setKitchenName] = useState('Maria Kitchen');
+  const [phone, setPhone] = useState('+48 789 123 456');
+  const [city, setCity] = useState('Warsaw — Mokotow');
+  const [type, setType] = useState('Home Cook');
+
+  const handleSubmit = () => {
+    onContinue({
+      name: kitchenName,
+      phone,
+      city,
+      type
+    });
+  };
+
+  return (
+    <main className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl">
+      <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary">
+        <div className="flex items-center w-full justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <div className="flex flex-col">
+              <h1 className="text-[16px] font-semibold">Register</h1>
+              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Step 2 of 3</p>
+            </div>
+          </div>
+          <button className="active:scale-95 transition-transform hover:opacity-90">
+            <span className="material-symbols-outlined">more_vert</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="mt-[56px] px-4 py-6">
+        <div className="w-full h-32 rounded-xl overflow-hidden mb-6 relative">
+          <img
+            alt="Professional Kitchen"
+            className="w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXsX9d8XMpwF5Tw4kddacTToegaCMSYMVoC8ZXLcqCVvjiBBTp6pXW9dSWMkQey2DTX1Nf679p-8IaTY83GqfChcw__RPS8QBKYBfGZifRi2XniFtkEv6TWZH5dXWAYKlexLFH4DVd7rLGKmUxeITtOvItA4_QLQYRh77BQsYRcyQo8OKIVDDIojTzjHgqdDmZVo61yx6mgYUZSrY9psO04CvnWdhw2a5KK8ydCKwzEK4TaaKaer3tr8yoGCSN__Qjli1C_MRAXg" />
+          
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+        </div>
+
+        <div className="bg-surface-container-lowest rounded-[10px] p-5 shadow-[0_2px_6px_rgba(0,0,0,0.07)]">
+          <h2 className="text-[11px] font-semibold text-on-surface-variant mb-4 uppercase tracking-wider">TELL US ABOUT YOUR KITCHEN</h2>
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BUSINESS / KITCHEN NAME</label>
+              <div className="relative">
+                <input
+                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                  type="text"
+                  value={kitchenName}
+                  onChange={(e) => setKitchenName(e.target.value)} />
+                
+                <span className="absolute right-4 top-3 text-primary">
+                  <span className="material-symbols-outlined text-[20px]">storefront</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">CONTACT PHONE</label>
+              <div className="relative">
+                <input
+                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)} />
+                
+                <span className="absolute right-4 top-3 text-primary">
+                  <span className="material-symbols-outlined text-[20px]">call</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">CITY / ZONE</label>
+              <div className="relative">
+                <input
+                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)} />
+                
+                <span className="absolute right-4 top-3 text-primary">
+                  <span className="material-symbols-outlined text-[20px]">location_on</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VENDOR TYPE</label>
+              <div className="grid grid-cols-2 gap-3">
+                {['Home Cook', 'Cloud Kitchen', 'Restaurant', 'Catering'].map((t) =>
+                <button
+                  key={t}
+                  onClick={() => setType(t)}
+                  className={`h-10 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 transition-transform active:scale-95 ${type === t ? 'bg-primary text-on-primary' : 'border border-primary text-primary bg-white'}`}>
+                  
+                    {type === t && <span className="material-symbols-outlined text-[16px]">check</span>}
+                    {t}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">EU FOOD LICENCE (REQUIRED)</label>
+              <div className="flex items-center justify-between p-3 bg-primary-container/10 border border-dashed border-primary rounded-lg">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-primary">description</span>
+                  <span className="text-[13px] text-primary font-semibold truncate max-w-[200px]">licence_food_pl_2026.pdf</span>
+                </div>
+                <div className="flex items-center gap-1 text-primary">
+                  <span className="text-[11px] font-bold">Uploaded</span>
+                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">KITCHEN PARTNER <span className="text-primary-container opacity-60">(Home Cook only)</span></label>
+              <button className="w-full h-12 px-4 rounded-lg bg-primary-container/5 border border-primary-container/20 flex items-center justify-between text-[13px] text-on-surface transition-all active:bg-primary-container/10">
+                <span className="font-semibold text-primary">FreshKitchen Partners Sp. z o.o.</span>
+                <span className="material-symbols-outlined text-primary">arrow_drop_down</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-10">
+            <button
+              onClick={handleSubmit}
+              className="w-full h-14 bg-primary text-on-primary rounded-xl text-[16px] font-bold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+              
+              Continue
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </button>
+            <p className="text-center text-[11px] text-outline mt-4 leading-relaxed">
+              By continuing, you agree to our <span className="text-primary font-semibold">Vendor Terms of Service</span> and acknowledge your responsibilities as a licensed food provider.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>);
+
+}
+
+
+
+
+
+export function UnderReviewScreen({ onApproved }) {
+  return (
+    <main className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl">
+      <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary">
+        <div className="flex items-center w-full justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col">
+              <h1 className="text-[16px] font-semibold">Under Review</h1>
+              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Step 3 of 3</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="mt-[56px] px-5 py-10 flex flex-col items-center flex-1 justify-center text-center">
+        <div className="w-24 h-24 rounded-full bg-secondary-container/10 border-2 border-secondary border-dashed flex items-center justify-center mb-6">
+          <span className="material-symbols-outlined text-5xl text-secondary">pending_actions</span>
+        </div>
+        <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Received</h2>
+        <p className="text-[13px] text-outline leading-relaxed max-w-[280px]">
+          Our team is currently verifying your EU food licence and details. This usually takes 1-2 business days. We will notify you once approved.
+        </p>
+
+        <div className="mt-12 w-full p-4 bg-surface-container rounded-xl border border-outline-variant/30 text-left space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <span className="text-[13px] font-semibold text-on-surface">Details Submitted</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <span className="text-[13px] font-semibold text-on-surface">Documents Uploaded</span>
+          </div>
+          <div className="flex items-center gap-3 opacity-50">
+            <span className="material-symbols-outlined text-outline">hourglass_empty</span>
+            <span className="text-[13px] font-semibold text-on-surface">Final Verification</span>
+          </div>
+        </div>
+
+        <button
+          onClick={onApproved}
+          className="mt-auto w-full py-4 bg-secondary-container text-white font-bold rounded-xl active:scale-95 transition-all text-[14px]">
+          
+          Simulate Approval (Go to Dashboard)
+        </button>
+      </div>
+    </main>);
+
+}
