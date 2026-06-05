@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary-container: #1f7a63;
+  --color-primary: #00604c;
+  --color-on-primary: #ffffff;
+  --color-secondary-container: #fea619;
+  --color-background-brand: #F5F5F0;
+
+  /* Additional customized palette colors for fidelity matching the specs: */
+  --color-brand-primary-container: #1F7A63;
+  --color-brand-amber: #F59E0B;
+  --color-brand-red: #EF4444;
+
+  --animate-pulse-subtle: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F5F5F0;
+  /* Soft Brand Beige default */
+  color: #1b1c1c;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Material icon style configuration override */
+.material-symbols-outlined {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
