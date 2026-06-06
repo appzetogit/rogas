@@ -4,7 +4,7 @@ Date: 2026-06-02
 
 ## Scope
 
-This report maps the legacy Firestore export in `indian bites data/` to the current MongoDB/Mongoose schema in `Backend/src/`.
+This report maps the legacy Firestore export in `Rogas data/` to the current MongoDB/Mongoose schema in `Backend/src/`.
 
 - Legacy source summary: 44 CSV files, 11,269 rows
 - Goal for this phase: analysis and field mapping only

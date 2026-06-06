@@ -15,7 +15,7 @@ import { FoodItem } from '../src/modules/food/admin/models/food.model.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const LEGACY_DIR = path.join(REPO_ROOT, 'indian bites data');
+const LEGACY_DIR = path.join(REPO_ROOT, 'Rogas data');
 const OUTPUT_ROOT = path.join(REPO_ROOT, 'migration-output', 'legacy-core');
 
 const VALID_SCOPES = ['users', 'restaurants', 'drivers', 'categories', 'products'];

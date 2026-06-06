@@ -4,7 +4,7 @@ Date: 2026-06-02
 
 ## Scope
 
-This report covers **only** the legacy data we want to migrate right now from `indian bites data/` into the current backend schema:
+This report covers **only** the legacy data we want to migrate right now from `Rogas data/` into the current backend schema:
 
 - customers
 - restaurants
