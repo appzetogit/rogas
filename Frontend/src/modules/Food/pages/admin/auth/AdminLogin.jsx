@@ -83,9 +83,9 @@ export default function AdminLogin() {
               className="relative w-32 h-32 md:w-36 md:h-36 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden border-4 border-white mx-auto mb-4 bg-white"
               style={{ borderRadius: '50%', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
             >
-              <img 
-                src={logoNew} 
-                alt="Indian Bites Logo" 
+              <img
+                src={logoNew}
+                alt="Rogas Logo"
                 className="w-full h-full object-cover scale-[1.15]"
                 style={{ borderRadius: '50%' }}
               />

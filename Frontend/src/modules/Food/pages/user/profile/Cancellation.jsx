@@ -38,9 +38,9 @@ export default function Cancellation() {
 
   const handleBack = () => {
     if (location.state?.returnTo) {
-      navigate(location.state.returnTo, { 
+      navigate(location.state.returnTo, {
         state: location.state?.originalState,
-        replace: true 
+        replace: true
       })
     } else if (window.history.length > 2) {
       goBack()
@@ -65,19 +65,19 @@ export default function Cancellation() {
       {/* Premium Sticky Header */}
       <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-900">
         <div className="max-w-4xl mx-auto px-4 h-16 md:h-20 flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleBack}
             className="h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 transition-all active:scale-95"
           >
             <ArrowLeft className="h-6 w-6 text-gray-900 dark:text-white" />
           </Button>
           <div className="flex-1">
-             <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none">
-               {cancellationData.title || "Cancellation Policy"}
-             </h1>
-             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Indian Bites Ecosystem</p>
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none">
+              {cancellationData.title || "Cancellation Policy"}
+            </h1>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Rogas Ecosystem</p>
           </div>
         </div>
       </div>
@@ -100,15 +100,15 @@ export default function Cancellation() {
             />
           ) : (
             <div className="text-center py-20">
-               <XCircle className="w-16 h-16 text-gray-100 dark:text-gray-800 mx-auto mb-4" />
-               <p className="text-gray-400 font-medium">No content available at the moment.</p>
+              <XCircle className="w-16 h-16 text-gray-100 dark:text-gray-800 mx-auto mb-4" />
+              <p className="text-gray-400 font-medium">No content available at the moment.</p>
             </div>
           )}
         </motion.div>
 
         <p className="text-center mt-10 text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] leading-relaxed">
           Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} <br />
-          © {new Date().getFullYear()} Indian Bites. All Rights Reserved.
+          © {new Date().getFullYear()} Rogas. All Rights Reserved.
         </p>
       </div>
     </AnimatedPage>

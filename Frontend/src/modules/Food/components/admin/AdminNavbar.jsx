@@ -45,9 +45,9 @@ import { adminAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings";
 import useAdminNotifications from "@food/hooks/useAdminNotifications";
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 export default function AdminNavbar({ onMenuClick }) {
@@ -297,7 +297,7 @@ export default function AdminNavbar({ onMenuClick }) {
                 )}
               </div>
               <span className="text-red-600 font-extrabold text-xl ml-1 tracking-tight">
-                {businessSettings?.companyName || "Indian Bites"}
+                {businessSettings?.companyName || "Rogas"}
               </span>
             </div>
           </div>

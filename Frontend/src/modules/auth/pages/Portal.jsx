@@ -57,40 +57,40 @@ export default function SuperAppPortal() {
     <div className="min-h-screen bg-[#fafafa] flex flex-col pt-16 pb-24 px-6 overflow-hidden relative">
       {/* Lining Effect & Pattern Background */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]">
-          <div className="absolute inset-0" style={{ 
-            backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`,
-            backgroundSize: `40px 40px`
-          }} />
-          <div className="absolute inset-0 animate-scanline" style={{ 
-            backgroundImage: `linear-gradient(transparent 0%, #000 50%, transparent 100%)`,
-            backgroundSize: `100% 200px`,
-            opacity: 0.5
-          }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`,
+          backgroundSize: `40px 40px`
+        }} />
+        <div className="absolute inset-0 animate-scanline" style={{
+          backgroundImage: `linear-gradient(transparent 0%, #000 50%, transparent 100%)`,
+          backgroundSize: `100% 200px`,
+          opacity: 0.5
+        }} />
       </div>
 
       {/* Dynamic Background Particles */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-             <motion.div
-               key={i}
-               animate={{
-                 y: [0, -100, 0],
-                 x: [0, 50, 0],
-                 scale: [1, 1.2, 1],
-                 opacity: [0.1, 0.2, 0.1]
-               }}
-               transition={{
-                 duration: 10 + i * 2,
-                 repeat: Infinity,
-                 ease: "linear"
-               }}
-               className="absolute w-64 h-64 bg-[#CB202D]/5 rounded-full blur-3xl"
-               style={{
-                 left: `${Math.random() * 100}%`,
-                 top: `${Math.random() * 100}%`,
-               }}
-             />
-          ))}
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{
+              y: [0, -100, 0],
+              x: [0, 50, 0],
+              scale: [1, 1.2, 1],
+              opacity: [0.1, 0.2, 0.1]
+            }}
+            transition={{
+              duration: 10 + i * 2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+            className="absolute w-64 h-64 bg-[#CB202D]/5 rounded-full blur-3xl"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+          />
+        ))}
       </div>
 
       {/* Top Header Section */}
@@ -100,27 +100,27 @@ export default function SuperAppPortal() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white border border-gray-200 rounded-full px-5 py-2.5 flex items-center gap-2 shadow-xl shadow-gray-200/50"
         >
-          <motion.div 
+          <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
             transition={{ duration: 4, repeat: Infinity }}
             className="w-6 h-6 bg-gradient-to-br from-primary to-[#5a2849] rounded-lg flex items-center justify-center shadow-lg"
           >
-             <span className="text-white text-[10px] font-black italic">F</span>
+            <span className="text-white text-[10px] font-black italic">F</span>
           </motion.div>
           <span className="text-[10px] font-black tracking-[0.2em] text-[#BABCBD] uppercase">Everything you need, delivered</span>
         </motion.div>
 
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: "spring", damping: 12 }}
           className="text-5xl md:text-7xl font-black text-[#1A202C] tracking-tight leading-none"
         >
           Welcome to <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#a64a85] to-primary bg-[length:200%_auto] animate-gradient block mt-2">Indian Bites</span>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#a64a85] to-primary bg-[length:200%_auto] animate-gradient block mt-2">Rogas</span>
         </motion.h1>
 
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -137,17 +137,17 @@ export default function SuperAppPortal() {
             key={service.id}
             initial={{ opacity: 0, y: 50, scale: 0.8, rotateX: 20 }}
             animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-            transition={{ 
-              delay: 0.4 + idx * 0.15, 
-              type: "spring", 
+            transition={{
+              delay: 0.4 + idx * 0.15,
+              type: "spring",
               stiffness: 100,
               damping: 15
             }}
-            whileHover={{ 
-               y: -10, 
-               scale: 1.05,
-               rotateY: idx % 2 === 0 ? 5 : -5,
-               transition: { duration: 0.3 }
+            whileHover={{
+              y: -10,
+              scale: 1.05,
+              rotateY: idx % 2 === 0 ? 5 : -5,
+              transition: { duration: 0.3 }
             }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate(service.path)}
@@ -156,9 +156,9 @@ export default function SuperAppPortal() {
             <div className={`relative h-[220px] md:h-[260px] w-full rounded-[2.5rem] overflow-hidden shadow-2xl bg-white border border-white/20 transition-all duration-500`}>
               {/* Image Base */}
               <div className="absolute inset-0 bg-gray-50 overflow-hidden">
-                <img 
-                  src={service.image} 
-                  alt={service.name} 
+                <img
+                  src={service.image}
+                  alt={service.name}
                   className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-125"
                 />
                 <div className={`absolute inset-0 bg-gradient-to-tr ${service.color.replace('from-', 'from-black/40 to-')} opacity-30 group-hover:opacity-40 transition-opacity duration-500`} />
@@ -172,7 +172,7 @@ export default function SuperAppPortal() {
 
               {/* Service Icon floating */}
               <div className="absolute top-6 left-6 z-30">
-                <motion.div 
+                <motion.div
                   animate={{ y: [0, -5, 0] }}
                   transition={{ duration: 3, repeat: Infinity, delay: idx * 0.5 }}
                   className="p-3 bg-white/20 backdrop-blur-xl rounded-2xl border border-white/30 shadow-2xl"
@@ -193,15 +193,15 @@ export default function SuperAppPortal() {
 
               {/* Corner Badge */}
               <div className="absolute top-0 right-0 z-30">
-                 <motion.div 
-                   initial={{ x: 20, opacity: 0 }}
-                   animate={{ x: 0, opacity: 1 }}
-                   transition={{ delay: 0.8 + idx * 0.1 }}
-                   className="bg-black/80 backdrop-blur-xl px-4 py-2 rounded-bl-3xl border-l border-b border-white/20 shadow-2xl flex items-center gap-2"
-                 >
-                    <span className="text-[10px] scale-125 mb-0.5">{service.badgeIcon}</span>
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{service.badge}</span>
-                 </motion.div>
+                <motion.div
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.8 + idx * 0.1 }}
+                  className="bg-black/80 backdrop-blur-xl px-4 py-2 rounded-bl-3xl border-l border-b border-white/20 shadow-2xl flex items-center gap-2"
+                >
+                  <span className="text-[10px] scale-125 mb-0.5">{service.badgeIcon}</span>
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{service.badge}</span>
+                </motion.div>
               </div>
             </div>
 
@@ -211,7 +211,8 @@ export default function SuperAppPortal() {
         ))}
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .perspective {
           perspective: 1000px;
         }
@@ -241,10 +242,10 @@ export default function SuperAppPortal() {
 
       {/* Trust Badge at bottom */}
       <div className="mt-16 flex flex-col items-center gap-3 opacity-50">
-         <div className="flex items-center gap-1.5 grayscale">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Secure by Indian Bites</span>
-         </div>
+        <div className="flex items-center gap-1.5 grayscale">
+          <ShieldCheck className="w-4 h-4" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Secure by Rogas</span>
+        </div>
       </div>
     </div>
   )

@@ -105,7 +105,7 @@ const SLIDES = [
   {
     id: 1,
     image: "https://imgs.search.brave.com/kIcb6MhCPlZRyadtSs3RA8YRS0_gVuwmXaadnDR50qk/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/bWFnbmlmaWMuY29t/L3ByZW1pdW0tcGhv/dG8vY2hlZi1zZXJ2/aW5nLWRpc2gtc3Rl/YW1lZC1mb29kLXdp/dGgtZm9ya18xMzUz/MjQ0LTIyMzkxLmpw/Zz9zZW10PWFpc19o/eWJyaWQmdz03NDAm/cT04MA",
-    title: "Indian Bites",
+    title: "Rogas",
     subtitle: "Giving you the best service and all"
   },
   {
@@ -293,7 +293,7 @@ export default function MasterLandingPage() {
         {/* Decorative Background Elements */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-red-400/5 rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400/5 rounded-full blur-[100px] pointer-events-none" />
-        
+
         <div className="text-center max-w-3xl mx-auto px-6 mb-20 relative z-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -323,7 +323,7 @@ export default function MasterLandingPage() {
         </div>
 
         <div className="relative w-full max-w-7xl mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 z-20">
-          
+
           {/* Left Feature Column */}
           <div className="flex-1 space-y-4 w-full order-2 lg:order-1">
             <FeatureRow title="Lightning Fast Delivery" desc="Experience superfast delivery for food delivered fresh & on time" Icon={Zap} delay={0.1} />
@@ -343,38 +343,38 @@ export default function MasterLandingPage() {
               className="relative z-10 w-[300px] h-[600px] rounded-[50px] shadow-[0_30px_60px_rgba(226,55,68,0.15)] border-[12px] border-[#1C1C1C] overflow-hidden bg-white"
             >
               <div className="absolute top-0 inset-x-0 h-6 bg-[#1C1C1C] rounded-b-3xl w-1/2 mx-auto z-20" />
-              
+
               {/* Realistic App Mockup UI */}
               <div className="w-full h-full bg-[#f8f9fa] flex flex-col pt-10 pb-6 relative overflow-hidden">
                 <div className="px-5 mb-6">
                   <div className="w-24 h-4 bg-gray-200 rounded-full mb-2" />
                   <div className="w-40 h-6 bg-gradient-to-r from-gray-300 to-gray-200 rounded-full" />
                 </div>
-                
+
                 <div className="flex gap-3 px-5 mb-6 overflow-hidden">
                   <div className="w-16 h-16 bg-red-100 rounded-2xl flex-shrink-0" />
                   <div className="w-16 h-16 bg-orange-100 rounded-2xl flex-shrink-0" />
                   <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex-shrink-0" />
                   <div className="w-16 h-16 bg-green-100 rounded-2xl flex-shrink-0" />
                 </div>
-                
+
                 <div className="px-5 flex-1 flex flex-col gap-4">
                   <div className="w-full bg-white rounded-[24px] shadow-sm border border-gray-100 p-3">
-                     <div className="w-full h-24 bg-gray-100 rounded-[16px] mb-3" />
-                     <div className="w-3/4 h-3 bg-gray-200 rounded-full mb-2" />
-                     <div className="w-1/2 h-2 bg-gray-200 rounded-full" />
+                    <div className="w-full h-24 bg-gray-100 rounded-[16px] mb-3" />
+                    <div className="w-3/4 h-3 bg-gray-200 rounded-full mb-2" />
+                    <div className="w-1/2 h-2 bg-gray-200 rounded-full" />
                   </div>
                   <div className="w-full bg-white rounded-[24px] shadow-sm border border-gray-100 p-3">
-                     <div className="w-full h-24 bg-gray-100 rounded-[16px] mb-3" />
-                     <div className="w-3/4 h-3 bg-gray-200 rounded-full mb-2" />
-                     <div className="w-1/2 h-2 bg-gray-200 rounded-full" />
+                    <div className="w-full h-24 bg-gray-100 rounded-[16px] mb-3" />
+                    <div className="w-3/4 h-3 bg-gray-200 rounded-full mb-2" />
+                    <div className="w-1/2 h-2 bg-gray-200 rounded-full" />
                   </div>
                 </div>
 
                 {/* Central Floating Feature Simulation */}
                 <div className="absolute inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center z-10">
-                  <motion.div 
-                    animate={{ scale: [1, 1.03, 1], y: [0, -5, 0] }} 
+                  <motion.div
+                    animate={{ scale: [1, 1.03, 1], y: [0, -5, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     className="bg-white p-6 rounded-3xl shadow-[0_20px_40px_rgba(226,55,68,0.2)] flex flex-col items-center border border-red-50"
                   >
@@ -384,12 +384,12 @@ export default function MasterLandingPage() {
                     <span className="font-black text-gray-900 text-center leading-tight text-lg">Schedule<br />your order</span>
                   </motion.div>
                 </div>
-                
+
                 <div className="mt-auto px-5 relative z-20">
                   <div className="h-16 w-full bg-white rounded-[24px] shadow-md border border-gray-100 flex items-center justify-around px-2">
-                     <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center"><User className="w-5 h-5" /></div>
-                     <div className="w-6 h-6 bg-gray-200 rounded-full" />
-                     <div className="w-6 h-6 bg-gray-200 rounded-full" />
+                    <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center"><User className="w-5 h-5" /></div>
+                    <div className="w-6 h-6 bg-gray-200 rounded-full" />
+                    <div className="w-6 h-6 bg-gray-200 rounded-full" />
                   </div>
                 </div>
               </div>
@@ -399,7 +399,7 @@ export default function MasterLandingPage() {
           {/* Right Feature Column */}
           <div className="flex-1 space-y-4 w-full order-3">
             <FeatureRowRight title="Huge Discounts & Offers" desc="Enjoy exciting offers, discounts and coupons exclusively on the app" Icon={Ticket} delay={0.1} />
-            <FeatureRowRight title="Indian Bites GOLD" desc="Get free delivery and extra discounts on every order with premium membership" Icon={Award} delay={0.2} />
+            <FeatureRowRight title="Rogas" desc="Get free delivery and extra discounts on every order with premium membership" Icon={Award} delay={0.2} />
             <FeatureRowRight title="Safety & Hygiene" desc="Best in class safety standards with regular temperature checks" Icon={ShieldCheck} delay={0.3} />
           </div>
 
@@ -419,7 +419,7 @@ export default function MasterLandingPage() {
               Download the app now!
             </h2>
             <p className="text-xl text-gray-500 font-medium mb-10 max-w-md">
-              Experience seamless online ordering only on the Indian Bites app
+              Experience seamless online ordering only on the Rogas app
             </p>
             <div className="flex gap-4 justify-center md:justify-start">
               <img src="https://b.zmtcdn.com/data/webuikit/9f0c85a5e33adb783fa0aef667075f9e1556003622.png" alt="Google Play" className="h-12 object-contain cursor-pointer" />
@@ -457,7 +457,7 @@ export default function MasterLandingPage() {
           <div className="flex flex-col lg:flex-row justify-between mb-16 gap-12">
             <div className="lg:w-1/4">
               <h1 className="text-4xl font-black italic tracking-tighter mb-8">
-                Indian Bites
+                Rogas
               </h1>
             </div>
 
@@ -476,10 +476,10 @@ export default function MasterLandingPage() {
               <div>
                 <h4 className="font-bold text-lg mb-6 uppercase tracking-wider text-gray-200">Zomaverse</h4>
                 <ul className="space-y-3 text-gray-400 font-medium">
-                  <li><a href="#" className="hover:text-white transition-colors">Indian Bites</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Rogas</a></li>
                   <li><a href="#" className="hover:text-white transition-colors">Blinkit</a></li>
                   <li><a href="#" className="hover:text-white transition-colors">District</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Feeding India</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Feeding Poland</a></li>
                   <li><a href="#" className="hover:text-white transition-colors">Hyperpure</a></li>
                 </ul>
               </div>
@@ -531,7 +531,7 @@ export default function MasterLandingPage() {
 
           <div className="text-gray-500 text-sm font-medium mt-10 text-center md:text-left leading-relaxed">
             By continuing past this page, you agree to our Terms of Service, Cookie Policy, Privacy Policy and Content Policies. All trademarks are properties of their respective owners. <br />
-            © 2026 Indian Bites™ Ltd. All rights reserved.
+            © 2026 Rogas™ Ltd. All rights reserved.
           </div>
         </div>
       </footer>

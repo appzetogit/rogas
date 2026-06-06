@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  NAME: 'Indian Bites',
+  NAME: 'Rogas',
   VERSION: '1.0.0',
 };
 

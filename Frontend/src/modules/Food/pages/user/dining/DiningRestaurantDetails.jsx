@@ -5,9 +5,9 @@ import { useProfile } from "@food/context/ProfileContext"
 import { getMenuFromResponse } from "@food/utils/menuItems"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import {
-    ArrowLeft,
-    Bookmark,
-    CheckCircle2,
+  ArrowLeft,
+  Bookmark,
+  CheckCircle2,
   Clock3,
   IndianRupee,
   Loader2,
@@ -138,20 +138,20 @@ export default function DiningRestaurantDetails() {
       }
 
       setRestaurant(resolvedRestaurant)
-      
+
       const restaurantId = resolvedRestaurant?._id || resolvedRestaurant?.id || slug
-      
+
       // Fetch Occupied Seats for Availability Check
       setIsFetchingBookings(true)
       try {
-          const availabilityRes = await diningAPI.getOccupiedSeatsPublic(restaurantId)
-          if (availabilityRes.data.success) {
-              setOccupiedSeats(Number(availabilityRes.data.data?.occupiedSeats) || 0)
-          }
+        const availabilityRes = await diningAPI.getOccupiedSeatsPublic(restaurantId)
+        if (availabilityRes.data.success) {
+          setOccupiedSeats(Number(availabilityRes.data.data?.occupiedSeats) || 0)
+        }
       } catch (err) {
-          console.error("Error fetching availability:", err)
+        console.error("Error fetching availability:", err)
       } finally {
-          setIsFetchingBookings(false)
+        setIsFetchingBookings(false)
       }
 
       const menuResponse = await restaurantAPI.getMenuByRestaurantId(restaurantId).catch(() => null)
@@ -221,7 +221,7 @@ export default function DiningRestaurantDetails() {
   const handleShare = async () => {
     const shareData = {
       title: restaurantName,
-      text: `Check out ${restaurantName} on Indian Bites!`,
+      text: `Check out ${restaurantName} on Rogas!`,
       url: window.location.href,
     }
 
@@ -230,7 +230,7 @@ export default function DiningRestaurantDetails() {
         await navigator.share(shareData)
         return
       }
-      
+
       // Fallback for desktop
       await navigator.clipboard.writeText(window.location.href)
       toast.success("Link copied to clipboard!")
@@ -344,27 +344,26 @@ export default function DiningRestaurantDetails() {
           </div>
         </div>
 
-          <div className="px-3 pb-1 pt-3">
-            <div className="w-full">
-              <button
-                onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
-                disabled={!isDiningEnabled}
-                className={`flex h-[52px] w-full items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all ${
-                  isDiningEnabled
-                    ? "border-[#f1ebee] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#2b2118] dark:text-slate-100"
-                    : "cursor-not-allowed border-[#f2d7da] dark:border-red-900/30 bg-[#fff5f6] dark:bg-red-950/20 text-[#c06a79] opacity-80"
+        <div className="px-3 pb-1 pt-3">
+          <div className="w-full">
+            <button
+              onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
+              disabled={!isDiningEnabled}
+              className={`flex h-[52px] w-full items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all ${isDiningEnabled
+                  ? "border-[#f1ebee] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#2b2118] dark:text-slate-100"
+                  : "cursor-not-allowed border-[#f2d7da] dark:border-red-900/30 bg-[#fff5f6] dark:bg-red-950/20 text-[#c06a79] opacity-80"
                 }`}
-              >
+            >
               <Ticket className="h-[15px] w-[15px] text-primary" />
               <span>{isDiningEnabled ? "Book a table" : "Dining paused"}</span>
-              </button>
-            </div>
+            </button>
+          </div>
 
-            {!isDiningEnabled && (
-              <div className="mt-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Dining bookings are currently turned off by the restaurant.
-              </div>
-            )}
+          {!isDiningEnabled && (
+            <div className="mt-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Dining bookings are currently turned off by the restaurant.
+            </div>
+          )}
 
         </div>
       </section>
@@ -379,11 +378,10 @@ export default function DiningRestaurantDetails() {
                   setActiveTab(tab.id)
                   scrollToSection(tab.target)
                 }}
-                className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
-                  activeTab === tab.id
+                className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${activeTab === tab.id
                     ? "border-primary bg-white dark:bg-slate-900 text-[#2a2018] dark:text-slate-100"
                     : "border-[#ece9e1] dark:border-slate-800 bg-[#fafafa] dark:bg-slate-900 text-[#8b8881] dark:text-slate-400"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -430,25 +428,25 @@ export default function DiningRestaurantDetails() {
             {(featuredSections.length > 0
               ? featuredSections
               : [
-                  { id: "food", title: "Food", pages: 16 },
-                  { id: "beverages", title: "Beverages", pages: 10 },
-                ]).map((section, index) => (
-              <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-slate-800">
-                  {menuPreviewImages[index] ? (
-                    <img src={menuPreviewImages[index]} alt={section.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] dark:bg-slate-800 text-sm font-medium text-[#a28868] dark:text-slate-400">
-                      Menu preview
-                    </div>
-                  )}
+                { id: "food", title: "Food", pages: 16 },
+                { id: "beverages", title: "Beverages", pages: 10 },
+              ]).map((section, index) => (
+                <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-slate-800">
+                    {menuPreviewImages[index] ? (
+                      <img src={menuPreviewImages[index]} alt={section.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] dark:bg-slate-800 text-sm font-medium text-[#a28868] dark:text-slate-400">
+                        Menu preview
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-2 pb-3 pt-2 text-center">
+                    <p className="text-[16px] font-medium leading-tight text-[#2b2218] dark:text-slate-100">{section.title}</p>
+                    <p className="mt-1 text-[12px] text-[#7f7a73] dark:text-slate-400">{section.pages} pages</p>
+                  </div>
                 </div>
-                <div className="px-2 pb-3 pt-2 text-center">
-                  <p className="text-[16px] font-medium leading-tight text-[#2b2218] dark:text-slate-100">{section.title}</p>
-                  <p className="mt-1 text-[12px] text-[#7f7a73] dark:text-slate-400">{section.pages} pages</p>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </section>
 
@@ -458,9 +456,8 @@ export default function DiningRestaurantDetails() {
             {(imageGallery.length > 0 ? imageGallery.slice(0, 4) : menuPreviewImages.slice(0, 2)).map((image, index) => (
               <div
                 key={`${image || "placeholder"}-${index}`}
-                className={`overflow-hidden rounded-[18px] bg-[#f6efe4] dark:bg-slate-800 ${
-                  index === 0 ? "col-span-2 aspect-[1.72]" : "aspect-[1.08]"
-                }`}
+                className={`overflow-hidden rounded-[18px] bg-[#f6efe4] dark:bg-slate-800 ${index === 0 ? "col-span-2 aspect-[1.72]" : "aspect-[1.08]"
+                  }`}
               >
                 {image ? (
                   <img src={image} alt={`${restaurantName} ${index + 1}`} className="h-full w-full object-cover" />
@@ -528,11 +525,10 @@ export default function DiningRestaurantDetails() {
           <Button
             onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
             disabled={!isDiningEnabled}
-            className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-all ${
-              isDiningEnabled
+            className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-all ${isDiningEnabled
                 ? "border-[#b18da5] bg-white dark:bg-slate-900 text-primary dark:text-purple-400 hover:bg-[#fdfafc] dark:hover:bg-slate-800"
                 : "cursor-not-allowed border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-600 opacity-80"
-            }`}
+              }`}
           >
             {isDiningEnabled ? "Book a table" : "Dining paused"}
           </Button>
@@ -554,9 +550,9 @@ export default function DiningRestaurantDetails() {
               <div>
                 <h3 className="text-xl font-black text-[#23180f] dark:text-slate-100">Select number of guests</h3>
                 <p className="mt-1 text-sm text-[#7b6651] dark:text-slate-400">
-                    {remainingSeats > 0 
-                        ? `Only ${remainingSeats} out of ${maxCapacity} seats available now.` 
-                        : "Fully booked for now. Try later!"}
+                  {remainingSeats > 0
+                    ? `Only ${remainingSeats} out of ${maxCapacity} seats available now.`
+                    : "Fully booked for now. Try later!"}
                 </p>
               </div>
               <button
@@ -574,29 +570,28 @@ export default function DiningRestaurantDetails() {
                 const isTooLarge = count > remainingSeats && !isBooked
 
                 return (
-                    <button
-                      key={`sheet-${count}`}
-                      disabled={isBooked || isTooLarge}
-                      onClick={() => setSelectedGuests(count)}
-                      className={`relative rounded-2xl border px-3 py-4 text-sm font-bold transition-all ${
-                          selectedGuests === count
-                            ? "border-primary bg-[#fdfafc] dark:bg-purple-950/30 text-primary scale-[1.02] shadow-sm"
-                            : isBooked
-                              ? "border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 text-red-400 cursor-not-allowed opacity-70"
-                              : isTooLarge
-                                ? "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 text-gray-300 dark:text-slate-600 cursor-not-allowed"
-                                : "border-[#ece7de] dark:border-slate-800 bg-white dark:bg-slate-800 text-[#23180f] dark:text-slate-100 hover:border-primary/30"
+                  <button
+                    key={`sheet-${count}`}
+                    disabled={isBooked || isTooLarge}
+                    onClick={() => setSelectedGuests(count)}
+                    className={`relative rounded-2xl border px-3 py-4 text-sm font-bold transition-all ${selectedGuests === count
+                        ? "border-primary bg-[#fdfafc] dark:bg-purple-950/30 text-primary scale-[1.02] shadow-sm"
+                        : isBooked
+                          ? "border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 text-red-400 cursor-not-allowed opacity-70"
+                          : isTooLarge
+                            ? "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 text-gray-300 dark:text-slate-600 cursor-not-allowed"
+                            : "border-[#ece7de] dark:border-slate-800 bg-white dark:bg-slate-800 text-[#23180f] dark:text-slate-100 hover:border-primary/30"
                       }`}
-                    >
-                      {isBooked ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-[10px] uppercase font-black tracking-tighter opacity-60">Booked</span>
-                              <span>{count}</span>
-                          </div>
-                      ) : (
-                          count
-                      )}
-                    </button>
+                  >
+                    {isBooked ? (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] uppercase font-black tracking-tighter opacity-60">Booked</span>
+                        <span>{count}</span>
+                      </div>
+                    ) : (
+                      count
+                    )}
+                  </button>
                 )
               })}
             </div>

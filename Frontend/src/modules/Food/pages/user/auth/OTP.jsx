@@ -195,7 +195,7 @@ export default function OTP() {
                   fcmToken = t.trim();
                   break;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           } else {
             fcmToken = localStorage.getItem("fcm_web_registered_token_user") || null;
@@ -451,8 +451,8 @@ export default function OTP() {
             )}
             <div className="space-y-2">
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
-                {showNameInput 
-                  ? "Help us know you better" 
+                {showNameInput
+                  ? "Help us know you better"
                   : contactType === "email"
                     ? "Verify your email"
                     : "Verify your phone"}
@@ -555,12 +555,12 @@ export default function OTP() {
             </div>
           )}
         </div>
-        
+
         {/* Footer info */}
         <div className="p-6 bg-gray-50 dark:bg-[#1f1f1f] text-center">
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest font-bold">
-                Indian Bites Food Delivery
-            </p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest font-bold">
+            Rogas Food Delivery
+          </p>
         </div>
       </div>
     </AnimatedPage>

@@ -9,7 +9,7 @@ export default function TableCancellationPolicy() {
     const { restaurant, guests, date, timeSlot, discount, specialRequest, user } = location.state || {};
 
     const handleBack = () => {
-        navigate("/food/user/dining/book-confirmation", { 
+        navigate("/food/user/dining/book-confirmation", {
             state: { restaurant, guests, date, timeSlot, discount, specialRequest, user },
             replace: true
         });
@@ -75,14 +75,14 @@ export default function TableCancellationPolicy() {
                 </div>
 
                 <div className="pt-6">
-                    <button 
+                    <button
                         onClick={handleBack}
                         className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-slate-200 active:scale-95 transition-all"
                     >
                         I Understand
                     </button>
                     <p className="text-center text-[10px] text-slate-400 font-bold mt-6 uppercase tracking-widest leading-loose">
-                        By using Indian Bites dining, you agree to our <br />
+                        By using Rogas dining, you agree to our <br />
                         <span className="text-slate-900 underline underline-offset-4">Terms of Service</span>
                     </p>
                 </div>

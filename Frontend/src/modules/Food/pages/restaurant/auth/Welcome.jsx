@@ -34,7 +34,7 @@ const carouselData = [
 
 export default function RestaurantWelcome() {
   const navigate = useNavigate()
-  const companyName = useCompanyName() || "Indian Bites"
+  const companyName = useCompanyName() || "Rogas"
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState(0) // 1 for next, -1 for previous
   const [touchStart, setTouchStart] = useState(null)
@@ -272,8 +272,8 @@ export default function RestaurantWelcome() {
                 setCurrentIndex(index)
               }}
               className={`transition-all duration-300 rounded-full ${index === currentIndex
-                  ? "w-2.5 h-2.5 bg-white"
-                  : "w-1.5 h-1.5 bg-white/50"
+                ? "w-2.5 h-2.5 bg-white"
+                : "w-1.5 h-1.5 bg-white/50"
                 }`}
               aria-label={`Go to slide ${index + 1}`}
             />
@@ -300,7 +300,7 @@ export default function RestaurantWelcome() {
           variant="outline"
           className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white font-bold py-6 md:py-7 text-base md:text-lg rounded-lg transition-all shadow-lg bg-transparent"
         >
-          Partner with Indian Bites
+          Partner with Rogas
         </Button> */}
 
         {/* Terms and Conditions */}

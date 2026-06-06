@@ -24,7 +24,7 @@ function App() {
           <div className="absolute inset-0 border-4 border-primary/10 rounded-full" />
           <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
         </div>
-        <h1 className="text-2xl font-black text-primary italic uppercase tracking-tighter mt-6">INDIAN BITES</h1>
+        <h1 className="text-2xl font-black text-primary italic uppercase tracking-tighter mt-6">Rogas</h1>
       </div>
     )
   }

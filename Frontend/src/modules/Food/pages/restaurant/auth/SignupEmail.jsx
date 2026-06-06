@@ -85,7 +85,7 @@ export default function RestaurantSignupEmail() {
 
   const handleOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return
-    
+
     const newOtp = [...otp]
     newOtp[index] = value.slice(-1)
     setOtp(newOtp)
@@ -122,7 +122,7 @@ export default function RestaurantSignupEmail() {
   const handleOtpSubmit = async (e) => {
     e.preventDefault()
     setError("")
-    
+
     const otpCode = otp.join("")
     if (otpCode.length !== 6) {
       setError("Please enter the complete OTP")
@@ -140,13 +140,13 @@ export default function RestaurantSignupEmail() {
       )
 
       const data = response?.data?.data || response?.data
-      
+
       if (data.accessToken && data.restaurant) {
         // Replace old token with new one (handles cross-module login)
         setAuthData("restaurant", data.accessToken, data.restaurant)
-        
+
         window.dispatchEvent(new Event("restaurantAuthChanged"))
-        
+
         navigate("/food/restaurant/onboarding", { replace: true })
       } else {
         throw new Error("Registration failed. Please try again.")
@@ -167,7 +167,7 @@ export default function RestaurantSignupEmail() {
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return
-    
+
     setIsLoading(true)
     setError("")
     try {
@@ -206,7 +206,7 @@ export default function RestaurantSignupEmail() {
         <div className="absolute inset-0 flex items-center text-white pointer-events-none">
           <div className="bg-primary/80 rounded-r-full py-10 xl:py-20 pl-10 xl:pl-14 pr-10 xl:pr-20 max-w-[70%] shadow-xl backdrop-blur-[1px]">
             <h1 className="text-3xl xl:text-4xl font-extrabold mb-4 tracking-wide leading-tight">
-              JOIN INDIAN BITES
+              JOIN Rogas
               <br />
               FOOD PLATFORM
             </h1>

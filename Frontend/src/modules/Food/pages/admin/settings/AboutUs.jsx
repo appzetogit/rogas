@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@food/components/ui/ca
 import { Label } from "@food/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@food/components/ui/select"
 import { useCompanyName } from "@food/hooks/useCompanyName"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 
 // Icon mapping
@@ -48,7 +48,7 @@ export default function AboutUs() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [aboutData, setAboutData] = useState({
-    appName: 'Indian Bites',
+    appName: 'Rogas',
     version: '1.0.0',
     description: '',
     logo: '',

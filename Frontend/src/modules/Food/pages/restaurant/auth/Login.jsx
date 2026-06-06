@@ -90,9 +90,9 @@ export default function RestaurantLogin() {
               className="relative w-32 h-32 md:w-36 md:h-36 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden border-4 border-white mx-auto mb-4 bg-white"
               style={{ borderRadius: '50%', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
             >
-              <img 
-                src={logoNew} 
-                alt="Indian Bites Logo" 
+              <img
+                src={logoNew}
+                alt="Rogas Logo"
                 className="w-full h-full object-cover scale-[1.15]"
                 style={{ borderRadius: '50%' }}
               />
@@ -167,7 +167,7 @@ export default function RestaurantLogin() {
 
           <div className="mt-8 text-center">
             <p className="text-[11px] text-gray-400 font-medium leading-relaxed max-w-[320px] mx-auto">
-              By continuing, you agree to Indian Bites's <br />
+              By continuing, you agree to Rogas's <br />
               <Link to="/food/restaurant/profile/terms" className="text-gray-900 dark:text-white font-bold hover:text-primary transition-colors">Terms of Service</Link> & <Link to="/food/restaurant/profile/privacy" className="text-gray-900 dark:text-white font-bold hover:text-primary transition-colors">Privacy Policy</Link>
             </p>
           </div>

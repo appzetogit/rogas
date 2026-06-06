@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { locationAPI, userAPI } from "@food/api"
 
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 // BigDataCloud reverse-geocode is expensive/noisy if many components mount `useLocation()`.
 // This module-level guard dedupes concurrent calls + rate-limits starts across the whole app.
@@ -93,26 +93,26 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
           )
           clearTimeout(timeout)
           const data = await response.json()
-          
+
           if (data.status === "OK" && data.results && data.results.length > 0) {
             googleData = data.results[0]
             formattedAddress = googleData.formatted_address
-            
+
             // Extract components
             const components = googleData.address_components
-            
+
             // Area extraction (sublocality_level_1 or sublocality)
             const subLocality1 = components.find(c => c.types.includes("sublocality_level_1"))?.long_name
             const subLocality = components.find(c => c.types.includes("sublocality"))?.long_name
             const neighborhood = components.find(c => c.types.includes("neighborhood"))?.long_name
             area = subLocality1 || subLocality || neighborhood || ""
-            
+
             // City extraction (locality)
             city = components.find(c => c.types.includes("locality"))?.long_name || ""
-            
+
             // State extraction (administrative_area_level_1)
             state = components.find(c => c.types.includes("administrative_area_level_1"))?.long_name || ""
-            
+
             // Country extraction
             country = components.find(c => c.types.includes("country"))?.long_name || "India"
           }
@@ -139,20 +139,20 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
           const nomTimeout = setTimeout(() => nomController.abort(), 3000)
           const nomRes = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-            { 
+            {
               signal: nomController.signal,
-              headers: { 'Accept-Language': 'en', 'User-Agent': 'Indian Bites-App' }
+              headers: { 'Accept-Language': 'en', 'User-Agent': 'Rogas-App' }
             }
           )
           clearTimeout(nomTimeout)
           nominatimData = await nomRes.json()
-        } catch (e) {}
+        } catch (e) { }
 
         const bdcFormatted = bdcData.formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
         formattedAddress = nominatimData?.display_name || bdcFormatted
         city = bdcData.city || bdcData.locality || "Indore"
         state = bdcData.principalSubdivision || ""
-        
+
         if (nominatimData?.address) {
           const a = nominatimData.address
           area = a.suburb || a.neighbourhood || a.road || ""
@@ -1612,7 +1612,7 @@ export function useLocation() {
       try {
         localStorage.setItem("deliveryAddressMode", "current")
         window.dispatchEvent(new CustomEvent("deliveryAddressModeUpdated"))
-      } catch {}
+      } catch { }
 
       // Clear cached location to force fresh fetch
       localStorage.removeItem("userLocation")

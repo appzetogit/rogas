@@ -127,7 +127,7 @@ export default function RestaurantOTP() {
                   fcmToken = t.trim();
                   break;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           } else {
             fcmToken = localStorage.getItem("fcm_web_registered_token_restaurant") || null;
@@ -153,7 +153,7 @@ export default function RestaurantOTP() {
         sessionStorage.removeItem("restaurantAuthData")
         navigate("/food/restaurant/pending-verification", {
           replace: true,
-          state: { 
+          state: {
             phone: pendingPhone,
             isRejected: data.isRejected,
             rejectionReason: data.rejectionReason
@@ -189,7 +189,7 @@ export default function RestaurantOTP() {
       }
     } catch (err) {
       const message = err?.response?.data?.message || "Invalid OTP. Please try again."
-      
+
       if (/pending approval/i.test(message)) {
         const pendingPhone = authData?.phone || authData?.email || contactInfo
         setRestaurantPendingPhone(pendingPhone)
@@ -234,7 +234,7 @@ export default function RestaurantOTP() {
       <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-primary/10 via-primary/5 to-transparent pointer-events-none" />
       <div className="absolute top-[-100px] right-[-100px] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      
+
       {/* Header / Back */}
       <div className="relative z-20 px-6 py-8 flex items-center">
         <motion.button
@@ -263,7 +263,7 @@ export default function RestaurantOTP() {
             >
               <ShieldCheck className="text-white w-10 h-10" />
             </motion.div>
-            
+
             <h1 className="text-4xl font-black text-primary font-['Outfit'] tracking-tight mb-3">
               Verify Account
             </h1>
@@ -287,11 +287,10 @@ export default function RestaurantOTP() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onFocus={() => setFocusedIndex(index)}
                     onBlur={() => setFocusedIndex(null)}
-                    className={`w-full aspect-square bg-gray-100 dark:bg-gray-800/50 text-center text-3xl font-black text-primary border-2 border-gray-200 dark:border-gray-700 rounded-2xl outline-none transition-all ${
-                      focusedIndex === index 
-                        ? "border-primary bg-white dark:bg-gray-900 scale-105 shadow-[0_10px_30px_rgba(126,56,102,0.1)]" 
+                    className={`w-full aspect-square bg-gray-100 dark:bg-gray-800/50 text-center text-3xl font-black text-primary border-2 border-gray-200 dark:border-gray-700 rounded-2xl outline-none transition-all ${focusedIndex === index
+                        ? "border-primary bg-white dark:bg-gray-900 scale-105 shadow-[0_10px_30px_rgba(126,56,102,0.1)]"
                         : "hover:border-gray-300 dark:hover:border-gray-600"
-                    }`}
+                      }`}
                   />
                   <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full transition-all duration-300 ${focusedIndex === index ? "bg-primary opacity-100" : "bg-gray-200 opacity-0"}`} />
                 </div>
@@ -326,7 +325,7 @@ export default function RestaurantOTP() {
           </div>
 
           <p className="mt-12 text-[10px] font-black text-gray-300 dark:text-gray-600 text-center uppercase tracking-[0.3em]">
-            Secure Verification &bull; Indian Bites Partner
+            Secure Verification &bull; Rogas Partner
           </p>
         </motion.div>
       </div>
