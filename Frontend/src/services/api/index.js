@@ -1938,3 +1938,61 @@ export const publicAPI = {
   getPrivacy: (key = "privacy") => userClient.get(`/food/pages/${key}`),
   getTerms: (key = "terms") => userClient.get(`/food/pages/${key}`),
 };
+
+export const dmbVendorAPI = {
+  getTodayOrders: () => restaurantClient.get("/dmb/vendor/today-orders"),
+  getOrders: (params = {}) => restaurantClient.get("/dmb/vendor/orders", { params }),
+  getForecast: () => restaurantClient.get("/dmb/vendor/forecast"),
+  markReady: (deliveryDate, deliverySlot) => restaurantClient.post("/dmb/vendor/mark-ready", { deliveryDate, deliverySlot }),
+  getMealPlans: () => restaurantClient.get("/dmb/vendor/meal-plans"),
+  createMealPlan: (data) => restaurantClient.post("/dmb/vendor/meal-plans", data),
+  editMealPlan: (planId, data) => restaurantClient.put(`/dmb/vendor/meal-plans/${planId}`, data),
+  toggleMealStatus: (planId) => restaurantClient.put(`/dmb/vendor/meal-plans/${planId}/toggle-status`, {}),
+  getEarnings: (params = {}) => restaurantClient.get("/dmb/vendor/earnings", { params }),
+  getSubscribers: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
+  getSubscriberStats: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
+  updateSettings: (data) => restaurantClient.put("/dmb/vendor/settings", data),
+  getRegistrationStatus: (phone) => restaurantClient.get("/food/restaurant/registration-status", { params: { phone } }),
+  /** NEW: Get today's/tomorrow's daily subscription orders */
+  getDailyOrders: (params = {}) => restaurantClient.get("/dmb/vendor/daily-orders", { params }),
+  /** NEW: Update a single daily order status (preparing/ready) */
+  updateDailyOrderStatus: (orderId, status) => restaurantClient.patch(`/dmb/vendor/daily-orders/${orderId}/status`, { status }),
+  /** NEW: Mark all orders for a slot as ready */
+  markAllDailyOrdersReady: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/mark-all-ready", { date, slot }),
+};
+
+/** DMB Customer API — for CustomerApp to browse vendors, subscribe, pay */
+export const dmbCustomerAPI = {
+  /** Get vendor's active meal menu (public, no auth) */
+  getVendorMenu: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
+  /** Get vendor's subscription plan options (public, no auth) */
+  getVendorPlans: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/plans`),
+  /** Create Razorpay order + pending subscription (auth: USER) */
+  createSubscriptionOrder: (data) => userClient.post("/dmb/payments/create-order", data),
+  /** Verify Razorpay payment + activate subscription (auth: USER) */
+  verifySubscriptionPayment: (data) => userClient.post("/dmb/payments/verify-payment", data),
+  /** Get my subscriptions (auth: USER) */
+  getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
+  /** Get active duration plans (public) */
+  getDurationPlans: () => userClient.get("/dmb/subscriptions/durations"),
+  /** Create dynamic duration plan (Admin) */
+  createDurationPlan: (data) => adminClient.post("/dmb/subscriptions/durations", data),
+  /** Update dynamic duration plan (Admin) */
+  updateDurationPlan: (id, data) => adminClient.put(`/dmb/subscriptions/durations/${id}`, data),
+  /** Delete dynamic duration plan (Admin) */
+  deleteDurationPlan: (id) => adminClient.delete(`/dmb/subscriptions/durations/${id}`),
+  /** NEW: Get today's & tomorrow's meal for HomeScreen */
+  getTodayMeal: () => userClient.get("/dmb/subscriptions/today"),
+  /** NEW: Get customer's upcoming or past orders for OrdersScreen */
+  getMyOrders: (type = "upcoming") => userClient.get("/dmb/subscriptions/my-orders", { params: { type } }),
+  /** NEW: Skip a specific daily order (only when status=scheduled) */
+  skipDailyOrder: (orderId) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/skip`, {}),
+  /** NEW: Change meal for a specific daily order (only when status=scheduled) */
+  changeDailyOrderMeal: (orderId, mealPlanIds) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/change-meal`, { mealPlanIds }),
+  /** Pause subscription for N days */
+  pauseSubscription: (subscriptionId, pauseDays = 1, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/pause`, { pauseDays, reason }),
+  /** Resume a paused subscription */
+  resumeSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/activate`, {}),
+  /** Get vendor's available meal plans (for change-meal selection) */
+  getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
+};

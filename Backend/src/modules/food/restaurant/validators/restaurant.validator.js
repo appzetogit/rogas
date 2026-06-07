@@ -100,7 +100,9 @@ const restaurantRegisterSchema = z.object({
     accountNumber: z.string().optional(),
     ifscCode: z.string().optional(),
     accountHolderName: z.string().optional(),
-    accountType: z.string().optional()
+    accountType: z.string().optional(),
+    vendorType: z.string().optional(),
+    kitchenPartnerId: z.string().optional()
 });
 
 export const validateRestaurantRegisterDto = (body) => {

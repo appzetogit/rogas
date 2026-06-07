@@ -26,6 +26,8 @@ const DeliveryBoyViewMap = lazy(() => import("@food/pages/admin/restaurant/Deliv
 const RestaurantsList = lazy(() => import("@food/pages/admin/restaurant/RestaurantsList"));
 const AddRestaurant = lazy(() => import("@food/pages/admin/restaurant/AddRestaurant"));
 const JoiningRequest = lazy(() => import("@food/pages/admin/restaurant/JoiningRequest"));
+const VendorRequest = lazy(() => import("@food/pages/admin/restaurant/VendorRequest"));
+const SubscriptionPlans = lazy(() => import("@food/pages/admin/restaurant/SubscriptionPlans"));
 const RestaurantCommission = lazy(() => import("@food/pages/admin/restaurant/RestaurantCommission"));
 const RestaurantComplaints = lazy(() => import("@food/pages/admin/restaurant/RestaurantComplaints"));
 const RestaurantReviews = lazy(() => import("@food/pages/admin/restaurant/RestaurantReviews"));
@@ -176,6 +178,10 @@ export default function AdminRouter() {
             <Route path="orders/offline-payments" element={<OrdersPage statusKey="offline-payments" />} />
             <Route path="order-detect-delivery" element={<OrderDetectDelivery />} />
             <Route path="order-refunds/new" element={<NewRefundRequests />} />
+
+            {/* VENDOR MANAGEMENT */}
+            <Route path="vendor-request" element={<VendorRequest />} />
+            <Route path="subscription-plans" element={<SubscriptionPlans />} />
 
             {/* RESTAURANT MANAGEMENT */}
             <Route path="zone-setup" element={<ZoneSetup />} />

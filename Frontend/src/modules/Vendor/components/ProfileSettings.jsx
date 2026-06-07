@@ -151,13 +151,16 @@ export default function ProfileSettings({
 
               {/* EU food license Amber row warned of expiring dates */}
               <button
-              onClick={() => triggerToast(`EU License validated: ${profile.licenseFile} expires in June 2026`)}
+              onClick={() => {
+                const licenceName = profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'Not Uploaded');
+                triggerToast(`EU License validated: ${licenceName} expires in June 2026`);
+              }}
               className="w-full flex items-center justify-between p-4 bg-secondary-container/10 hover:bg-secondary-container/15 transition-colors group text-on-secondary-container">
               
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-secondary">assignment_turned_in</span>
                   <span className="font-bold text-[13px]">
-                    EU Food Licence <span className="text-secondary font-semibold text-[11px]">(exp. Jun 2026!)</span>
+                    EU Food Licence <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'licence_food_pl_2026.pdf')})</span>
                   </span>
                 </div>
                 <span className="material-symbols-outlined text-secondary group-active:translate-x-0.5 transition-transform text-[18px]">

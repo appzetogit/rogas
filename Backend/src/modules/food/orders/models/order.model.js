@@ -306,6 +306,77 @@ const orderSchema = new mongoose.Schema(
         lastRiderLocation: {
             type: { type: String, enum: ['Point'] },
             coordinates: { type: [Number] }
+        },
+
+        // ─── DailyMealBox Subscription Delivery Fields ───────────────────────
+        /** Linked subscription (null for one-time orders) */
+        subscriptionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DMBSubscription',
+            default: null,
+            index: true
+        },
+        /** Meal plan ordered */
+        mealPlanId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DMBMealPlan',
+            default: null,
+            index: true
+        },
+        /** Scheduled delivery date (for subscription deliveries) */
+        deliveryDate: { type: Date, default: null, index: true },
+        /** Delivery slot: breakfast / lunch / dinner */
+        deliverySlot: {
+            type: String,
+            enum: ['breakfast', 'lunch', 'dinner'],
+            default: null
+        },
+        /** Order type: subscription (auto) or one-time */
+        orderType: {
+            type: String,
+            enum: ['subscription', 'one_time'],
+            default: 'one_time',
+            index: true
+        },
+        /** Delivery proof method chosen by customer */
+        proofMethod: {
+            type: String,
+            enum: ['pin', 'photo'],
+            default: 'pin'
+        },
+        /** Photo URL if proof method is photo */
+        proofPhotoUrl: { type: String, default: '' },
+        /** GPS coordinates recorded at delivery moment */
+        deliveryGps: {
+            lat: { type: Number, default: null },
+            lng: { type: Number, default: null }
+        },
+        /** Fraud detection: flagged if GPS > 500m from delivery address */
+        gpsMismatch: { type: Boolean, default: false, index: true },
+        /** Collection batch ID (vendor PIN batch for driver pickup) */
+        collectionBatchId: { type: String, default: '' },
+        collectionPinVerified: { type: Boolean, default: false },
+        /** Fleet partner that handled this delivery */
+        fleetPartnerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FleetPartner',
+            default: null
+        },
+        /** Driver tip amount (100% goes to driver, fleet partner handles VAT) */
+        driverTip: { type: Number, default: 0, min: 0 },
+        /** VAT breakdown for this delivery (per PRD VAT engine) */
+        vatBreakdown: {
+            foodNet: { type: Number, default: 0 },
+            foodVatRate: { type: Number, default: 0 },
+            foodVatAmount: { type: Number, default: 0 },
+            foodVatOwner: { type: String, default: 'vendor' },
+            deliveryNet: { type: Number, default: 0 },
+            deliveryVatRate: { type: Number, default: 0 },
+            deliveryVatAmount: { type: Number, default: 0 },
+            deliveryVatOwner: { type: String, default: 'fleet_partner' },
+            isReverseCharge: { type: Boolean, default: false },
+            totalGross: { type: Number, default: 0 },
+            currency: { type: String, default: 'INR' }
         }
     },
     {

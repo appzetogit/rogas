@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { STANDARD_PLANS } from "./types";
+import { io } from "socket.io-client";
 
 import { WelcomeScreen, GoalsScreen, DietPrefsScreen, LocationScreen, ManualLocationScreen } from "./components/OnboardingScreens";
 import { AuthPhoneScreen, OtpVerificationScreen, UserDetailsScreen } from "./components/AuthScreens";
@@ -13,354 +13,444 @@ import { ProfileScreen } from "./components/ProfileScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
+import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    
-    // Core Global States
-    const [onboardingCompleted, setOnboardingCompleted] = useState(false);
-    const [points, setPoints] = useState(120);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    // Auth State
-    const [authMode, setAuthMode] = useState("login");
-    const [phoneNumber, setPhoneNumber] = useState("");
-    const [selectedPlanDetails, setSelectedPlanDetails] = useState(STANDARD_PLANS[0]);
-    
-    const [tomorrowMeal, setTomorrowMeal] = useState({
-        day: "Mon",
-        dayNum: 12,
-        name: "Rosol z kluskami",
-        status: "Scheduled"
+  // ─── Auth State ─────────────────────────────────────────────────────────────
+  const [authMode, setAuthMode] = useState("login");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("user_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const isLoggedIn = Boolean(currentUser && localStorage.getItem("user_accessToken"));
+
+  // ─── Socket.IO State ─────────────────────────────────────────────────────────
+  const [socket, setSocket] = useState(null);
+
+  // Connect socket when user logs in; join subscription rooms
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
+    const sock = io(backendUrl, {
+      auth: { token: localStorage.getItem("user_accessToken") },
+      transports: ["websocket", "polling"]
     });
-    
-    const [dietaryPrefs, setDietaryPrefs] = useState({
-        dietType: "Keto",
-        allergies: ["Gluten", "Nuts"],
-        weeklyBudget: 350
+
+    sock.on("connect", () => {
+      // Join subscription rooms so we receive order status updates
+      import("@food/api").then(({ dmbCustomerAPI }) => {
+        dmbCustomerAPI.getMySubscriptions("active").then(res => {
+          const subs = res.data?.subscriptions || [];
+          subs.forEach(sub => {
+            sock.emit("join_room", `sub_${sub._id}`);
+          });
+        }).catch(() => {});
+      });
     });
-    
-    const [invoicePrefs, setInvoicePrefs] = useState({
-        receiptType: "simple",
-        companyName: "Acme Corp Sp. z o.o.",
-        nipVat: "123-456-78-90",
-        companyAddress: "ul. Wiejska 10, Warsaw",
-        billingEmail: "accounting@acmecorp.pl"
+
+    setSocket(sock);
+    return () => { sock.disconnect(); };
+  }, [isLoggedIn]);
+
+  // Auth init on mount — rehydrate from token
+  useEffect(() => {
+    const token = localStorage.getItem("user_accessToken");
+    if (token && !currentUser) {
+      authAPI.getCurrentUser()
+        .then((res) => {
+          const u = res?.data?.data?.user || res?.data?.user || res?.data;
+          if (u) {
+            setCurrentUser(u);
+            localStorage.setItem("user_user", JSON.stringify(u));
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("user_accessToken");
+          localStorage.removeItem("user_refreshToken");
+          localStorage.removeItem("user_user");
+          setCurrentUser(null);
+        });
+    }
+  }, []);
+
+  const handleLoginSuccess = ({ accessToken, refreshToken, user }) => {
+    localStorage.setItem("user_accessToken", accessToken);
+    if (refreshToken) localStorage.setItem("user_refreshToken", refreshToken);
+    localStorage.setItem("user_user", JSON.stringify(user));
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    const rt = localStorage.getItem("user_refreshToken");
+    authAPI.logout(rt).catch(() => {});
+    localStorage.removeItem("user_accessToken");
+    localStorage.removeItem("user_refreshToken");
+    localStorage.removeItem("user_user");
+    setCurrentUser(null);
+    navigate("/user/welcome");
+    showToast("👋 Logged out successfully");
+  };
+
+  // ─── App State ───────────────────────────────────────────────────────────────
+  const [points, setPoints] = useState(120);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+
+  // Holds the full checkout data from PlansScreen (vendorId, mealPlanId, slot, days, address, pricing)
+  const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
+
+  const [tomorrowMeal, setTomorrowMeal] = useState({
+    day: "Mon",
+    dayNum: 12,
+    name: "Ghar ka Khana",
+    status: "Scheduled",
+  });
+
+  const [dietaryPrefs, setDietaryPrefs] = useState({
+    dietType: "Vegetarian",
+    allergies: [],
+    weeklyBudget: 1500,
+  });
+
+  const [invoicePrefs, setInvoicePrefs] = useState({
+    receiptType: "simple",
+    companyName: "",
+    nipVat: "",
+    companyAddress: "",
+    billingEmail: "",
+  });
+
+  const showToast = (message) => {
+    toast.success(message, {
+      style: { background: "#00604c", color: "#fff", border: "none" },
+      position: "top-center",
     });
-    
-    const showToast = (message) => {
-        toast.success(message, {
-            style: { background: '#00604c', color: '#fff', border: 'none' },
-            position: 'top-center',
-        });
-    };
+  };
 
-    // Routing transitions
-    const handleOnboardingNext = (stepPath) => {
-        navigate("/user/" + stepPath);
-    };
+  // ─── Routing Handlers ────────────────────────────────────────────────────────
+  const handleOnboardingNext = (stepPath) => navigate("/user/" + stepPath);
 
-    const handleDietPrefsSaveFromOnboarding = (prefs) => {
-        setDietaryPrefs(prefs);
-        setOnboardingCompleted(true);
-        navigate("/user/home");
-        toast.success("Onboarding complete! Welcome to DailyMealBox Warsaw.", {
-            style: { background: '#00604c', color: '#fff', border: 'none' },
-            position: 'top-center',
-        });
-    };
+  const handleDietPrefsSaveFromOnboarding = (prefs) => {
+    setDietaryPrefs(prefs);
+    setOnboardingCompleted(true);
+    navigate("/user/home");
+    showToast("✅ Onboarding complete! Welcome to DailyMealBox.");
+  };
 
-    const handleLocationComplete = () => {
-        navigate("/user/goals");
-        toast.success("Location verified!", {
-            icon: <span className="material-symbols-outlined text-white">location_on</span>,
-            style: { background: '#00604c', color: '#fff', border: 'none' },
-            position: 'top-center',
-        });
-    };
+  const handleLocationComplete = () => {
+    navigate("/user/goals");
+    showToast("📍 Location verified!");
+  };
 
-    const handlePlanSelectionFlow = (plan) => {
-        setSelectedPlanDetails(plan);
-        navigate("/user/checkout");
-        showToast(`🛒 Opened Checkout details for ${plan.name}`);
-    };
+  // Called from PlansScreen when user selects plan + slot + address
+  const handlePlanSelectionFlow = (checkoutData) => {
+    setSelectedPlanDetails(checkoutData);
+    navigate("/user/checkout");
+    showToast(`🛒 Opening checkout for ${checkoutData.vendorName || "vendor"}...`);
+  };
 
-    const handleInvoiceSettingsSave = (settings) => {
-        setInvoicePrefs(settings);
-        navigate("/user/profile");
-        showToast("🧾 Invoice settings updated.");
-    };
+  const handleInvoiceSettingsSave = (settings) => {
+    setInvoicePrefs(settings);
+    navigate("/user/profile");
+    showToast("🧾 Invoice settings updated.");
+  };
 
-    const handleConfirmSubscription = () => {
-        setPoints((p) => p + 50);
-        navigate("/user/home");
-        showToast("🎉 Subscription confirmed! Your first meal box will arrive tomorrow at 12:00.");
-    };
+  const handleConfirmSubscription = () => {
+    setPoints((p) => p + 50);
+    setTomorrowMeal((prev) => ({
+      ...prev,
+      name: selectedPlanDetails?.mealPlanName || prev.name,
+      status: "Confirmed",
+    }));
+    navigate("/user/home");
+    showToast("🎉 Subscription confirmed! Your first meal box is on its way.");
+  };
 
-    // Determine if we should show the bottom nav bar
-    // It should only show on specific main pages
-    const currentPath = location.pathname;
-    const showNav = [
-        "/user/home",
-        "/user/plans",
-        "/user/calendar",
-        "/user/orders",
-        "/user/profile"
-    ].includes(currentPath);
+  // ─── Bottom Nav Visibility ───────────────────────────────────────────────────
+  const currentPath = location.pathname;
+  const showNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
 
-    return (
-      <div className="relative max-w-[420px] mx-auto min-h-screen bg-slate-50 shadow-2xl border-x border-[#bec9c3]/30 overflow-x-hidden flex flex-col font-sans transition-all duration-300">
-      
-
-
-      {/* Screen Render Switch using React Router */}
+  return (
+    <div className="relative max-w-[420px] mx-auto min-h-screen bg-slate-50 shadow-2xl border-x border-[#bec9c3]/30 overflow-x-hidden flex flex-col font-sans transition-all duration-300">
+      {/* Screen Routes */}
       <div className="flex-1 w-full relative">
         <Routes>
           <Route path="welcome" element={
-            <WelcomeScreen 
+            <WelcomeScreen
               onSignup={() => navigate("/user/auth/signup")}
               onLogin={() => navigate("/user/auth/login")}
             />
           } />
 
+          {/* ── Auth: Login ── */}
           <Route path="auth/login" element={
-            <AuthPhoneScreen 
+            <AuthPhoneScreen
               isLogin={true}
               onToggleMode={() => navigate("/user/auth/signup")}
-              onSendOtp={(phone) => {
-                setAuthMode("login");
-                setPhoneNumber(phone);
-                navigate("/user/otp");
-              }}
-              onBack={() => navigate("/user/welcome")}
-            />
-          } />
-
-          <Route path="auth/signup" element={
-            <AuthPhoneScreen 
-              isLogin={false}
-              onToggleMode={() => navigate("/user/auth/login")}
-              onSendOtp={(phone) => {
-                setAuthMode("signup");
-                setPhoneNumber(phone);
-                navigate("/user/otp");
-              }}
-              onBack={() => navigate("/user/welcome")}
-            />
-          } />
-
-          <Route path="otp" element={
-            <OtpVerificationScreen 
-              phone={phoneNumber}
-              onVerify={(code) => {
-                if (authMode === "login") {
-                  navigate("/user/location");
-                  toast.success("Successfully logged in!");
-                } else {
-                  navigate("/user/about-you");
-                  toast.success("Phone verified. Tell us about yourself.");
+              onSendOtp={async (phone) => {
+                try {
+                  const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
+                  await authAPI.sendOTP(fullPhone);
+                  setAuthMode("login");
+                  setPhoneNumber(fullPhone);
+                  navigate("/user/otp");
+                  showToast("📱 OTP sent to " + fullPhone);
+                } catch (err) {
+                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to send OTP"));
                 }
               }}
-              onResend={() => toast.success("OTP resent successfully!")}
+              onBack={() => navigate("/user/welcome")}
+            />
+          } />
+
+          {/* ── Auth: Signup ── */}
+          <Route path="auth/signup" element={
+            <AuthPhoneScreen
+              isLogin={false}
+              onToggleMode={() => navigate("/user/auth/login")}
+              onSendOtp={async (phone, name) => {
+                try {
+                  const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
+                  await authAPI.sendOTP(fullPhone);
+                  setAuthMode("signup");
+                  setPhoneNumber(fullPhone);
+                  setSignupName(name || "");
+                  navigate("/user/otp");
+                  showToast("📱 OTP sent to " + fullPhone);
+                } catch (err) {
+                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to send OTP"));
+                }
+              }}
+              onBack={() => navigate("/user/welcome")}
+            />
+          } />
+
+          {/* ── OTP Verify ── */}
+          <Route path="otp" element={
+            <OtpVerificationScreen
+              phone={phoneNumber}
+              onVerify={async (code) => {
+                try {
+                  const nameToPass = signupName || "Customer";
+                  const res = await authAPI.verifyOTP(
+                    phoneNumber,
+                    code,
+                    undefined,
+                    nameToPass,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    null,
+                    "web"
+                  );
+                  const data = res?.data?.data || res?.data;
+                  const { accessToken, refreshToken, user, isNewUser } = data;
+                  handleLoginSuccess({ accessToken, refreshToken, user });
+
+                  if (authMode === "signup" || isNewUser) {
+                    navigate("/user/about-you");
+                    showToast(`👋 Welcome! Tell us about yourself.`);
+                  } else {
+                    navigate("/user/home");
+                    showToast(`✅ Welcome back, ${user?.name || ""}!`);
+                  }
+                } catch (err) {
+                  showToast("❌ " + (err?.response?.data?.message || err.message || "OTP verification failed"));
+                }
+              }}
+              onResend={async () => {
+                try {
+                  await authAPI.sendOTP(phoneNumber);
+                  showToast("📱 OTP resent!");
+                } catch (err) {
+                  showToast("❌ Failed to resend OTP");
+                }
+              }}
               onBack={() => navigate(authMode === "login" ? "/user/auth/login" : "/user/auth/signup")}
             />
           } />
 
+          {/* ── About You (new user name) ── */}
           <Route path="about-you" element={
-            <UserDetailsScreen 
-              onContinue={(details) => {
-                navigate("/user/location");
-                toast.success(`Welcome, ${details.firstName}!`);
+            <UserDetailsScreen
+              onContinue={async (details) => {
+                try {
+                  const fullName = `${details.firstName} ${details.lastName}`.trim();
+                  await userAPI.updateProfile({ name: fullName, email: details.email });
+
+                  // Also update our currentUser state in frontend so it reflects in UI
+                  setCurrentUser((prev) => {
+                    const nextUser = { ...prev, name: fullName, email: details.email };
+                    localStorage.setItem("user_user", JSON.stringify(nextUser));
+                    return nextUser;
+                  });
+
+                  navigate("/user/location");
+                  showToast(`✅ Welcome, ${details.firstName}!`);
+                } catch (err) {
+                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to update profile details"));
+                }
               }}
               onBack={() => navigate("/user/otp")}
             />
           } />
 
           <Route path="goals" element={
-            <GoalsScreen 
-              onBack={() => navigate("/user/location")} 
+            <GoalsScreen
+              onBack={() => navigate("/user/location")}
               onNext={() => handleOnboardingNext("diet-prefs")}
             />
           } />
 
           <Route path="diet-prefs" element={
-            <DietPrefsScreen 
-              onBack={() => navigate("/user/goals")} 
-              initialPrefs={dietaryPrefs} 
+            <DietPrefsScreen
+              onBack={() => navigate("/user/goals")}
+              initialPrefs={dietaryPrefs}
               onNext={handleDietPrefsSaveFromOnboarding}
             />
           } />
 
           <Route path="location" element={
-            <LocationScreen 
-              onBack={() => navigate("/user/auth")} 
-              onAllowLocation={handleLocationComplete} 
-              onChooseManually={() => {
-                navigate("/user/manual-location");
-              }}
+            <LocationScreen
+              onBack={() => navigate("/user/auth/login")}
+              onAllowLocation={handleLocationComplete}
+              onChooseManually={() => navigate("/user/manual-location")}
             />
           } />
 
           <Route path="manual-location" element={
-            <ManualLocationScreen 
-              onBack={() => navigate("/user/location")} 
+            <ManualLocationScreen
+              onBack={() => navigate("/user/location")}
               onConfirm={(address) => {
                 navigate("/user/goals");
-                toast.success(`Location set to ${address}`, {
-                  icon: <span className="material-symbols-outlined text-white">location_on</span>,
-                  style: { background: '#00604c', color: '#fff', border: 'none' },
-                  position: 'top-center',
-                });
+                showToast(`📍 Location set to ${address}`);
               }}
             />
           } />
 
+          {/* ── Protected Main Screens ── */}
           <Route path="home" element={
-            <HomeScreen 
-              onGoToPlans={() => navigate("/user/plans")} 
-              onGoToCalendar={() => navigate("/user/calendar")} 
-              onGoToOrders={() => navigate("/user/orders")} 
-              onGoToProfile={() => navigate("/user/profile")} 
-              onShowNotificationToast={showToast} 
-              tomorrowMeal={tomorrowMeal} 
-              setTomorrowMeal={setTomorrowMeal} 
+            <HomeScreen
+              onGoToPlans={() => navigate("/user/plans")}
+              onGoToCalendar={() => navigate("/user/calendar")}
+              onGoToOrders={() => navigate("/user/orders")}
+              onGoToProfile={() => navigate("/user/profile")}
+              onShowNotificationToast={showToast}
+              tomorrowMeal={tomorrowMeal}
+              setTomorrowMeal={setTomorrowMeal}
               points={points}
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              socket={socket}
             />
           } />
 
           <Route path="plans" element={
-            <PlansScreen 
-              onGoBack={() => navigate("/user/home")} 
-              onSelectPlan={handlePlanSelectionFlow} 
+            <PlansScreen
+              onGoBack={() => navigate("/user/home")}
+              onSelectPlan={handlePlanSelectionFlow}
               onGoToProfile={() => navigate("/user/profile")}
             />
           } />
 
           <Route path="calendar" element={
-            <CalendarScreen 
-              onGoBack={() => navigate("/user/home")} 
-              onGoToProfile={() => navigate("/user/profile")} 
+            <CalendarScreen
+              onGoBack={() => navigate("/user/home")}
+              onGoToProfile={() => navigate("/user/profile")}
               onShowToast={showToast}
             />
           } />
 
           <Route path="orders" element={
-            <OrdersScreen 
-              onGoBack={() => navigate("/user/home")} 
-              onTrackLive={() => navigate("/user/tracker")} 
-              onGoToProfile={() => navigate("/user/profile")} 
-              onShowNotificationToast={showToast} 
+            <OrdersScreen
+              onGoBack={() => navigate("/user/home")}
+              onTrackLive={() => navigate("/user/tracker")}
+              onGoToProfile={() => navigate("/user/profile")}
+              onShowNotificationToast={showToast}
               tomorrowMeal={tomorrowMeal}
+              socket={socket}
             />
           } />
 
           <Route path="profile" element={
-            <ProfileScreen 
-              onGoBack={() => navigate("/user/home")} 
-              onGoToOnboarding={() => navigate("/user/diet-prefs")} 
-              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")} 
-              onGoToCheckout={() => navigate("/user/checkout")} 
-              onShowNotificationToast={showToast} 
-              dietaryPrefs={dietaryPrefs} 
-              invoicePrefs={invoicePrefs} 
+            <ProfileScreen
+              onGoBack={() => navigate("/user/home")}
+              onGoToOnboarding={() => navigate("/user/diet-prefs")}
+              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
+              onGoToCheckout={() => navigate("/user/checkout")}
+              onShowNotificationToast={showToast}
+              dietaryPrefs={dietaryPrefs}
+              invoicePrefs={invoicePrefs}
               points={points}
+              currentUser={currentUser}
+              onLogout={handleLogout}
             />
           } />
 
           <Route path="checkout" element={
-            <CheckoutScreen 
-              onGoBack={() => navigate("/user/plans")} 
-              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")} 
-              onShowNotificationToast={showToast} 
-              invoicePrefs={invoicePrefs} 
-              setInvoicePrefs={setInvoicePrefs} 
+            <CheckoutScreen
+              onGoBack={() => navigate("/user/plans")}
+              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
+              onShowNotificationToast={showToast}
+              invoicePrefs={invoicePrefs}
+              setInvoicePrefs={setInvoicePrefs}
               onConfirmSubscription={handleConfirmSubscription}
+              selectedPlanDetails={selectedPlanDetails}
             />
           } />
 
           <Route path="invoice-settings" element={
-            <InvoiceSettingsScreen 
-              onGoBack={() => {
-                navigate(onboardingCompleted ? "/user/profile" : "/user/checkout");
-              }} 
-              initialSettings={invoicePrefs} 
+            <InvoiceSettingsScreen
+              onGoBack={() => navigate(onboardingCompleted ? "/user/profile" : "/user/checkout")}
+              initialSettings={invoicePrefs}
               onSave={handleInvoiceSettingsSave}
             />
           } />
 
           <Route path="tracker" element={
-            <TrackerScreen 
-              tomorrowMeal={tomorrowMeal} 
-              onGoBack={() => navigate("/user/orders")} 
+            <TrackerScreen
+              tomorrowMeal={tomorrowMeal}
+              onGoBack={() => navigate("/user/orders")}
               onShowNotificationToast={showToast}
             />
           } />
 
-          {/* Default fallback */}
           <Route path="*" element={<Navigate to="/user/welcome" replace />} />
         </Routes>
       </div>
 
-
-
-      {/* Bottom Global Navigation bar matches specs layouts */}
+      {/* Bottom Navigation */}
       {showNav && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[420px] w-full z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 pt-2.5 pb-5 flex justify-around items-center h-20 animate-in fade-in duration-300">
-          
-          {/* Home Tab */}
-          <button onClick={() => navigate("/user/home")} className={`flex flex-col items-center justify-center transition-all duration-200 ${currentPath === "/user/home"
-                ? "text-primary scale-105"
-                : "text-on-surface-variant hover:text-primary hover:scale-[1.02]"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: currentPath === "/user/home" ? "'FILL' 1" : "'FILL' 0" }}>
-              home
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">Home</span>
-            {currentPath === "/user/home" && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse"></div>}
-          </button>
-
-          {/* Plans Tab */}
-          <button onClick={() => navigate("/user/plans")} className={`flex flex-col items-center justify-center transition-all duration-200 ${currentPath === "/user/plans"
-                ? "text-primary scale-105"
-                : "text-on-surface-variant hover:text-primary hover:scale-[1.02]"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: currentPath === "/user/plans" ? "'FILL' 1" : "'FILL' 0" }}>
-              assignment
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">Plans</span>
-            {currentPath === "/user/plans" && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse"></div>}
-          </button>
-
-          {/* Calendar Tab */}
-          <button onClick={() => navigate("/user/calendar")} className={`flex flex-col items-center justify-center transition-all duration-200 ${currentPath === "/user/calendar"
-                ? "text-primary scale-105"
-                : "text-on-surface-variant hover:text-primary hover:scale-[1.02]"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: currentPath === "/user/calendar" ? "'FILL' 1" : "'FILL' 0" }}>
-              calendar_today
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">Calendar</span>
-            {currentPath === "/user/calendar" && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse"></div>}
-          </button>
-
-          {/* Orders Tab */}
-          <button onClick={() => navigate("/user/orders")} className={`flex flex-col items-center justify-center transition-all duration-200 ${currentPath === "/user/orders"
-                ? "text-primary scale-105"
-                : "text-on-surface-variant hover:text-primary hover:scale-[1.02]"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: currentPath === "/user/orders" ? "'FILL' 1" : "'FILL' 0" }}>
-              shopping_bag
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">Orders</span>
-            {currentPath === "/user/orders" && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse"></div>}
-          </button>
-
-          {/* Profile Tab */}
-          <button onClick={() => navigate("/user/profile")} className={`flex flex-col items-center justify-center transition-all duration-200 ${currentPath === "/user/profile"
-                ? "text-primary scale-105"
-                : "text-on-surface-variant hover:text-primary hover:scale-[1.02]"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: currentPath === "/user/profile" ? "'FILL' 1" : "'FILL' 0" }}>
-              person
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">Profile</span>
-            {currentPath === "/user/profile" && <div className="w-1 h-1 bg-primary rounded-full mt-0.5"/>}
-          </button>
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[420px] w-full z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 pt-2.5 pb-5 flex justify-around items-center h-20">
+          {[
+            { path: "/user/home", icon: "home", label: "Home" },
+            { path: "/user/plans", icon: "assignment", label: "Plans" },
+            { path: "/user/calendar", icon: "calendar_today", label: "Calendar" },
+            { path: "/user/orders", icon: "shopping_bag", label: "Orders" },
+            { path: "/user/profile", icon: "person", label: "Profile" },
+          ].map(({ path, icon, label }) => {
+            const active = currentPath === path;
+            return (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className={`flex flex-col items-center justify-center transition-all duration-200 ${active ? "text-primary scale-105" : "text-on-surface-variant hover:text-primary"}`}
+              >
+                <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                  {icon}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{label}</span>
+                {active && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse" />}
+              </button>
+            );
+          })}
         </nav>
       )}
     </div>

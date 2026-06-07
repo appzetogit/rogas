@@ -1,0 +1,907 @@
+DailyMealBox 
+ 
+PRODUCT REQUIREMENTS DOCUMENT 
+Part 3 — Driver / Delivery Partner App  ·  FINAL  
+ 
+Document 
+FINAL merged — supersedes all previous Driver App versions 
+Version 
+v3.0 Final  
+Date 
+23 May 2026 
+Platforms 
+Android + iOS (React Native) — DARK THEME throughout 
+Users 
+Bicycle · E-bike · Scooter · Car delivery partners 
+Brand colours 
+Dark theme: #1A1A18 background · #1F7A63 green · #FFFFFF text 
+Developer 
+Appzeto — Indore, India 
+ 
+ 
+ 
+ 
+1. App Overview & Architecture 
+ 
+The DailyMealBox Driver App guides drivers through their entire shift: from going online, receiving their optimised multi-stop route, collecting boxes from 
+vendors (with PIN verification), delivering to customers (with PIN or photo proof), and managing their earnings and cash COD balance. All delivery logic 
+runs on the backend — driver app only displays and navigates. 
+Navigation — 4 Tab Bar (Dark Theme) 
+⌂ Home 
+🗺 Route 
+💰 Earnings 
+👤 Profile 
+Online/offline toggle, active order, bonus, 
+cash, tips 
+Full day route, stop list, pickup/delivery 
+sequence 
+Daily/weekly/monthly, tips, COD, payouts 
+Documents, vehicle, bank, shifts, fleet partner 
+info 
+ 
+ 
+2. Push Notification Catalogue — Driver App (Complete) 
+ 
+All driver push notifications use Firebase Cloud Messaging (FCM). Driver app is dark-themed — notifications appear as bright green/amber alerts. Critical 
+operational notifications (new order, route update, cash limit) cannot be disabled. Safety notifications (arriving soon to customer) are cross-app and 
+handled by the backend. 
+Trigger Event 
+Notification Text 
+Recipient 
+Channel 
+Admin Control 
+Driver application 
+approved 
+Welcome! You are approved. First shift: 
+Monday. Tap to see your schedule. 
+Driver 
+FCM + Email 
+ACM-64 — cannot disable 
+Driver application 
+rejected 
+Application not approved. Reason: 
+[reason]. Tap to resubmit documents. 
+Driver 
+FCM + Email 
+ACM-64 — cannot disable 
+New order assigned to 
+driver 
+New delivery! Pickup: Maria's Kitchen 
+(Mokotow). 5 boxes. Tap to navigate. 
+Driver 
+FCM Push 
+Cannot disable — ops critical 
+Route updated (after 
+reassignment) 
+3 new deliveries added to your route. 
+Route re-optimised. Tap to see. 
+Driver 
+FCM Push 
+Cannot disable — ops critical 
+Vendor ready for pickup 
+(collection PIN) 
+Maria's Kitchen is ready! 8 boxes. PIN: 
+7842. Tap to navigate.  
+Driver 
+FCM Push 
+Cannot disable — ops critical 
+Customer notified: 
+arriving soon 
+Customer C7 notified. Driver within 
+500m. PIN confirmed sent to customer. 
+Driver (internal) 
+In-app 
+ACM-24 — auto-trigger 
+Cash COD limit reached 
+Cash limit reached: 500 PLN. Please 
+report to admin before next delivery. 
+Driver 
+FCM Push 
+ACM-73 — cannot disable 
+Cash COD approaching 
+limit (80%) 
+Cash balance: 400 PLN (80% of 500 PLN 
+limit). Contact admin soon. 
+Driver 
+FCM Push 
+ACM-73 — can disable 
+Bonus milestone 
+unlocked 
+Bonus unlocked! 150 PLN added to your 
+earnings. 30 deliveries completed. 
+Driver 
+FCM Push 
+ACM-71 — can disable 
+Shift starting reminder 
+(30 min) 
+Lunch shift starts in 30 min (11:00). Go 
+online when ready in your zone. 
+Driver 
+FCM Push 
+ACM-76 — can disable 
+Payout processed 
+720 PLN sent to your bank. Cash netted: 
+85 PLN. Bank transfer: 635 PLN. 
+Driver 
+FCM + Email 
+ACM-68 — cannot disable 
+Driving licence expiring 
+Driving licence expires in 60 days. Upload 
+renewal to avoid suspension. 
+Driver 
+FCM + Email 
+ACM-67 — cannot disable 
+Driving licence expired 
+— suspended 
+Account suspended: licence expired. 
+Upload renewal to reactivate. 
+Driver 
+FCM + Email 
+ACM-67 — cannot disable 
+Document approved by 
+admin 
+Your [document name] has been 
+approved. Account remains active. 
+Driver 
+FCM Push 
+ACM-64 — cannot disable 
+Document rejected — 
+reupload required 
+Your [document] was rejected. Reason: 
+[reason]. Please upload again. 
+Driver 
+FCM Push 
+ACM-64 — cannot disable 
+Admin force-offline 
+(emergency) 
+You have been taken offline by admin. 
+Reason: [reason]. Contact support. 
+Driver 
+FCM Push 
+Cannot disable — safety 
+Vendor quick message 
+reply 
+Maria's Kitchen: "Orders ready at 11:50" 
+— tap to view. 
+Driver 
+FCM Push 
+ACM-53 — can disable 
+Failed delivery: admin 
+action required 
+Failed delivery reported for C7. Admin 
+will arrange reattempt or refund. 
+Driver 
+In-app 
+Cannot disable 
+ 
+Key FCM Payloads — Driver Notifications 
+// 1. Vendor ready for pickup (CRITICAL — cannot disable):​
+FCM.send(driver.device_token, {​
+  title: "Maria's Kitchen is ready! 🟢",​
+  body: "8 boxes ready. Collection PIN: 7842. Tap to navigate.",​
+  data: {​
+    screen: "pickup_detail",​
+    vendor_id, vendor_lat, vendor_lng, vendor_address,​
+    batch_id, collection_pin: "7842", box_count: 8,​
+    event: "vendor_ready"​
+  },​
+  android: { priority: "high" }​
+})​
+​
+// 2. New order assigned:​
+FCM.send(driver.device_token, {​
+  title: "New delivery assigned 📦",​
+  body: "Pickup: Maria's Kitchen (Mokotow). 5 boxes. Navigate now.",​
+  data: { screen: "route", event: "order_assigned" }​
+})​
+​
+// 3. Cash limit reached (CRITICAL — cannot disable):​
+FCM.send(driver.device_token, {​
+  title: "⚠ Cash limit reached!",​
+  body: "You hold 500 PLN cash. Contact admin before next COD delivery.",​
+  data: { screen: "earnings", event: "cash_limit_reached",​
+          cash_amount: driver.cash_balance }​
+})​
+​
+// 4. Bonus unlocked:​
+FCM.send(driver.device_token, {​
+  title: "🎉 Bonus unlocked!",​
+  body: "150 PLN bonus added! You completed 30 deliveries this week.",​
+  data: { screen: "earnings", event: "bonus_unlocked", bonus_pln: 150 }​
+})​
+​
+// 5. Shift reminder (30 min before):​
+// CRON: run 30 min before each city's shift start time​
+FCM.send(driver.device_token, {​
+  title: "Shift starts in 30 minutes ⏰",​
+  body: "Lunch shift 11:00–14:00. Go online when ready in Mokotow zone.",​
+  data: { screen: "home", event: "shift_reminder", shift: "lunch" }​
+}) 
+ 
+3. Driver Onboarding & Registration 
+ 
+ 
+DA-01 — Driver Welcome 
+ 
+DA-02 — Registration (3 Steps) 
+ 
+DA-01 
+ Driver Welcome Screen 
+✅ INCLUDED 
+v1.0 
+ 
+Dark-themed welcome screen. Shows earnings potential per vehicle type (Warsaw research 2025-26: e-bike = highest earner at 28–35 PLN/h). Earnings 
+calculator converts hesitant drivers before they even sign up. 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+DailyMealBox Delivery Partner branding 
+✅ INCLUDED 
+— 
+Dark background, green accents. Shows "Warsaw · Berlin · 
+Paris" coverage. 
+Earnings preview per vehicle type 
+✅ INCLUDED 
+ACM-64/65 
+Bicycle: 18–22 PLN/h. E-bike: 28–35 PLN/h. Scooter: 26–32 
+PLN/h. Admin enables vehicle types per city. 
+Key benefits: instant payout / routes / dashboard 
+✅ INCLUDED 
+— 
+3 feature highlights. Drives sign-up conversion. 
+Join as Driver CTA → Registration 
+✅ INCLUDED 
+— 
+Starts 3-step registration flow. 
+Admin can pause new driver registrations 
+⚙ ADMIN 
+ACM-64 
+Per city / per vehicle type / platform-wide. Shows "Applications 
+paused" message. 
+Push: application approved/rejected 
+✅ INCLUDED 
+ACM-64 
+FCM + Email. Cannot disable. See notification catalogue Section 
+2. 
+ 
+DA-02 
+ Driver Registration — 3 Steps 
+✅ INCLUDED 
+v1.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Step 1: Personal details (name, phone, email, 
+DOB) 
+✅ INCLUDED 
+— 
+DOB required for age verification (minimum 18). 
+Step 2: Vehicle type selection 
+✅ INCLUDED 
+ACM-65 
+Admin enables/disables each vehicle type per city. Disabled 
+types greyed out. 
+Step 3: Document upload 
+✅ INCLUDED 
+— 
+Google Drive storage for all driver documents. 
+Driving licence (front + back) — MANDATORY 
+✅ INCLUDED 
+ACM-67 
+Stored on Google Drive. System checks expiry. 60-day warning 
+push. 
+National ID (passport or national ID) — 
+MANDATORY 
+✅ INCLUDED 
+— 
+EU gig worker compliance. Front photo required. 
+Vehicle registration 
+✅ INCLUDED 
+— 
+For scooter and car drivers only. 
+Bank account IBAN for earnings payouts 
+✅ INCLUDED 
+— 
+Polish/EU IBAN. Validated on input. 
+Fleet Partner assignment (v3.0) 
+ ✅ INCLUDED 
+— 
+Driver profile shows which fleet partner company they belong 
+to. Set by admin on approval. 
+Admin approval required before going live 
+✅ INCLUDED 
+ACM-64 
+City Manager reviews. Push + email on decision. 
+Push: document approved / rejected 
+✅ INCLUDED 
+ACM-64 
+FCM + Email. Cannot disable. 
+ 
+ 
+4. Driver Home — Online / Offline Hub 
+ 
+ 
+DA-03 — Driver Home (Online State) 
+DA-03 
+ Driver Home Screen 
+✅ INCLUDED 
+v1.0 
+ 
+The driver command centre. Large online/offline toggle is the most important UI element. All key information visible without scrolling. Dark theme reduces 
+screen glare outdoors. 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Large online/offline toggle (full-width, 
+impossible to miss) 
+✅ INCLUDED 
+ACM-76 
+Green when online, dark when offline. Shift enforcement built 
+in. 
+Today stats: deliveries / earned / rating 
+✅ INCLUDED 
+— 
+Real-time. Updates after each confirmed delivery. 
+Active order card (vendor → navigate) 
+✅ INCLUDED 
+— 
+Shows vendor name, zone, box count. One-tap navigate. 
+Weekly bonus progress bar (amber) 
+✅ INCLUDED 
+ACM-71 
+Only shown if admin has enabled bonus programme. 
+Cash balance (COD held) — amber card 
+✅ INCLUDED 
+ACM-73 
+Colour turns red when approaching cash limit (>80%). 
+Tips earned today (separate from earnings) 
+✅ INCLUDED 
+ACM-50 
+Only shown if admin enabled tips. "100% goes to you." 
+Shift time display 
+✅ INCLUDED 
+ACM-76 
+Shows current shift: "Lunch shift 11:00–14:00." 
+Admin-disabled feature notices 
+✅ INCLUDED 
+All ACM 
+If COD disabled: cash section hidden. If tips off: tips section 
+hidden. 
+Push: shift starting reminder (30 min before) 
+✅ INCLUDED 
+ACM-76 
+FCM push 30 min before shift. Can disable. See notification 
+catalogue. 
+ 
+Online/Offline Toggle — Shift Enforcement 
+// Driver taps Go Online:​
+POST /api/drivers/{id}/online​
+​
+Backend validation:​
+1. Check shift is active:​
+   const shiftStart = remoteConfig.get("lunch_shift_start_warsaw") // "11:00"​
+   const shiftEnd   = remoteConfig.get("lunch_shift_end_warsaw")   // "14:00"​
+   if (now < shiftStart || now > shiftEnd)​
+     return error("Your lunch shift starts at " + shiftStart)​
+​
+2. Check driver active + documents not expired:​
+   if (driver.status !== "active")​
+     return error({ code: "account_suspended" })​
+​
+3. Set online + start GPS streaming:​
+   driver.is_online = true​
+   redis.set("driver:" + driver.id + ":online", 1, "EX", 18000) // 5h max​
+​
+// GPS streaming (5-second interval when online):​
+socket.emit("location_update", {​
+  driver_id, lat, lng, timestamp: Date.now()​
+})​
+// Backend → Redis → Customer app + Admin live map 
+ 
+5. Route Display — Multi-Stop Optimised 
+ 
+ 
+DA-04 — Today's Route (Full Stop List) 
+DA-04 
+ Route Display Screen 
+✅ INCLUDED 
+v1.0 
+ 
+VRPTW algorithm runs on backend at 10:00am daily. Driver sees an ordered stop list — pickups (green P) and deliveries (blue D) interleaved. All routing 
+logic on backend. Driver app only displays and navigates. 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Route summary: total boxes / stops / estimated 
+time 
+✅ INCLUDED 
+— 
+Header bar. Calculated by backend using Google Maps traffic 
+data. 
+Ordered stop list (pickups + deliveries 
+interleaved) 
+✅ INCLUDED 
+ACM-77 
+Colour-coded: P=green, D=blue. Next stop highlighted with 
+NEXT badge. 
+NEXT badge on current stop + Navigate button 
+✅ INCLUDED 
+— 
+One tap → opens Google Maps with vendor/customer address. 
+Pickup stop: vendor name, address, time window, 
+box count 
+✅ INCLUDED 
+— 
+Time window shown. If vendor not ready: shows waiting 
+message. 
+Delivery stop: customer alias, zone, box number 
+assigned 
+✅ INCLUDED 
+— 
+Never shows full address on list (privacy). Full address shown 
+when navigating only. 
+Load manifest per pickup (which box goes where) 
+✅ INCLUDED 
+— 
+Tap any pickup stop → see box list: "Box 1 → C7 Ochota." 
+Admin sets route optimisation priority 
+⚙ ADMIN 
+ACM-77 
+Fastest / Most deliveries / Balanced. Admin switches per city. 
+Push: route updated (after reassignment) 
+✅ INCLUDED 
+— 
+FCM push when admin reassigns orders to this driver. 
+ 
+ 
+6. Pickup from Vendor — Collection PIN 
+ 
+ 
+DA-05 — Vendor Pickup with Collection PIN 
+DA-05 
+ Vendor Pickup Screen 
+✅ INCLUDED 
+v1.0 
+ 
+  CRITICAL: Collection PIN creates a verified chain of custody. Vendor shows PIN on their screen, driver enters it here. MISSING from original Appzeto scope 
+— must be confirmed included. 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Map showing route to vendor (dark themed) 
+✅ INCLUDED 
+ACM-23 
+Dark Google Maps. ETA countdown. 
+Vendor info card: name, address, batch, box count 
+✅ INCLUDED 
+— 
+Shows which batch and how many boxes to collect. 
+Navigate + Call vendor buttons 
+✅ INCLUDED 
+— 
+Navigate: Google Maps. Call: masked number via Twilio Proxy. 
+Collection PIN entry field (4 digits) 
+ ✅ INCLUDED 
+— 
+MISSING — must add. Vendor shows PIN, driver enters here. 3 
+attempts then admin alerted. 
+Load manifest (which box → which customer) 
+✅ INCLUDED 
+— 
+Driver knows before leaving vendor. 
+Wrong PIN handling (3 attempts + admin alert) 
+ ✅ INCLUDED 
+— 
+MISSING. After 3 fails: admin alerted, vendor can regenerate 
+PIN. 
+Vendor not ready: polling + wait screen 
+✅ INCLUDED 
+— 
+App polls vendor status every 60s. Shows estimated wait. 
+ 
+ 
+7. Customer Delivery — PIN + Photo Proof 
+ 
+ 
+DA-06 — Delivery Screen with Proof 
+DA-06 
+ Customer Delivery Screen 
+✅ INCLUDED 
+v1.0 + v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Dark map with customer as destination pin 
+✅ INCLUDED 
+ACM-23 
+Driver navigating to customer. Route shown in green. 
+ETA badge (updates every 30s) 
+✅ INCLUDED 
+ACM-24 
+Google Distance Matrix API. 
+"Arriving Soon" auto-sent to customer (500m 
+trigger) 
+✅ INCLUDED 
+ACM-24 
+System auto-sends push to customer. Driver sees "Customer 
+notified ✓." 
+Customer info card (alias, zone, meal, COD 
+amount) 
+✅ INCLUDED 
+— 
+Never shows full name or phone number (privacy). 
+Delivery PIN entry (if customer chose PIN) 
+ ✅ INCLUDED 
+— 
+MISSING. Driver asks customer for 4-digit PIN. Backend 
+validates. GPS + timestamp logged. 
+Delivery photo capture (if customer chose photo) 
+ ✅ INCLUDED 
+— 
+MISSING. Driver taps camera, takes photo at door. Uploaded to 
+Firebase/S3. 
+Masked calling via Twilio Proxy (v3.0) 
+ ✅ INCLUDED 
+— 
+NEW. Driver taps Call → Twilio Proxy connects via masked 
+number. Neither party sees real number. 
+Admin can lock proof method platform-wide 
+⚙ ADMIN 
+ACM-25 
+PIN / Photo / Customer choice. 
+COD cash collection (amber indicator) 
+✅ INCLUDED 
+ACM-73 
+Amber "Collect: 18 PLN cash" shown. After confirmed: 
+driver.cash_balance updated. 
+GPS mismatch fraud detection (v3.0) 
+ ✅ INCLUDED 
+— 
+NEW. If GPS at delivery > 500m from address: flagged for admin 
+review. 
+Confirm Delivered CTA (only enabled after proof) 
+✅ INCLUDED 
+— 
+Large green button. Disabled until PIN entered or photo taken. 
+ 
+Delivery Confirmation — PIN or Photo + Fraud Check 
+// Method A — PIN:​
+POST /api/delivery/verify-pin​
+{ order_id, pin_entered: "7234", driver_id, delivery_gps: {lat, lng} }​
+​
+Backend:​
+  const stored = redis.get("delivery_pin:" + order_id)​
+  if (pin_entered !== stored) return error("Incorrect PIN")​
+​
+  // FRAUD CHECK (v3.0):​
+  const distance = haversineDistance(delivery_gps, order.delivery_address)​
+  if (distance > 500) {​
+    flagForReview(driver_id, "GPS_MISMATCH", { distance, order_id })​
+    // Still confirm delivery (driver may be in alley) but flag for admin​
+  }​
+  confirmDelivery(order_id, driver_id, "pin", delivery_gps)​
+​
+// Method B — Photo:​
+POST /api/delivery/verify-photo (multipart)​
+{ order_id, photo: imageFile, driver_id, delivery_gps: {lat, lng} }​
+  photo_url = await uploadPhoto(imageFile) // Firebase Storage​
+  confirmDelivery(order_id, driver_id, "photo", delivery_gps, photo_url)​
+​
+// confirmDelivery — shared function:​
+async function confirmDelivery(order_id, driver_id, method, gps, photo=null) {​
+  // Update order:​
+  order.status = "delivered"; order.delivered_at = now()​
+  order.proof_method = method; order.proof_photo_url = photo​
+  order.delivery_gps = gps​
+​
+  // COD cash (v3.0 — fleet partner owns tip VAT):​
+  if (order.payment_method === "cod") {​
+    driver.cash_balance += order.price_pln​
+    if (driver.cash_balance >= driver.cash_limit_pln) {​
+      FCM.send(driver, "Cash limit reached — contact admin")​
+      notifyAdmin("CASH_LIMIT", driver)​
+    }​
+  }​
+​
+  // Tip VAT note (v3.0 correction):​
+  // Tip gross amount goes 100% to driver via fleet partner​
+  // Fleet partner declares 23% VAT on tips to tax authority​
+  // Driver sees tip gross amount in earnings (VAT already handled by fleet)​
+​
+  FCM.send(customer, "Delivered! Enjoy your meal. Rate your experience →")​
+  driver.earnings_today += order.delivery_fee_pln​
+  driver.deliveries_today += 1​
+  checkBonusProgress(driver_id)​
+} 
+ 
+8. Failed Delivery Flow 
+ 
+ 
+DA-07 — Failed Delivery Screen 
+DA-07 
+ Failed Delivery Screen 
+✅ INCLUDED 
+v1.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Reason selection (5 options) — required 
+✅ INCLUDED 
+— 
+No one home / Wrong address / Customer refused / Unsafe 
+access / Rescheduled. 
+Mandatory door/location photo 
+✅ INCLUDED 
+ACM-26 
+Must take photo before marking failed. GPS + timestamp stored 
+with photo. 
+Additional note field (optional) 
+✅ INCLUDED 
+— 
+Free text. E.g. "Intercom broken, tried calling." 
+Box disposition: Holding / Left with neighbour / 
+Returned to vendor 
+✅ INCLUDED 
+— 
+Driver selects what happened to the box. Logged. 
+Auto-notify admin (CS dashboard alert) 
+✅ INCLUDED 
+— 
+Admin sees failed delivery alert. Routes to AP-04 complaint 
+inbox. 
+Customer push + SMS notification 
+✅ INCLUDED 
+— 
+FCM + SMS: "Delivery attempted. Contact support for reattempt 
+or refund." 
+Driver gets partial earnings (50% of delivery fee) 
+✅ INCLUDED 
+— 
+Not penalised for genuine failures. Rating not affected for valid 
+reasons. 
+ 
+ 
+9. Peak Hours Demand Heatmap 
+ 
+ 
+DA-08 — Peak Demand Heatmap 
+DA-08 
+ Peak Hours Heatmap 
+✅ INCLUDED 
+v1.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Live colour heat map (dark themed) 
+✅ INCLUDED 
+ACM-52 
+Red = high demand, amber = medium, green = low. Admin can 
+disable per city. 
+Driver current position on map 
+✅ INCLUDED 
+— 
+Green dot "YOU". Updates every 5s when online. 
+Zone labels on heat map 
+✅ INCLUDED 
+— 
+Zone names on each area. Matches admin-defined zones. 
+AI insight: "Go to X for more orders" 
+✅ INCLUDED 
+— 
+System identifies hottest zone. One-line recommendation. 
+Navigate to hottest zone — one tap 
+✅ INCLUDED 
+— 
+Opens Google Maps navigation to centre of hottest zone. 
+Admin controls refresh rate 
+⚙ ADMIN 
+ACM-52 
+Every 1 min / 5 min (default) / 15 min. Admin sets per city. 
+ 
+ 
+10. Earnings Screen 
+ 
+ 
+DA-09 — Earnings (Daily / Weekly / Monthly) 
+DA-09 
+ Earnings Screen 
+✅ INCLUDED 
+v1.0 + v3.0 
+ 
+v3.0 correction: Tips show gross amount to driver (100%). Fleet partner handles 23% VAT on tips. Driver sees what they actually receive — VAT is fleet 
+partner's responsibility, not driver's. 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Period tabs: Today / This week / This month 
+✅ INCLUDED 
+— 
+All three always available. 
+Today total earnings (prominent) 
+✅ INCLUDED 
+— 
+Online earnings + tips combined. 
+Cash balance (COD held) — amber card 
+✅ INCLUDED 
+ACM-73 
+Shows total cash from COD. "Report to admin" shortcut. 
+Earnings breakdown per type 
+✅ INCLUDED 
+— 
+Delivery earnings / Tips (100% yours) / Guarantee top-up / 
+Bonus / Cash held. 
+Tip VAT note (v3.0) 
+ ✅ INCLUDED 
+— 
+NEW. Shows: "Tips shown at gross. Fleet partner handles 23% 
+VAT declaration." 
+7-day earnings bar chart 
+✅ INCLUDED 
+— 
+Green bars = earnings. Shows pattern and identifies slow days. 
+Minimum guarantee status 
+✅ INCLUDED 
+ACM-70 
+Shows: "Guarantee: 60 PLN. You earned 120 PLN. Met ✓" 
+Weekly bonus progress 
+✅ INCLUDED 
+ACM-71 
+Delivery count toward bonus target. Admin sets targets. 
+Next payout info + instant payout button 
+✅ INCLUDED 
+ACM-68/69 
+Next scheduled date + amount estimate. 
+Cash settlement reconciliation 
+✅ INCLUDED 
+ACM-73 
+When admin nets off cash: shows "85 PLN cash settled, 635 PLN 
+bank transfer." 
+Push: payout processed 
+✅ INCLUDED 
+ACM-68 
+FCM + Email. Cannot disable. Shows bank amount + cash netted. 
+Push: cash limit approaching (80%) 
+✅ INCLUDED 
+ACM-73 
+FCM push. Can disable. 
+Push: bonus unlocked 
+✅ INCLUDED 
+ACM-71 
+FCM push when delivery target hit. Can disable. 
+ 
+ 
+11. Driver-to-Vendor Quick Messages 
+ 
+ 
+DA-10 — Quick Message Templates 
+DA-10 
+ Driver-to-Vendor Quick Chat 
+✅ INCLUDED 
+v1.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Pre-set quick message templates (tap to send) 
+✅ INCLUDED 
+ACM-53 
+6 default messages. Admin can edit text. Cannot add/remove 
+without code change. 
+Chat only for current active pickup 
+✅ INCLUDED 
+— 
+Cleared after pickup completed. No persistent chat history 
+stored. 
+Vendor replies visible in driver app 
+✅ INCLUDED 
+— 
+If vendor replies: driver sees reply as bubble. 
+Default templates 
+✅ INCLUDED 
+ACM-53 
+1. On my way (5 min) 2. Arrived at pickup 3. Running late ~10 
+min 4. Order collected ✓ 5. Cannot find address 6. Please 
+confirm ready. 
+Admin can disable chat + edit templates 
+⚙ ADMIN 
+ACM-53 
+If disabled: Message Vendor button hidden from route screen. 
+Push: vendor replied (FCM toast) 
+✅ INCLUDED 
+ACM-53 
+Shows vendor reply as push notification. Can disable. 
+ 
+ 
+12. Shift Management & Driver Profile 
+ 
+ 
+DA-11 — Shift Schedule 
+ 
+DA-12 — Driver Profile 
+ 
+DA-11 
+ Shift Management Screen 
+✅ INCLUDED 
+v1.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+This week shift schedule (Mon–Sun) 
+✅ INCLUDED 
+— 
+Each day: shift type, status (Done/Active/Scheduled), earnings. 
+Cancel scheduled shift (2h notice min) 
+✅ INCLUDED 
+— 
+Admin notified automatically. 
+Zone assignment display (admin-set) 
+✅ INCLUDED 
+ACM-64 
+Driver cannot change zones — must contact admin. 
+Payout schedule display + request change 
+✅ INCLUDED 
+ACM-68 
+Only shown if admin allows driver self-service. 
+Push: shift reminder (30 min before) 
+✅ INCLUDED 
+ACM-76 
+FCM push before each shift. Can disable. 
+ 
+DA-12 
+ Driver Profile Screen 
+✅ INCLUDED 
+v1.0 + v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes / Logic 
+Personal info, vehicle, bank account 
+✅ INCLUDED 
+— 
+Editable. Bank IBAN change requires re-verification. 
+Document management: licence, ID, vehicle reg 
+✅ INCLUDED 
+ACM-67 
+Each document shows expiry. Colour: green/>60 days, 
+amber/30-60, red/<30. 
+Fleet Partner assignment (v3.0) 
+ ✅ INCLUDED 
+— 
+NEW. Shows: "Fleet Partner: Evelstar Sp. z o.o." Cannot change 
+— admin only. 
+Payout history + tax documents 
+✅ INCLUDED 
+— 
+All past payouts. CSV export. Tax documents. 
+Cash settlement records 
+✅ INCLUDED 
+ACM-73 
+Full history of cash collections and settlements. 
+Language setting 
+✅ INCLUDED 
+ACM-89 
+Polish + English at launch. Admin adds via OTA. 
+Help & Support (driver support tickets) 
+ ✅ INCLUDED 
+— 
+NEW. Driver can report issue on specific order. Routes to CS 
+inbox with order context. 
+ 
+ 

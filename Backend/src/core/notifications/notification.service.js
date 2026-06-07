@@ -213,3 +213,36 @@ export const dismissAllNotifications = async ({ ownerType, ownerId } = {}) => {
         modifiedCount: Number(result?.modifiedCount || 0)
     };
 };
+
+export const sendNotificationToUser = async ({
+    recipientId,
+    recipientType,
+    title,
+    body,
+    data,
+    canDisable
+}) => {
+    const { sendNotificationToOwner } = await import('./firebase.service.js');
+    let ownerType = 'USER';
+    const rt = String(recipientType || '').toUpperCase();
+    if (rt === 'CUSTOMER' || rt === 'USER') {
+        ownerType = 'USER';
+    } else if (rt === 'VENDOR' || rt === 'RESTAURANT') {
+        ownerType = 'RESTAURANT';
+    } else if (rt === 'DRIVER' || rt === 'DELIVERY_PARTNER') {
+        ownerType = 'DELIVERY_PARTNER';
+    } else if (rt === 'ADMIN') {
+        ownerType = 'ADMIN';
+    }
+
+    return sendNotificationToOwner({
+        ownerType,
+        ownerId: recipientId,
+        payload: {
+            title,
+            body,
+            data,
+            canDisable
+        }
+    });
+};

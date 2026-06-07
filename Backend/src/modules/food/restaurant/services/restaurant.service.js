@@ -4,7 +4,6 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
-import { FoodDiningRestaurant } from '../../dining/models/diningRestaurant.model.js';
 
 const normalizeName = (value) =>
     String(value || '')
@@ -272,7 +271,9 @@ export const registerRestaurant = async (payload, files) => {
         accountNumber,
         ifscCode,
         accountHolderName,
-        accountType
+        accountType,
+        vendorType,
+        kitchenPartnerId
     } = payload;
 
     if (!ownerPhone) {
@@ -303,6 +304,23 @@ export const registerRestaurant = async (payload, files) => {
     if (files?.fssaiImage?.[0]) {
         images.fssaiImage = await uploadImageBuffer(files.fssaiImage[0].buffer, 'food/restaurants/fssai');
     }
+    if (files?.coverImage?.[0]) {
+        images.coverImages = [await uploadImageBuffer(files.coverImage[0].buffer, 'food/restaurants/cover')];
+    }
+
+    let foodLicenceUrl = '';
+    if (files?.foodLicence?.[0]) {
+        const file = files.foodLicence[0];
+        const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+            foodLicenceUrl = await uploadFileBuffer(file.buffer, 'food/restaurants/licence-pdf', {
+                fileName: file.originalname || 'licence.pdf',
+                format: 'pdf'
+            });
+        } else {
+            foodLicenceUrl = await uploadImageBuffer(file.buffer, 'food/restaurants/licence-img');
+        }
+    }
 
     let menuImages = [];
     if (files?.menuImages?.length) {
@@ -319,8 +337,12 @@ export const registerRestaurant = async (payload, files) => {
         });
     }
 
+    if (!menuPdf && foodLicenceUrl) {
+        menuPdf = foodLicenceUrl;
+    }
+
     if (!menuPdf) {
-        throw new ValidationError('Menu PDF is required');
+        throw new ValidationError('Menu PDF or Food Licence is required');
     }
 
     const normalizedOpeningTime = normalizeRestaurantTime(openingTime);
@@ -409,6 +431,10 @@ export const registerRestaurant = async (payload, files) => {
             accountType,
             menuImages,
             menuPdf,
+            vendorType: vendorType || 'restaurant',
+            kitchenPartnerId: kitchenPartnerId || null,
+            foodLicenceUrl: foodLicenceUrl || '',
+            foodLicenceStatus: foodLicenceUrl ? 'valid' : 'not_uploaded',
             pendingUpdateReason: 'New Registration',
             ...images
         });
@@ -534,113 +560,6 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
             ].join(' ')
         }
     ).lean();
-    return toRestaurantProfile(doc);
-};
-
-export const updateCurrentRestaurantDiningSettings = async (restaurantId, body = {}) => {
-    if (!restaurantId) {
-        throw new ValidationError('Invalid restaurant id');
-    }
-
-    const currentRestaurant = await FoodRestaurant.findById(restaurantId)
-        .select('diningSettings status')
-        .lean();
-
-    if (!currentRestaurant) {
-        throw new ValidationError('Restaurant not found');
-    }
-
-    const currentDiningSettings =
-        currentRestaurant.diningSettings && typeof currentRestaurant.diningSettings === 'object'
-            ? currentRestaurant.diningSettings
-            : {};
-
-    const parseBoolean = (value, fallback = false) => {
-        if (value === undefined || value === null) return Boolean(fallback);
-        if (typeof value === 'boolean') return value;
-        const normalized = String(value).trim().toLowerCase();
-        if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
-        if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
-        return Boolean(fallback);
-    };
-
-    const maxGuests = Math.max(
-        1,
-        parseInt(body.maxGuests ?? currentDiningSettings.maxGuests ?? 6, 10) || 6
-    );
-    const diningType =
-        String(body.diningType ?? currentDiningSettings.diningType ?? 'family-dining').trim() ||
-        'family-dining';
-
-    const isEnabled = parseBoolean(body.isEnabled, currentDiningSettings.isEnabled);
-    
-    // First, update the FoodDiningRestaurant collection to keep it synced
-    await FoodDiningRestaurant.findOneAndUpdate(
-        { restaurantId },
-        {
-            $set: {
-                isEnabled,
-                maxGuests,
-            }
-        },
-        { upsert: true }
-    );
-
-    const doc = await FoodRestaurant.findByIdAndUpdate(
-        restaurantId,
-        {
-            $set: {
-                diningSettings: {
-                    isEnabled,
-                    maxGuests,
-                    diningType
-                }
-            }
-        },
-        {
-            new: true,
-            runValidators: true,
-            projection: [
-                'restaurantName',
-                'cuisines',
-                'location',
-                'addressLine1',
-                'addressLine2',
-                'area',
-                'city',
-                'state',
-                'pincode',
-                'landmark',
-                'ownerName',
-                'ownerEmail',
-                'ownerPhone',
-                'primaryContactNumber',
-                'accountNumber',
-                'ifscCode',
-                'accountHolderName',
-                'accountType',
-                'upiId',
-                'upiQrImage',
-                'pureVegRestaurant',
-                'profileImage',
-                'coverImages',
-                'menuImages',
-                'openingTime',
-                'closingTime',
-                'openDays',
-                'estimatedDeliveryTime',
-                'estimatedDeliveryTimeMinutes',
-                'diningSettings',
-                'isAcceptingOrders',
-                'status',
-                'approvedAt',
-                'pendingUpdateReason',
-                'createdAt',
-                'updatedAt'
-            ].join(' ')
-        }
-    ).lean();
-
     return toRestaurantProfile(doc);
 };
 

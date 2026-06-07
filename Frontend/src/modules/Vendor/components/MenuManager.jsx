@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { uploadAPI } from '../../../services/api/index';
 
 
 
@@ -23,7 +24,8 @@ export default function MenuManager({
   onEditMeal,
   onDeleteMeal,
   onAddSurpriseBox,
-  onEndSurpriseBox
+  onEndSurpriseBox,
+  onToggleMealStatus
 }) {
   const [activeDay, setActiveDay] = useState(12);
   const [subView, setSubView] = useState('list');
@@ -41,6 +43,28 @@ export default function MenuManager({
   const [mealAllergens, setMealAllergens] = useState([]);
   const [mealImageUrl, setMealImageUrl] = useState('');
   const [mealPortions, setMealPortions] = useState(10);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handleMealPhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        setIsUploadingPhoto(true);
+        const res = await uploadAPI.uploadMedia(file, { folder: 'food/restaurants/menu' });
+        const url = res.data?.data?.url || res.data?.url || res.data;
+        if (url) {
+          setMealImageUrl(url);
+          triggerToast('Photo uploaded successfully ✓');
+        } else {
+          triggerToast('Failed to parse uploaded photo URL');
+        }
+      } catch (err) {
+        triggerToast(err.message || 'Failed to upload photo');
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    }
+  };
 
   // Form states for Surprise Box creation
   const [selectedMealId, setSelectedMealId] = useState('');
@@ -216,64 +240,85 @@ export default function MenuManager({
 
           {/* Meals list */}
           <div className="space-y-4">
-            {meals.
-          filter((m) => m.status !== 'Removed').
-          map((meal) =>
-          <div
-            key={meal.id}
-            className="bg-surface-container-lowest rounded-xl p-3 shadow-xs flex flex-col gap-3 border border-outline-variant/10 transition-all hover:scale-[1.01]">
-            
-                  <div className="flex gap-4">
-                    <div className="w-[60px] h-[60px] bg-surface-variant rounded-lg overflow-hidden flex-shrink-0 shadow-xs">
-                      <img alt={meal.name} className="w-full h-full object-cover" src={meal.imageUrl} />
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <div className="flex justify-between items-start">
-                        <h3 className="text-[15px] font-bold text-on-surface truncate block pr-1">{meal.name}</h3>
-                        <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    meal.status === 'Active' ? 'bg-primary/10 text-primary' : 'bg-secondary-container/10 text-on-secondary-container'}`
-                    }>
-                    
-                          {meal.status}
-                        </span>
+            {meals.filter((m) => m.status !== 'Removed').length === 0 ? (
+              <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/15 text-center flex flex-col items-center justify-center min-h-[220px] animate-fadeIn">
+                <span className="material-symbols-outlined text-[48px] text-primary/40 mb-3">restaurant_menu</span>
+                <p className="text-[14px] font-bold text-on-surface">No meals added yet</p>
+                <p className="text-[12px] text-outline mt-1 leading-relaxed max-w-[220px]">
+                  Click the "Add meal" button above to publish your first subscription meal plan.
+                </p>
+              </div>
+            ) : (
+              meals.
+              filter((m) => m.status !== 'Removed').
+              map((meal) =>
+              <div
+                key={meal.id}
+                className="bg-surface-container-lowest rounded-xl p-3 shadow-xs flex flex-col gap-3 border border-outline-variant/10 transition-all hover:scale-[1.01]">
+                
+                      <div className="flex gap-4">
+                        <div className="w-[60px] h-[60px] bg-surface-variant rounded-lg overflow-hidden flex-shrink-0 shadow-xs">
+                          <img alt={meal.name} className="w-full h-full object-cover" src={meal.imageUrl} />
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <div className="flex justify-between items-start">
+                            <h3 className="text-[15px] font-bold text-on-surface truncate block pr-1">{meal.name}</h3>
+                            <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        meal.status === 'Active' ? 'bg-primary/10 text-primary' : 'bg-secondary-container/10 text-on-secondary-container'}`
+                        }>
+                        
+                              {meal.status}
+                            </span>
+                          </div>
+                          <p className="text-[14px] font-extrabold text-on-surface mt-0.5">
+                            {meal.price.toFixed(2)} PLN{' '}
+                            <span className="text-outline font-normal text-[11px]">· 8% VAT</span>
+                          </p>
+                          <p className="text-[12px] text-outline font-medium">
+                            {meal.calories} · {meal.portions} portions
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-[14px] font-extrabold text-on-surface mt-0.5">
-                        {meal.price.toFixed(2)} PLN{' '}
-                        <span className="text-outline font-normal text-[11px]">· 8% VAT</span>
-                      </p>
-                      <p className="text-[12px] text-outline font-medium">
-                        {meal.calories} · {meal.portions} portions
-                      </p>
+    
+                      {/* Actions Row bar */}
+                      <div className="flex gap-2 pt-2 border-t border-outline-variant/20">
+                        <button
+                    onClick={() => handleEditClick(meal)}
+                    className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[13px] hover:bg-primary/5 active:scale-95 transition-all text-center">
+                    
+                          Edit
+                        </button>
+                        <button
+                    onClick={() => triggerToast(`Nutrition facts: ${meal.calories} | Prot: ${meal.prot} | Carb: ${meal.carb}`)}
+                    className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[13px] hover:bg-primary/5 active:scale-95 transition-all text-center">
+                    
+                          Nutrition
+                        </button>
+                        <button
+                    onClick={() => {
+                      if (onToggleMealStatus) {
+                        // Task 3: calls backend toggle-status which notifies subscribers via FCM
+                        onToggleMealStatus(meal.id);
+                      } else {
+                        onEditMeal(meal.id, { status: meal.status === 'Active' ? 'Draft' : 'Active' });
+                        triggerToast(`Status switched to ${meal.status === 'Active' ? 'Draft' : 'Active'}`);
+                      }
+                    }}
+                    className={`flex-1 py-1.5 rounded-lg border font-semibold text-[13px] active:scale-95 transition-all text-center flex items-center justify-center gap-1 ${
+                      meal.status === 'Active'
+                        ? 'border-amber-400 text-amber-600 bg-amber-50 hover:bg-amber-100'
+                        : 'border-primary text-primary bg-primary/5 hover:bg-primary/10'
+                    }`}>
+                          <span className="material-symbols-outlined text-[15px]">
+                            {meal.status === 'Active' ? 'pause_circle' : 'play_circle'}
+                          </span>
+                          {meal.status === 'Active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Actions Row bar */}
-                  <div className="flex gap-2 pt-2 border-t border-outline-variant/20">
-                    <button
-                onClick={() => handleEditClick(meal)}
-                className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[13px] hover:bg-primary/5 active:scale-95 transition-all text-center">
-                
-                      Edit
-                    </button>
-                    <button
-                onClick={() => triggerToast(`Nutrition facts: ${meal.calories} | Prot: ${meal.prot} | Carb: ${meal.carb}`)}
-                className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[13px] hover:bg-primary/5 active:scale-95 transition-all text-center">
-                
-                      Nutrition
-                    </button>
-                    <button
-                onClick={() => {
-                  onEditMeal(meal.id, { status: meal.status === 'Active' ? 'Draft' : 'Active' });
-                  triggerToast(`Status switched to ${meal.status === 'Active' ? 'Draft' : 'Active'}`);
-                }}
-                className="flex-1 py-1.5 rounded-lg border border-outline text-outline font-semibold text-[13px] hover:bg-outline-variant/10 active:scale-95 transition-all text-center">
-                
-                      Toggle Status
-                    </button>
-                  </div>
-                </div>
-          )}
+              )
+            )}
           </div>
         </div>
       }
@@ -426,17 +471,36 @@ export default function MenuManager({
             {/* Meal image upload slot representation */}
             <div className="space-y-1 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold block">Meal Photo</label>
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-colors">
+              <input
+                type="file"
+                id="meal-photo-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handleMealPhotoChange}
+                disabled={isUploadingPhoto}
+              />
+              <label
+                htmlFor="meal-photo-upload"
+                className={`relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-all duration-300 block ${isUploadingPhoto ? 'opacity-80 pointer-events-none' : ''}`}
+              >
                 <img
-                alt="Soup broth culinary photography"
-                className="w-full h-full object-cover"
-                src={mealImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'} />
+                  alt="Meal preview"
+                  className="w-full h-full object-cover"
+                  src={mealImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'}
+                />
               
-                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="material-symbols-outlined text-[32px]">photo_camera</span>
-                  <span className="font-bold text-[13px] mt-1">Change Photo</span>
-                </div>
-              </div>
+                {isUploadingPhoto ? (
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
+                    <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+                    <span className="font-bold text-[13px] mt-2 tracking-wider">Uploading Photo...</span>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="material-symbols-outlined text-[32px]">photo_camera</span>
+                    <span className="font-bold text-[13px] mt-1">Change Photo</span>
+                  </div>
+                )}
+              </label>
             </div>
 
             {/* Submit button bar */}

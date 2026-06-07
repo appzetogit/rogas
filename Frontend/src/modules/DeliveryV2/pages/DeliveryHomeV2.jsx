@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { useProximityCheck } from '@/modules/DeliveryV2/hooks/useProximityCheck';
 import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
+import { useDMBTracking } from '@/modules/DeliveryV2/hooks/useDMBTracking';
 import { useDeliveryNotificationContext } from '@food/context/DeliveryNotificationContext';
 import { writeOrderTracking } from '@food/realtimeTracking';
 import { deliveryAPI } from '@food/api';
@@ -70,6 +71,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const { isOnline, toggleOnline, riderLocation, activeOrder, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
   const { isWithinRange, distanceToTarget } = useProximityCheck();
   const { acceptOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
+  const { goOnline, goOffline } = useDMBTracking();
   const { newOrder, clearNewOrder, orderStatusUpdate, clearOrderStatusUpdate, claimedOrderId, clearClaimedOrderId, adminNotification, clearAdminNotification, isConnected: isSocketConnected, emitLocation } = useDeliveryNotificationContext();
   const companyName = useCompanyName();
   const { items: broadcastItems, unreadCount: notificationUnreadCount, markAsRead: markBroadcastAsRead, dismissAll: dismissAllBroadcast } = useNotificationInbox("delivery", { limit: 20 });
@@ -750,6 +752,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   if (nextState) {
                       setShowPhotoModal(true);
                   } else {
+                      await goOffline();
                       toggleOnline(); // Store action
                       deliveryAPI.updateOnlineStatus(false).catch(() => {});
                   }
@@ -880,6 +883,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         onUpload={async (base64Data, address) => {
           try {
             await deliveryAPI.updateOnlineStatus(true, base64Data, address);
+            await goOnline();
             toggleOnline(); // update local store
             setShowPhotoModal(false);
             

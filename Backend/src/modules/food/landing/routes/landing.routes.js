@@ -17,13 +17,6 @@ import {
     toggleUnder250BannerStatusController
 } from '../controllers/under250Banner.controller.js';
 import {
-    listDiningBannersController,
-    uploadDiningBannersController,
-    deleteDiningBannerController,
-    updateDiningBannerOrderController,
-    toggleDiningBannerStatusController
-} from '../controllers/diningBanner.controller.js';
-import {
     getAdminLandingSettingsController,
     updateAdminLandingSettingsController
 } from '../controllers/landingSettings.controller.js';
@@ -38,7 +31,6 @@ import {
 import {
     getPublicHeroBannersController,
     getPublicUnder250BannersController,
-    getPublicDiningBannersController,
     getPublicExploreIconsController,
     getPublicGourmetController,
     getPublicLandingSettingsController
@@ -87,17 +79,6 @@ router.delete('/hero-banners/under-250/:id', deleteUnder250BannerController);
 router.patch('/hero-banners/under-250/:id/order', updateUnder250BannerOrderController);
 router.patch('/hero-banners/under-250/:id/status', toggleUnder250BannerStatusController);
 
-// Admin dining banners
-router.get('/hero-banners/dining', listDiningBannersController);
-router.post(
-    '/hero-banners/dining/multiple',
-    upload.array('files'),
-    uploadDiningBannersController
-);
-router.delete('/hero-banners/dining/:id', deleteDiningBannerController);
-router.patch('/hero-banners/dining/:id/order', updateDiningBannerOrderController);
-router.patch('/hero-banners/dining/:id/status', toggleDiningBannerStatusController);
-
 // Admin Explore More (icons)
 router.get('/hero-banners/landing/explore-more', listExploreMoreController);
 router.post(
@@ -124,7 +105,6 @@ router.patch('/hero-banners/gourmet/:id/status', toggleGourmetStatusAdmin);
 // Public landing endpoints (Food user app)
 router.get('/hero-banners/public', getPublicHeroBannersController);
 router.get('/hero-banners/under-250/public', getPublicUnder250BannersController);
-router.get('/hero-banners/dining/public', getPublicDiningBannersController);
 router.get('/explore-icons/public', getPublicExploreIconsController);
 router.get('/hero-banners/gourmet/public', getPublicGourmetController);
 router.get('/landing/settings/public', getPublicLandingSettingsController);

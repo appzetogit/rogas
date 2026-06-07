@@ -5,7 +5,6 @@ import {
     getCurrentRestaurantProfile,
     updateRestaurantProfile,
     updateRestaurantAcceptingOrders,
-    updateCurrentRestaurantDiningSettings,
     uploadRestaurantProfileImage,
     uploadRestaurantMenuImage,
     uploadRestaurantCoverImages,
@@ -13,10 +12,6 @@ import {
     listPublicOffers,
     getRestaurantComplaints
 } from '../services/restaurant.service.js';
-import {
-    createDiningRequest,
-    getPendingDiningRequest
-} from '../../dining/services/dining.service.js';
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
@@ -100,16 +95,6 @@ export const updateRestaurantAcceptingOrdersController = async (req, res, next) 
     }
 };
 
-export const updateCurrentRestaurantDiningSettingsController = async (req, res, next) => {
-    try {
-        const restaurantId = req.user?.userId;
-        const restaurant = await updateCurrentRestaurantDiningSettings(restaurantId, req.body || {});
-        return sendResponse(res, 200, 'Dining settings updated successfully', { restaurant });
-    } catch (error) {
-        next(error);
-    }
-};
-
 export const uploadRestaurantProfileImageController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
@@ -158,31 +143,47 @@ export const listPublicOffersController = async (req, res, next) => {
     }
 };
 
+export const getRestaurantRegistrationStatusController = async (req, res, next) => {
+    try {
+        const { phone } = req.query;
+        if (!phone) {
+            return res.status(400).json({ success: false, message: 'Phone number is required' });
+        }
+        
+        const { FoodRestaurant } = await import('../models/restaurant.model.js');
+        
+        const digits = String(phone).replace(/\D/g, "");
+        const last10 = digits.slice(-10);
+        const phoneCandidates = [phone, digits, last10].filter(Boolean);
+        
+        const restaurant = await FoodRestaurant.findOne({
+            $or: [
+                { ownerPhone: { $in: phoneCandidates } },
+                { primaryContactNumber: { $in: phoneCandidates } },
+                { ownerPhoneDigits: { $in: phoneCandidates } },
+                { ownerPhoneLast10: { $in: phoneCandidates } },
+            ]
+        }).select('status rejectionReason restaurantName').lean();
+
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: 'Restaurant not found' });
+        }
+
+        return sendResponse(res, 200, 'Registration status fetched successfully', {
+            status: restaurant.status,
+            rejectionReason: restaurant.rejectionReason || null,
+            restaurantName: restaurant.restaurantName
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getRestaurantComplaintsController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;
         const data = await getRestaurantComplaints(restaurantId, req.query || {});
         return sendResponse(res, 200, 'Complaints fetched successfully', data);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const createDiningRequestController = async (req, res, next) => {
-    try {
-        const restaurantId = req.user?.userId;
-        const request = await createDiningRequest(restaurantId, req.body || {});
-        return sendResponse(res, 201, 'Dining update request submitted successfully', request);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const getPendingDiningRequestController = async (req, res, next) => {
-    try {
-        const restaurantId = req.user?.userId;
-        const request = await getPendingDiningRequest(restaurantId);
-        return sendResponse(res, 200, 'Pending request fetched successfully', request);
     } catch (error) {
         next(error);
     }

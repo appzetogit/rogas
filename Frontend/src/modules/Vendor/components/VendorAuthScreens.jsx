@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { dmbVendorAPI } from '../../../services/api/index';
 
 
 
@@ -86,8 +88,15 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
 
 
 export function OtpScreen({ phone, onVerify, onBack }) {
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const inputRefs = [
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null)
+  ];
 
   const handleChange = (index, value) => {
     if (value.length > 1) value = value.slice(-1);
@@ -95,7 +104,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs[index + 1].current?.focus();
     }
   };
@@ -107,7 +116,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
   };
 
   const handleSubmit = () => {
-    onVerify();
+    onVerify(otp.join(''));
   };
 
   return (
@@ -127,10 +136,10 @@ export function OtpScreen({ phone, onVerify, onBack }) {
           Verify OTP
         </h1>
         <p className="text-[13px] text-outline text-center px-4 mb-8 leading-relaxed">
-          Enter the 4-digit code sent to <span className="text-primary font-semibold">+48 {phone || '000 000 000'}</span>
+          Enter the 6-digit code sent to <span className="text-primary font-semibold">+48 {phone || '000 000 000'}</span>
         </p>
 
-        <div className="flex gap-4 mb-6">
+        <div className="flex gap-2 mb-6">
           {otp.map((digit, i) =>
           <input
             key={i}
@@ -140,19 +149,19 @@ export function OtpScreen({ phone, onVerify, onBack }) {
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className="w-14 h-14 bg-white border border-outline-variant rounded-2xl text-center text-xl font-bold text-primary shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+            className="w-11 h-14 bg-white border border-outline-variant rounded-xl text-center text-xl font-bold text-primary shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
 
           )}
         </div>
 
         <p className="text-[12px] text-outline mb-10">
-          Hint: Try <span className="font-bold text-primary">1234</span>
+          Hint: Try <span className="font-bold text-primary">123456</span>
         </p>
 
         <div className="w-full mt-auto mb-8 flex flex-col gap-5">
           <button
             onClick={handleSubmit}
-            disabled={otp.join('').length < 4}
+            disabled={otp.join('').length < 6}
             className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
             
             Verify OTP
@@ -176,13 +185,45 @@ export function RegisterFormScreen({ onContinue, onBack }) {
   const [phone, setPhone] = useState('+48 789 123 456');
   const [city, setCity] = useState('Warsaw — Mokotow');
   const [type, setType] = useState('Home Cook');
+  const [licenceFile, setLicenceFile] = useState(null);
+  const [licenceFileName, setLicenceFileName] = useState('');
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerFileName, setBannerFileName] = useState('');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLicenceFile(file);
+      setLicenceFileName(file.name);
+    }
+  };
+
+  const handleBannerChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setBannerFile(file);
+      setBannerFileName(file.name);
+    }
+  };
 
   const handleSubmit = () => {
+    if (!licenceFileName) {
+      alert("Please upload your EU food licence photo or PDF!");
+      return;
+    }
+    if (!bannerFileName) {
+      alert("Please upload your banner/cover photo!");
+      return;
+    }
     onContinue({
       name: kitchenName,
       phone,
       city,
-      type
+      type,
+      licenceFile,
+      licenceFileName,
+      coverFile: bannerFile,
+      coverFileName: bannerFileName
     });
   };
 
@@ -280,17 +321,97 @@ export function RegisterFormScreen({ onContinue, onBack }) {
             </div>
 
             <div className="space-y-1.5 pt-2">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">EU FOOD LICENCE (REQUIRED)</label>
-              <div className="flex items-center justify-between p-3 bg-primary-container/10 border border-dashed border-primary rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">description</span>
-                  <span className="text-[13px] text-primary font-semibold truncate max-w-[200px]">licence_food_pl_2026.pdf</span>
-                </div>
-                <div className="flex items-center gap-1 text-primary">
-                  <span className="text-[11px] font-bold">Uploaded</span>
-                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                </div>
-              </div>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
+                EU FOOD LICENCE (REQUIRED PHOTO/PDF)
+              </label>
+              <input
+                type="file"
+                id="licence-upload"
+                accept="image/*,application/pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+              <label
+                htmlFor="licence-upload"
+                className="flex items-center justify-between p-3 bg-primary-container/5 border border-dashed border-primary/50 rounded-lg cursor-pointer hover:bg-primary-container/10 transition-colors"
+              >
+                {licenceFileName ? (
+                  <>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-primary">
+                        {licenceFile?.type === 'application/pdf' || licenceFileName.endsWith('.pdf') ? 'picture_as_pdf' : 'image'}
+                      </span>
+                      <span className="text-[13px] text-primary font-semibold truncate max-w-[180px]">
+                        {licenceFileName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        check_circle
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <span className="text-[13px] text-outline font-semibold">
+                        Choose photo or PDF
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                      Browse
+                    </span>
+                  </>
+                )}
+              </label>
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
+                BANNER / COVER PHOTO (REQUIRED IMAGE)
+              </label>
+              <input
+                type="file"
+                id="banner-upload"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleBannerChange}
+              />
+              <label
+                htmlFor="banner-upload"
+                className="flex items-center justify-between p-3 bg-primary-container/5 border border-dashed border-primary/50 rounded-lg cursor-pointer hover:bg-primary-container/10 transition-colors"
+              >
+                {bannerFileName ? (
+                  <>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-primary">image</span>
+                      <span className="text-[13px] text-primary font-semibold truncate max-w-[180px]">
+                        {bannerFileName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        check_circle
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <span className="text-[13px] text-outline font-semibold">
+                        Choose banner photo
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                      Browse
+                    </span>
+                  </>
+                )}
+              </label>
             </div>
 
             <div className="space-y-1.5">
@@ -325,13 +446,67 @@ export function RegisterFormScreen({ onContinue, onBack }) {
 
 
 export function UnderReviewScreen({ onApproved }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const phone = location.state?.phone || localStorage.getItem('restaurant_register_phone') || '';
+  
+  const [checking, setChecking] = useState(false);
+  const [status, setStatus] = useState(location.state?.status || 'pending');
+  const [rejectionReason, setRejectionReason] = useState(location.state?.rejectionReason || '');
+  const [restaurantName, setRestaurantName] = useState(location.state?.restaurantName || '');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const checkStatus = async () => {
+    if (!phone) {
+      setErrorMsg('No phone number found to check status. Please register/log in.');
+      return;
+    }
+    
+    try {
+      setChecking(true);
+      setErrorMsg('');
+      const res = await dmbVendorAPI.getRegistrationStatus(phone);
+      const data = res.data?.data || res.data;
+      
+      setStatus(data.status);
+      setRejectionReason(data.rejectionReason || '');
+      setRestaurantName(data.restaurantName || '');
+      
+      if (data.status === 'approved') {
+        alert('Your application has been approved! Redirecting you to welcome login.');
+        navigate('/vendor/welcome');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.response?.data?.message || err.message || 'Failed to check status. Try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (phone) {
+      checkStatus();
+    }
+  }, [phone]);
+
+  const handleReApply = () => {
+    navigate('/vendor/auth/register-details');
+  };
+
   return (
     <main className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl">
       <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary">
         <div className="flex items-center w-full justify-between">
           <div className="flex items-center gap-4">
+            <button onClick={() => navigate('/vendor/welcome')} className="active:scale-95 transition-transform hover:opacity-90">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
             <div className="flex flex-col">
-              <h1 className="text-[16px] font-semibold">Under Review</h1>
+              <h1 className="text-[16px] font-semibold">
+                {status === 'rejected' ? 'Application Rejected' : 'Under Review'}
+              </h1>
               <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Step 3 of 3</p>
             </div>
           </div>
@@ -339,36 +514,86 @@ export function UnderReviewScreen({ onApproved }) {
       </header>
 
       <div className="mt-[56px] px-5 py-10 flex flex-col items-center flex-1 justify-center text-center">
-        <div className="w-24 h-24 rounded-full bg-secondary-container/10 border-2 border-secondary border-dashed flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-5xl text-secondary">pending_actions</span>
-        </div>
-        <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Received</h2>
-        <p className="text-[13px] text-outline leading-relaxed max-w-[280px]">
-          Our team is currently verifying your EU food licence and details. This usually takes 1-2 business days. We will notify you once approved.
-        </p>
+        {status === 'rejected' ? (
+          <>
+            <div className="w-20 h-20 rounded-full bg-red-100 border-2 border-red-500 border-dashed flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-4xl text-red-600">cancel</span>
+            </div>
+            <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Rejected</h2>
+            {restaurantName && (
+              <p className="text-[14px] font-bold text-on-surface mb-2">{restaurantName}</p>
+            )}
+            <p className="text-[13px] text-outline leading-relaxed max-w-[280px] mb-6">
+              Unfortunately, your partner application was not approved by our compliance team.
+            </p>
 
-        <div className="mt-12 w-full p-4 bg-surface-container rounded-xl border border-outline-variant/30 text-left space-y-3">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            <span className="text-[13px] font-semibold text-on-surface">Details Submitted</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            <span className="text-[13px] font-semibold text-on-surface">Documents Uploaded</span>
-          </div>
-          <div className="flex items-center gap-3 opacity-50">
-            <span className="material-symbols-outlined text-outline">hourglass_empty</span>
-            <span className="text-[13px] font-semibold text-on-surface">Final Verification</span>
-          </div>
-        </div>
+            <div className="w-full p-4 bg-red-50 border border-red-100 rounded-xl text-left mb-8">
+              <h4 className="text-[11px] font-bold text-red-900 mb-1.5 uppercase tracking-wider">Rejection Reason:</h4>
+              <p className="text-[13px] text-red-800 italic leading-relaxed">
+                "{rejectionReason || 'Documents uploaded are unclear or invalid. Please upload a valid EU Food Licence.'}"
+              </p>
+            </div>
 
-        <button
-          onClick={onApproved}
-          className="mt-auto w-full py-4 bg-secondary-container text-white font-bold rounded-xl active:scale-95 transition-all text-[14px]">
-          
-          Simulate Approval (Go to Dashboard)
-        </button>
+            <button
+              onClick={handleReApply}
+              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl active:scale-95 transition-all text-[14px] shadow-md flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">edit_note</span>
+              Re-apply & Fill Form Again
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="w-20 h-20 rounded-full bg-secondary-container/10 border-2 border-secondary border-dashed flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-4xl text-secondary">pending_actions</span>
+            </div>
+            <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Received</h2>
+            {restaurantName && (
+              <p className="text-[14px] font-bold text-on-surface mb-2">{restaurantName}</p>
+            )}
+            <p className="text-[13px] text-outline leading-relaxed max-w-[280px] mb-6">
+              Our team is currently verifying your EU food licence and details. This usually takes 1-2 business days. We will notify you once approved.
+            </p>
+
+            <div className="w-full p-4 bg-surface-container rounded-xl border border-outline-variant/30 text-left space-y-3 mb-8">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <span className="text-[13px] font-semibold text-on-surface">Details Submitted</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <span className="text-[13px] font-semibold text-on-surface">Documents Uploaded</span>
+              </div>
+              <div className="flex items-center gap-3 opacity-50">
+                <span className="material-symbols-outlined text-outline">hourglass_empty</span>
+                <span className="text-[13px] font-semibold text-on-surface">Final Verification</span>
+              </div>
+            </div>
+
+            {errorMsg && (
+              <p className="text-xs text-red-500 mb-4 font-semibold">{errorMsg}</p>
+            )}
+
+            <button
+              onClick={checkStatus}
+              disabled={checking}
+              className="w-full py-4 bg-secondary-container text-white font-bold rounded-xl active:scale-95 transition-all text-[14px] shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {checking ? (
+                <>
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                  Checking Status...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">refresh</span>
+                  Check Approval Status
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
-    </main>);
-
+    </main>
+  );
 }

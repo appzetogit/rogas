@@ -105,7 +105,7 @@ function createModuleClient(moduleName) {
         const zoneId = localStorage.getItem("userZoneId");
         const lat = localStorage.getItem("userLat");
         const lng = localStorage.getItem("userLng");
-        if (zoneId) {
+        if (zoneId && config.headers["X-Zone-Id"] === undefined) {
           config.headers["X-Zone-Id"] = zoneId;
         }
         if (lat && lng) {
@@ -240,7 +240,7 @@ apiClient.interceptors.request.use(
       const zoneId = localStorage.getItem("userZoneId");
       const lat = localStorage.getItem("userLat");
       const lng = localStorage.getItem("userLng");
-      if (zoneId) {
+      if (zoneId && config.headers && config.headers["X-Zone-Id"] === undefined) {
         config.headers["X-Zone-Id"] = zoneId;
       }
       if (lat && lng) {

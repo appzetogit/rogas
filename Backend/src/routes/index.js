@@ -3,8 +3,7 @@ import authRoutes from '../core/auth/auth.routes.js';
 import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
-import { getPublicDiningCategories, getPublicDiningRestaurants, getPublicRestaurantOccupiedSeats } from '../modules/food/dining/controllers/diningPublic.controller.js';
-import { createBooking, getMyBookings, createReview, getRestaurantBookings, updateBookingStatus } from '../modules/food/dining/controllers/diningBooking.controller.js';
+// Dining module removed — not part of DailyMealBox PRD
 import uploadRoutes from '../modules/uploads/routes/upload.routes.js';
 import restaurantAdminRoutes from '../modules/food/admin/routes/admin.routes.js';
 import userRoutes from '../modules/food/user/routes/user.routes.js';
@@ -21,6 +20,12 @@ import searchRoutes from '../modules/food/search/routes/search.routes.js';
 import appConfigRoutes from '../core/appConfig/appConfig.routes.js';
 import promocodeRoutes from './promocodeRoutes.js';
 import { requireZone } from '../middlewares/zone.middleware.js';
+
+// ─── DailyMealBox Modules ────────────────────────────────────────────────────
+import subscriptionRoutes from '../modules/dailymealbox/subscription/subscription.routes.js';
+import driverDmbRoutes from '../modules/dailymealbox/tracking/driver.routes.js';
+import vendorDmbRoutes from '../modules/dailymealbox/vendor/vendor.routes.js';
+import dmbPaymentRoutes from '../modules/dailymealbox/payment/dmb.payment.routes.js';
 
 const router = express.Router();
 
@@ -44,16 +49,7 @@ router.use('/v1/food/restaurant', restaurantRoutes);
 router.use('/v1/food', landingRoutes);
 router.use('/v1/food/search', searchRoutes);
 router.use('/v1/food/promocodes', promocodeRoutes);
-router.get('/v1/food/dining/categories/public', getPublicDiningCategories);
-router.get('/v1/food/dining/restaurants/public', getPublicDiningRestaurants);
-router.get('/v1/food/dining/restaurants/:restaurantId/occupied-seats/public', getPublicRestaurantOccupiedSeats);
-
-// Dining Booking Routes
-router.post('/v1/food/dining/bookings', authMiddleware, requireRoles('USER'), createBooking);
-router.get('/v1/food/dining/bookings/my', authMiddleware, requireRoles('USER'), getMyBookings);
-router.post('/v1/food/dining/bookings/:bookingId/review', authMiddleware, requireRoles('USER'), createReview);
-router.get('/v1/food/dining/bookings/restaurant/:restaurantId', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), getRestaurantBookings);
-router.patch('/v1/food/dining/bookings/:bookingId/status', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), updateBookingStatus);
+// Dining routes removed — not part of DailyMealBox PRD
 
 router.use('/v1/uploads', uploadRoutes);
 
@@ -70,5 +66,13 @@ router.use('/v1/fcm-tokens', fcmRoutes);
 router.use('/fcm-tokens', fcmRoutes);
 
 router.get('/v1/admin/queues', authMiddleware, requireRoles('ADMIN'), getQueuesController);
+
+// ─── DailyMealBox Routes ────────────────────────────────────────────────────
+router.use('/v1/dmb/subscriptions', subscriptionRoutes);
+router.use('/v1/dmb/driver', authMiddleware, driverDmbRoutes);
+// Public vendor routes (menu, plans) — no auth needed for browsing
+router.use('/v1/dmb/vendor', vendorDmbRoutes);
+// DMB Payment routes (Razorpay)
+router.use('/v1/dmb/payments', dmbPaymentRoutes);
 
 export default router;

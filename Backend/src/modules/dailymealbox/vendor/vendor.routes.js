@@ -1,0 +1,421 @@
+import express from 'express';
+import { authMiddleware } from '../../../core/auth/auth.middleware.js';
+import { requireRoles } from '../../../core/roles/role.middleware.js';
+import { markVendorReady } from '../delivery/collectionPin.service.js';
+import { FoodOrder } from '../../food/orders/models/order.model.js';
+import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
+import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { DMBSubscription } from '../subscription/subscription.model.js';
+import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
+import { createInboxNotifications } from '../../../core/notifications/notification.service.js';
+import { logger } from '../../../utils/logger.js';
+import {
+    getVendorDailyOrders,
+    updateDailyOrderStatus,
+    markAllOrdersReady
+} from '../subscription/dmb.dailyOrder.service.js';
+
+const router = express.Router();
+
+/**
+ * DailyMealBox Vendor Routes
+ * PRD Reference: VM-03, VM-04, VM-05, VM-06, VM-07, VM-08
+ */
+
+// ─── Vendor Dashboard — Today Stats ──────────────────────────────────────
+router.get('/today-orders', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const [total, subscription, oneTime] = await Promise.all([
+            FoodOrder.countDocuments({ restaurantId: vendorId, deliveryDate: { $gte: today } }),
+            FoodOrder.countDocuments({ restaurantId: vendorId, deliveryDate: { $gte: today }, orderType: 'subscription' }),
+            FoodOrder.countDocuments({ restaurantId: vendorId, deliveryDate: { $gte: today }, orderType: 'one_time' })
+        ]);
+
+        res.json({ success: true, stats: { total, subscription, oneTime } });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Today's Orders List ──────────────────────────────────────────────────
+router.get('/orders', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const { slot, type, status } = req.query;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const filter = { restaurantId: req.user.userId, deliveryDate: { $gte: today } };
+        if (slot) filter.deliverySlot = slot;
+        if (type) filter.orderType = type;
+        if (status) filter.orderStatus = status;
+
+        const orders = await FoodOrder.find(filter)
+            .populate('userId', 'name phone')
+            .sort({ deliverySlot: 1, createdAt: -1 });
+
+        res.json({ success: true, orders });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Tomorrow's Forecast ──────────────────────────────────────────────────
+router.get('/forecast', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const dayAfter = new Date(tomorrow);
+        dayAfter.setDate(dayAfter.getDate() + 1);
+
+        // Confirmed subscription orders for tomorrow
+        const subscriptionOrders = await FoodOrder.find({
+            restaurantId: vendorId,
+            deliveryDate: { $gte: tomorrow, $lt: dayAfter },
+            orderType: 'subscription'
+        }).populate('mealPlanId', 'name');
+
+        // Group by meal plan
+        const forecast = {};
+        for (const order of subscriptionOrders) {
+            const mealName = order.mealPlanId?.name || 'Unknown Meal';
+            forecast[mealName] = (forecast[mealName] || 0) + 1;
+        }
+
+        res.json({
+            success: true,
+            date: tomorrow.toISOString().split('T')[0],
+            totalExpected: subscriptionOrders.length,
+            breakdown: Object.entries(forecast).map(([meal, count]) => ({ meal, count }))
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── CRITICAL: Mark All Orders Ready → Generate Collection PINs ──────────
+router.post('/mark-ready', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const { deliveryDate, deliverySlot } = req.body;
+        if (!deliveryDate || !deliverySlot) {
+            return res.status(400).json({ success: false, message: 'deliveryDate and deliverySlot required' });
+        }
+
+        const result = await markVendorReady({
+            vendorId: req.user.userId,
+            deliveryDate,
+            deliverySlot
+        });
+
+        res.json({ success: true, message: 'Orders marked ready. Drivers notified.', ...result });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Meal Plans CRUD ──────────────────────────────────────────────────────
+router.get('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const plans = await DMBMealPlan.find({ vendorId: req.user.userId }).sort({ createdAt: -1 });
+        res.json({ success: true, plans });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const plan = await DMBMealPlan.create({ vendorId: req.user.userId, ...req.body });
+        res.status(201).json({ success: true, plan });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.put('/meal-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const plan = await DMBMealPlan.findOneAndUpdate(
+            { _id: req.params.planId, vendorId: req.user.userId },
+            req.body,
+            { new: true, runValidators: true }
+        );
+        if (!plan) return res.status(404).json({ success: false, message: 'Meal plan not found' });
+        res.json({ success: true, plan });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Vendor Earnings (with VAT breakdown) ────────────────────────────────
+router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { period = 'week' } = req.query;
+
+        const start = new Date();
+        if (period === 'week') start.setDate(start.getDate() - 7);
+        else if (period === 'month') start.setDate(start.getDate() - 30);
+        else start.setHours(0, 0, 0, 0);
+
+        const vendor = await FoodRestaurant.findById(vendorId).select('commissionRate vatRate');
+        const orders = await FoodOrder.find({
+            restaurantId: vendorId,
+            orderStatus: 'delivered',
+            deliveryDate: { $gte: start }
+        });
+
+        let grossFoodRevenue = 0;
+        orders.forEach(o => { grossFoodRevenue += o.pricing?.subtotal || 0; });
+
+        const vatRate = vendor?.vatRate || 0.08;
+        const commissionRate = vendor?.commissionRate || 0.15;
+
+        const foodNetRevenue = grossFoodRevenue / (1 + vatRate);
+        const foodVatAmount = grossFoodRevenue - foodNetRevenue;
+        const commissionAmount = grossFoodRevenue * commissionRate;
+        const vendorNetPayout = grossFoodRevenue - commissionAmount;
+
+        res.json({
+            success: true,
+            period,
+            ordersCount: orders.length,
+            earnings: {
+                grossFoodRevenue,
+                foodVatRate: `${vatRate * 100}%`,
+                foodVatAmount: foodVatAmount.toFixed(2),
+                platformCommission: commissionAmount.toFixed(2),
+                vendorNetPayout: vendorNetPayout.toFixed(2)
+            }
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Active Subscribers ───────────────────────────────────────────────────
+router.get('/subscribers', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const subs = await DMBSubscription.find({ vendorId: req.user.userId, status: 'active' })
+            .populate('userId', 'name city deliverySlot')
+            .populate('mealPlanId', 'name')
+            .sort({ createdAt: -1 });
+        res.json({ success: true, count: subs.length, subscribers: subs });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Update Operational Settings (Vacation, Cutoff) ──────────────────────
+router.put('/settings', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { vacationMode, vacationStart, vacationEnd } = req.body;
+
+        const update = {};
+        if (vacationMode !== undefined) update.vacationMode = vacationMode;
+        if (vacationStart !== undefined) update.vacationStart = vacationStart ? new Date(vacationStart) : null;
+        if (vacationEnd !== undefined) update.vacationEnd = vacationEnd ? new Date(vacationEnd) : null;
+
+        const vendor = await FoodRestaurant.findByIdAndUpdate(
+            vendorId,
+            { $set: update },
+            { new: true }
+        );
+
+        res.json({
+            success: true,
+            settings: {
+                vacationMode: vendor.vacationMode,
+                vacationStart: vendor.vacationStart,
+                vacationEnd: vendor.vacationEnd
+            }
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── PUBLIC: Get Vendor's Menu (Meal Plans) ─────────────────────────────
+// No auth required — customers browse vendor menus from PlansScreen
+router.get('/:vendorId/menu', async (req, res) => {
+    try {
+        const plans = await DMBMealPlan.find({
+            vendorId: req.params.vendorId,
+            status: 'active'
+        }).select('name description pricePerDay photos nutrition allergens dietTags availableSlots availableDays capacity').sort({ createdAt: -1 });
+        res.json({ success: true, menu: plans });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── PUBLIC: Get Vendor's Subscription Plans ─────────────────────────────
+// Returns structured subscription plan options for a vendor
+router.get('/:vendorId/plans', async (req, res) => {
+    try {
+        const vendor = await FoodRestaurant.findById(req.params.vendorId).select('restaurantName city ownerName profileImage coverImages ratings rating');
+        if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+        const mealPlans = await DMBMealPlan.find({
+            vendorId: req.params.vendorId,
+            status: 'active'
+        }).select('name pricePerDay availableSlots availableDays capacity nutrition');
+
+        // Build subscription plan options
+        const subscriptionPlans = [
+            {
+                id: 'mon_fri',
+                label: 'Mon–Fri',
+                days: 5,
+                deliveryDays: 'mon_fri',
+                description: 'Weekday meals only',
+                priceMultiplier: 1,
+            },
+            {
+                id: 'full_week',
+                label: 'Full Week',
+                days: 7,
+                deliveryDays: 'full_week',
+                description: 'All 7 days',
+                priceMultiplier: 1.3,
+            }
+        ];
+
+        res.json({
+            success: true,
+            vendor: {
+                id: vendor._id,
+                name: vendor.restaurantName,
+                city: vendor.city,
+                ownerName: vendor.ownerName,
+                profileImage: vendor.profileImage,
+                rating: vendor.ratings?.average || vendor.rating || 4.5
+            },
+            mealPlans,
+            subscriptionPlans
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Toggle Meal Plan Status + Notify Subscribers ───────────────────────
+router.put('/meal-plans/:planId/toggle-status', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const plan = await DMBMealPlan.findOne({ _id: req.params.planId, vendorId: req.user.userId });
+        if (!plan) return res.status(404).json({ success: false, message: 'Meal plan not found' });
+
+        const newStatus = plan.status === 'active' ? 'draft' : 'active';
+        plan.status = newStatus;
+        await plan.save();
+
+        // If plan activated → notify all active subscribers of this vendor
+        if (newStatus === 'active') {
+            const subs = await DMBSubscription.find({
+                vendorId: req.user.userId,
+                status: 'active'
+            }).select('userId').lean();
+
+            if (subs.length > 0) {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+
+                // Send FCM + in-app notifications to all subscribers
+                const notificationPromises = subs.map(sub =>
+                    sendNotificationToUser({
+                        recipientId: sub.userId,
+                        recipientType: 'user',
+                        title: '🍱 Tomorrow\'s Meal Ready!',
+                        body: `${plan.name} will be delivered on ${tomorrowStr}. Get ready!`,
+                        data: { screen: 'home', event: 'meal_activated', planName: plan.name }
+                    }).catch(e => logger.warn(`Notification failed for user ${sub.userId}: ${e.message}`))
+                );
+
+                // Also create in-app inbox notifications
+                const inboxNotifications = subs.map(sub => ({
+                    ownerType: 'USER',
+                    ownerId: sub.userId,
+                    title: '🍱 Tomorrow\'s Meal is Confirmed!',
+                    message: `${plan.name} from your vendor is confirmed for tomorrow. Bon appétit!`,
+                    category: 'meal_update'
+                }));
+
+                await Promise.allSettled([
+                    ...notificationPromises,
+                    createInboxNotifications({ notifications: inboxNotifications })
+                ]);
+
+                logger.info(`Meal plan ${plan._id} activated — notified ${subs.length} subscribers`);
+            }
+        }
+
+        res.json({ success: true, plan, newStatus, message: `Meal plan ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully` });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Active Subscribers Count ─────────────────────────────────────────────
+router.get('/subscriber-stats', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const [total, active, paused] = await Promise.all([
+            DMBSubscription.countDocuments({ vendorId: req.user.userId }),
+            DMBSubscription.countDocuments({ vendorId: req.user.userId, status: 'active' }),
+            DMBSubscription.countDocuments({ vendorId: req.user.userId, status: 'paused' }),
+        ]);
+        res.json({ success: true, stats: { total, active, paused } });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Get Vendor's Daily Orders (today/tomorrow) ────────────────────────
+// ?date=2026-06-07 (default: today)
+// ?slot=lunch
+router.get('/daily-orders', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { date, slot } = req.query;
+        const orders = await getVendorDailyOrders(vendorId, { date, slot });
+        res.json({ success: true, orders, count: orders.length });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Update Single Order Status (Preparing / Ready) ──────────────────
+// PATCH /api/v1/dmb/vendor/daily-orders/:orderId/status
+// Body: { status: 'preparing' | 'ready' | ... }
+router.patch('/daily-orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { status } = req.body;
+        if (!status) return res.status(400).json({ success: false, message: 'status is required' });
+        const order = await updateDailyOrderStatus(req.params.orderId, status, vendorId);
+        res.json({ success: true, order });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Mark ALL orders ready for a slot (batch) ─────────────────────────
+// POST /api/v1/dmb/vendor/daily-orders/mark-all-ready
+// Body: { date, slot }
+router.post('/daily-orders/mark-all-ready', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { date, slot } = req.body;
+        const result = await markAllOrdersReady(vendorId, { date, slot });
+        res.json({ success: true, ...result });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+export default router;

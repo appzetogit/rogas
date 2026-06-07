@@ -6,7 +6,7 @@ import * as addonsApprovalController from '../controllers/addonsApproval.control
 import * as businessSettingsController from '../controllers/businessSettings.controller.js';
 import * as feedbackExperienceController from '../controllers/feedbackExperience.controller.js';
 import * as notificationBroadcastController from '../controllers/notificationBroadcast.controller.js';
-import * as diningAdminController from '../../dining/controllers/diningAdmin.controller.js';
+// Dining admin controller removed — not part of DailyMealBox PRD
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import * as liveMonitorController from '../controllers/liveMonitor.controller.js';
@@ -199,16 +199,7 @@ router.post('/zones', adminController.createZone);
 router.patch('/zones/:id', adminController.updateZone);
 router.delete('/zones/:id', adminController.deleteZone);
 
-// ----- Dining -----
-router.get('/dining/categories', diningAdminController.getDiningCategories);
-router.post('/dining/categories', diningAdminController.createDiningCategory);
-router.patch('/dining/categories/:id', diningAdminController.updateDiningCategory);
-router.delete('/dining/categories/:id', diningAdminController.deleteDiningCategory);
-router.get('/dining/restaurants', diningAdminController.getDiningRestaurants);
-router.patch('/dining/restaurants/:restaurantId', diningAdminController.updateDiningRestaurant);
-router.get('/dining/requests', diningAdminController.listAllDiningRequests);
-router.patch('/dining/requests/:id/approve', diningAdminController.approveDiningRequest);
-router.patch('/dining/requests/:id/reject', diningAdminController.rejectDiningRequest);
+// Dining routes removed — not part of DailyMealBox PRD
 
 // ----- Orders -----
 router.get('/orders', orderController.listOrdersAdminController);
@@ -234,4 +225,11 @@ router.patch('/app-intro-ads/:id', upload.fields([{ name: 'media', maxCount: 1 }
 router.patch('/app-intro-ads/:id/toggle', appIntroAdController.toggleAppIntroAdStatus);
 router.delete('/app-intro-ads/:id', appIntroAdController.deleteAppIntroAd);
 
+// ----- Vendor Subscription Plans -----
+router.get('/vendor-subscription-plans', adminController.getVendorSubscriptionPlans);
+router.post('/vendor-subscription-plans', adminController.createVendorSubscriptionPlan);
+router.put('/vendor-subscription-plans/:id', adminController.updateVendorSubscriptionPlan);
+router.delete('/vendor-subscription-plans/:id', adminController.deleteVendorSubscriptionPlan);
+
 export default router;
+

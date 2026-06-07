@@ -1,0 +1,1179 @@
+DailyMealBox 
+ 
+PRODUCT REQUIREMENTS DOCUMENT 
+Part 1 — Customer App  ·  FINAL  
+ 
+Document 
+FINAL merged version — supersedes all previous versions 
+Version 
+v3.0 Final  
+Date 
+19 May 2026 
+Platforms 
+Android · iOS · Web (responsive) 
+Tech Stack 
+React Native · React.js · Node.js · MongoDB · Redis · Socket.io 
+Brand 
+#1F7A63 Deep Green · #F5F5F0 Soft Beige · #2B2B2B Dark Gray 
+Developer 
+Appzeto — Indore, India 
+Markets 
+Warsaw (PLN) → Berlin (EUR) → Paris (EUR) 
+ 
+1. App Overview — Platforms & Navigation 
+ 
+DailyMealBox Customer App is subscription-first. It is a control panel for recurring meals — not a marketplace. 3-tap maximum for any critical action. 
+Admin-disabled features are completely hidden (not greyed out). All feature flags delivered via Firebase Remote Config (OTA) — no reinstall needed. 
+Navigation — 5 Tab Bar 
+⌂ Home 
+☰ Plans 
+▦ Calendar 
+◎ Orders 
+○ Profile 
+Dashboard, next delivery, quick 
+actions, loyalty widget, OTA banner 
+Browse + filter plans, surprise 
+boxes, flash deals, featured vendors 
+Weekly view, 
+skip/reschedule/swap, cutoff lock, 
+tomorrow preview 
+Upcoming + past, live tracking, 
+refund status, receipts/invoices 
+Settings, diet, proof preference, 
+loyalty, B2B, invoice prefs, GDPR 
+ 
+ 
+2. VAT & Tax Engine — Complete Implementation  
+ 
+The VAT engine is the core financial infrastructure. Every order, every invoice, every settlement flows through it. Customer sees ONE total price. Internally 
+the system splits VAT ownership: food VAT belongs to vendor, delivery VAT belongs to fleet partner, commission VAT belongs to DailyMealBox. 
+2.1 VAT Rate Matrix — All Countries 
+Line Item 
+Poland 
+Germany 
+France 
+VAT Owner / Notes 
+Meal subscription 
+(restaurant/processed) 
+8% ⚠ CORRECTED 
+7% 
+10% 
+VENDOR. Home cooks use Kitchen Partner VAT. Admin 
+configures per vendor type. 
+Basic food items 
+(raw/unprocessed) 
+5% 
+7% 
+5.5% 
+VENDOR. Only if vendor food qualifies. Admin sets per 
+vendor type via Remote Config. 
+Delivery service fee 
+23% 
+19% 
+20% 
+FLEET PARTNER. Fleet partner invoices DailyMealBox. DMB 
+passes cost to customer. 
+Platform commission (from 
+vendor) 
+23% 
+19% 
+20% 
+DailyMealBox. Shown on vendor settlement, not customer 
+receipt. 
+Driver tips 
+23% 
+19% 
+20% 
+FLEET PARTNER. 100% goes to driver. Fleet partner 
+declares tip VAT. 
+EU cross-border B2B invoice 
+0% reverse charge 
+0% reverse charge 
+0% reverse charge 
+Buyer self-accounts. Invoice must state: "Art. 196 EU VAT 
+Directive." 
+Discounted price (surprise 
+box/coupon) 
+VAT on actual price 
+VAT on actual price 
+VAT on actual price 
+50% off = VAT calculated on discounted price, not original. 
+ 
+2.2 VAT Ownership Split 
+VAT Engine — Core Calculation (Node.js) 
+// VAT rates from Remote Config (admin sets per city — OTA, no reinstall):​
+const VAT_RATES = {​
+  warsaw: { food_restaurant:0.08, food_basic:0.05, delivery:0.23, service:0.23, tips:0.23 },​
+  berlin: { food_restaurant:0.07, food_basic:0.07, delivery:0.19, service:0.19, tips:0.19 },​
+  paris:  { food_restaurant:0.10, food_basic:0.055, delivery:0.20, service:0.20, tips:0.20 }​
+}​
+​
+function calculateOrderVAT(order, city, customerType, customerVatNumber) {​
+  const rates = VAT_RATES[city]​
+​
+  // EU reverse charge: B2B buyer from different EU country:​
+  const isReverseCharge = (customerType==="b2b" && customerVatNumber &&​
+    getEuCountry(customerVatNumber) !== getEuCountry(city))​
+​
+  const foodRate = isReverseCharge ? 0 :​
+    (order.vendor.food_category==="basic" ? rates.food_basic : rates.food_restaurant)​
+  const deliveryRate = isReverseCharge ? 0 : rates.delivery​
+​
+  const foodNet = order.meal_price / (1 + foodRate)​
+  const foodVat = order.meal_price - foodNet​
+  const deliveryNet = order.delivery_fee / (1 + deliveryRate)​
+  const deliveryVat = order.delivery_fee - deliveryNet​
+​
+  return {​
+    // Customer sees:​
+    total_gross: order.meal_price + order.delivery_fee + (order.tip || 0),​
+​
+    // Invoice breakdown:​
+    food_net: foodNet.toFixed(2), food_vat_rate: foodRate*100+"%",​
+    food_vat_amount: foodVat.toFixed(2), food_vat_owner: "vendor",​
+​
+    delivery_net: deliveryNet.toFixed(2), delivery_vat_rate: deliveryRate*100+"%",​
+    delivery_vat_amount: deliveryVat.toFixed(2), delivery_vat_owner: "fleet_partner",​
+​
+    is_reverse_charge: isReverseCharge,​
+    reverse_charge_notice: isReverseCharge ?​
+      "Reverse charge — Art. 196 EU VAT Directive" : null,​
+​
+    // Internal settlement:​
+    vendor_receives_net: foodNet,​
+    fleet_receives_net: deliveryNet,​
+    platform_commission: foodNet * order.vendor.commission_rate,​
+  }​
+} 
+2.3 Document Types — Receipt vs Invoice 
+Document 
+Who Gets It 
+Contents 
+Legal Basis 
+B2C Simple Receipt 
+Individual customers (default) 
+Gross price per item, VAT rate noted, 
+no full breakdown required 
+EU VAT Art.238 — simplified invoice permitted B2C under EUR 100 
+B2B Full VAT Invoice 
+Company/office accounts 
+All fields: both NIPs, sequential 
+number, net+VAT rate+VAT 
+amount+gross per line, payment 
+terms 
+EU VAT Art.226 — mandatory for B2B. Store 7 years. 
+Monthly Consolidated 
+B2B office managers 
+All orders combined for billing period. 
+One invoice per company per month. 
+Required by B2B contract. Auto-generated 1st of each month. 
+Reverse Charge Invoice 
+EU cross-border B2B 
+Net amounts at 0%. "Reverse charge 
+— Art.196 EU VAT Directive" 
+statement. 
+EU VAT Art.196 — buyer self-accounts for VAT. 
+Credit Note 
+Refunded customers 
+References original invoice. Negative 
+amounts. VAT correction. 
+Required by EU law when VAT invoice is refunded. 
+ 
+ 
+3. Home Cook Legal Model — Kitchen Partner Entity  
+ 
+Home cooks in Poland often lack a registered company or VAT number. Without a legal entity they cannot issue food invoices or receive commercial bank 
+payments. Solution: Home Cook links to a Kitchen Partner company — a registered Sp. z o.o. that handles all legal, invoicing, and financial aspects on their 
+behalf. This mirrors the model used by catering platforms across Poland. 
+KitchenPartner MongoDB Schema (New Collection) 
+// New collection: kitchen_partners​
+{​
+  _id, company_name: "FreshKitchen Partners Sp. z o.o.",​
+  nip: "521-111-111-11", krs: "0000123456",​
+  bank_iban: "PL61...", status: "active"|"suspended",​
+  city, zones: ["zone_mokotow","zone_ochota"],​
+​
+  home_cooks: [{​
+    cook_id, cook_name, cook_phone,​
+    contract_signed_at, contract_url,  // Google Drive link​
+    settlement_split: 0.85,            // cook gets 85% of food revenue​
+    status: "active"​
+  }],​
+​
+  management_fee_pct: 0.15,  // Kitchen Partner keeps 15%​
+  food_licence_url,          // Sanepid certification — Google Drive​
+  food_licence_expiry,​
+  insurance_url,​
+  approved_by_admin_id, created_at​
+}​
+​
+// Vendor document — home cook gets new field:​
+{ _id, vendor_type: "home_cook",​
+  kitchen_partner_id: ObjectId("..."),  // NULL for restaurants/cloud kitchens​
+  // When set: all invoicing via Kitchen Partner​
+  // When null: vendor has own company​
+}​
+​
+// Settlement flow for home cook order:​
+// DailyMealBox pays Kitchen Partner gross food amount (minus DMB commission)​
+// Kitchen Partner pays home cook: gross × settlement_split (e.g. 85%)​
+// Kitchen Partner keeps: gross × management_fee_pct (e.g. 15%)​
+// Kitchen Partner handles: VAT declaration, ZUS, income tax for cook 
+ 
+4. Onboarding Flow 
+ 
+ 
+CA-01 — Welcome + City Auto-Detect 
+ 
+CA-02 — GPS Location Detection 
+ 
+CA-01 
+ Welcome Screen 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Brand splash with tagline "Your weekly food, 
+automated" 
+✅ INCLUDED 
+— 
+Green top, beige bottom. City auto-detected badge shown. 
+City auto-detected badge 
+✅ INCLUDED 
+ACM-88 
+GPS detects city on first open. Shows "Warsaw, Poland 
+detected." 
+Get Started + Log in CTAs 
+✅ INCLUDED 
+— 
+Routes to CA-03 Goal Selection or login. 
+ 
+CA-02 
+ GPS Location Detection 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Location permission request 
+✅ INCLUDED 
+ACM-88 
+iOS/Android/Web browser geolocation API. 
+Auto-detect city and zone via GeoJSON polygon 
+match 
+✅ INCLUDED 
+ACM-88 
+Coords → reverse geocode → match zone polygon → "Mokotow, 
+Warsaw detected." 
+Manual city override fallback 
+✅ INCLUDED 
+ACM-88 
+If GPS denied: city picker from admin-configured active cities. 
+Admin can disable GPS auto-detect 
+⚙ ADMIN 
+ACM-88 
+Falls back to city picker. 
+ 
+CA-03 
+ Goal Selection 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+4 goal cards: Eat Healthy / Save Time / Family 
+Meals / Fitness 
+✅ INCLUDED 
+— 
+Stored as user.onboardingGoal. Affects plan recommendations 
+throughout app. 
+ 
+CA-04 
+ Dietary Preferences 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Diet type: No preference / Vegan / Vegetarian / 
+Keto 
+✅ INCLUDED 
+— 
+Single select. Filters plan listings. 
+Allergy multi-select (EU 14 allergens + admin 
+extras) 
+✅ INCLUDED 
+ACM-46 (law) 
+EU Reg 1169/2011 — always present. Admin can add extras. 
+Budget range slider 
+✅ INCLUDED 
+— 
+Sets price filter default on Plans screen. 
+ 
+CA-05 
+ Delivery Schedule 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Days: Mon–Fri / Full week 
+✅ INCLUDED 
+— 
+Default Mon–Fri. 
+Delivery slot: Breakfast / Lunch / Dinner 
+✅ INCLUDED 
+ACM-10/11/12 
+Admin enables/disables slots per city. 
+Cutoff time explanation per slot 
+✅ INCLUDED 
+ACM-55/56/57 
+Admin configures cutoff per maker type. 
+ 
+CA-07 
+ Subscription Checkout 
+✅ INCLUDED 
+v2.0 + v3.0 
+ 
+ 
+CA-07 Checkout with VAT (v3.0) 
+ 
+CA-07b Invoice Preference 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Plan details, vendor, schedule, start date 
+✅ INCLUDED 
+— 
+Start date always next Monday. 
+VAT breakdown table: net / rate / tax amount / 
+gross per line 
+✅ INCLUDED 
+ACM-80 
+NEW v3.0. Shows food (8%) and delivery (23%) as separate 
+lines. 
+VAT info note: Food VAT → vendor, Delivery VAT 
+→ fleet partner 
+✅ INCLUDED 
+— 
+NEW v3.0. Educates customer on split ownership. 
+Invoice preference selector: Receipt vs B2B VAT 
+Invoice 
+✅ INCLUDED 
+ACM-80 
+NEW v3.0. Default: simple receipt. B2B adds NIP field. 
+Przelewy24 / BLIK payment 
+✅ INCLUDED 
+ACM-16/17 
+WhatsApp confirmed 10 Apr. 
+Cancel anytime (EU law) 
+⚖ EU LAW 
+ACM-15 
+Max 2-tap. Default min commitment: 2 days. EU max: 14 days. 
+ 
+ 
+5. Home Tab (CA-08) 
+ 
+ 
+CA-08 — Home Dashboard 
+ 
+CA-08b — OTA Update Banner 
+ 
+CA-08 
+ Home Screen Dashboard 
+✅ INCLUDED 
+v2.0 + v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Next delivery card (green, above fold, always 
+visible) 
+✅ INCLUDED 
+— 
+3-tap rule from here to any action. 
+Live tracking shortcut on card (when Out for 
+Delivery) 
+✅ INCLUDED 
+ACM-23 
+"Driver 1.2km away — Track Live →". Admin can disable per 
+city. 
+OTA update banner (non-intrusive, dismissable) 
+✅ INCLUDED 
+— 
+Appears when admin pushes update. Shows what is new. 
+Skip / Pause / Change quick actions 
+✅ INCLUDED 
+ACM-13/14 
+Skip: max 2/month. Pause: max 2 days. Limits enforced per 
+admin config. 
+Loyalty points widget 
+✅ INCLUDED 
+ACM-35 
+Only shown if loyalty enabled. Hidden if admin disables. 
+Tomorrow menu preview + 7pm push 
+notification 
+✅ INCLUDED 
+ACM-30 
+Admin sets notification time per maker type. 
+Churn prevention card (when 2+ skips detected) 
+✅ INCLUDED 
+ACM-37 
+NEW v3.0. AI detects skip pattern. Shows personalised 
+retention offer. 
+Add-ons section 
+✅ INCLUDED 
+— 
+Max 3 add-on suggestions. 
+ 
+ 
+6. Plans Tab 
+ 
+ 
+CA-09 — Plans Browse 
+ 
+CA-09b — AI Recommendations 
+ 
+CA-09 
+ Plans Browse + AI Recommendations 
+✅ INCLUDED 
+v2.0 + v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Search bar and filter chips (Goal / Diet / Price / 
+Zone) 
+✅ INCLUDED 
+ACM-44/45/46 
+Allergen auto-filter applied. 
+Featured vendor badge (gold, top of results) 
+✅ INCLUDED 
+ACM-42 
+Admin sets featured listing price per slot. 
+Flash deal badge on plan cards 
+✅ INCLUDED 
+ACM-41 
+Admin approves each flash deal. 
+"AI Picks for You" recommendation banner 
+✅ INCLUDED 
+ACM-45 
+NEW v3.0. Rule-based Phase 1. Match % score shown. 
+Match % score per plan (diet + allergen + calorie) 
+✅ INCLUDED 
+— 
+NEW v3.0. 98% match = all criteria met. 
+Surprise meal box tab 
+✅ INCLUDED 
+ACM-39 
+Admin enables per city. Max 60% off. 
+ 
+CA-10 
+ Surprise Meal Box Screen 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Time-limited anti-waste deals up to 60% off 
+✅ INCLUDED 
+ACM-39/60 
+Admin enables per city, sets max discount. 
+Countdown timer + "Only X left" urgency 
+✅ INCLUDED 
+— 
+Real-time updates. 
+Admin can disable per city 
+⚙ ADMIN 
+ACM-39 
+Warsaw launch: enabled. Other cities: toggle. 
+ 
+CA-11 
+ Meal / Plan Detail with Nutrition 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Photo gallery, nutrition panel 
+(cal/protein/carbs/fats) 
+✅ INCLUDED 
+ACM-44 
+Optional vendor data. "Not provided" fallback. 
+EU allergen tags (red badges — always shown) 
+⚖ EU LAW 
+ACM-46 
+Cannot be disabled. EU Reg 1169/2011. 
+Kitchen Partner notice on home cook listings 
+✅ INCLUDED 
+— 
+NEW v3.0. "Certified Kitchen Partner" badge. FreshKitchen 
+Partners Sp. z o.o. 
+"Matches your diet goal" green badge 
+✅ INCLUDED 
+ACM-45 
+If meal meets user calorie/macro targets. 
+ 
+ 
+7. Calendar Tab (CA-12) — Most Critical Screen 
+ 
+ 
+CA-12 — Calendar Screen 
+CA-12 
+ Calendar Screen 
+✅ INCLUDED 
+v2.0 
+ 
+The subscriber control centre. Skip, pause, swap, reschedule — all from here. Admin-set cutoff locks days automatically. 3-tap maximum for any action. 
+Feature 
+Status 
+Admin Control 
+Notes 
+Weekly Mon–Sun grid. Current day highlighted. 
+✅ INCLUDED 
+— 
+Tap day to expand and take action. 
+Cutoff lock — days past cutoff show locked icon 
+✅ INCLUDED 
+ACM-55/56/57 
+All action buttons disabled after cutoff. Next available slot 
+shown. 
+Skip delivery (with limit enforcement) 
+✅ INCLUDED 
+ACM-13 
+Default 2/month. If at limit: "2/2 skips used this month." Credit 
+to wallet. 
+Pause subscription (with duration limit) 
+✅ INCLUDED 
+ACM-14 
+Default max 2 days. Auto-resume. 
+Swap meal (same vendor, different dish) 
+✅ INCLUDED 
+— 
+Before cutoff only. Shows available meals from same vendor. 
+Tomorrow meal preview on day card 
+✅ INCLUDED 
+ACM-30 
+Vendor must upload menu in advance. 
+ 
+Calendar Cutoff Lock Logic 
+function getDayState(order, vendorSettings) {​
+  const now = new Date()​
+  const cutoff = calculateCutoff(order.delivery_date, vendorSettings)​
+  if (now > cutoff) return { state:"locked", icon:"🔒", actions:[] }​
+  const skipsThisMonth = getSkipsThisMonth(user.id)​
+  const maxSkips = remoteConfig.getNumber("max_skips_per_month") || 2​
+  return {​
+    state: "scheduled",​
+    actions: [​
+      skipsThisMonth < maxSkips ? "skip" : "skip_disabled",​
+      "reschedule", "swap_meal"​
+    ]​
+  }​
+}​
+// On skip: credit wallet, notify vendor to adjust production 
+ 
+8. Orders Tab + Live Tracking 
+ 
+ 
+CA-13 — Orders Screen 
+ 
+CA-14 — Order Detail + Live Tracking 
+ 
+CA-13 
+ Orders Screen 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Upcoming + past tabs 
+✅ INCLUDED 
+— 
+Timeline. Upcoming: next 7 deliveries. Past: all history. 
+Track Live button (when Out for Delivery) 
+✅ INCLUDED 
+ACM-23 
+Routes to CA-14. Admin can disable per city. 
+Notification tap → order detail → auto-opens 
+tracking 
+✅ INCLUDED 
+— 
+Push notification deep-link. Both subscription and on-demand. 
+Refund status on past orders 
+✅ INCLUDED 
+— 
+Shows "Refund PLN 18 — Processing" or "Completed." 
+Download receipt / invoice from order 
+✅ INCLUDED 
+ACM-80 
+NEW v3.0. Download B2C receipt or B2B VAT invoice per order. 
+ 
+CA-14 
+ Order Detail + Live GPS Tracking 
+✅ INCLUDED 
+v2.0 
+ 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+TRACK LIVE button (large, prominent green) 
+✅ INCLUDED 
+ACM-23 
+Must add. Opens full GPS map. 
+Driver moving dot on Google Maps (Socket.io, 
+every 5s) 
+✅ INCLUDED 
+ACM-23/78 
+Must add. WebSocket GPS stream. 
+ETA badge (updates every 30s via Distance 
+Matrix API) 
+✅ INCLUDED 
+ACM-24 
+Must add. 
+"Arriving Soon" auto-notification (500m trigger) 
+✅ INCLUDED 
+ACM-24 
+Must add. FCM push with PIN. 
+Delivery PIN displayed prominently 
+✅ INCLUDED 
+ACM-25 
+Must add. 4-digit PIN to customer. 
+Driver info card (name, vehicle, rating) 
+✅ INCLUDED 
+— 
+Shows with masked call button. 
+ 
+ 
+9. Profile Tab 
+ 
+ 
+CA-15 — Profile Screen 
+ 
+CA-V3-07 — Invoice Preference (v3.0) 
+ 
+CA-15 
+ Profile Screen 
+✅ INCLUDED 
+v2.0 + v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Personal info, subscription management 
+✅ INCLUDED 
+— 
+Editable. Plan, schedule, billing date. 
+Pause + Cancel subscription (easy to find) 
+⚖ EU LAW 
+ACM-14/15 
+EU Consumer Law. Max 2-tap. Cannot hide. 
+Diet + allergen preferences 
+✅ INCLUDED 
+ACM-44/45/46 
+Updates filtering immediately across app. 
+Delivery proof preference (PIN / Photo) 
+✅ INCLUDED 
+ACM-25 
+Customer sets. Admin can lock platform-wide. 
+Payment methods 
+✅ INCLUDED 
+ACM-15/16/17 
+Shows admin-enabled payment types only. 
+In-app wallet (credits) 
+✅ INCLUDED 
+ACM-18 
+Skip credits + top-up. Hidden if admin disables. 
+Loyalty points link 
+✅ INCLUDED 
+ACM-35 
+Only shown if loyalty enabled. 
+Referral programme link 
+✅ INCLUDED 
+ACM-37 
+Only shown if referral enabled. 
+Invoice preference (Receipt vs B2B VAT Invoice) 
+✅ INCLUDED 
+ACM-80 
+NEW v3.0. Company NIP, billing email. VIES validation. 
+B2B — Switch to Office Account 
+✅ INCLUDED 
+ACM-40 
+If user has B2B account. 
+GDPR — Delete my account 
+✅ INCLUDED 
+ACM-100 
+EU Article 17. Must add. 
+ 
+CA-V3-0
+7 
+ Invoice Preference Screen 
+✅ INCLUDED 
+v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Receipt type: Simple vs Full VAT Invoice 
+✅ INCLUDED 
+ACM-80 
+Default: simple receipt. Switching to B2B shows NIP field. 
+Company name + NIP + billing address + billing 
+email 
+✅ INCLUDED 
+— 
+Used on all future B2B invoices. Validated NIP format. 
+EU VAT number validation via VIES API 
+✅ INCLUDED 
+— 
+For cross-border EU B2B: validates VAT number is active in EU 
+registry. 
+Invoice delivery: email + downloadable in-app 
+✅ INCLUDED 
+— 
+Auto-sent to billing email. Also downloadable from Orders tab. 
+ 
+ 
+10. Receipt & Invoice Screens  
+ 
+ 
+CA-V3-01 — B2C Receipt 
+ 
+CA-V3-02 — B2B VAT Invoice 
+ 
+CA-V3-0
+1 
+ B2C Order Receipt 
+✅ INCLUDED 
+v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Auto-generated after confirmed delivery 
+✅ INCLUDED 
+— 
+PDF via pdfkit/puppeteer. Email to customer. Available in 
+Orders tab. 
+Seller: DailyMealBox Sp. z o.o. + NIP 
+✅ INCLUDED 
+— 
+Platform is always invoice issuer. Never vendor or fleet partner. 
+Gross price per line. VAT rate noted per line. 
+✅ INCLUDED 
+— 
+Simplified receipt — no full VAT breakdown required by EU law 
+for B2C under EUR 100. 
+VAT summary note (food 8%, delivery 23%) 
+✅ INCLUDED 
+— 
+Educates customer. Not legally required but builds trust. 
+"Need B2B invoice?" prompt links to invoice 
+preference 
+✅ INCLUDED 
+— 
+Upsell to B2B account for freelancers and small businesses. 
+ 
+CA-V3-0
+2 
+ B2B Full VAT Invoice 
+✅ INCLUDED 
+v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Sequential invoice number 
+(DMB-PL-2026-05-XXXX) 
+✅ INCLUDED 
+— 
+Per city per month. Resets monthly. Stored in invoiceSequences 
+collection. 
+All EU-required fields (Art. 226 EU VAT Directive) 
+⚖ EU LAW 
+— 
+Both NIPs, issue date, service period, line items with 
+net+rate+tax+gross, payment terms. 
+Separate lines: food (8%) + delivery (23%) + 
+platform fee (23%) 
+✅ INCLUDED 
+— 
+Each line type has its own VAT rate clearly shown. 
+Reverse charge for EU cross-border B2B 
+✅ INCLUDED 
+— 
+VAT = 0%. Invoice states "Reverse charge — Art. 196 EU VAT 
+Directive." 
+7-year storage (EU tax law) 
+⚖ EU LAW 
+— 
+Cannot be deleted. Firebase Storage /invoices/ folder. Retention 
+policy enforced. 
+Monthly auto-generation via CRON (1st of month) 
+✅ INCLUDED 
+— 
+Previous month orders consolidated. Sent to billing email. 
+ 
+B2B Invoice Generation — Monthly CRON 
+// Runs 1st of each month at 06:00 for previous month:​
+cron.schedule("0 6 1 * *", async () => {​
+  const companies = await B2BAccount.find({ status: "active" })​
+  for (const company of companies) {​
+    const orders = await Order.find({​
+      company_id: company._id,​
+      delivery_date: { $gte: startOfLastMonth(), $lte: endOfLastMonth() },​
+      status: "delivered"​
+    })​
+    const invoiceNumber = await getNextInvoiceNumber(company.city)​
+    const isReverseCharge = isEUCrossBorder(company.vat_number, company.city)​
+    const foodRate = isReverseCharge ? 0 : VAT_RATES[company.city].food_restaurant​
+    const deliveryRate = isReverseCharge ? 0 : VAT_RATES[company.city].delivery​
+​
+    const pdfBuffer = await generateInvoicePDF({​
+      invoice_number: invoiceNumber,​
+      seller: { name:"DailyMealBox Sp. z o.o.", nip: PLATFORM_NIP },​
+      buyer: { name: company.name, nip: company.vat_number,​
+               address: company.billing_address },​
+      line_items: buildLineItems(orders, foodRate, deliveryRate),​
+      reverse_charge: isReverseCharge,​
+      payment_terms: "14 days bank transfer"​
+    })​
+​
+    const pdfUrl = await uploadToFirebase("/invoices/b2b/"+invoiceNumber+".pdf", pdfBuffer)​
+    await email.send(company.billing_email, "Invoice "+invoiceNumber, { pdfUrl })​
+    await Invoice.create({ invoice_number:invoiceNumber, company_id:company._id,​
+      pdf_url:pdfUrl, status:"sent", retention_until: addYears(now(),7) })​
+  }​
+}, { timezone: "Europe/Warsaw" }) 
+ 
+11. Smart Features  
+ 
+ 
+CA-16 — Loyalty Points 
+ 
+CA-17 — Referral Programme 
+ 
+CA-16 
+ Loyalty Points System 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Points balance card + earn actions + redeem 
+rewards 
+✅ INCLUDED 
+ACM-35/36 
+10 pts/delivery, 5 pts/rating, 50 pts streak, 100 pts referral. 
+Admin sets. 
+Earn and redeem toggleable independently 
+⚙ ADMIN 
+ACM-35/36 
+Can enable earning only during launch phase. 
+Points widget on Home screen 
+✅ INCLUDED 
+ACM-35 
+Hidden if loyalty disabled by admin. 
+ 
+CA-17 
+ Referral Programme 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Unique code, share via WhatsApp / copy link 
+✅ INCLUDED 
+ACM-37 
+Referrer: 15 PLN credit. Referee: 20 PLN off. Admin sets 
+amounts. 
+Referral stats: invited / subscribed / earned 
+✅ INCLUDED 
+— 
+Motivates continued sharing. 
+ 
+ 
+CA-18 — Gift Subscription 
+ 
+CA-10 — Surprise Box 
+ 
+CA-18 
+ Gift Subscription 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Choose plan duration: 1 week / 2 weeks / 1 
+month 
+✅ INCLUDED 
+ACM-38 
+Admin sets available options. 
+Recipient details + personal message 
+✅ INCLUDED 
+— 
+System sends gift notification with redemption link. 
+Delivery: Email / WhatsApp / Print PDF 
+✅ INCLUDED 
+— 
+All generate redemption code. Expires 90 days. 
+ 
+ 
+CA-V3-06 — Churn Prevention (v3.0) 
+ 
+CA-V3-05 — AI Recs (v3.0) 
+ 
+CA-V3-0
+6 
+ Churn Prevention + Subscription Health  
+✅ INCLUDED 
+v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+"We miss you" card on Home when 2+ skips 
+detected 
+✅ INCLUDED 
+— 
+Rule-based trigger. Admin configures skip threshold. 
+Personalised retention offer (discount / free 
+week) 
+✅ INCLUDED 
+ACM-37 
+Admin sets offer type and amount. 
+Subscription health score (Low / Medium / High 
+risk) 
+✅ INCLUDED 
+— 
+Rule-based Phase 1. ML Phase 2 after 3+ months data. 
+Recovery actions: Swap / Pause 3 days / Talk to 
+us 
+✅ INCLUDED 
+— 
+One-tap recovery paths. Talk to us opens live chat. 
+AI churn prediction (backend) 
+✅ INCLUDED 
+— 
+Phase 1: skip_count >= 2 OR days_since_last > 7 OR avg_rating < 
+3. 
+ 
+CA-V3-0
+5 
+ AI Meal Recommendations 
+✅ INCLUDED 
+v3.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+"AI Picks for You" section on Plans screen 
+✅ INCLUDED 
+ACM-45 
+Hidden if admin disables diet feature. 
+Match % score per recommendation 
+✅ INCLUDED 
+— 
+Diet + allergen + calorie + rating weighted score. 
+Rule-based Phase 1: filter then rank 
+✅ INCLUDED 
+— 
+Filter: diet/allergens/calories. Rank: rating × 0.6 + orders × 0.4. 
+RecommendationEvent data collection (Phase 2 
+prep) 
+✅ INCLUDED 
+— 
+Every view/order/skip/rate stored with context. Powers future 
+ML model. 
+ 
+ 
+12. B2B Office Manager Accounts  
+ 
+ 
+CA-19 — Office Login 
+ 
+CA-20 — Office Dashboard 
+ 
+ 
+CA-21 — Team Management 
+ 
+CA-V3-02 — Consolidated Invoice (v3.0) 
+ 
+CA-19 
+ Office Manager Login 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Email + password login (not OTP) 
+✅ INCLUDED 
+— 
+B2B accounts use email/password. OTP as 2FA option. 
+Company name + city shown on login 
+✅ INCLUDED 
+— 
+Confirms correct business account. 
+Admin approves B2B applications (Super Admin) 
+⚙ ADMIN 
+ACM-40 
+Discount tier set per company. 
+ 
+CA-20 
+ Office Manager Dashboard 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Team stats: employees / ordering today / weekly 
+spend 
+✅ INCLUDED 
+— 
+Real-time. 
+B2B discount badge (e.g. "B2B 15% off") 
+✅ INCLUDED 
+ACM-40 
+Discount tiers: 10+ orders=10%, 20+=15%, 50+=20%. Admin 
+sets. 
+Quick actions: Add employee / Bulk order / 
+Invoice / Report 
+✅ INCLUDED 
+— 
+All B2B tasks from dashboard. 
+Consolidated monthly VAT invoice download 
+✅ INCLUDED 
+ACM-80 
+NEW v3.0. Full EU VAT invoice. Company NIP. 7-year storage. 
+ 
+CA-21 
+ Team Management Screen 
+✅ INCLUDED 
+v2.0 
+ 
+Feature 
+Status 
+Admin Control 
+Notes 
+Employee list with desk/address, plan, status 
+✅ INCLUDED 
+— 
+Active / Paused / Pending badges. 
+Add / edit / remove employees 
+✅ INCLUDED 
+— 
+Each employee can have different plan. 
+Bulk order for all employees 
+✅ INCLUDED 
+— 
+One subscription per employee. System creates individual 
+subscriptions. 
+ 
+ 
+13. OTA Updates & Admin Controls 
+ 
+ 
+OTA Update Banner — Appears without reinstall 
+All 100+ admin controls delivered via Firebase Remote Config (OTA). Admin changes a toggle → Remote Config updated → all installed apps update 
+within 5–15 minutes. No App Store update needed. No reinstall needed. Works across all 3 apps simultaneously. 
+Key Admin Toggles (Customer App) 
+Feature 
+Default 
+Partial On? 
+Notes 
+VAT rate per city (food/delivery/service) 
+8%/23%/23
+% 
+Yes — per vendor 
+type 
+Admin changes → OTA → checkout recalculates. No code needed. 
+Weekly/monthly subscriptions 
+Always ON 
+No — core product 
+Cannot disable. Business model foundation. 
+One-time orders 
+ON 
+Per time window 
+Admin sets acceptance time window per slot. 
+GPS live tracking 
+ON 
+Per city 
+Admin disables for cities where Maps API cost is too high. 
+Loyalty points — earn 
+ON 
+Yes — earn on, 
+redeem off 
+Earn-only phase during launch. 
+Referral programme 
+ON 
+No 
+On or off. Admin sets reward amounts. 
+Surprise meal box 
+OFF (Warsaw 
+launch) 
+Per city 
+Test in Warsaw, enable in Berlin when ready. 
+B2B office accounts 
+ON 
+No 
+Admin approves each B2B application. 
+Flash deals 
+ON 
+Yes — on but 
+require approval 
+Admin approves each vendor deal. 
+AI recommendations 
+ON 
+No 
+Admin disables if nutrition data coverage is too low. 
+Churn detection threshold 
+2 skips/week 
+Value configurable 
+Admin sets: how many skips before retention card shows. 
+Invoice type lock 
+Customer 
+choice 
+Yes — lock to one 
+type 
+Admin can force all customers to use receipt or all to B2B invoice. 
+ 
+ 

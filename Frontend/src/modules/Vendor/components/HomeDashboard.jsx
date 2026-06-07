@@ -23,7 +23,8 @@ export default function HomeDashboard({
   transactions,
   onMarkAllReady,
   onNavigateToTab,
-  onOpenSubView
+  onOpenSubView,
+  subscriberCount
 }) {
   const [showOtaUpdate, setShowOtaUpdate] = useState(true);
 
@@ -81,15 +82,15 @@ export default function HomeDashboard({
         </div>
         <div className="grid grid-cols-3 gap-2 text-center relative z-10">
           <div className="border-r border-white/20">
-            <p className="text-3xl font-bold text-white">22</p>
+            <p className="text-3xl font-bold text-white">{totalOrders || 0}</p>
             <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold mt-1">Today</p>
           </div>
           <div className="border-r border-white/20">
-            <p className="text-3xl font-bold text-white">15</p>
-            <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold mt-1">Subs</p>
+            <p className="text-3xl font-bold text-white">{subscriberCount ?? subsCount}</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold mt-1">Subscribers</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-white">7</p>
+            <p className="text-3xl font-bold text-white">{oneTimeCount || 0}</p>
             <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold mt-1">One-time</p>
           </div>
         </div>

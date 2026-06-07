@@ -51,6 +51,14 @@ const startServer = async () => {
         // 1. Connect to Database (MongoDB)
         await connectDB();
 
+        // Seed DMB Duration Plans
+        try {
+            const { seedDurationPlans } = await import('./src/modules/dailymealbox/subscription/subscription.service.js');
+            await seedDurationPlans();
+        } catch (err) {
+            logger.error(`Error seeding duration plans: ${err.message}`);
+        }
+
         // 2. Create HTTP server from Express app
         const httpServer = http.createServer(app);
 

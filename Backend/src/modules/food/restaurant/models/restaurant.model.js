@@ -267,6 +267,49 @@ const restaurantSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+
+    // ─── DailyMealBox Vendor Fields ──────────────────────────────────────────
+    /** Vendor type for DailyMealBox subscription platform */
+    vendorType: {
+      type: String,
+      enum: ['home_cook', 'cloud_kitchen', 'restaurant', 'catering'],
+      default: 'restaurant',
+      index: true,
+    },
+    /** Kitchen Partner company (for home cooks without registered company) */
+    kitchenPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'KitchenPartner',
+      default: null,
+    },
+    /** EU food business licence — mandatory before going live */
+    foodLicenceUrl: { type: String, default: '' },
+    foodLicenceExpiry: { type: Date, default: null },
+    foodLicenceStatus: {
+      type: String,
+      enum: ['valid', 'expiring_soon', 'expired', 'not_uploaded'],
+      default: 'not_uploaded',
+      index: true,
+    },
+    /** VAT registration number (NIP for Poland) */
+    vatNumber: { type: String, default: '' },
+    /** Platform commission rate (default 15%) */
+    commissionRate: { type: Number, default: 0.15, min: 0, max: 1 },
+    /** VAT rate for food (per city: Poland=0.08, Germany=0.07, France=0.10) */
+    vatRate: { type: Number, default: 0.08 },
+    /** Vacation mode — pauses all subscriptions temporarily */
+    vacationMode: { type: Boolean, default: false, index: true },
+    vacationStart: { type: Date, default: null },
+    vacationEnd: { type: Date, default: null },
+    /** Featured listing in plans browse */
+    isFeatured: { type: Boolean, default: false, index: true },
+    featuredUntil: { type: Date, default: null },
+    /** City (Warsaw / Berlin / Paris) */
+    city: { type: String, default: '', index: true },
+    /** Active subscription count (denormalized for quick dashboard) */
+    activeSubscriberCount: { type: Number, default: 0, min: 0 },
+    /** Tomorrow's forecast pushed to vendor */
+    forecastPushTime: { type: String, default: '19:00' },
   },
   {
     collection: "food_restaurants",

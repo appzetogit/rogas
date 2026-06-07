@@ -73,3 +73,5 @@ export const closeRedis = async () => {
         logger.info('Redis connection closed');
     }
 };
+
+export const getRedis = getRedisClient;

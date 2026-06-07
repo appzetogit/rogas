@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { VendorSubscriptionPlan } from '../../../dailymealbox/subscription/vendorSubscriptionPlan.model.js';
 import { buildRawDownloadUrlFromFileUrl } from '../../../../services/cloudinary.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
@@ -2314,8 +2315,14 @@ export async function updateRestaurantMenuById(id, menu) {
 }
 
 export async function getPendingRestaurants() {
+    try {
+        await import('../../../dailymealbox/vendor/kitchenPartner.model.js');
+    } catch (e) {
+        // ignore error if model is already registered
+    }
     const restaurants = await FoodRestaurant.find({ status: { $in: ['pending', 'rejected'] } })
         .populate('zoneId', 'name zoneName')
+        .populate('kitchenPartnerId', 'companyName')
         .sort({ createdAt: -1 })
         .lean();
     return restaurants.map((r, i) => ({
@@ -5142,3 +5149,94 @@ export async function updateRestaurantZoneRank(restaurantId, rank) {
 
     return restaurant;
 }
+
+// ─── Vendor Subscription Plans CRUD ──────────────────────────────────────────
+export async function getVendorSubscriptionPlans(query = {}) {
+    const filter = {};
+    if (query.status) {
+        filter.status = query.status;
+    }
+    const plans = await VendorSubscriptionPlan.find(filter).sort({ createdAt: -1 });
+    return plans;
+}
+
+export async function createVendorSubscriptionPlan(body) {
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (!name) throw new ValidationError('Plan name is required');
+    
+    const price = toFiniteNumber(body.price);
+    if (price === null || price < 0) {
+        throw new ValidationError('Plan price is required and must be a non-negative number');
+    }
+    
+    const duration = typeof body.duration === 'string' ? body.duration.trim().toLowerCase() : '';
+    if (!duration || !['day', 'week', 'month'].includes(duration)) {
+        throw new ValidationError('Duration must be day, week, or month');
+    }
+
+    const plan = new VendorSubscriptionPlan({
+        name,
+        price,
+        duration,
+        description: typeof body.description === 'string' ? body.description.trim() : '',
+        features: Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [],
+        status: body.status === 'inactive' ? 'inactive' : 'active'
+    });
+
+    await plan.save();
+    return plan.toObject();
+}
+
+export async function updateVendorSubscriptionPlan(id, body) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid plan id');
+    
+    const plan = await VendorSubscriptionPlan.findById(id);
+    if (!plan) return null;
+
+    if (body.name !== undefined) {
+        const name = typeof body.name === 'string' ? body.name.trim() : '';
+        if (!name) throw new ValidationError('Plan name cannot be empty');
+        plan.name = name;
+    }
+    
+    if (body.price !== undefined) {
+        const price = toFiniteNumber(body.price);
+        if (price === null || price < 0) {
+            throw new ValidationError('Plan price must be a non-negative number');
+        }
+        plan.price = price;
+    }
+    
+    if (body.duration !== undefined) {
+        const duration = typeof body.duration === 'string' ? body.duration.trim().toLowerCase() : '';
+        if (!duration || !['day', 'week', 'month'].includes(duration)) {
+            throw new ValidationError('Duration must be day, week, or month');
+        }
+        plan.duration = duration;
+    }
+    
+    if (body.description !== undefined) {
+        plan.description = typeof body.description === 'string' ? body.description.trim() : '';
+    }
+    
+    if (body.features !== undefined) {
+        plan.features = Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [];
+    }
+    
+    if (body.status !== undefined) {
+        if (!['active', 'inactive'].includes(body.status)) {
+            throw new ValidationError('Status must be active or inactive');
+        }
+        plan.status = body.status;
+    }
+
+    await plan.save();
+    return plan.toObject();
+}
+
+export async function deleteVendorSubscriptionPlan(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid plan id');
+    const plan = await VendorSubscriptionPlan.findByIdAndDelete(id);
+    return plan;
+}
+

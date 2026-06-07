@@ -1661,3 +1661,45 @@ export async function updateRestaurantZoneRank(req, res, next) {
         next(error);
     }
 }
+
+// ─── Vendor Subscription Plans CRUD ──────────────────────────────────────────
+export async function getVendorSubscriptionPlans(req, res, next) {
+    try {
+        const data = await adminService.getVendorSubscriptionPlans(req.query || {});
+        res.status(200).json({ success: true, message: 'Vendor subscription plans fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createVendorSubscriptionPlan(req, res, next) {
+    try {
+        const created = await adminService.createVendorSubscriptionPlan(req.body || {});
+        res.status(201).json({ success: true, message: 'Vendor subscription plan created successfully', data: { plan: created } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateVendorSubscriptionPlan(req, res, next) {
+    try {
+        const { id } = req.params;
+        const updated = await adminService.updateVendorSubscriptionPlan(id, req.body || {});
+        if (!updated) return res.status(404).json({ success: false, message: 'Vendor subscription plan not found' });
+        res.status(200).json({ success: true, message: 'Vendor subscription plan updated successfully', data: { plan: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteVendorSubscriptionPlan(req, res, next) {
+    try {
+        const { id } = req.params;
+        const deleted = await adminService.deleteVendorSubscriptionPlan(id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Vendor subscription plan not found' });
+        res.status(200).json({ success: true, message: 'Vendor subscription plan deleted successfully', data: { plan: deleted } });
+    } catch (error) {
+        next(error);
+    }
+}
+

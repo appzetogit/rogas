@@ -2,20 +2,18 @@ import express from 'express';
 import { upload } from '../../../../middleware/upload.js';
 import {
     registerRestaurantController,
+    getRestaurantRegistrationStatusController,
     listApprovedRestaurantsController,
     getApprovedRestaurantController,
     listPublicOffersController,
     getCurrentRestaurantController,
     updateRestaurantProfileController,
     updateRestaurantAcceptingOrdersController,
-    updateCurrentRestaurantDiningSettingsController,
     uploadRestaurantProfileImageController,
     uploadRestaurantMenuImageController,
     uploadRestaurantCoverImagesController,
     uploadRestaurantMenuImagesController,
-    getRestaurantComplaintsController,
-    createDiningRequestController,
-    getPendingDiningRequestController
+    getRestaurantComplaintsController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -74,10 +72,13 @@ const uploadFields = upload.fields([
     { name: 'gstImage', maxCount: 1 },
     { name: 'fssaiImage', maxCount: 1 },
     { name: 'menuImages', maxCount: 10 },
-    { name: 'menuPdf', maxCount: 1 }
+    { name: 'menuPdf', maxCount: 1 },
+    { name: 'foodLicence', maxCount: 1 },
+    { name: 'coverImage', maxCount: 1 }
 ]);
 
 router.post('/register', uploadFields, registerRestaurantController);
+router.get('/registration-status', getRestaurantRegistrationStatusController);
 
 // Public: approved restaurants list (for user app)
 router.get('/restaurants', cacheResponse(300, 'restaurants'), listApprovedRestaurantsController);
@@ -102,9 +103,6 @@ router.patch('/availability', authMiddleware, requireRestaurant, async (req, res
 }, updateRestaurantAcceptingOrdersController);
 router.patch('/profile', authMiddleware, requireRestaurant, updateRestaurantProfileController);
 router.patch('/availability', authMiddleware, requireRestaurant, updateRestaurantAcceptingOrdersController);
-router.patch('/dining-settings', authMiddleware, requireRestaurant, updateCurrentRestaurantDiningSettingsController);
-router.post('/dining-settings/request', authMiddleware, requireRestaurant, createDiningRequestController);
-router.get('/dining-settings/pending', authMiddleware, requireRestaurant, getPendingDiningRequestController);
 router.get('/outlet-timings', authMiddleware, requireRestaurant, getCurrentRestaurantOutletTimingsController);
 router.put('/outlet-timings', authMiddleware, requireRestaurant, upsertCurrentRestaurantOutletTimingsController);
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);

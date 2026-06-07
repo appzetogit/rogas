@@ -38,6 +38,30 @@ export const adminSidebarMenu = [
   },
   {
     type: "section",
+    label: "VENDOR MANAGEMENT",
+    items: [
+      {
+        type: "link",
+        label: "All Vendors",
+        path: "/admin/food/restaurants",
+        icon: "Users",
+      },
+      {
+        type: "link",
+        label: "Vendor Request",
+        path: "/admin/food/vendor-request",
+        icon: "UserCog",
+      },
+      {
+        type: "link",
+        label: "Subscription Plans",
+        path: "/admin/food/subscription-plans",
+        icon: "Award",
+      },
+    ],
+  },
+  {
+    type: "section",
     label: "FOOD MANAGEMENT",
     items: [
       {

@@ -395,6 +395,7 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
       status: restaurantDoc.status,
       isRejected: restaurantDoc.status === "rejected",
       rejectionReason: restaurantDoc.rejectionReason || null,
+      restaurantName: restaurantDoc.restaurantName,
       phone,
     };
   }

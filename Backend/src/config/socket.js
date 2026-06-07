@@ -139,6 +139,18 @@ export const initSocket = async (server) => {
             }
         });
 
+        // ─── DMB: Customer joins subscription room for real-time order status ───
+        // Event: join_room  |  Payload: 'sub_{subscriptionId}'
+        socket.on('join_room', (roomName) => {
+            if (typeof roomName !== 'string' || !roomName.trim()) return;
+            // Only allow joining subscription rooms that belong to this user
+            if (roomName.startsWith('sub_')) {
+                socket.join(roomName.trim());
+                logger.info(`[DMB] Socket ${socket.id} (USER:${userId}) joined sub room: ${roomName.trim()}`);
+                socket.emit('room_joined', { room: roomName.trim() });
+            }
+        });
+
         // Explicit join (used by existing restaurant client hook).
         socket.on('join-restaurant', (restaurantId) => {
             if (socket.user?.role !== 'RESTAURANT') return;
@@ -190,6 +202,55 @@ export const initSocket = async (server) => {
             socket.join(room);
             logger.info(`Socket ${socket.id} (${role}:${userId}) joined tracking room ${room}`);
             socket.emit('tracking-room-joined', { room, orderId: String(orderId) });
+        });
+
+        // ─── DailyMealBox: Customer Order Tracking Room ────────────────────
+        socket.on('join_order_tracking', ({ orderId }) => {
+            if (!orderId) return;
+            const room = `order_tracking_${orderId}`;
+            socket.join(room);
+            logger.info(`[DMB] Customer joined order tracking: ${room}`);
+            socket.emit('tracking_room_joined', { room, orderId });
+        });
+
+        socket.on('leave_order_tracking', ({ orderId }) => {
+            if (!orderId) return;
+            socket.leave(`order_tracking_${orderId}`);
+        });
+
+        // ─── DailyMealBox: Admin Live Operations Map ───────────────────────
+        socket.on('join_admin_room', async ({ city }) => {
+            if (!city || role !== 'ADMIN') return;
+            const room = `admin_${city.toLowerCase()}`;
+            socket.join(room);
+            logger.info(`[DMB] Admin joined city room: ${room}`);
+            // Send immediate operations snapshot
+            try {
+                const { sendAdminSnapshot } = await import('../modules/dailymealbox/tracking/tracking.service.js');
+                sendAdminSnapshot(city, socket.id, io);
+            } catch (err) {
+                logger.warn(`[DMB] Admin snapshot failed: ${err.message}`);
+            }
+        });
+
+        socket.on('leave_admin_room', ({ city }) => {
+            if (!city) return;
+            socket.leave(`admin_${city.toLowerCase()}`);
+        });
+
+        // ─── DailyMealBox: Vendor Real-time Room ───────────────────────────
+        socket.on('join_vendor_room', ({ vendorId }) => {
+            if (!vendorId || role !== 'RESTAURANT') return;
+            if (String(userId) !== String(vendorId)) return; // Security
+            const room = `vendor_${vendorId}`;
+            socket.join(room);
+            logger.info(`[DMB] Vendor joined room: ${room}`);
+            socket.emit('vendor_room_joined', { room, vendorId });
+        });
+
+        socket.on('leave_vendor_room', ({ vendorId }) => {
+            if (!vendorId) return;
+            socket.leave(`vendor_${vendorId}`);
         });
 
         // Delivery partner emits live GPS location for an active order.
