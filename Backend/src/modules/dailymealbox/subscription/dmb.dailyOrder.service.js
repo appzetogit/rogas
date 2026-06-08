@@ -18,6 +18,83 @@ const toDateOnly = (date) => {
 
 const dateStr = (date) => new Date(date).toISOString().split('T')[0];
 
+// ─── Helper: Fetch fresh dishName from DMBDailyMenu & update order if needed ──
+// Ensures vendor's latest meal choice always reflects in customer orders.
+const refreshMealNameFromDailyMenu = async (order) => {
+    try {
+        const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
+        const dayStart = toDateOnly(new Date(order.deliveryDate));
+        let updated = false;
+
+        for (const m of order.meals) {
+            const planId = m.mealPlanId?._id || m.mealPlanId;
+            if (!planId) continue;
+            try {
+                let dailyMenuItem = await DMBDailyMenu.findOne({
+                    vendorId: order.vendorId,
+                    mealPlanId: planId,
+                    date: dayStart
+                }).lean();
+                if (!dailyMenuItem) {
+                    dailyMenuItem = await DMBDailyMenu.findOne({
+                        vendorId: order.vendorId,
+                        date: dayStart
+                    }).lean();
+                }
+                if (dailyMenuItem?.dishName && m.name !== dailyMenuItem.dishName) {
+                    m.name = dailyMenuItem.dishName;
+                    updated = true;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        if (updated) {
+            await DMBDailyOrder.updateOne({ _id: order._id }, { $set: { meals: order.meals } });
+        }
+    } catch (e) {
+        // silently ignore import errors
+    }
+    return order;
+};
+
+// ─── Helper: Fetch and attach custom daily menu details (photo, nutrition) to lean orders ──
+const attachDailyMenuDetails = async (orders) => {
+    try {
+        const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
+        const ordersArray = Array.isArray(orders) ? orders : [orders];
+        for (const order of ordersArray) {
+            const dayStart = toDateOnly(new Date(order.deliveryDate));
+            for (const m of (order.meals || [])) {
+                const planId = m.mealPlanId?._id || m.mealPlanId;
+                let dailyMenuItem = null;
+                if (planId) {
+                    dailyMenuItem = await DMBDailyMenu.findOne({
+                        vendorId: order.vendorId?._id || order.vendorId,
+                        mealPlanId: planId,
+                        date: dayStart
+                    }).lean();
+                }
+                if (!dailyMenuItem) {
+                    dailyMenuItem = await DMBDailyMenu.findOne({
+                        vendorId: order.vendorId?._id || order.vendorId,
+                        date: dayStart
+                    }).lean();
+                }
+                if (dailyMenuItem) {
+                    if (dailyMenuItem.dishName) m.name = dailyMenuItem.dishName;
+                    if (dailyMenuItem.photo) m.customPhoto = dailyMenuItem.photo;
+                    if (dailyMenuItem.nutrition) m.customNutrition = dailyMenuItem.nutrition;
+                    if (dailyMenuItem.description) m.customDescription = dailyMenuItem.description;
+                }
+            }
+        }
+    } catch (e) {
+        // silently ignore
+    }
+    return orders;
+};
+
+
 /**
  * Generate DMBDailyOrder records for all active subscriptions on a given date.
  * Called at startup / CRON / on-demand to ensure orders exist for today+tomorrow.
@@ -73,11 +150,37 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
             }
 
             // Build meals snapshot
-            const mealsSnapshot = (sub.meals || []).map(m => ({
-                mealPlanId: m.mealPlanId?._id || m.mealPlanId,
-                name: m.mealPlanId?.name || 'Meal',
-                quantity: m.quantity || 1
-            }));
+            const mealsSnapshot = [];
+            for (const m of (sub.meals || [])) {
+                const planId = m.mealPlanId?._id || m.mealPlanId;
+                let displayName = m.mealPlanId?.name || 'Meal';
+                
+                try {
+                    const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
+                    let dailyMenuItem = await DMBDailyMenu.findOne({
+                        vendorId: sub.vendorId,
+                        mealPlanId: planId,
+                        date: dayStart
+                    });
+                    if (!dailyMenuItem) {
+                        dailyMenuItem = await DMBDailyMenu.findOne({
+                            vendorId: sub.vendorId,
+                            date: dayStart
+                        });
+                    }
+                    if (dailyMenuItem && dailyMenuItem.dishName) {
+                        displayName = dailyMenuItem.dishName;
+                    }
+                } catch (e) {
+                    logger.warn(`Error resolving daily menu for daily order: ${e.message}`);
+                }
+
+                mealsSnapshot.push({
+                    mealPlanId: planId,
+                    name: displayName,
+                    quantity: m.quantity || 1
+                });
+            }
 
             const totalPrice = (sub.meals || []).reduce((acc, m) => {
                 const pricePerDay = m.mealPlanId?.pricePerDay || 0;
@@ -107,28 +210,55 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
 };
 
 /**
- * Ensure today's and tomorrow's orders exist for a specific user.
+ * Ensure next 14 days of orders exist for a specific user.
  * Called lazily when the customer opens HomeScreen / OrdersScreen.
+ * Generates orders for ALL upcoming days so vendor-scheduled meals appear.
  */
 export const ensureOrdersForUser = async (userId) => {
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js').catch(() => ({ DMBDailyMenu: null }));
 
     // Get active subscriptions for this user
     const subs = await DMBSubscription.find({ userId, status: 'active' })
         .populate('meals.mealPlanId', 'name pricePerDay')
         .lean();
 
+    const today = toDateOnly(new Date());
+    const tomorrow = toDateOnly(new Date(Date.now() + 86400000));
+
     for (const sub of subs) {
-        for (const targetDate of [today, tomorrow]) {
+        // Collect all target dates to ensure orders exist.
+        // We always ensure today and tomorrow.
+        const targetDates = [today, tomorrow];
+
+        // Also query DMBDailyMenu for any upcoming customized menus from this vendor
+        if (DMBDailyMenu) {
+            try {
+                const upcomingCustomMenus = await DMBDailyMenu.find({
+                    vendorId: sub.vendorId,
+                    date: { $gte: today }
+                }).lean();
+                for (const menu of upcomingCustomMenus) {
+                    const menuDate = toDateOnly(menu.date);
+                    if (!targetDates.some(d => d.getTime() === menuDate.getTime())) {
+                        targetDates.push(menuDate);
+                    }
+                }
+            } catch (err) {
+                logger.warn(`ensureOrdersForUser custom menu query failed: ${err.message}`);
+            }
+        }
+
+        // Now ensure order exists for each target date
+        for (const targetDate of targetDates) {
             const dayStart = toDateOnly(targetDate);
             const dayEnd = new Date(dayStart);
             dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
             const dayOfWeek = dayStart.getUTCDay();
             const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+            // Skip days not in subscription's delivery schedule
             if (sub.deliveryDays === 'mon_fri' && !isWeekday) continue;
+            if (dayOfWeek === 0) continue; // Always skip Sunday
 
             const existing = await DMBDailyOrder.findOne({
                 subscriptionId: sub._id,
@@ -136,11 +266,37 @@ export const ensureOrdersForUser = async (userId) => {
             });
 
             if (!existing) {
-                const mealsSnapshot = (sub.meals || []).map(m => ({
-                    mealPlanId: m.mealPlanId?._id || m.mealPlanId,
-                    name: m.mealPlanId?.name || 'Meal',
-                    quantity: m.quantity || 1
-                }));
+                // Create new order for this day
+                const mealsSnapshot = [];
+                for (const m of (sub.meals || [])) {
+                    const planId = m.mealPlanId?._id || m.mealPlanId;
+                    let displayName = m.mealPlanId?.name || 'Meal';
+
+                    try {
+                        if (DMBDailyMenu) {
+                            let dailyMenuItem = await DMBDailyMenu.findOne({
+                                vendorId: sub.vendorId,
+                                mealPlanId: planId,
+                                date: dayStart
+                            }).lean();
+                            if (!dailyMenuItem) {
+                                dailyMenuItem = await DMBDailyMenu.findOne({
+                                    vendorId: sub.vendorId,
+                                    date: dayStart
+                                }).lean();
+                            }
+                            if (dailyMenuItem?.dishName) {
+                                displayName = dailyMenuItem.dishName;
+                            }
+                        }
+                    } catch (e) {}
+
+                    mealsSnapshot.push({
+                        mealPlanId: planId,
+                        name: displayName,
+                        quantity: m.quantity || 1
+                    });
+                }
 
                 const totalPrice = (sub.meals || []).reduce((acc, m) => {
                     return acc + ((m.mealPlanId?.pricePerDay || 0) * (m.quantity || 1));
@@ -164,6 +320,7 @@ export const ensureOrdersForUser = async (userId) => {
 
 /**
  * Get today's and tomorrow's meal info for a customer (HomeScreen card)
+ * Always fetches fresh dishName from DMBDailyMenu so vendor changes reflect immediately.
  */
 export const getTodayAndTomorrowMeals = async (userId) => {
     await ensureOrdersForUser(userId);
@@ -172,6 +329,19 @@ export const getTodayAndTomorrowMeals = async (userId) => {
     const tomorrow = toDateOnly(new Date(Date.now() + 86400000));
     const dayAfterTomorrow = toDateOnly(new Date(Date.now() + 2 * 86400000));
 
+    // Fetch as mutable documents (NOT lean) so we can update + save if name changed
+    const orderDocs = await DMBDailyOrder.find({
+        userId,
+        deliveryDate: { $gte: today, $lt: dayAfterTomorrow },
+        status: { $nin: ['skipped', 'failed'] }
+    }).sort({ deliveryDate: 1 });
+
+    // Refresh meal names from latest DMBDailyMenu for each order
+    for (const order of orderDocs) {
+        await refreshMealNameFromDailyMenu(order);
+    }
+
+    // Now populate for formatting
     const orders = await DMBDailyOrder.find({
         userId,
         deliveryDate: { $gte: today, $lt: dayAfterTomorrow },
@@ -181,6 +351,9 @@ export const getTodayAndTomorrowMeals = async (userId) => {
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
         .sort({ deliveryDate: 1 })
         .lean();
+
+    // Attach custom photo, nutrition, description
+    await attachDailyMenuDetails(orders);
 
     const todayOrders = orders.filter(o =>
         new Date(o.deliveryDate).getTime() === today.getTime()
@@ -197,6 +370,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
 
 /**
  * Get upcoming + past orders for a customer (OrdersScreen)
+ * For upcoming orders, always refreshes dishName from DMBDailyMenu.
  */
 export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
     await ensureOrdersForUser(userId);
@@ -211,12 +385,25 @@ export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
         filter.deliveryDate = { $lt: today };
     }
 
+    // For upcoming orders: refresh meal names from DMBDailyMenu first
+    if (type === 'upcoming') {
+        const orderDocs = await DMBDailyOrder.find(filter)
+            .sort({ deliveryDate: 1 })
+            .limit(50);
+        for (const order of orderDocs) {
+            await refreshMealNameFromDailyMenu(order);
+        }
+    }
+
     const orders = await DMBDailyOrder.find(filter)
         .populate('vendorId', 'restaurantName profileImage city')
-        .populate('meals.mealPlanId', 'name photos pricePerDay')
+        .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
         .sort(type === 'upcoming' ? { deliveryDate: 1 } : { deliveryDate: -1 })
         .limit(50)
         .lean();
+
+    // Attach custom photo, nutrition, description
+    await attachDailyMenuDetails(orders);
 
     return orders.map(formatOrderCard);
 };
@@ -237,9 +424,12 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
 
     const orders = await DMBDailyOrder.find(filter)
         .populate('userId', 'name phone')
-        .populate('meals.mealPlanId', 'name photos pricePerDay')
+        .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
         .sort({ deliverySlot: 1, createdAt: 1 })
         .lean();
+
+    // Attach custom photo, nutrition, description
+    await attachDailyMenuDetails(orders);
 
     return orders.map(o => ({
         _id: o._id,
@@ -252,9 +442,11 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
             phone: o.userId?.phone || ''
         },
         meals: o.meals.map(m => ({
-            name: m.mealPlanId?.name || m.name || 'Meal',
+            name: m.name || m.mealPlanId?.name || 'Meal',
             quantity: m.quantity,
-            photo: m.mealPlanId?.photos?.[0] || null
+            photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
+            nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
+            description: m.customDescription || m.mealPlanId?.description || ''
         })),
         pricing: o.pricing,
         deliveryAddress: o.deliveryAddress,
@@ -356,6 +548,7 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
 };
 
 // ─── Internal Formatter ────────────────────────────────────────────────────
+// Priority: m.name (vendor-set custom dishName) > mealPlanId.name (default plan name)
 const formatOrderCard = (order) => ({
     _id: order._id,
     orderId: order.orderId,
@@ -368,8 +561,11 @@ const formatOrderCard = (order) => ({
         city: order.vendorId?.city || ''
     },
     meals: (order.meals || []).map(m => ({
-        name: m.mealPlanId?.name || m.name || 'Meal',
-        photo: m.mealPlanId?.photos?.[0] || null,
+        // ✅ FIX: m.name (custom dishName from vendor) FIRST, then default plan name
+        name: m.name || m.mealPlanId?.name || 'Meal',
+        photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
+        nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
+        description: m.customDescription || m.mealPlanId?.description || '',
         quantity: m.quantity
     })),
     pricing: order.pricing,

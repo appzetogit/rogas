@@ -32,6 +32,14 @@ export function HomeScreen({
   const [loading, setLoading] = useState(true);
   const pollingRef = useRef(null);
 
+  // ─── HomeScreen Manage Sheet State ───────────────────────────────────────
+  const [manageOrder, setManageOrder] = useState(null);
+  const [manageMode, setManageMode] = useState(null); // 'change_meal' | 'pause' | 'confirm_skip'
+  const [availableMeals, setAvailableMeals] = useState([]);
+  const [selectedMealIds, setSelectedMealIds] = useState([]);
+  const [loadingAction, setLoadingAction] = useState(false);
+  const [pauseDays, setPauseDays] = useState(1);
+
   // ─── Load today + tomorrow meals from API ───────────────────────────────
   const loadTodayMeals = async () => {
     try {
@@ -53,11 +61,90 @@ export function HomeScreen({
     }
   };
 
+  const handleSkip = async () => {
+    if (!manageOrder) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
+      loadTodayMeals();
+      onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
+      setManageOrder(null);
+      setManageMode(null);
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to skip order");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handlePause = async () => {
+    if (!manageOrder) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.pauseSubscription(
+        manageOrder.subscriptionId,
+        pauseDays,
+        "Customer requested pause from Home"
+      );
+      loadTodayMeals();
+      onShowNotificationToast?.(`⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`);
+      setManageOrder(null);
+      setManageMode(null);
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const openChangeMeal = async (order) => {
+    setManageOrder(order);
+    setSelectedMealIds(order.meals?.map(m => m.mealPlanId || m._id) || []);
+    setManageMode("change_meal");
+    try {
+      const vendorId = order.vendorId || order._id;
+      const res = await dmbCustomerAPI.getVendorMenu(vendorId);
+      if (res.data?.meals) setAvailableMeals(res.data.meals);
+      else if (res.data?.plans) setAvailableMeals(res.data.plans);
+    } catch (e) { }
+  };
+
+  const handleChangeMeal = async () => {
+    if (!manageOrder || selectedMealIds.length === 0) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
+      loadTodayMeals();
+      onShowNotificationToast?.("✅ Meal updated for this delivery!");
+      setManageOrder(null);
+      setManageMode(null);
+      setAvailableMeals([]);
+      setSelectedMealIds([]);
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const toggleMealSelection = (id) => {
+    setSelectedMealIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const closeManage = () => {
+    setManageOrder(null);
+    setManageMode(null);
+    setAvailableMeals([]);
+    setSelectedMealIds([]);
+  };
+
   useEffect(() => {
     loadTodayMeals();
   }, []);
 
-  // ─── Socket.IO: Real-time status updates ────────────────────────────────
+  // ─── Socket.IO: Real-time status updates & Daily Menu updates ───────────
   useEffect(() => {
     if (!socket) return;
     const handleStatusUpdate = (data) => {
@@ -73,14 +160,83 @@ export function HomeScreen({
       setTodayMeal(prev => updateCard(prev));
       setTomorrowMealData(prev => updateCard(prev));
     };
+
+    const handleDailyMenuUpdated = (data) => {
+      loadTodayMeals();
+      if (onShowNotificationToast) {
+        onShowNotificationToast(`📢 Tomorrow's meal updated to: "${data.dishName}"!`);
+      }
+    };
+
     socket.on("order_status_updated", handleStatusUpdate);
-    return () => socket.off("order_status_updated", handleStatusUpdate);
-  }, [socket]);
+    socket.on("daily_menu_updated", handleDailyMenuUpdated);
+
+    return () => {
+      socket.off("order_status_updated", handleStatusUpdate);
+      socket.off("daily_menu_updated", handleDailyMenuUpdated);
+    };
+  }, [socket, onShowNotificationToast]);
 
   const userName = currentUser?.name?.split(" ")[0] || "there";
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  const renderTomorrowMealPreviewCard = (meal) => {
+    if (!meal) return null;
+    const mealName = meal.meals?.[0]?.name || "Your Meal";
+    const mealPhoto = meal.meals?.[0]?.photo || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60";
+    const nutrition = meal.meals?.[0]?.nutrition;
+    const calories = nutrition?.calories || 450;
+
+    return (
+      <section className="bg-white rounded-2xl p-5 shadow-md border border-[#e4e2e1] transition-all duration-300 space-y-4">
+        {/* Card Header */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[17px] font-extrabold text-on-surface">Tomorrow's Menu Preview 🍽️</h2>
+          </div>
+          <button 
+            onClick={onGoToOrders}
+            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 active:scale-90 transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+          </button>
+        </div>
+
+        {/* Meal Photo and Name Overlay */}
+        <div 
+          onClick={onGoToOrders}
+          className="relative rounded-xl overflow-hidden h-44 shadow-inner group cursor-pointer"
+        >
+          <img 
+            src={mealPhoto} 
+            alt={mealName} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          
+          {/* Dish Name */}
+          <div className="absolute bottom-4 left-4 right-4">
+            <h3 className="text-xl font-extrabold text-white tracking-wide drop-shadow-md">{mealName}</h3>
+          </div>
+        </div>
+
+        {/* Nutrition and Prep Info */}
+        <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+            <span>{calories} kcal</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
+            <span>5 min prep</span>
+          </div>
+        </div>
+      </section>
+    );
+  };
 
   const renderMealCard = (meal, label, isToday = false) => {
     if (!meal) return null;
@@ -104,9 +260,6 @@ export function HomeScreen({
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-base font-bold text-on-surface leading-snug">{mealName}</h3>
-            {meal.meals?.length > 1 && (
-              <p className="text-[12px] text-on-surface-variant font-medium mt-0.5">+{meal.meals.length - 1} more meals</p>
-            )}
             {vendorName && (
               <p className="text-[13px] text-on-surface-variant font-medium mt-0.5">by {vendorName}</p>
             )}
@@ -116,23 +269,39 @@ export function HomeScreen({
           </span>
         </div>
 
-        {/* Order ID + Track button */}
-        <div className="flex items-center justify-between pt-3 border-t border-[#f0eded]">
-          <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-primary text-[18px]">tag</span>
-            <span className="text-[12px] text-on-surface-variant font-mono font-semibold">{meal.orderId || "—"}</span>
+        {/* Skip, Pause, Change Actions Row */}
+        {!isToday && status === 'scheduled' && (
+          <div className="flex gap-3 mt-3 pt-3 border-t border-[#f0eded]">
+            <button
+              onClick={() => {
+                setManageOrder(meal);
+                setManageMode("confirm_skip");
+              }}
+              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+            >
+              Skip
+            </button>
+            <button
+              onClick={() => {
+                setManageOrder(meal);
+                setManageMode("pause");
+              }}
+              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+            >
+              Pause
+            </button>
+            <button
+              onClick={() => openChangeMeal(meal)}
+              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+            >
+              Change
+            </button>
           </div>
-          <button
-            onClick={onGoToOrders}
-            className="border border-primary-container text-primary hover:bg-[#e8f3f0] font-bold text-xs px-4 py-2 rounded-lg active:scale-95 transition-transform flex items-center gap-1 shadow-sm"
-          >
-            <span>View Orders</span>
-            <span className="material-symbols-outlined text-base">arrow_forward</span>
-          </button>
-        </div>
+        )}
       </section>
     );
   };
+
 
   return (
     <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
@@ -232,6 +401,9 @@ export function HomeScreen({
           )}
         </section>
 
+        {/* Tomorrow's Meal Preview (below 120 points card) */}
+        {!loading && tomorrowMealData && renderTomorrowMealPreviewCard(tomorrowMealData)}
+
         {/* Quick Actions */}
         <section className="grid grid-cols-3 gap-3">
           {[
@@ -252,6 +424,122 @@ export function HomeScreen({
 
         <div className="h-8" />
       </main>
+
+      {/* ─── Manage Bottom Sheet ─────────────────────────────────────────────── */}
+      {manageOrder && manageMode && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={closeManage}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-t-3xl shadow-2xl w-full max-w-[390px] mx-auto px-5 pt-5 pb-10 animate-slideUp text-left"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="w-10 h-1.5 bg-[#ddd] rounded-full mx-auto mb-4" />
+
+            {manageMode === "confirm_skip" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Skip This Delivery?</h2>
+                <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
+                  Your delivery for {new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} will be skipped and the day's amount will be credited to your wallet.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">Cancel</button>
+                  <button
+                    onClick={handleSkip}
+                    disabled={loadingAction}
+                    className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  >
+                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    Confirm Skip
+                  </button>
+                </div>
+              </>
+            )}
+
+            {manageMode === "pause" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
+                <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription.</p>
+
+                <div className="flex gap-3 mb-6">
+                  {[1, 2].map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setPauseDays(d)}
+                      className={`flex-1 py-4 rounded-2xl font-bold text-[15px] border-2 transition-all active:scale-95 ${pauseDays === d ? "border-primary bg-[#e8f3f0] text-primary" : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
+                        }`}
+                    >
+                      {d} Day{d > 1 ? "s" : ""}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button
+                    onClick={handlePause}
+                    disabled={loadingAction}
+                    className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  >
+                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {manageMode === "change_meal" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
+                <p className="text-[13px] text-on-surface-variant mb-4">Choose meals for this delivery from the vendor's menu.</p>
+
+                {availableMeals.length === 0 ? (
+                  <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
+                    <span className="material-symbols-outlined text-[36px] text-slate-300 mb-2">restaurant_menu</span>
+                    <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
+                    <p className="text-[12px] text-slate-400 mt-1">Current selection will be kept.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
+                    {availableMeals.map(meal => {
+                      const id = meal._id || meal.id;
+                      const isSelected = selectedMealIds.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => toggleMealSelection(id)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${isSelected ? "border-primary bg-[#e8f3f0]" : "border-[#e4e2e1] bg-white hover:bg-slate-50"
+                            }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"}`}>
+                            {isSelected && <span className="material-symbols-outlined text-white text-[12px]">check</span>}
+                          </div>
+                          <div>
+                            <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">₹{meal.pricePerDay || meal.price || "—"}/day</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button
+                    onClick={handleChangeMeal}
+                    disabled={loadingAction || selectedMealIds.length === 0}
+                    className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    Confirm Change
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

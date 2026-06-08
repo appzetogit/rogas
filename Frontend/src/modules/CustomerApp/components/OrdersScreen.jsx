@@ -44,7 +44,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
 
   useEffect(() => { loadOrders(activeTab); }, [activeTab]);
 
-  // ─── Socket: Real-time status updates ────────────────────────────────────
+  // ─── Socket: Real-time status updates & Daily Menu updates ───────────────
   useEffect(() => {
     if (!socket) return;
     const handleStatusUpdate = (data) => {
@@ -58,9 +58,19 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
       const label = STATUS_CONFIG[data.status]?.label || data.status;
       onShowNotificationToast?.(`🔔 Order ${data.orderId} → ${label}`);
     };
+
+    const handleDailyMenuUpdated = () => {
+      loadOrders(activeTab);
+    };
+
     socket.on("order_status_updated", handleStatusUpdate);
-    return () => socket.off("order_status_updated", handleStatusUpdate);
-  }, [socket]);
+    socket.on("daily_menu_updated", handleDailyMenuUpdated);
+
+    return () => {
+      socket.off("order_status_updated", handleStatusUpdate);
+      socket.off("daily_menu_updated", handleDailyMenuUpdated);
+    };
+  }, [socket, activeTab]);
 
   // ─── Open manage sheet ───────────────────────────────────────────────────
   const openManage = (order) => {

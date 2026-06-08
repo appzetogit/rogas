@@ -1959,6 +1959,9 @@ export const dmbVendorAPI = {
   updateDailyOrderStatus: (orderId, status) => restaurantClient.patch(`/dmb/vendor/daily-orders/${orderId}/status`, { status }),
   /** NEW: Mark all orders for a slot as ready */
   markAllDailyOrdersReady: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/mark-all-ready", { date, slot }),
+  getDailyMenus: (params = {}) => restaurantClient.get("/dmb/vendor/daily-menus", { params }),
+  saveDailyMenu: (data) => restaurantClient.post("/dmb/vendor/daily-menus", data),
+  deleteDailyMenu: (params) => restaurantClient.delete("/dmb/vendor/daily-menus", { params }),
 };
 
 /** DMB Customer API — for CustomerApp to browse vendors, subscribe, pay */

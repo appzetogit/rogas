@@ -5,6 +5,7 @@ import { markVendorReady } from '../delivery/collectionPin.service.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { DMBDailyMenu } from '../mealplan/dailyMenu.model.js';
 import { DMBSubscription } from '../subscription/subscription.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { createInboxNotifications } from '../../../core/notifications/notification.service.js';
@@ -146,6 +147,187 @@ router.put('/meal-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), as
         );
         if (!plan) return res.status(404).json({ success: false, message: 'Meal plan not found' });
         res.json({ success: true, plan });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Daily Menu CRUD / Schedule ───────────────────────────────────────────
+router.get('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { startDate, endDate } = req.query;
+        const filter = { vendorId };
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setUTCHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setUTCHours(23, 59, 59, 999);
+            filter.date = { $gte: start, $lte: end };
+        }
+        const dailyMenus = await DMBDailyMenu.find(filter).populate('mealPlanId', 'name');
+        res.json({ success: true, dailyMenus });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { mealPlanId, date, dishName, description, photo, nutrition } = req.body;
+        if (!mealPlanId || !date || !dishName) {
+            return res.status(400).json({ success: false, message: 'mealPlanId, date, and dishName are required' });
+        }
+
+        const normalizedDate = new Date(date);
+        normalizedDate.setUTCHours(0, 0, 0, 0);
+
+        // ─── Enforce: ONE meal per vendor per day ───────────────────────
+        // Delete any existing daily menu for this vendor+date with a DIFFERENT mealPlanId
+        await DMBDailyMenu.deleteMany({
+            vendorId,
+            date: normalizedDate,
+            mealPlanId: { $ne: mealPlanId }
+        });
+
+        // Find and update or create
+        const dailyMenu = await DMBDailyMenu.findOneAndUpdate(
+            { vendorId, mealPlanId, date: normalizedDate },
+            {
+                dishName,
+                description: description || '',
+                photo: photo || '',
+                nutrition: nutrition || { calories: null, protein: null, carbs: null, fats: null }
+            },
+            { new: true, upsert: true, runValidators: true }
+        );
+
+        // Proactively generate/ensure daily orders exist for all active subscribers for this date first,
+        // so they get this new menu customized dish immediately.
+        try {
+            const { generateDailyOrdersForDate } = await import('../subscription/dmb.dailyOrder.service.js');
+            await generateDailyOrdersForDate(normalizedDate);
+        } catch (genErr) {
+            logger.warn(`Failed to proactively generate daily orders for date ${normalizedDate}: ${genErr.message}`);
+        }
+
+        // Update any scheduled daily orders for this vendor+date and emit socket events
+        try {
+            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+            const { getSocketIo } = await import('../../../utils/socket.js');
+            const dayStart = new Date(normalizedDate);
+            dayStart.setUTCHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+            // Find ALL scheduled orders for this vendor+date (any meal plan)
+            const ordersToUpdate = await DMBDailyOrder.find({
+                vendorId,
+                deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                status: 'scheduled'
+            });
+
+            const io = getSocketIo();
+            for (const order of ordersToUpdate) {
+                let updated = false;
+                for (const m of order.meals) {
+                    if (m.name !== dishName) {
+                        m.name = dishName;
+                        updated = true;
+                    }
+                }
+                if (updated) {
+                    await order.save();
+                }
+                // Emit to BOTH subscription room AND user room for guaranteed delivery
+                if (io) {
+                    const subRoom = `sub_${order.subscriptionId}`;
+                    const userRoom = `user:${order.userId}`;
+                    const payload = {
+                        subscriptionId: order.subscriptionId,
+                        deliveryDate: order.deliveryDate,
+                        dishName,
+                        vendorId: String(vendorId)
+                    };
+                    io.to(subRoom).emit('daily_menu_updated', payload);
+                    io.to(userRoom).emit('daily_menu_updated', payload);
+                    logger.info(`Socket emitted daily_menu_updated to ${subRoom} and ${userRoom} for: ${dishName}`);
+                }
+            }
+        } catch (orderUpdateErr) {
+            logger.warn(`Failed to update daily orders with new daily menu: ${orderUpdateErr.message}`);
+        }
+
+        res.json({ success: true, dailyMenu });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.delete('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { mealPlanId, date } = req.query;
+        if (!mealPlanId || !date) {
+            return res.status(400).json({ success: false, message: 'mealPlanId and date are required' });
+        }
+
+        const normalizedDate = new Date(date);
+        normalizedDate.setUTCHours(0, 0, 0, 0);
+
+        await DMBDailyMenu.deleteOne({ vendorId, mealPlanId, date: normalizedDate });
+
+        // Restore daily orders back to their default master plan name!
+        try {
+            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+            const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
+            const { getSocketIo } = await import('../../../utils/socket.js');
+            
+            const masterPlan = await DMBMealPlan.findById(mealPlanId);
+            const defaultName = masterPlan ? masterPlan.name : 'Meal';
+
+            const dayStart = new Date(normalizedDate);
+            dayStart.setUTCHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+            const ordersToUpdate = await DMBDailyOrder.find({
+                vendorId,
+                deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                status: 'scheduled',
+                'meals.mealPlanId': mealPlanId
+            });
+
+            const io = getSocketIo();
+            for (const order of ordersToUpdate) {
+                let updated = false;
+                for (const m of order.meals) {
+                    if (m.mealPlanId.toString() === mealPlanId.toString()) {
+                        if (m.name !== defaultName) {
+                            m.name = defaultName;
+                            updated = true;
+                        }
+                    }
+                }
+                if (updated) {
+                    await order.save();
+                }
+                // Emit socket event
+                if (io) {
+                    const roomName = `sub_${order.subscriptionId}`;
+                    io.to(roomName).emit('daily_menu_updated', {
+                        subscriptionId: order.subscriptionId,
+                        deliveryDate: order.deliveryDate,
+                        dishName: defaultName
+                    });
+                }
+            }
+        } catch (orderUpdateErr) {
+            logger.warn(`Failed to restore daily orders default name: ${orderUpdateErr.message}`);
+        }
+
+        res.json({ success: true, message: 'Daily menu customization removed' });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
