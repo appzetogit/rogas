@@ -1246,7 +1246,8 @@ export const dmbDeliveryAPI = {
   acceptBatch: (batchId) => deliveryClient.post("/dmb/driver/accept-batch", { batchId }),
   getRoute: () => deliveryClient.get("/dmb/driver/my-route"),
   goOnline: () => deliveryClient.patch("/dmb/driver/go-online"),
-  goOffline: () => deliveryClient.patch("/dmb/driver/go-offline")
+  goOffline: () => deliveryClient.patch("/dmb/driver/go-offline"),
+  verifyCollectionPin: (pin, collectionGps = null) => deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps })
 };
 
 export const deliveryAPI = {
