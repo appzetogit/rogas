@@ -25,12 +25,19 @@ export default function HomeDashboard({
   const [isTrackingDriver, setIsTrackingDriver] = useState(false);
   const [localBatch, setLocalBatch] = useState(null);
 
+  const getCurrentSlot = () => {
+    const hr = new Date().getHours();
+    if (hr < 10) return 'breakfast';
+    if (hr < 15) return 'lunch';
+    return 'dinner';
+  };
+
   // Recover state if page was refreshed
   useEffect(() => {
     const checkActiveBatch = async () => {
       try {
         const todayStr = new Date().toISOString().split('T')[0];
-        const res = await dmbVendorAPI.getAssignedDriver(todayStr, 'lunch');
+        const res = await dmbVendorAPI.getAssignedDriver(todayStr, getCurrentSlot());
         if (res.data?.success && res.data.driver) {
           // Normalize to match what socket event expects
           setLocalBatch({
@@ -56,9 +63,11 @@ export default function HomeDashboard({
     try {
       setIsResending(true);
       const todayStr = new Date().toISOString().split('T')[0];
-      const res = await dmbVendorAPI.resendBatch(todayStr, 'lunch');
+      const res = await dmbVendorAPI.resendBatch(todayStr, getCurrentSlot());
       if (res.data?.success) {
         alert("Request resent to delivery boys successfully!");
+        clearAcceptedBatch();
+        setLocalBatch(null);
       }
     } catch (err) {
       alert(err.response?.data?.message || "Failed to resend request. Make sure you marked orders as ready.");
@@ -87,7 +96,7 @@ export default function HomeDashboard({
     try {
       setIsTrackingDriver(true);
       const todayStr = new Date().toISOString().split('T')[0];
-      const res = await dmbVendorAPI.getAssignedDriver(todayStr, 'lunch');
+      const res = await dmbVendorAPI.getAssignedDriver(todayStr, getCurrentSlot());
       if (res.data?.success && res.data.driver) {
         const { lastLat, lastLng, name } = res.data.driver;
         if (lastLat && lastLng) {

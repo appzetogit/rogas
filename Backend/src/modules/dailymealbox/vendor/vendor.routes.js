@@ -663,10 +663,24 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             vendorId, 
             deliveryDate: targetDate, 
             deliverySlot: slot || 'lunch',
-            status: 'pending' // Only allow resending if it's still pending (not assigned yet)
+            status: { $in: ['pending', 'driver_assigned'] }
         });
 
-        if (!batch) {
+        if (batch) {
+            if (batch.status === 'driver_assigned') {
+                batch.driverId = null;
+                batch.status = 'pending';
+                batch.collectionPinHash = ''; 
+                await batch.save();
+
+                // Clear driverId on all daily orders in this batch
+                const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+                await DMBDailyOrder.updateMany(
+                    { _id: { $in: batch.orderIds } },
+                    { $set: { 'dispatch.deliveryPartnerId': null } }
+                );
+            }
+        } else {
             // Check if there are unassigned 'ready' or 'scheduled'/'preparing' orders that can form a new batch!
             const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
             const unassignedOrders = await DMBDailyOrder.find({
@@ -674,7 +688,11 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 deliveryDate: targetDate,
                 deliverySlot: slot || 'lunch',
                 status: { $in: ['scheduled', 'preparing', 'ready'] },
-                'dispatch.deliveryPartnerId': null
+                $or: [
+                    { 'dispatch.deliveryPartnerId': null },
+                    { 'dispatch.deliveryPartnerId': { $exists: false } },
+                    { dispatch: { $exists: false } }
+                ]
             });
 
             if (unassignedOrders.length === 0) {

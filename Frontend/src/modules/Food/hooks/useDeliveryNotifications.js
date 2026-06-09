@@ -645,6 +645,12 @@ export const useDeliveryNotifications = () => {
 
   // Fetch delivery partner ID
   useEffect(() => {
+    const token = localStorage.getItem('delivery_accessToken');
+    if (!token) {
+      debugLog('No delivery partner access token found, skipping fetchDeliveryPartnerId.');
+      return;
+    }
+
     const fallbackId = resolveDeliveryPartnerIdFromClient();
     if (fallbackId) {
       setDeliveryPartnerId(fallbackId);
@@ -684,6 +690,12 @@ export const useDeliveryNotifications = () => {
     if (!API_BASE_URL || !String(API_BASE_URL).trim()) {
       setIsConnected(false);
       return;
+    }
+
+    const deliveryToken = localStorage.getItem('delivery_accessToken');
+    if (!deliveryToken) {
+      setIsConnected(false);
+      return () => {};
     }
 
     // IMPORTANT: Socket.IO server is on the origin (not /api/v1).
