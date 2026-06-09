@@ -101,6 +101,7 @@ export default function CustomerAppMain() {
   // ─── App State ───────────────────────────────────────────────────────────────
   const [points, setPoints] = useState(120);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [trackedOrder, setTrackedOrder] = useState(null);
 
   // Holds the full checkout data from PlansScreen (vendorId, mealPlanId, slot, days, address, pricing)
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
@@ -371,7 +372,10 @@ export default function CustomerAppMain() {
           <Route path="orders" element={
             <OrdersScreen
               onGoBack={() => navigate("/user/home")}
-              onTrackLive={() => navigate("/user/tracker")}
+              onTrackLive={(order) => {
+                setTrackedOrder(order);
+                navigate("/user/tracker");
+              }}
               onGoToProfile={() => navigate("/user/profile")}
               onShowNotificationToast={showToast}
               tomorrowMeal={tomorrowMeal}
@@ -417,8 +421,10 @@ export default function CustomerAppMain() {
           <Route path="tracker" element={
             <TrackerScreen
               tomorrowMeal={tomorrowMeal}
+              trackedOrder={trackedOrder}
               onGoBack={() => navigate("/user/orders")}
               onShowNotificationToast={showToast}
+              socket={socket}
             />
           } />
 

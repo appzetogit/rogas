@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from "lucide-react";
+import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { dmbDeliveryAPI } from "../../../services/api";
+
+const mapContainerStyle = {
+  width: "100%",
+  height: "100%"
+};
+
 const DeliveryConfirmation = ({
   order,
+  orders,
+  stops,
+  onSelectOrder,
   onGoBack,
   onConfirmDelivered,
   onOpenChat,
@@ -11,6 +22,37 @@ const DeliveryConfirmation = ({
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setPinDigits(["", "", "", ""]);
+    setPhotoCaptured(false);
+    setErrorText("");
+    setSuccess(false);
+  }, [order?.id]);
+
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: apiKey
+  });
+
+  const deliveryStops = (orders || [order])
+    .filter(o => o && o.status !== "delivered")
+    .map((o, idx) => {
+      const lat = o.customerLat || (52.21 + idx * 0.005);
+      const lng = o.customerLng || (20.98 + idx * 0.004);
+      return {
+        id: o.id,
+        name: o.customerName || "Customer",
+        address: o.customerAddress || "",
+        lat,
+        lng
+      };
+    });
+
+  const centerLat = order?.customerLat || (deliveryStops.find(s => s.id === order?.id)?.lat) || 52.21;
+  const centerLng = order?.customerLng || (deliveryStops.find(s => s.id === order?.id)?.lng) || 20.98;
+  const center = { lat: centerLat, lng: centerLng };
   const handlePinChange = (index, val) => {
     const cleaned = val.replace(/[^0-9]/g, "").slice(-1);
     const newDigits = [...pinDigits];
@@ -22,16 +64,63 @@ const DeliveryConfirmation = ({
       nextInput?.focus();
     }
   };
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const pinStr = pinDigits.join("");
-    if (pinStr !== "1234" && !photoCaptured) {
-      setErrorText("Please enter correct customer PIN (1234) or capture a delivery photo first.");
-      return;
+    const isLiveOrder = /^[0-9a-fA-F]{24}$/.test(order?.id);
+
+    if (isLiveOrder) {
+      if (!photoCaptured && pinStr.length < 4) {
+        setErrorText("Please enter the 4-digit customer PIN or capture a delivery photo first.");
+        return;
+      }
+
+      if (photoCaptured) {
+        try {
+          setErrorText("");
+          setSuccess(false);
+          const photoUrl = "https://images.unsplash.com/photo-1594488651083-023b8a44d81c?auto=format&fit=crop&q=80&w=800";
+          const res = await dmbDeliveryAPI.uploadDeliveryPhoto(order.id, photoUrl);
+          if (res.data?.success) {
+            setSuccess(true);
+            setTimeout(() => {
+              onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
+            }, 1200);
+          } else {
+            setErrorText(res.data?.message || "Failed to verify photo proof");
+          }
+        } catch (err) {
+          console.error("Failed to verify photo via backend:", err);
+          setErrorText(err.response?.data?.message || "Server error confirming photo delivery.");
+        }
+      } else {
+        try {
+          setErrorText("");
+          setSuccess(false);
+          const res = await dmbDeliveryAPI.verifyDeliveryPin(order.id, pinStr);
+          if (res.data?.success) {
+            setSuccess(true);
+            setTimeout(() => {
+              onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
+            }, 1200);
+          } else {
+            setErrorText(res.data?.message || "Invalid customer PIN");
+          }
+        } catch (err) {
+          console.error("Failed to verify delivery PIN via backend:", err);
+          setErrorText(err.response?.data?.message || "Incorrect PIN or server error.");
+        }
+      }
+    } else {
+      const expectedPin = order?.deliveryPin || order?.pin || "1234";
+      if (!photoCaptured && pinStr !== expectedPin) {
+        setErrorText(`Please enter correct customer PIN (${expectedPin}) or capture a delivery photo first.`);
+        return;
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
+      }, 1200);
     }
-    setSuccess(true);
-    setTimeout(() => {
-      onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
-    }, 1200);
   };
   return <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
       {
@@ -62,18 +151,58 @@ const DeliveryConfirmation = ({
     /* Map View Frame with Warsaw Background and ETA */
   }
       <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-[#bec9c3] shadow-inner bg-slate-200">
-        <img
-    alt="Map tracking Warsaw, Ochota district"
-    className="absolute inset-0 w-full h-full object-cover opacity-75"
-    src="https://lh3.googleusercontent.com/placeholder-map-warsaw"
-    onError={(e) => {
-      e.currentTarget.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDtYSr4ztK_ia4wuzQms16XegAIPcDr5q0PSCJUMcXwoMsNSW0m8eHCyAEyvoz6B3zTE1im1B7ZsA7e3sRtvElbkKBCqhxZ-notSZ2Ud_P0fdCuS40cHP-oqOsaIkP-WAohcnJ9nkyCnkI_Uu_DJb9SI7yel6NC2Gpe4hRhRlr6e2dDjm-dLvv10k5FmcKr4_R9gXPW1jiwe_2FqOs27LnLCnWitwGmrdpPc5VbinMWwOGrs5t_sGtJwHQ8BpVSbYaGK5jgzBPnWNPY";
-    }}
-    referrerPolicy="no-referrer"
-  />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#F5F5F0] to-transparent opacity-40" />
+        {isLoaded && !loadError && apiKey ? (
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={center}
+            zoom={13}
+            options={{
+              zoomControl: false,
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: false,
+              disableDefaultUI: true,
+              clickableIcons: false
+            }}
+          >
+            {deliveryStops.map((stop, index) => {
+              const isSelected = stop.id === order?.id;
+              return (
+                <Marker
+                  key={`stop-${stop.id || index}`}
+                  position={{ lat: stop.lat, lng: stop.lng }}
+                  onClick={() => {
+                    if (onSelectOrder) {
+                      onSelectOrder(stop.id);
+                    }
+                  }}
+                  icon={{
+                    url: isSelected 
+                      ? `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">🟢</text></svg>')}`
+                      : `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">📍</text></svg>')}`,
+                    scaledSize: window.google?.maps?.Size ? new window.google.maps.Size(40, 40) : undefined
+                  }}
+                  title={stop.name}
+                />
+              );
+            })}
+          </GoogleMap>
+        ) : (
+          <>
+            <img
+              alt="Map tracking Warsaw, Ochota district"
+              className="absolute inset-0 w-full h-full object-cover opacity-75"
+              src="https://lh3.googleusercontent.com/placeholder-map-warsaw"
+              onError={(e) => {
+                e.currentTarget.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDtYSr4ztK_ia4wuzQms16XegAIPcDr5q0PSCJUMcXwoMsNSW0m8eHCyAEyvoz6B3zTE1im1B7ZsA7e3sRtvElbkKBCqhxZ-notSZ2Ud_P0fdCuS40cHP-oqOsaIkP-WAohcnJ9nkyCnkI_Uu_DJb9SI7yel6NC2Gpe4hRhRlr6e2dDjm-dLvv10k5FmcKr4_R9gXPW1jiwe_2FqOs27LnLCnWitwGmrdpPc5VbinMWwOGrs5t_sGtJwHQ8BpVSbYaGK5jgzBPnWNPY";
+              }}
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#F5F5F0] to-transparent opacity-40" />
+          </>
+        )}
         
-        <div className="absolute top-3 left-3 bg-[#00604c] text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+        <div className="absolute top-3 left-3 bg-[#00604c] text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md z-10">
           <Clock className="w-3.5 h-3.5" />
           <span className="text-[10px] font-bold uppercase tracking-wider">ETA: 4 min</span>
         </div>
@@ -90,6 +219,12 @@ const DeliveryConfirmation = ({
               <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
               {order.deliveryAddress}
             </p>
+            {centerLat && centerLng && (
+              <p className="text-[10px] text-gray-500 font-semibold mt-0.5 ml-4.5 flex items-center gap-1">
+                <span>📍</span>
+                <span>Coordinates: {parseFloat(centerLat).toFixed(6)}, {parseFloat(centerLng).toFixed(6)}</span>
+              </p>
+            )}
           </div>
           
           <div className="flex gap-2">
@@ -159,7 +294,7 @@ const DeliveryConfirmation = ({
   />)}
           </div>
           <p className="text-[10px] text-[#5d5f5b] font-medium italic">
-            Tip: Share PIN <span className="font-bold underline text-[#00604c] text-xs">1234</span> with customer.
+            Tip: Share PIN <span className="font-bold underline text-[#00604c] text-xs">{order?.deliveryPin || order?.pin || "1234"}</span> with customer.
           </p>
         </div>
 

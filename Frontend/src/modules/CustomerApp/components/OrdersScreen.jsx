@@ -222,107 +222,89 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
               const canManage = statusCfg.canManage && !isPast;
               const isTomorrowOrder = isTomorrow(order.deliveryDate);
               const isTodayOrder = isToday(order.deliveryDate);
+              
+              let dateStr = "";
+              if (isTodayOrder) dateStr = "TODAY";
+              else if (isTomorrowOrder) dateStr = "TOMORROW";
+              else {
+                const d = new Date(order.deliveryDate);
+                dateStr = `${d.toLocaleDateString('en-US', {weekday:'short'}).toUpperCase()} ${d.getDate()} ${d.toLocaleDateString('en-US', {month:'short'}).toUpperCase()}`;
+              }
+              const slotStr = (order.deliverySlot || "LUNCH").toUpperCase();
 
               return (
-                <div key={order._id || order.orderId} className="bg-white rounded-2xl p-4 shadow-sm border border-[#e4e2e1]/30">
-                  {/* Top: Date + Status */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-sans flex items-center gap-1.5">
-                        {isTodayOrder && <span className="bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full font-extrabold">TODAY</span>}
-                        {isTomorrowOrder && <span className="bg-amber-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-extrabold">TOMORROW</span>}
-                        {formatDate(order.deliveryDate)} · {SLOT_LABELS[order.deliverySlot] || order.deliverySlot}
-                      </p>
-                      <h4 className="text-[17px] font-extrabold text-on-surface leading-tight">
-                        {mealName}
-                        {extraMeals > 0 && <span className="text-[13px] text-on-surface-variant font-medium"> +{extraMeals} more</span>}
-                      </h4>
-                      <p className="text-[12px] text-on-surface-variant font-medium">{order.vendor?.name || ""}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`${statusCfg.color} font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm font-sans`}>
-                        {statusCfg.label}
-                      </span>
-                      {/* Manage button — only for scheduled orders */}
-                      {canManage && (
-                        <button
-                          onClick={() => openManage(order)}
-                          className="text-[11px] font-bold text-primary flex items-center gap-0.5 hover:text-primary-container active:scale-95 transition-all"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">edit</span>
-                          Manage
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Order ID */}
-                  <div className="flex items-center gap-1.5 mb-3 bg-[#f6f3f2] rounded-lg px-3 py-1.5 w-fit">
-                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">tag</span>
-                    <span className="text-[12px] font-mono font-semibold text-on-surface-variant">{order.orderId || "—"}</span>
-                  </div>
-
-                  {/* Status Progress Bar (Upcoming only, not skipped) */}
-                  {!isPast && order.status !== "skipped" && (
-                    <div className="mb-3">
-                      {["scheduled", "preparing", "ready", "out_for_delivery", "delivered"].map((s, idx, arr) => {
-                        const currentIdx = arr.indexOf(order.status);
-                        const isActive = idx <= currentIdx;
-                        const isNow = s === order.status;
-                        return (
-                          <span key={s} className="inline-flex items-center">
-                            <span className={`w-2 h-2 rounded-full inline-block transition-all ${isActive ? "bg-primary" : "bg-[#ddd]"} ${isNow ? "ring-2 ring-primary/30 scale-125" : ""}`} />
-                            {idx < arr.length - 1 && <span className={`inline-block h-0.5 w-8 ${isActive && idx < currentIdx ? "bg-primary" : "bg-[#ddd]"}`} />}
-                          </span>
-                        );
-                      })}
-                      <div className="flex justify-between text-[9px] text-on-surface-variant font-medium mt-1">
-                        <span>Scheduled</span><span>Prep</span><span>Ready</span><span>En Route</span><span>Done</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Skipped notice */}
-                  {order.status === "skipped" && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2 mb-3">
-                      <span className="material-symbols-outlined text-red-400 text-[18px]">cancel</span>
-                      <p className="text-[12px] text-red-600 font-semibold">This delivery was skipped. Wallet credit applied.</p>
-                    </div>
-                  )}
-
-                  {/* Action Row */}
-                  <div className="flex items-center justify-between pt-3 border-t border-[#f0eded]">
-                    {isPast || isDelivered ? (
-                      <>
-                        <button onClick={() => onShowNotificationToast?.(`📄 Receipt for ${order.orderId}…`)} className="text-primary font-semibold text-[13px] flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-                          <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                          <span>Receipt</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setRatedOrders(prev => prev.includes(order.orderId) ? prev : [...prev, order.orderId]);
-                            onShowNotificationToast?.(ratedOrders.includes(order.orderId) ? "Already rated!" : "⭐ Thanks for rating!");
-                          }}
-                          className={`font-semibold text-[13px] flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors ${ratedOrders.includes(order.orderId) ? "text-primary" : "text-secondary"}`}
-                        >
-                          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          <span>{ratedOrders.includes(order.orderId) ? "Rated" : "Rate"}</span>
-                        </button>
-                      </>
+                <div key={order._id || order.orderId} className="bg-white rounded-[20px] p-4 shadow-sm mb-3 border border-[#f0eded]">
+                  {/* Top: Date + Status Badge */}
+                  <div className="flex justify-between items-start mb-1">
+                    <p className="text-[12px] font-bold text-[#5c6e68] tracking-wider uppercase font-sans">
+                      {dateStr} · {slotStr}
+                    </p>
+                    {order.status === 'scheduled' ? (
+                        <span className="bg-[#2a7a62] text-white font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans">
+                          SCHEDULED
+                        </span>
+                    ) : order.status === 'skipped' ? (
+                        <span className="bg-red-500 text-white font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans">
+                          SKIPPED
+                        </span>
                     ) : (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`material-symbols-outlined text-[18px] ${statusCfg.color.split(" ")[1]}`}>{statusCfg.icon}</span>
-                          <span className="text-[13px] font-bold text-on-surface-variant">{statusCfg.label}</span>
-                        </div>
-                        {order.status === "out_for_delivery" && (
-                          <button onClick={onTrackLive} className="border border-primary-container text-primary hover:bg-[#e8f3f0] font-bold text-xs px-4 py-2 rounded-lg active:scale-95 transition-transform flex items-center gap-1 shadow-sm">
-                            <span>Track Live</span>
-                            <span className="material-symbols-outlined text-base">arrow_forward</span>
-                          </button>
-                        )}
-                      </>
+                        <span className="bg-[#2a7a62] text-white font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans">
+                          ACTIVE
+                        </span>
                     )}
+                  </div>
+
+                  {/* Meal Name */}
+                  <h4 className="text-[18px] font-bold text-[#1b1c1c] leading-tight mb-1">
+                    {mealName}
+                    {extraMeals > 0 && <span className="text-[14px] text-gray-500 font-medium ml-1">+{extraMeals}</span>}
+                  </h4>
+                  
+                  {/* User/Customer Name */}
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <span className="material-symbols-outlined text-[16px] text-[#5c6e68]">person</span>
+                    <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || "Maria K."}</span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-[1px] bg-[#f0eded] w-full mb-3"></div>
+
+                  {/* Bottom Action Row */}
+                  <div className="flex items-center justify-between">
+                    {isPast || order.status === "skipped" ? (
+                      <div className="flex items-center gap-1.5 text-[#5c6e68]">
+                        <span className={`material-symbols-outlined text-[18px] ${order.status === "skipped" ? "text-red-500" : ""}`}>
+                          {order.status === "skipped" ? "cancel" : "history"}
+                        </span>
+                        <span className={`text-[14px] font-medium ${order.status === "skipped" ? "text-red-500" : ""}`}>
+                          {order.status === "skipped" ? "Skipped" : "Completed"}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[#006a5c]">
+                        <span className="material-symbols-outlined text-[18px]">{statusCfg.icon}</span>
+                        <span className="text-[14px] font-medium">{statusCfg.label.replace(" 🔥", "").replace(" ✓", "").replace(" 🛵", "").replace(" ✅", "")}</span>
+                      </div>
+                    )}
+
+                    {(!isPast && order.status !== "skipped") ? (
+                      <button
+                        onClick={() => onTrackLive(order)}
+                        className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
+                      >
+                        Track Live <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      </button>
+                    ) : isPast && order.status !== "skipped" ? (
+                      <button
+                        onClick={() => {
+                          setRatedOrders(prev => prev.includes(order.orderId) ? prev : [...prev, order.orderId]);
+                          onShowNotificationToast?.(ratedOrders.includes(order.orderId) ? "Already rated!" : "⭐ Thanks for rating!");
+                        }}
+                        className={`border rounded-xl px-4 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1 ${ratedOrders.includes(order.orderId) ? "text-[#006a5c] border-[#006a5c]" : "text-gray-500 border-gray-300"}`}
+                      >
+                        {ratedOrders.includes(order.orderId) ? "Rated" : "Rate"} <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               );

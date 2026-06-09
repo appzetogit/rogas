@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { getRedis } from '../../../config/redis.js';
 import { CollectionBatch } from './collectionBatch.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
+import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { getIO } from '../../../config/socket.js';
 import { logger } from '../../../utils/logger.js';
@@ -240,9 +241,14 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
     }
 
     if (!storedPin) {
-        // Fallback: check order's stored pin
-        const order = await FoodOrder.findById(orderId).select('+deliveryOtp');
-        storedPin = order?.deliveryOtp;
+        // Fallback: check order's stored pin in DMBDailyOrder first, then FoodOrder
+        const dmbOrder = await DMBDailyOrder.findById(orderId);
+        if (dmbOrder?.deliveryPin) {
+            storedPin = dmbOrder.deliveryPin;
+        } else {
+            const order = await FoodOrder.findById(orderId).select('+deliveryOtp');
+            storedPin = order?.deliveryOtp;
+        }
     }
 
     if (!storedPin || pinEntered !== storedPin) {
@@ -254,13 +260,23 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
     let gpsMismatch = false;
 
     if (deliveryGps) {
-        const order = await FoodOrder.findById(orderId);
-        if (order?.deliveryAddress?.location?.coordinates) {
-            const [destLng, destLat] = order.deliveryAddress.location.coordinates;
+        const dmbOrder = await DMBDailyOrder.findById(orderId);
+        if (dmbOrder?.deliveryAddress?.location?.coordinates) {
+            const [destLng, destLat] = dmbOrder.deliveryAddress.location.coordinates;
             const distance = haversineDistance(deliveryGps.lat, deliveryGps.lng, destLat, destLng);
             if (distance > GPS_MISMATCH_THRESHOLD) {
                 gpsMismatch = true;
-                logger.warn(`GPS mismatch for order ${orderId}: driver ${distance}m from address`);
+                logger.warn(`GPS mismatch for daily order ${orderId}: driver ${distance}m from address`);
+            }
+        } else {
+            const order = await FoodOrder.findById(orderId);
+            if (order?.deliveryAddress?.location?.coordinates) {
+                const [destLng, destLat] = order.deliveryAddress.location.coordinates;
+                const distance = haversineDistance(deliveryGps.lat, deliveryGps.lng, destLat, destLng);
+                if (distance > GPS_MISMATCH_THRESHOLD) {
+                    gpsMismatch = true;
+                    logger.warn(`GPS mismatch for order ${orderId}: driver ${distance}m from address`);
+                }
             }
         }
     }
@@ -278,59 +294,117 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
 export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, gpsMismatch, proofPhotoUrl }) => {
     const io = getIO();
 
-    const order = await FoodOrder.findByIdAndUpdate(
-        orderId,
-        {
-            $set: {
-                orderStatus: 'delivered',
-                proofMethod: method,
-                proofPhotoUrl: proofPhotoUrl || '',
-                deliveryGps,
-                gpsMismatch,
-                'deliveryState.currentPhase': 'delivered',
-                'deliveryState.deliveredAt': new Date()
-            },
-            $push: {
-                statusHistory: {
-                    at: new Date(),
-                    byRole: 'DELIVERY_PARTNER',
-                    byId: driverId,
-                    from: 'reached_drop',
-                    to: 'delivered',
-                    note: `Proof: ${method}`
-                }
-            }
-        },
-        { new: true }
-    );
+    // Check if it is a DMB Daily Order
+    const isDmbOrder = await DMBDailyOrder.exists({ _id: orderId });
 
-    if (!order) throw new Error('Order not found');
-
-    // Update driver earnings & delivery count
-    const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-    await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
-        $inc: {
-            earningsToday: order.pricing?.deliveryFee || 0,
-            deliveriesToday: 1
-        }
-    });
-
-    // Notify customer: delivered!
-    await sendNotificationToUser({
-        recipientId: order.userId,
-        recipientType: 'customer',
-        title: 'Delivered! 🎉',
-        body: 'Your meal has been delivered. Enjoy! Rate your experience →',
-        data: { screen: 'order_detail', orderId: order._id.toString(), event: 'delivered' }
-    });
-
-    // Emit order status to customer's tracking room
-    if (io) {
-        io.to(`order_tracking_${orderId}`).emit('order_status_changed', {
+    let order;
+    if (isDmbOrder) {
+        order = await DMBDailyOrder.findByIdAndUpdate(
             orderId,
-            status: 'delivered',
-            deliveredAt: new Date()
+            {
+                $set: {
+                    status: 'delivered',
+                    deliveredAt: new Date()
+                }
+            },
+            { new: true }
+        );
+
+        if (!order) throw new Error('Daily Order not found');
+
+        // Update driver earnings & delivery count
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
+            $inc: {
+                earningsToday: 18, // standard DMB fee
+                deliveriesToday: 1
+            }
         });
+
+        // Notify customer: delivered!
+        await sendNotificationToUser({
+            recipientId: order.userId,
+            recipientType: 'customer',
+            title: 'Delivered! 🎉',
+            body: 'Your DailyMealBox has been delivered. Enjoy!',
+            data: { screen: 'order_detail', orderId: order._id.toString(), event: 'delivered' }
+        });
+
+        // Emit order status to customer's tracking room
+        if (io) {
+            io.to(`order_tracking_${orderId}`).emit('order_status_changed', {
+                orderId,
+                status: 'delivered',
+                deliveredAt: new Date()
+            });
+            // Also broadcast order_status_updated to customer's notifications/orders listener
+            io.emit('order_status_updated', {
+                _id: orderId,
+                orderId: order.orderId,
+                status: 'delivered'
+            });
+        }
+    } else {
+        // Fallback to legacy FoodOrder update
+        order = await FoodOrder.findByIdAndUpdate(
+            orderId,
+            {
+                $set: {
+                    orderStatus: 'delivered',
+                    proofMethod: method,
+                    proofPhotoUrl: proofPhotoUrl || '',
+                    deliveryGps,
+                    gpsMismatch,
+                    'deliveryState.currentPhase': 'delivered',
+                    'deliveryState.deliveredAt': new Date()
+                },
+                $push: {
+                    statusHistory: {
+                        at: new Date(),
+                        byRole: 'DELIVERY_PARTNER',
+                        byId: driverId,
+                        from: 'reached_drop',
+                        to: 'delivered',
+                        note: `Proof: ${method}`
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!order) throw new Error('Order not found');
+
+        // Update driver earnings & delivery count
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
+            $inc: {
+                earningsToday: order.pricing?.deliveryFee || 0,
+                deliveriesToday: 1
+            }
+        });
+
+        // Notify customer: delivered!
+        await sendNotificationToUser({
+            recipientId: order.userId,
+            recipientType: 'customer',
+            title: 'Delivered! 🎉',
+            body: 'Your meal has been delivered. Enjoy! Rate your experience →',
+            data: { screen: 'order_detail', orderId: order._id.toString(), event: 'delivered' }
+        });
+
+        // Emit order status to customer's tracking room
+        if (io) {
+            io.to(`order_tracking_${orderId}`).emit('order_status_changed', {
+                orderId,
+                status: 'delivered',
+                deliveredAt: new Date()
+            });
+            io.emit('order_status_updated', {
+                _id: orderId,
+                orderId: order.orderId,
+                status: 'delivered'
+            });
+        }
     }
 
     logger.info(`Order ${orderId} delivered by driver ${driverId}`);

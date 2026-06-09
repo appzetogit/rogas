@@ -1247,7 +1247,9 @@ export const dmbDeliveryAPI = {
   getRoute: () => deliveryClient.get("/dmb/driver/my-route"),
   goOnline: () => deliveryClient.patch("/dmb/driver/go-online"),
   goOffline: () => deliveryClient.patch("/dmb/driver/go-offline"),
-  verifyCollectionPin: (pin, collectionGps = null) => deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps })
+  verifyCollectionPin: (pin, collectionGps = null) => deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps }),
+  verifyDeliveryPin: (orderId, pin, deliveryGps = null) => deliveryClient.post("/dmb/driver/verify-delivery-pin", { orderId, pin, deliveryGps }),
+  uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps })
 };
 
 export const deliveryAPI = {

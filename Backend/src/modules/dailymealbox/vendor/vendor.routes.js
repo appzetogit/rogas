@@ -659,7 +659,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         targetDate.setUTCHours(0, 0, 0, 0);
 
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
-        const batch = await CollectionBatch.findOne({ 
+        let batch = await CollectionBatch.findOne({ 
             vendorId, 
             deliveryDate: targetDate, 
             deliverySlot: slot || 'lunch',
@@ -667,7 +667,38 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         });
 
         if (!batch) {
-            return res.status(404).json({ success: false, message: 'No unassigned batch found for this slot.' });
+            // Check if there are unassigned 'ready' or 'scheduled'/'preparing' orders that can form a new batch!
+            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+            const unassignedOrders = await DMBDailyOrder.find({
+                vendorId,
+                deliveryDate: targetDate,
+                deliverySlot: slot || 'lunch',
+                status: { $in: ['scheduled', 'preparing', 'ready'] },
+                'dispatch.deliveryPartnerId': null
+            });
+
+            if (unassignedOrders.length === 0) {
+                return res.status(404).json({ success: false, message: 'No unassigned batch or orders found for this slot.' });
+            }
+
+            // Mark any scheduled/preparing as ready
+            for (const order of unassignedOrders) {
+                if (order.status !== 'ready') {
+                    order.status = 'ready';
+                    order.readyAt = new Date();
+                    await order.save();
+                }
+            }
+
+            // Create a new batch for these unassigned ready orders!
+            batch = await CollectionBatch.create({
+                vendorId,
+                deliveryDate: targetDate,
+                deliverySlot: slot || 'lunch',
+                boxCount: unassignedOrders.length,
+                orderIds: unassignedOrders.map(o => o._id),
+                status: 'pending'
+            });
         }
 
         const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city');

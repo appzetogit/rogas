@@ -42,7 +42,8 @@ function NewDeliveryDashboard() {
 
   const [currentScreen, setCurrentScreen] = useState(getScreenFromPath(location.pathname));
   const [isRouteAccepted, setIsRouteAccepted] = useState(false);
-  const activeOrder = orders[0];
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const activeOrder = orders.find(o => o.id === selectedOrderId) || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery") || orders[0];
 
   // Keep screen in sync if URL changes externally (e.g. browser back button)
   useEffect(() => {
@@ -82,10 +83,13 @@ function NewDeliveryDashboard() {
             vendorPhone: o.vendorId?.phone || "N/A",
             customerName: o.userId?.name || 'Customer',
             customerAddress: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.city || 'Customer Address',
+            customerLat: o.deliveryAddress?.location?.latitude || o.deliveryAddress?.location?.coordinates?.[1] || null,
+            customerLng: o.deliveryAddress?.location?.longitude || o.deliveryAddress?.location?.coordinates?.[0] || null,
             customerPhone: o.userId?.phone || "N/A",
             deliveryInstructions: o.deliveryInstructions || "",
             boxCount: o.meals?.reduce((acc, m) => acc + (m.quantity || 1), 0) || 1,
             status: o.status,
+            deliveryPin: o.deliveryPin,
             pickupTimeStr: o.deliverySlot,
             dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00')
           }));
@@ -156,16 +160,15 @@ function NewDeliveryDashboard() {
     }
   };
   const handleConfirmPickup = () => {
-    if (!activeOrder) return;
     setOrders(
-      (prev) => prev.map((o) => o.id === activeOrder.id ? { ...o, status: "picked_up" } : o)
+      (prev) => prev.map((o) => ({ ...o, status: "picked_up" }))
     );
     setStops(
       (prev) => prev.map((s) => {
-        if (s.orderId === activeOrder.id && s.type === "pickup") {
+        if (s.type === "pickup" || s.type === "P") {
           return { ...s, status: "COMPLETED" };
         }
-        if (s.orderId === activeOrder.id && s.type === "delivery") {
+        if (s.type === "delivery" || s.type === "D") {
           return { ...s, status: "READY" };
         }
         return s;
@@ -190,7 +193,16 @@ function NewDeliveryDashboard() {
       // extra tips
       weeklyBonusProgress: Math.min(10, prev.weeklyBonusProgress + 1)
     }));
-    setCurrentScreen("earnings");
+    
+    // Check if there are other orders in the current batch that are not delivered yet
+    const remainingOrders = orders.filter(o => o.id !== activeOrder.id && o.status !== "delivered");
+    if (remainingOrders.length > 0) {
+      setSelectedOrderId(remainingOrders[0].id);
+      // Stay on delivery dropoff screen for the next customer
+      setCurrentScreen("delivery");
+    } else {
+      setCurrentScreen("earnings");
+    }
   };
   const handleReportIssue = () => {
     setCurrentScreen("cannot_deliver");
@@ -257,6 +269,9 @@ function NewDeliveryDashboard() {
       case "delivery":
         return <DeliveryConfirmation
           order={activeOrder}
+          orders={orders}
+          stops={stops}
+          onSelectOrder={setSelectedOrderId}
           onGoBack={() => setCurrentScreen("route")}
           onConfirmDelivered={handleConfirmDelivered}
           onOpenChat={() => setCurrentScreen("shifts")}

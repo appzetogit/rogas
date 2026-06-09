@@ -72,6 +72,7 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 
         /** Collection PIN for driver to verify pickup from vendor */
         collectionPin: { type: String, default: '' },
+        deliveryPin: { type: String, default: '' },
 
         pricing: {
             totalPrice: { type: Number, default: 0 },
@@ -82,7 +83,11 @@ const dmbDailyOrderSchema = new mongoose.Schema(
             street: { type: String, default: '' },
             city: { type: String, default: '' },
             state: { type: String, default: '' },
-            label: { type: String, default: 'Home' }
+            label: { type: String, default: 'Home' },
+            location: {
+                type: { type: String, enum: ['Point'], default: 'Point' },
+                coordinates: { type: [Number], default: undefined }
+            }
         },
 
         dispatch: {
@@ -108,12 +113,15 @@ dmbDailyOrderSchema.index({ userId: 1, deliveryDate: 1 });
 dmbDailyOrderSchema.index({ vendorId: 1, deliveryDate: 1, status: 1 });
 dmbDailyOrderSchema.index({ subscriptionId: 1, deliveryDate: 1 });
 
-// ─── Pre-save: generate orderId ──────────────────────────────────────────────
+// ─── Pre-save: generate orderId and deliveryPin ──────────────────────────────
 dmbDailyOrderSchema.pre('save', function (next) {
     if (!this.orderId) {
         const ts = Date.now().toString().slice(-6);
         const rand = Math.floor(100 + Math.random() * 900);
         this.orderId = `DMB-ORD-${ts}${rand}`;
+    }
+    if (!this.deliveryPin) {
+        this.deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
     }
     next();
 });

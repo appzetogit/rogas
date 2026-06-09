@@ -15,10 +15,12 @@ const INITIAL_ORDERS = [
     id: "order_maria_kitchen",
     orderNumber: "FD-4492",
     vendorName: "Maria's Kitchen",
-    pickupAddress: "ul. Nowy \u015Awiat 24, Warsaw",
-    deliveryAddress: "ul. Gr\xF3jecka 12, Apt 42 \u2022 Floor 4",
+    pickupAddress: "ul. Nowy Świat 24, Warsaw",
+    deliveryAddress: "ul. Grójecka 12, Apt 42 • Floor 4",
     customerName: "Anna Kowalska",
     customerNote: "Please leave by the door if I don't answer the intercom within 30 seconds. Building code: 1234#.",
+    customerLat: 52.2120,
+    customerLng: 20.9790,
     items: [
       { id: "item_1", name: "Order #8821 - Alex R. (2x Organic Veggie Box)", quantity: 2, checked: false },
       { id: "item_2", name: "Order #8824 - Sarah L. (1x Seasonal Fruit Set)", quantity: 1, checked: false },
@@ -29,6 +31,60 @@ const INITIAL_ORDERS = [
     paymentMethod: "CASH",
     cashAmount: 18,
     status: "ready_for_pickup"
+  },
+  {
+    id: "order_green_grocer",
+    orderNumber: "FD-8824",
+    vendorName: "The Green Grocer",
+    pickupAddress: "ul. Grójecka 12, Warsaw",
+    deliveryAddress: "ul. Filtrowa 62, Apt 10 • Floor 1",
+    customerName: "Jan Kowalski",
+    customerNote: "Ring the bell. Leave on the mat.",
+    customerLat: 52.2150,
+    customerLng: 20.9830,
+    items: [
+      { id: "gg_item_1", name: "Order #8824 - Seasonal Fruit Set", quantity: 1, checked: false }
+    ],
+    pin: "1234",
+    paymentMethod: "CARD",
+    cashAmount: 0,
+    status: "ready_for_pickup"
+  },
+  {
+    id: "order_health_hub",
+    orderNumber: "FD-8827",
+    vendorName: "Health Hub Pharmacy",
+    pickupAddress: "ul. Banacha 2, Warsaw",
+    deliveryAddress: "ul. Banacha 2, Apt 5 • Floor 2",
+    customerName: "Marek Nowak",
+    customerNote: "Gate code is 9876.",
+    customerLat: 52.2190,
+    customerLng: 20.9860,
+    items: [
+      { id: "hh_item_1", name: "Order #8827 - Dairy Fresh Packs", quantity: 3, checked: false }
+    ],
+    pin: "1234",
+    paymentMethod: "CASH",
+    cashAmount: 45,
+    status: "ready_for_pickup"
+  },
+  {
+    id: "order_apt_42",
+    orderNumber: "FD-4493",
+    vendorName: "Central Warehouse",
+    pickupAddress: "ul. Bitwy Warszawskiej, Warsaw",
+    deliveryAddress: "ul. Bitwy Warszawskiej 1920 r. 8, Apt 120 • Floor 11",
+    customerName: "Zofia Wisniewska",
+    customerNote: "Please knock on the door.",
+    customerLat: 52.2210,
+    customerLng: 20.9920,
+    items: [
+      { id: "apt_item_1", name: "Order #4493 - Veggie Dinner Meal", quantity: 1, checked: false }
+    ],
+    pin: "1234",
+    paymentMethod: "CARD",
+    cashAmount: 0,
+    status: "ready_for_pickup"
   }
 ];
 const INITIAL_STOPS = [
@@ -38,7 +94,9 @@ const INITIAL_STOPS = [
     name: "Maria's Kitchen",
     address: "882 West 12th St, Suite 400",
     status: "READY",
-    orderId: "order_maria_kitchen"
+    orderId: "order_maria_kitchen",
+    vendorLat: 52.2120,
+    vendorLng: 20.9790
   },
   {
     id: "stop_2",
@@ -46,7 +104,9 @@ const INITIAL_STOPS = [
     name: "The Green Grocer",
     address: "124 Oak Avenue, East Wing",
     status: "WAITING",
-    orderId: "order_green_grocer"
+    orderId: "order_green_grocer",
+    customerLat: 52.2150,
+    customerLng: 20.9830
   },
   {
     id: "stop_3",
@@ -54,7 +114,9 @@ const INITIAL_STOPS = [
     name: "Health Hub Pharmacy",
     address: "520 Medical Blvd",
     status: "QUEUED",
-    orderId: "order_health_hub"
+    orderId: "order_health_hub",
+    customerLat: 52.2190,
+    customerLng: 20.9860
   },
   {
     id: "stop_4",
@@ -62,7 +124,9 @@ const INITIAL_STOPS = [
     name: "Central Warehouse",
     address: "Distribution Center A",
     status: "QUEUED",
-    orderId: "order_central_warehouse"
+    orderId: "order_central_warehouse",
+    vendorLat: 52.2080,
+    vendorLng: 20.9720
   },
   {
     id: "stop_5",
@@ -70,7 +134,9 @@ const INITIAL_STOPS = [
     name: "Apartment Complex 42",
     address: "1001 Sunset Blvd",
     status: "QUEUED",
-    orderId: "order_apt_42"
+    orderId: "order_apt_42",
+    customerLat: 52.2210,
+    customerLng: 20.9920
   }
 ];
 const INITIAL_SHIFTS = [
