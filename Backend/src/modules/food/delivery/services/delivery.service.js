@@ -42,6 +42,30 @@ export const registerDeliveryPartner = async (payload, files) => {
             'food/delivery/license'
         );
     }
+    if (files?.drivingLicenseBackPhoto?.[0]) {
+        images.drivingLicenseBackPhoto = await uploadImageBuffer(
+            files.drivingLicenseBackPhoto[0].buffer,
+            'food/delivery/license_back'
+        );
+    }
+    if (files?.nationalIdUrl?.[0]) {
+        images.nationalIdUrl = await uploadImageBuffer(
+            files.nationalIdUrl[0].buffer,
+            'food/delivery/national_id'
+        );
+    }
+    if (files?.vehicleRegistrationUrl?.[0]) {
+        images.vehicleRegistrationUrl = await uploadImageBuffer(
+            files.vehicleRegistrationUrl[0].buffer,
+            'food/delivery/vehicle_registration'
+        );
+    }
+    if (files?.vehicleInsuranceUrl?.[0]) {
+        images.vehicleInsuranceUrl = await uploadImageBuffer(
+            files.vehicleInsuranceUrl[0].buffer,
+            'food/delivery/vehicle_insurance'
+        );
+    }
 
     const partner = await FoodDeliveryPartner.create({
         name,

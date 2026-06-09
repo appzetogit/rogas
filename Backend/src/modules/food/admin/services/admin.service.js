@@ -4403,13 +4403,13 @@ export async function getDeliveryPartnerById(id) {
         status: partner.status === 'rejected' ? 'blocked' : partner.status,
         profileImage: partner.profilePhoto ? { url: partner.profilePhoto } : null,
         documents: {
-            aadhar: (partner.aadharPhoto || partner.aadharNumber)
-                ? { number: partner.aadharNumber || null, document: partner.aadharPhoto || null }
+            drivingLicense: (partner.drivingLicensePhoto || partner.drivingLicenseNumber)
+                ? { number: partner.drivingLicenseNumber || null, document: partner.drivingLicensePhoto || null }
                 : null,
-            pan: (partner.panPhoto || partner.panNumber)
-                ? { number: partner.panNumber || null, document: partner.panPhoto || null }
-                : null,
-            drivingLicense: partner.drivingLicensePhoto ? { document: partner.drivingLicensePhoto } : null,
+            drivingLicenseBack: partner.drivingLicenseBackPhoto ? { document: partner.drivingLicenseBackPhoto } : null,
+            nationalId: partner.nationalIdUrl ? { document: partner.nationalIdUrl } : null,
+            vehicleRegistration: partner.vehicleRegistrationUrl ? { document: partner.vehicleRegistrationUrl } : null,
+            vehicleInsurance: partner.vehicleInsuranceUrl ? { document: partner.vehicleInsuranceUrl } : null,
             bankDetails:
                 partner.bankAccountHolderName || partner.bankAccountNumber || partner.bankIfscCode || partner.bankName
                     ? {

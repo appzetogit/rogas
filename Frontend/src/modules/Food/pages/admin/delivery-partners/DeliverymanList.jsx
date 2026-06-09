@@ -976,102 +976,140 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                 {/* Documents */}
                 {viewDetails.documents && (
                   <div className="pb-6 border-b border-slate-200">
-                    <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                      <FileCheck className="w-4 h-4" /> Documents
+                    <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <FileCheck className="w-4 h-4 text-emerald-600" /> Documents
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Aadhar */}
-                      {viewDetails.documents.aadhar && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Driving License Front */}
+                      <div className="p-3 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col justify-between">
                         <div>
-                          <label className="text-xs font-semibold text-slate-500 uppercase">Aadhar Card</label>
-                          <div className="mt-2">
-                            {viewDetails.documents.aadhar.number && (
-                              <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.aadhar.number}</p>
-                            )}
-                            {viewDetails.documents.aadhar.document && (
-                              <a 
-                                href={viewDetails.documents.aadhar.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                              >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
-                            )}
-                          </div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            Driving Licence (Front)
+                          </label>
+                          {viewDetails.documents.drivingLicense?.number && (
+                            <p className="text-sm font-medium text-slate-800 mb-2">
+                              Number: {viewDetails.documents.drivingLicense.number}
+                            </p>
+                          )}
                         </div>
-                      )}
+                        <div className="mt-2">
+                          {viewDetails.documents.drivingLicense?.document ? (
+                            <a 
+                              href={viewDetails.documents.drivingLicense.document} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors border border-blue-200 w-fit font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View Document
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-100 w-fit">
+                              Not uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* PAN */}
-                      {viewDetails.documents.pan && (
+                      {/* Driving License Back */}
+                      <div className="p-3 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col justify-between">
                         <div>
-                          <label className="text-xs font-semibold text-slate-500 uppercase">PAN Card</label>
-                          <div className="mt-2">
-                            {viewDetails.documents.pan.number && (
-                              <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.pan.number}</p>
-                            )}
-                            {viewDetails.documents.pan.document && (
-                              <a 
-                                href={viewDetails.documents.pan.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                              >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
-                            )}
-                          </div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            Driving Licence (Back)
+                          </label>
                         </div>
-                      )}
+                        <div className="mt-2">
+                          {viewDetails.documents.drivingLicenseBack?.document ? (
+                            <a 
+                              href={viewDetails.documents.drivingLicenseBack.document} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors border border-blue-200 w-fit font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View Document
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-100 w-fit">
+                              Not uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* Driving License */}
-                      {viewDetails.documents.drivingLicense && (
+                      {/* National ID / Passport */}
+                      <div className="p-3 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col justify-between">
                         <div>
-                          <label className="text-xs font-semibold text-slate-500 uppercase">Driving License</label>
-                          <div className="mt-2">
-                            {viewDetails.documents.drivingLicense.number && (
-                              <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.drivingLicense.number}</p>
-                            )}
-                            {viewDetails.documents.drivingLicense.expiryDate && (
-                              <p className="text-xs text-slate-500 mb-1">
-                                Expiry: {new Date(viewDetails.documents.drivingLicense.expiryDate).toLocaleDateString('en-GB')}
-                              </p>
-                            )}
-                            {viewDetails.documents.drivingLicense.document && (
-                              <a 
-                                href={viewDetails.documents.drivingLicense.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                              >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
-                            )}
-                          </div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            National ID / Passport
+                          </label>
                         </div>
-                      )}
+                        <div className="mt-2">
+                          {viewDetails.documents.nationalId?.document ? (
+                            <a 
+                              href={viewDetails.documents.nationalId.document} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors border border-blue-200 w-fit font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View Document
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-100 w-fit">
+                              Not uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* Vehicle RC */}
-                      {viewDetails.documents.vehicleRC && (viewDetails.documents.vehicleRC.number || viewDetails.documents.vehicleRC.document) && (
+                      {/* Vehicle Registration */}
+                      <div className="p-3 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col justify-between">
                         <div>
-                          <label className="text-xs font-semibold text-slate-500 uppercase">Vehicle RC</label>
-                          <div className="mt-2">
-                            {viewDetails.documents.vehicleRC.number && (
-                              <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.vehicleRC.number}</p>
-                            )}
-                            {viewDetails.documents.vehicleRC.document && (
-                              <a 
-                                href={viewDetails.documents.vehicleRC.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                              >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
-                            )}
-                          </div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            Vehicle Registration
+                          </label>
                         </div>
-                      )}
+                        <div className="mt-2">
+                          {viewDetails.documents.vehicleRegistration?.document ? (
+                            <a 
+                              href={viewDetails.documents.vehicleRegistration.document} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-55 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors border border-blue-200 w-fit font-bold"
+                              style={{ color: "#2563EB", backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View Document
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-100 w-fit">
+                              Not uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Vehicle Insurance */}
+                      <div className="p-3 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            Vehicle Insurance
+                          </label>
+                        </div>
+                        <div className="mt-2">
+                          {viewDetails.documents.vehicleInsurance?.document ? (
+                            <a 
+                              href={viewDetails.documents.vehicleInsurance.document} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors border border-blue-200 w-fit font-bold"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> View Document
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-100 w-fit">
+                              Not uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

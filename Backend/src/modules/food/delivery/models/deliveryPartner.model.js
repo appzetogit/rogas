@@ -74,6 +74,13 @@ const deliveryPartnerSchema = new mongoose.Schema(
         drivingLicensePhoto: {
             type: String
         },
+        drivingLicenseBackPhoto: {
+            type: String
+        },
+        vehicleInsuranceUrl: {
+            type: String,
+            default: ''
+        },
         status: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],

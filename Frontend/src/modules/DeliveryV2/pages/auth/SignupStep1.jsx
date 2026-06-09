@@ -1,19 +1,43 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
-import { toast } from "sonner"
-import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
-import { EMAIL_REGEX } from "@/shared/utils/emailValidation"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
+import { EMAIL_REGEX } from "@/shared/utils/emailValidation";
 
+const COLORS = {
+  primary: "#1F7A63",
+  primaryContainer: "#1F7A63",
+  onPrimary: "#ffffff",
+  surface: "#F5F5F0",
+  surfaceContainer: "#ebefeb",
+  surfaceContainerLow: "#f1f4f1",
+  surfaceContainerHigh: "#e5e9e5",
+  surfaceContainerLowest: "#ffffff",
+  onSurface: "#2B2B2B",
+  onSurfaceVariant: "#5d5f5b",
+  outline: "#6e7a74",
+  outlineVariant: "#bec9c3",
+};
+
+const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
+  <span
+    className={`material-symbols-outlined ${className}`}
+    style={{
+      fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+      ...style,
+    }}
+  >
+    {name}
+  </span>
+);
 
 export default function SignupStep1() {
-  const navigate = useNavigate()
-  const goBack = useDeliveryBackNavigation()
+  const navigate = useNavigate();
+  const goBack = useDeliveryBackNavigation();
+  const [focusedField, setFocusedField] = useState(null);
+
   const [formData, setFormData] = useState(() => {
-    const saved = sessionStorage.getItem("deliverySignupDetails")
+    const saved = sessionStorage.getItem("deliverySignupDetails");
     const base = {
       name: "",
       phone: "",
@@ -27,169 +51,152 @@ export default function SignupStep1() {
       vehicleName: "",
       vehicleNumber: "",
       drivingLicenseNumber: "",
-      panNumber: "",
-      aadharNumber: ""
-    }
+    };
     if (saved) {
       try {
-        return { ...base, ...JSON.parse(saved) }
+        const parsed = JSON.parse(saved);
+        // Omit legacy fields if present
+        delete parsed.aadharNumber;
+        delete parsed.panNumber;
+        return { ...base, ...parsed };
       } catch (e) {
-        debugError("Error parsing saved details:", e)
+        // Ignore
       }
     }
-    return base
-  })
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+    return base;
+  });
+
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sanitizeLocationValue = (value) =>
-    value.replace(/[^A-Za-z\s.-]/g, "").replace(/\s{2,}/g, " ")
+    value.replace(/[^A-Za-z\s.-]/g, "").replace(/\s{2,}/g, " ");
 
   const sanitizeNameValue = (value) =>
-    value.replace(/[^A-Za-z\s]/g, "").replace(/\s{2,}/g, " ")
+    value.replace(/[^A-Za-z\s]/g, "").replace(/\s{2,}/g, " ");
 
   const isValidLocationValue = (value) =>
-    /^[A-Za-z][A-Za-z\s.-]*[A-Za-z.]$/.test(value.trim())
+    /^[A-Za-z][A-Za-z\s.-]*[A-Za-z.]$/.test(value.trim());
 
   const isValidNameValue = (value) =>
-    /^[A-Za-z][A-Za-z\s]*[A-Za-z]$/.test(value.trim())
+    /^[A-Za-z][A-Za-z\s]*[A-Za-z]$/.test(value.trim());
 
   const isValidEmailValue = (value) => {
-    const normalizedValue = value.trim()
-    return EMAIL_REGEX.test(normalizedValue)
-  }
+    const normalizedValue = value.trim();
+    return EMAIL_REGEX.test(normalizedValue);
+  };
 
   const sanitizeEmailValue = (value) =>
-    value.replace(/\s/g, "").toLowerCase()
+    value.replace(/\s/g, "").toLowerCase();
 
-  // Save data to session storage whenever formData changes
   useEffect(() => {
-    sessionStorage.setItem("deliverySignupDetails", JSON.stringify(formData))
-  }, [formData])
+    sessionStorage.setItem("deliverySignupDetails", JSON.stringify(formData));
+  }, [formData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    let updatedValue = value
+    const { name, value } = e.target;
+    let updatedValue = value;
 
-    // Auto-uppercase for Vehicle, DL and PAN numbers
-    if (name === "vehicleNumber" || name === "panNumber" || name === "drivingLicenseNumber") {
-      updatedValue = value.toUpperCase()
+    if (name === "vehicleNumber" || name === "drivingLicenseNumber") {
+      updatedValue = value.toUpperCase();
     }
 
     if (name === "name") {
-      updatedValue = sanitizeNameValue(value)
+      updatedValue = sanitizeNameValue(value);
     }
 
     if (name === "vehicleNumber") {
-      updatedValue = updatedValue.slice(0, 10)
+      updatedValue = updatedValue.slice(0, 10);
     }
 
     if (name === "drivingLicenseNumber") {
-      updatedValue = updatedValue.replace(/[^A-Z0-9]/g, "").slice(0, 15)
-    }
-
-    // Restrict Aadhaar to numeric only
-    if (name === "aadharNumber") {
-      updatedValue = value.replace(/\D/g, "").slice(0, 12)
+      updatedValue = updatedValue.replace(/[^A-Z0-9]/g, "").slice(0, 15);
     }
 
     if (name === "city" || name === "state") {
-      updatedValue = sanitizeLocationValue(value)
+      updatedValue = sanitizeLocationValue(value);
     }
 
     if (name === "email") {
-      updatedValue = sanitizeEmailValue(value)
-      // Real-time validation for email
+      updatedValue = sanitizeEmailValue(value);
       if (updatedValue && !isValidEmailValue(updatedValue)) {
-        setErrors(prev => ({ ...prev, email: "Please enter a valid email address (e.g., aaa@gmail.com)" }))
+        setErrors((prev) => ({ ...prev, email: "Please enter a valid email address" }));
       } else if (!updatedValue) {
-        setErrors(prev => ({ ...prev, email: "Email is required" }))
+        setErrors((prev) => ({ ...prev, email: "Email is required" }));
       } else {
-        setErrors(prev => ({ ...prev, email: "" }))
+        setErrors((prev) => ({ ...prev, email: "" }));
       }
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: updatedValue
-    }))
-    // Clear error for this field (except email which we handled above)
+      [name]: updatedValue,
+    }));
+
     if (name !== "email" && errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ""
-      }))
+        [name]: "",
+      }));
     }
-  }
+  };
 
   const validate = () => {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required"
+      newErrors.name = "Name is required";
     } else if (!isValidNameValue(formData.name)) {
-      newErrors.name = "Name can contain letters only"
+      newErrors.name = "Name can contain letters only";
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required"
+      newErrors.email = "Email is required";
     } else if (!isValidEmailValue(formData.email)) {
-      newErrors.email = "Please enter a valid email address (e.g., aaa@gmail.com)"
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.address.trim()) {
-      newErrors.address = "Address is required"
+      newErrors.address = "Address is required";
     }
 
     if (!formData.city.trim()) {
-      newErrors.city = "City is required"
+      newErrors.city = "City is required";
     } else if (!isValidLocationValue(formData.city)) {
-      newErrors.city = "City can contain letters only"
+      newErrors.city = "City can contain letters only";
     }
 
     if (!formData.state.trim()) {
-      newErrors.state = "State is required"
+      newErrors.state = "State is required";
     } else if (!isValidLocationValue(formData.state)) {
-      newErrors.state = "State can contain letters only"
+      newErrors.state = "State can contain letters only";
     }
 
     if (!formData.vehicleNumber.trim()) {
-      newErrors.vehicleNumber = "Vehicle number is required"
+      newErrors.vehicleNumber = "Vehicle number is required";
     } else if (!/^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(formData.vehicleNumber)) {
-      newErrors.vehicleNumber = "Invalid Indian vehicle number format (e.g., MH12AB1234)"
+      newErrors.vehicleNumber = "Invalid format (e.g., MH12AB1234)";
     }
 
     if (!formData.drivingLicenseNumber.trim()) {
-      newErrors.drivingLicenseNumber = "Driving license number is required"
+      newErrors.drivingLicenseNumber = "Driving license is required";
     } else if (!/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(formData.drivingLicenseNumber)) {
-      newErrors.drivingLicenseNumber = "Invalid DL format (e.g., MH1220110012345)"
+      newErrors.drivingLicenseNumber = "Invalid DL format (e.g., MH1220110012345)";
     }
 
-    if (!formData.panNumber.trim()) {
-      newErrors.panNumber = "PAN number is required"
-    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-      newErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)"
-    }
-
-    if (!formData.aadharNumber.trim()) {
-      newErrors.aadharNumber = "Aadhar number is required"
-    } else if (!/^\d{12}$/.test(formData.aadharNumber.replace(/\s/g, ""))) {
-      newErrors.aadharNumber = "Aadhar number must be 12 digits"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validate()) {
-      toast.error("Please fill all required fields correctly")
-      return
+      toast.error("Please fill all required fields correctly");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
       const details = {
@@ -205,252 +212,376 @@ export default function SignupStep1() {
         vehicleName: formData.vehicleName?.trim() || "",
         vehicleNumber: formData.vehicleNumber.trim(),
         drivingLicenseNumber: formData.drivingLicenseNumber.trim().toUpperCase(),
-        panNumber: formData.panNumber.trim().toUpperCase(),
-        aadharNumber: formData.aadharNumber.replace(/\s/g, "")
-      }
-      sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details))
-      toast.success("Details saved")
-      navigate("/food/delivery/signup/documents")
+      };
+      sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
+      toast.success("Details saved");
+      navigate("/food/delivery/signup/documents");
     } catch (error) {
-      debugError("Error saving details:", error)
-      toast.error("Failed to save. Please try again.")
+      toast.error("Failed to save. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
+
+  const getInputStyle = (name) => ({
+    width: "100%",
+    height: "48px",
+    padding: "0 16px",
+    boxSizing: "border-box",
+    background: "#ffffff",
+    border: `1px solid ${errors[name] ? "#C5221F" : focusedField === name ? COLORS.primary : COLORS.outlineVariant}`,
+    borderRadius: "12px",
+    fontSize: "16px",
+    color: COLORS.onSurface,
+    outline: focusedField === name ? `1.5px solid ${COLORS.primary}` : "none",
+    transition: "border 0.15s, outline 0.15s",
+    fontFamily: "inherit",
+  });
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white px-4 py-3 flex items-center gap-4 border-b border-gray-200">
-        <button
-          onClick={goBack}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+    <>
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
+        rel="stylesheet"
+      />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet"
+      />
+
+      <div
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          background: COLORS.surface,
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <header
+          style={{
+            width: "100%",
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            background: COLORS.surface,
+            borderBottom: `1px solid ${COLORS.outlineVariant}`,
+          }}
         >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-medium">Complete Your Profile</h1>
-      </div>
-
-      {/* Content */}
-      <div className="px-4 py-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Basic Details</h2>
-          <p className="text-sm text-gray-600">Please provide your information to continue</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              inputMode="text"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.name ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="Enter your full name"
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="email"
-              inputMode="email"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="Enter your email"
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
-
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              rows={3}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.address ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="Enter your address"
-            />
-            {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
-          </div>
-
-          {/* City and State */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.city ? "border-red-500" : "border-gray-300"
-                  }`}
-                placeholder="City"
-              />
-              {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                State <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.state ? "border-red-500" : "border-gray-300"
-                  }`}
-                placeholder="State"
-              />
-              {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
-            </div>
-          </div>
-
-          {/* Vehicle Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Vehicle Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="vehicleType"
-              value={formData.vehicleType}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+          <div style={{ display: "flex", alignItems: "center", padding: "0 16px", height: "56px" }}>
+            <button
+              onClick={goBack}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "8px",
+                borderRadius: "9999px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: COLORS.primary,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.surfaceContainerLow)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
             >
-              <option value="bike">Bike</option>
-              <option value="scooter">Scooter</option>
-              <option value="bicycle">Bicycle</option>
-              <option value="car">Car</option>
-            </select>
+              <MaterialIcon name="arrow_back" style={{ color: COLORS.primary }} />
+            </button>
+            <h1
+              style={{
+                marginLeft: "16px",
+                fontSize: "18px",
+                lineHeight: "24px",
+                fontWeight: 600,
+                color: COLORS.primary,
+              }}
+            >
+              Complete Profile
+            </h1>
           </div>
+        </header>
 
-          {/* Vehicle Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Vehicle Name/Model (Optional)
-            </label>
-            <input
-              type="text"
-              name="vehicleName"
-              value={formData.vehicleName}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="e.g., Honda Activa"
-            />
-          </div>
-
-          {/* Vehicle Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Vehicle Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="vehicleNumber"
-              value={formData.vehicleNumber}
-              onChange={handleChange}
-              maxLength={10}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.vehicleNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="e.g., MH12AB1234"
-            />
-            {errors.vehicleNumber && <p className="text-red-500 text-sm mt-1">{errors.vehicleNumber}</p>}
-          </div>
-
-          {/* Driving License Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Driving License Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="drivingLicenseNumber"
-              value={formData.drivingLicenseNumber}
-              onChange={handleChange}
-              maxLength={15}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 uppercase ${errors.drivingLicenseNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="e.g., MH1220110012345"
-            />
-            {errors.drivingLicenseNumber && <p className="text-red-500 text-sm mt-1">{errors.drivingLicenseNumber}</p>}
-          </div>
-
-          {/* PAN Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              PAN Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="panNumber"
-              value={formData.panNumber}
-              onChange={handleChange}
-              maxLength={10}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 uppercase ${errors.panNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="ABCDE1234F"
-            />
-            {errors.panNumber && <p className="text-red-500 text-sm mt-1">{errors.panNumber}</p>}
-          </div>
-
-          {/* Aadhar Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aadhar Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="aadharNumber"
-              value={formData.aadharNumber}
-              onChange={handleChange}
-              maxLength={12}
-              inputMode="numeric"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.aadharNumber ? "border-red-500" : "border-gray-300"
-                }`}
-              placeholder="123456789012"
-            />
-            {errors.aadharNumber && <p className="text-red-500 text-sm mt-1">{errors.aadharNumber}</p>}
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || !formData.email || !isValidEmailValue(formData.email) || Object.values(errors).some(error => error !== "")}
-            className={`w-full py-4 rounded-lg font-bold text-white text-base transition-colors mt-6 ${isSubmitting || !formData.email || !isValidEmailValue(formData.email) || Object.values(errors).some(error => error !== "")
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-[#00B761] hover:bg-[#00A055]"
-              }`}
+        {/* Main */}
+        <main
+          style={{
+            flexGrow: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px 16px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "480px",
+              background: COLORS.surfaceContainerLowest,
+              border: `1px solid ${COLORS.outlineVariant}`,
+              borderRadius: "12px",
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            }}
           >
-            {isSubmitting ? "Saving..." : "Continue"}
-          </button>
-        </form>
+            {/* Step Progress */}
+            <section style={{ marginBottom: "8px" }}>
+              <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                <h2 style={{ fontSize: "18px", lineHeight: "24px", fontWeight: 600, margin: 0 }}>
+                  3-step registration
+                </h2>
+                <p style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, marginTop: "4px", marginBottom: 0 }}>
+                  Step 1: Basic Details
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
+                {[1, 2, 3].map((step, i) => (
+                  <div key={step} style={{ display: "flex", alignItems: "center", flexGrow: i < 2 ? 1 : 0 }}>
+                    <div style={{
+                      width: "40px", height: "40px", borderRadius: "9999px",
+                      background: step <= 1 ? COLORS.primary : COLORS.surfaceContainer,
+                      color: step <= 1 ? "#fff" : COLORS.secondary,
+                      border: step > 1 ? `1px solid ${COLORS.outlineVariant}` : "none",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 700, fontSize: "16px", flexShrink: 0, zIndex: 1,
+                      boxShadow: step === 1 ? `0 0 0 6px rgba(158,243,215,0.3)` : "none",
+                    }}>
+                      {step}
+                    </div>
+                    {i < 2 && (
+                      <div style={{
+                        height: "2px", flexGrow: 1, margin: "0 8px",
+                        background: step < 1 ? COLORS.primary : COLORS.outlineVariant,
+                      }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Title section */}
+            <div>
+              <h2 style={{ fontSize: "22px", lineHeight: "28px", fontWeight: 700, color: COLORS.onSurface, margin: "0 0 4px" }}>
+                Basic Details
+              </h2>
+              <p style={{ fontSize: "14px", lineHeight: "20px", color: COLORS.onSurfaceVariant, margin: 0 }}>
+                Please provide your information to continue
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Name */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Full Name <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("name")}
+                  onBlur={() => setFocusedField(null)}
+                  style={getInputStyle("name")}
+                  placeholder="Enter your full name"
+                />
+                {errors.name && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.name}</p>}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Email <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  style={getInputStyle("email")}
+                  placeholder="Enter your email"
+                />
+                {errors.email && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.email}</p>}
+              </div>
+
+              {/* Address */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Address <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("address")}
+                  onBlur={() => setFocusedField(null)}
+                  rows={3}
+                  style={{
+                    ...getInputStyle("address"),
+                    height: "auto",
+                    padding: "12px 16px",
+                  }}
+                  placeholder="Enter your address"
+                />
+                {errors.address && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.address}</p>}
+              </div>
+
+              {/* City & State */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                    City <span style={{ color: "#C5221F" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField("city")}
+                    onBlur={() => setFocusedField(null)}
+                    style={getInputStyle("city")}
+                    placeholder="City"
+                  />
+                  {errors.city && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.city}</p>}
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                    State <span style={{ color: "#C5221F" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField("state")}
+                    onBlur={() => setFocusedField(null)}
+                    style={getInputStyle("state")}
+                    placeholder="State"
+                  />
+                  {errors.state && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.state}</p>}
+                </div>
+              </div>
+
+              {/* Vehicle Type */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Vehicle Type <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <select
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("vehicleType")}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    ...getInputStyle("vehicleType"),
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="bike">Bike</option>
+                  <option value="scooter">Scooter</option>
+                  <option value="bicycle">Bicycle</option>
+                  <option value="car">Car</option>
+                </select>
+              </div>
+
+              {/* Vehicle Name */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Vehicle Name/Model (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="vehicleName"
+                  value={formData.vehicleName}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("vehicleName")}
+                  onBlur={() => setFocusedField(null)}
+                  style={getInputStyle("vehicleName")}
+                  placeholder="e.g., Honda Activa"
+                />
+              </div>
+
+              {/* Vehicle Number */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Vehicle Number <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="vehicleNumber"
+                  value={formData.vehicleNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("vehicleNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  maxLength={10}
+                  style={getInputStyle("vehicleNumber")}
+                  placeholder="e.g., MH12AB1234"
+                />
+                {errors.vehicleNumber && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.vehicleNumber}</p>}
+              </div>
+
+              {/* Driving License Number */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
+                  Driving License Number <span style={{ color: "#C5221F" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="drivingLicenseNumber"
+                  value={formData.drivingLicenseNumber}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField("drivingLicenseNumber")}
+                  onBlur={() => setFocusedField(null)}
+                  maxLength={15}
+                  style={getInputStyle("drivingLicenseNumber")}
+                  placeholder="e.g., MH1220110012345"
+                />
+                {errors.drivingLicenseNumber && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.drivingLicenseNumber}</p>}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting || !formData.email || !isValidEmailValue(formData.email) || Object.values(errors).some((err) => err !== "")}
+                style={{
+                  width: "100%",
+                  height: "52px",
+                  background: COLORS.primaryContainer,
+                  color: "#ffffff",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  borderRadius: "12px",
+                  border: "none",
+                  cursor: (isSubmitting || !formData.email || !isValidEmailValue(formData.email) || Object.values(errors).some((err) => err !== "")) ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: "16px",
+                  transition: "opacity 0.2s, transform 0.2s",
+                  opacity: (isSubmitting || !formData.email || !isValidEmailValue(formData.email) || Object.values(errors).some((err) => err !== "")) ? 0.6 : 1,
+                }}
+                onMouseDown={(e) => {
+                  if (!isSubmitting && formData.email && isValidEmailValue(formData.email) && !Object.values(errors).some((err) => err !== "")) {
+                    e.currentTarget.style.transform = "scale(0.98)";
+                  }
+                }}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                {isSubmitting ? "Saving..." : "Continue"}
+              </button>
+            </form>
+          </div>
+        </main>
       </div>
-    </div>
-  )
+    </>
+  );
 }
-
-
