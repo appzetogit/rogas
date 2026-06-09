@@ -22,6 +22,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
     try {
         const {
             vendorId,
+            zoneId,
             mealPlanId,
             meals,
             duration,
@@ -63,6 +64,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
         const subscription = await createSubscription({
             userId,
             vendorId,
+            zoneId,
             mealPlanId: mealPlanId || undefined,
             meals: finalMeals,
             duration: duration || 'weekly',

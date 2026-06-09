@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { IMAGES } from "../types";
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%'
+};
 import { restaurantAPI, dmbCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 
@@ -136,13 +142,62 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Map & Zone state
+  const [zones, setZones] = useState([]);
+  const [selectedZone, setSelectedZone] = useState("");
+  const [lat, setLat] = useState(28.6139); // default
+  const [lng, setLng] = useState(77.2090);
+  const [showMap, setShowMap] = useState(false);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+  });
+
+  const fetchAddressFromCoordinates = (latitude, longitude) => {
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setAddress(results[0].formatted_address);
+        }
+      });
+    }
+  };
+
+  const handleLiveLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        setLat(latitude);
+        setLng(longitude);
+        fetchAddressFromCoordinates(latitude, longitude);
+        setShowMap(true);
+      }, (error) => {
+        alert('Failed to get live location. Please allow location permissions.');
+      });
+    } else {
+      alert('Geolocation is not supported by your browser');
+    }
+  };
+
+  const onMapClick = (e) => {
+    const latitude = e.latLng.lat();
+    const longitude = e.latLng.lng();
+    setLat(latitude);
+    setLng(longitude);
+    fetchAddressFromCoordinates(latitude, longitude);
+  };
+
   useEffect(() => {
     const fetchPlansAndDurations = async () => {
       try {
         setLoading(true);
-        const [plansRes, durationsRes] = await Promise.all([
+        const [plansRes, durationsRes, zonesRes] = await Promise.all([
           dmbCustomerAPI.getVendorPlans(vendorId),
-          dmbCustomerAPI.getDurationPlans()
+          dmbCustomerAPI.getDurationPlans(),
+          dmbCustomerAPI.getPublicZones()
         ]);
         
         const plans = plansRes.data?.mealPlans || [];
@@ -150,6 +205,9 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
         const durations = durationsRes.data?.durations || [];
         setDurationPlans(durations);
+
+        const activeZones = zonesRes.data?.data?.zones || zonesRes.data?.zones || [];
+        setZones(activeZones);
         
         // Auto-select "weekly" plan if it exists, or fallback to first duration plan
         const defaultDur = durations.find(d => d.code === "weekly") || durations[0] || null;
@@ -223,6 +281,10 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       alert("Please select at least one meal plan");
       return;
     }
+    if (!selectedZone) {
+      alert("Please select a delivery zone");
+      return;
+    }
     if (!address.trim()) {
       alert("Please enter a delivery address");
       return;
@@ -230,12 +292,22 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     onProceedToCheckout({
       vendorId,
       vendorName,
+      zoneId: selectedZone,
       meals: selectedMealsList,
       duration: selectedDuration?.code || "weekly",
       durationLabel: selectedDuration?.label || "Weekly",
       deliverySlot: selectedSlot,
       deliveryDays: selectedDays,
-      deliveryAddress: address,
+      deliveryAddress: {
+        street: address,
+        city: "Local",
+        state: "Local",
+        label: "Home",
+        location: {
+          type: "Point",
+          coordinates: [lng, lat]
+        }
+      },
       pricing: {
         basePricePerDay,
         deliveryFeePerDay: 0,
@@ -394,16 +466,66 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 </div>
               </section>
 
-              {/* Step 5: Delivery Address */}
+              {/* Step 5: Delivery Address & Zone */}
               <section>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Service Zone</h3>
+                <div className="bg-white rounded-xl border-2 border-[#e4e2e1] overflow-hidden mb-4">
+                  <select 
+                    value={selectedZone} 
+                    onChange={(e) => setSelectedZone(e.target.value)}
+                    className="w-full bg-transparent px-4 py-3 text-[13px] text-[#1b1c1c] font-medium outline-none"
+                  >
+                    <option value="">Select your Zone</option>
+                    {zones.map(z => (
+                      <option key={z._id} value={z._id}>{z.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Address</h3>
-                <textarea
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="e.g. 42 MG Road, Apartment 3B, Bangalore – 560001"
-                  rows={3}
-                  className="w-full px-4 py-3 bg-[#f9f9f7] border-2 border-[#e4e2e1] focus:border-primary rounded-xl text-[13px] font-medium text-[#1b1c1c] resize-none focus:outline-none transition-colors"
-                />
+                <div className="bg-white rounded-xl p-3 border-2 border-[#e4e2e1] space-y-3">
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter full address or select on map"
+                    rows={2}
+                    className="w-full bg-[#f9f9f7] rounded-lg px-3 py-2 text-[13px] font-medium text-[#1b1c1c] resize-none focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setShowMap(!showMap)} 
+                      className="flex-1 py-2 rounded-lg text-[12px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 transition-colors active:bg-primary/5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">location_on</span>
+                      {showMap ? 'Hide Map' : 'Set on Map'}
+                    </button>
+                    <button 
+                      onClick={handleLiveLocation} 
+                      className="flex-1 py-2 rounded-lg text-[12px] font-bold bg-[#1F7A63]/10 text-[#1F7A63] flex items-center justify-center gap-1.5 transition-colors active:bg-[#1F7A63]/20"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">my_location</span>
+                      Live Location
+                    </button>
+                  </div>
+                  
+                  {showMap && (
+                    <div className="h-[200px] w-full rounded-lg overflow-hidden border border-[#e4e2e1] relative z-0">
+                      {isLoaded ? (
+                        <GoogleMap
+                          mapContainerStyle={mapContainerStyle}
+                          center={{ lat, lng }}
+                          zoom={14}
+                          onClick={onMapClick}
+                          options={{ disableDefaultUI: true, zoomControl: true }}
+                        >
+                          <Marker position={{ lat, lng }} />
+                        </GoogleMap>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-[#6e7a74] text-[12px] bg-[#f9f9f7]">Loading Map...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </section>
 
               {/* Price Summary */}
@@ -442,7 +564,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
               {/* CTA */}
               <button
                 onClick={handleProceed}
-                disabled={selectedMealsList.length === 0 || !address.trim()}
+                disabled={selectedMealsList.length === 0 || !selectedZone || !address.trim()}
                 className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">shopping_cart</span>

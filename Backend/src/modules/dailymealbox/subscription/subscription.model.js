@@ -46,6 +46,12 @@ const subscriptionSchema = new mongoose.Schema(
             required: true,
             index: true
         },
+        /** Delivery zone for the subscription */
+        zoneId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodZone',
+            index: true
+        },
         /** Meal plan subscribed to (kept for backward compatibility, now optional) */
         mealPlanId: {
             type: mongoose.Schema.Types.ObjectId,

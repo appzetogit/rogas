@@ -14,6 +14,7 @@ import { logger } from '../../../utils/logger.js';
 export const createSubscription = async ({
     userId,
     vendorId,
+    zoneId,
     mealPlanId,
     meals,
     duration,
@@ -36,9 +37,17 @@ export const createSubscription = async ({
         finalMeals = [{ mealPlanId, quantity: 1 }];
     }
 
-    // Normalize deliveryAddress if it is passed as a string
+    // Normalize deliveryAddress
     let finalAddress = deliveryAddress;
-    if (typeof deliveryAddress === 'string') {
+    if (typeof deliveryAddress === 'object' && deliveryAddress.location) {
+        finalAddress = {
+            street: deliveryAddress.street || deliveryAddress.address || '',
+            city: deliveryAddress.city || 'Local',
+            state: deliveryAddress.state || 'Local',
+            label: deliveryAddress.label || 'Home',
+            location: deliveryAddress.location
+        };
+    } else if (typeof deliveryAddress === 'string') {
         const parts = deliveryAddress.split(',').map(p => p.trim());
         let city = 'Local';
         let state = 'Local';
@@ -62,6 +71,7 @@ export const createSubscription = async ({
     const subscription = await DMBSubscription.create({
         userId,
         vendorId,
+        zoneId: zoneId || undefined,
         mealPlanId: mealPlanId || undefined,
         meals: finalMeals || [],
         duration: duration || 'weekly',

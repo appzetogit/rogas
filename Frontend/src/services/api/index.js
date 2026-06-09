@@ -465,6 +465,13 @@ export const adminAPI = {
       ...config,
     }),
 
+  /** Public zones (user app) */
+  getPublicZones: (params = {}, config = {}) =>
+    userClient.get("/food/restaurant/zones/public", {
+      params: params ?? {},
+      ...config,
+    }),
+
   /** Offers & Coupons (admin) */
   getAllOffers: (params = {}) =>
     adminClient.get("/food/admin/offers", { params }),
@@ -1970,6 +1977,7 @@ export const dmbVendorAPI = {
 export const dmbCustomerAPI = {
   /** Get vendor's active meal menu (public, no auth) */
   getVendorMenu: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
+  getPublicZones: (params = {}) => userClient.get("/food/restaurant/zones/public", { params }),
   /** Get vendor's subscription plan options (public, no auth) */
   getVendorPlans: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/plans`),
   /** Create Razorpay order + pending subscription (auth: USER) */

@@ -56,6 +56,7 @@ export function CheckoutScreen({
       // Step 2: Create order on backend
       const orderRes = await dmbCustomerAPI.createSubscriptionOrder({
         vendorId: plan.vendorId,
+        zoneId: plan.zoneId,
         meals: plan.meals, // array of { mealPlanId, quantity }
         duration: plan.duration,
         deliveryDays: plan.deliveryDays,
@@ -180,7 +181,9 @@ export function CheckoutScreen({
               </div>
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">Delivery Address</span>
-                <span className="font-bold text-right max-w-[180px] text-[12px] leading-snug">{plan.deliveryAddress || "—"}</span>
+                <span className="font-bold text-right max-w-[180px] text-[12px] leading-snug">
+                  {typeof plan.deliveryAddress === 'object' ? (plan.deliveryAddress.street || plan.deliveryAddress.address) : (plan.deliveryAddress || "—")}
+                </span>
               </div>
             </div>
 

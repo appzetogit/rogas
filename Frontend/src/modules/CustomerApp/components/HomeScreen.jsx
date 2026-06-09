@@ -346,7 +346,7 @@ export function HomeScreen({
         ) : (
           <>
             {/* Today's Meal */}
-            {todayMeal && renderMealCard(todayMeal, "Today's Delivery", true)}
+            {/* {todayMeal && renderMealCard(todayMeal, "Today's Delivery", true)} */}
 
             {/* Tomorrow's Meal */}
             {tomorrowMealData && renderMealCard(tomorrowMealData, "Tomorrow's Delivery")}

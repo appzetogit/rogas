@@ -90,6 +90,9 @@ router.get('/offers', cacheResponse(300, 'offers'), listPublicOffersController);
 // Public: categories list (zone-aware; returns zone categories + global)
 router.get('/categories/public', cacheResponse(600, 'categories'), listCategoriesController);
 
+// Public: active zones for customer app
+router.get('/zones/public', listZonesController);
+
 // Active Zones for restaurant
 router.get('/zones', authMiddleware, requireRestaurant, listZonesController);
 
