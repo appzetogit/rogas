@@ -90,6 +90,7 @@ function NewDeliveryDashboard() {
             boxCount: o.meals?.reduce((acc, m) => acc + (m.quantity || 1), 0) || 1,
             status: o.status,
             deliveryPin: o.deliveryPin,
+            pin: o.pin,
             pickupTimeStr: o.deliverySlot,
             dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00')
           }));

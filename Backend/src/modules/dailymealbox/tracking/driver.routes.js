@@ -71,8 +71,40 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             .populate('userId', 'name phone')
             .sort({ deliverySlot: 1 });
 
+        // Retrieve collection batches for this driver to fetch the OTP (vendor pin)
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const batches = await CollectionBatch.find({
+            driverId: (req.user.userId || req.user._id),
+            deliveryDate: { $gte: today, $lt: tomorrow }
+        });
+
+        // Create a map of orderId string to collection PIN (OTP)
+        const batchOtpMap = new Map();
+        for (const batch of batches) {
+            if (batch.orderIds && batch.collectionPinHash) {
+                for (const oId of batch.orderIds) {
+                    batchOtpMap.set(oId.toString(), batch.collectionPinHash);
+                }
+            }
+        }
+
+        const ordersWithPins = [];
+        for (const order of orders) {
+            const orderObj = order.toObject();
+            orderObj.pin = batchOtpMap.get(order._id.toString()) || '4901';
+
+            if (!orderObj.deliveryPin) {
+                const randomPin = String(Math.floor(1000 + Math.random() * 9000));
+                orderObj.deliveryPin = randomPin;
+                // Save it asynchronously in the database
+                DMBDailyOrder.updateOne({ _id: order._id }, { $set: { deliveryPin: randomPin } })
+                    .catch(err => console.error(`Error background updating deliveryPin: ${err.message}`));
+            }
+            ordersWithPins.push(orderObj);
+        }
+
         // Build stop list: pickups first, then deliveries
-        const stops = orders.map((order, idx) => ({
+        const stops = ordersWithPins.map((order, idx) => ({
             order: idx + 1,
             type: order.status === 'out_for_delivery' || order.status === 'picked_up' ? 'delivery' : 'pickup',
             orderId: order._id,
@@ -92,7 +124,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             boxNumber: idx + 1
         }));
 
-        res.json({ success: true, stops, orders, totalBoxes: orders.length });
+        res.json({ success: true, stops, orders: ordersWithPins, totalBoxes: ordersWithPins.length });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

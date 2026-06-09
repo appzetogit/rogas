@@ -342,7 +342,15 @@ export const getTodayAndTomorrowMeals = async (userId) => {
 
     // Refresh meal names from latest DMBDailyMenu for each order
     for (const order of orderDocs) {
+        let dirty = false;
+        if (!order.deliveryPin) {
+            order.deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
+            dirty = true;
+        }
         await refreshMealNameFromDailyMenu(order);
+        if (dirty) {
+            await order.save().catch(err => logger.error(`Error saving generated deliveryPin: ${err.message}`));
+        }
     }
 
     // Now populate for formatting
@@ -395,7 +403,15 @@ export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
             .sort({ deliveryDate: 1 })
             .limit(50);
         for (const order of orderDocs) {
+            let dirty = false;
+            if (!order.deliveryPin) {
+                order.deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
+                dirty = true;
+            }
             await refreshMealNameFromDailyMenu(order);
+            if (dirty) {
+                await order.save().catch(err => logger.error(`Error saving generated deliveryPin: ${err.message}`));
+            }
         }
     }
 
@@ -642,5 +658,7 @@ const formatOrderCard = (order) => ({
         quantity: m.quantity
     })),
     pricing: order.pricing,
-    subscriptionId: order.subscriptionId
+    subscriptionId: order.subscriptionId,
+    deliveryPin: order.deliveryPin || '',
+    deliveryAddress: order.deliveryAddress
 });

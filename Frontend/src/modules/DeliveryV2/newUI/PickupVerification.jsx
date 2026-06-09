@@ -205,7 +205,7 @@ const PickupVerification = ({
     /* Informative Help / Tip */
   }
         <p className="text-center text-[10px] font-bold text-amber-600 bg-amber-50 rounded-md py-1 border border-amber-100">
-          Hint: The merchant collection PIN is <span className="font-black underline scale-110 px-1 inline-block">4901</span>
+          Hint: The merchant collection PIN is <span className="font-black underline scale-110 px-1 inline-block">{order?.pin || "4901"}</span>
         </p>
 
         {
