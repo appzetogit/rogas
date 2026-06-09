@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Info, Gift, CalendarDays, ShieldCheck } from "lucide-react";
+import { deliveryAPI } from "@food/api";
 const EarningsView = ({ stats }) => {
   const [activeTab, setActiveTab] = useState("today");
   const getTotalsByTab = () => {
@@ -40,6 +41,24 @@ const EarningsView = ({ stats }) => {
     }
   };
   const data = getTotalsByTab();
+
+  const [walletBalance, setWalletBalance] = useState(0);
+  
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        const walletResponse = await deliveryAPI.getWallet();
+        const resData = walletResponse?.data;
+        const wallet = (resData?.success && resData?.data?.wallet) || resData?.wallet || resData?.data || resData;
+        const balance = Number(wallet?.totalBalance || wallet?.balance || wallet?.pocketBalance || 0);
+        setWalletBalance(balance);
+      } catch (error) {
+        console.error("Error fetching wallet balance:", error);
+      }
+    };
+    fetchWalletBalance();
+  }, []);
+
   return <div className="space-y-4 pb-12 animate-fadeIn text-gray-800">
       {
     /* Tab Switchers */
@@ -66,7 +85,7 @@ const EarningsView = ({ stats }) => {
         </div>
         
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-extrabold text-[#00604c] tracking-tight">{data.total.toFixed(2)}</span>
+          <span className="text-3xl font-extrabold text-[#00604c] tracking-tight">{walletBalance > 0 ? walletBalance.toFixed(2) : data.total.toFixed(2)}</span>
           <span className="text-sm font-bold text-[#00604c] opacity-80 uppercase">PLN</span>
         </div>
 

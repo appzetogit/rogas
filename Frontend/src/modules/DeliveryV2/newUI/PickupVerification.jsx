@@ -1,13 +1,16 @@
 import { useState, useRef } from "react";
 import { MapPin, Phone, CheckSquare, Square, Box, AlertTriangle, ArrowLeft, Navigation, CheckCircle } from "lucide-react";
+import { dmbDeliveryAPI } from "../../../services/api";
+
 const PickupVerification = ({
   order,
   onGoBack,
   onConfirmPickup,
   onReportIssue
 }) => {
-  const [items, setItems] = useState(order.items);
-  const [pinDigits, setPinDigits] = useState(["4", "9", "0", ""]);
+  const defaultItems = order?.items || [{ id: 1, name: 'Meal Boxes', quantity: order?.boxCount || 1, checked: false }];
+  const [items, setItems] = useState(defaultItems);
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [showError, setShowError] = useState(false);
   const [success, setSuccess] = useState(false);
   const inputsRef = useRef([]);
@@ -38,19 +41,30 @@ const PickupVerification = ({
       inputsRef.current[index - 1]?.focus();
     }
   };
-  const handleConfirm = () => {
+  const [isVerifying, setIsVerifying] = useState(false);
+  const handleConfirm = async () => {
     const finalPin = pinDigits.join("");
-    if (finalPin === "4901") {
+    if (finalPin.length === 4) {
       if (!allChecked) {
-        setShowError(true);
+        setShowError("Please check all package manifest items first!");
         return;
       }
-      setSuccess(true);
-      setTimeout(() => {
-        onConfirmPickup();
-      }, 1e3);
+      try {
+        setIsVerifying(true);
+        const res = await dmbDeliveryAPI.verifyCollectionPin(finalPin);
+        if (res.data?.success) {
+          setSuccess(true);
+          setTimeout(() => {
+            onConfirmPickup();
+          }, 1000);
+        }
+      } catch (err) {
+        setShowError(err.response?.data?.message || "Invalid Collection PIN");
+      } finally {
+        setIsVerifying(false);
+      }
     } else {
-      setShowError(true);
+      setShowError("Please enter the 4-digit PIN");
     }
   };
   return <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
@@ -200,7 +214,7 @@ const PickupVerification = ({
         {showError && <div className="flex items-center gap-2 bg-[#ffdad6] text-[#93000a] p-3 rounded-xl border border-[#ffdad6] shadow-xs">
             <AlertTriangle className="w-5 h-5 text-[#ba1a1a] flex-shrink-0" />
             <p className="text-xs font-bold leading-tight">
-              {!allChecked ? "Please check all package manifest items first!" : "Wrong PIN. Please verify with the vendor."}
+              {typeof showError === 'string' ? showError : (!allChecked ? "Please check all package manifest items first!" : "Wrong PIN. Please verify with the vendor.")}
             </p>
           </div>}
 
@@ -210,10 +224,11 @@ const PickupVerification = ({
           </div>}
 
         <button
+    disabled={isVerifying}
     onClick={handleConfirm}
     className={`w-full h-12 rounded-xl text-sm font-bold uppercase transition-all flex items-center justify-center ${allChecked && pinDigits.join("").length === 4 ? "bg-[#00604c] hover:bg-[#1f7a63] text-white cursor-pointer shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"}`}
   >
-          {success ? "PICKED UP!" : "CONFIRM PICKUP"}
+          {isVerifying ? "VERIFYING..." : (success ? "PICKED UP!" : "CONFIRM PICKUP")}
         </button>
 
         {

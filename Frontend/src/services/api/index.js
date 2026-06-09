@@ -1242,6 +1242,13 @@ const getDeliveryMeOnce = () => {
 };
 
 /** Delivery API - OTP login + registration via new backend. */
+export const dmbDeliveryAPI = {
+  acceptBatch: (batchId) => deliveryClient.post("/dmb/driver/accept-batch", { batchId }),
+  getRoute: () => deliveryClient.get("/dmb/driver/my-route"),
+  goOnline: () => deliveryClient.patch("/dmb/driver/go-online"),
+  goOffline: () => deliveryClient.patch("/dmb/driver/go-offline")
+};
+
 export const deliveryAPI = {
   sendOTP: (phone, _purpose = "login") => {
     if (!phone) return Promise.reject(new Error("Phone is required"));
@@ -1590,6 +1597,8 @@ export const deliveryAPI = {
     deliveryClient.get("/food/zones/nearby", {
       params: { lat, lng, radius: radiusKm }
     }),
+  /** Get all active public zones */
+  getPublicZones: () => deliveryClient.get("/food/zones/public"),
   /** DELETE /food/delivery/account - permanently delete delivery partner account */
   deleteAccount: () =>
     deliveryClient.delete("/food/delivery/account"),
@@ -1968,10 +1977,16 @@ export const dmbVendorAPI = {
   updateDailyOrderStatus: (orderId, status) => restaurantClient.patch(`/dmb/vendor/daily-orders/${orderId}/status`, { status }),
   /** NEW: Mark all orders for a slot as ready */
   markAllDailyOrdersReady: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/mark-all-ready", { date, slot }),
+  resendBatch: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/resend-batch", { date, slot }),
   getDailyMenus: (params = {}) => restaurantClient.get("/dmb/vendor/daily-menus", { params }),
   saveDailyMenu: (data) => restaurantClient.post("/dmb/vendor/daily-menus", data),
   deleteDailyMenu: (params) => restaurantClient.delete("/dmb/vendor/daily-menus", { params }),
+  /** Get assigned driver and their last known location */
+  getAssignedDriver: (date, slot) => restaurantClient.get("/dmb/vendor/daily-orders/assigned-driver", { params: { date, slot } }),
+  /** Verify OTP from delivery boy */
+  verifyBatchOtp: (batchId, otp) => restaurantClient.post("/dmb/vendor/daily-orders/verify-otp", { batchId, otp }),
 };
+
 
 /** DMB Customer API — for CustomerApp to browse vendors, subscribe, pay */
 export const dmbCustomerAPI = {

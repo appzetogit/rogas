@@ -205,6 +205,7 @@ export const useDeliveryNotifications = () => {
   const [deliveryPartnerId, setDeliveryPartnerId] = useState(null);
   const [claimedOrderId, setClaimedOrderId] = useState(null); // set when another partner claims an order
   const [adminNotification, setAdminNotification] = useState(null);
+  const [newBatchRequest, setNewBatchRequest] = useState(null);
   const joinedDeliveryRoomRef = useRef(null);
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
@@ -964,6 +965,16 @@ export const useDeliveryNotifications = () => {
       if (claimedId) setClaimedOrderId({ orderId: claimedId, claimedBy: data?.claimedBy });
     });
 
+    socketRef.current.on('new_delivery_request', (batchData) => {
+      debugLog('new_delivery_request received via socket', batchData);
+      if (!isRiderOnline()) {
+        debugLog('?? Ignored new_delivery_request - rider is offline');
+        return;
+      }
+      setNewBatchRequest(batchData);
+      playNotificationSound(batchData);
+    });
+
     socketRef.current.on('admin_notification', (payload) => {
       debugLog('Admin broadcast received via socket', payload);
       setAdminNotification(payload);
@@ -1081,6 +1092,8 @@ export const useDeliveryNotifications = () => {
     clearOrderStatusUpdate,
     adminNotification,
     clearAdminNotification,
+    newBatchRequest,
+    clearNewBatchRequest: () => setNewBatchRequest(null),
     claimedOrderId,
     clearClaimedOrderId,
     isConnected,

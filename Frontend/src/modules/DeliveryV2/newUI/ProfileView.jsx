@@ -1,9 +1,37 @@
+import { useState, useEffect } from "react";
 import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert } from "lucide-react";
+import { deliveryAPI } from "@food/api";
+
 const ProfileView = ({
   stats,
   onViewShifts,
   onLogout
 }) => {
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await deliveryAPI.getProfile();
+        if (response?.data?.success && response?.data?.data?.profile) {
+          setProfile(response.data.data.profile);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const name = profile?.name || "Jan Wisniewski";
+  const city = profile?.location?.city || "Warsaw, Poland";
+  const vehicleName = profile?.vehicle?.brand || "E-bike";
+  const vehicleType = profile?.vehicle?.type || "bike";
+  const rating = profile?.metrics?.rating || 4.90;
+  const ratingCount = profile?.metrics?.ratingCount || 1240;
+  const profileImage = profile?.profileImage?.url || profile?.documents?.photo || "https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm";
+  const bankAcc = profile?.documents?.bankDetails?.accountNumber?.slice(-4) || "4291";
+
   return <div className="space-y-4 pb-12 animate-fadeIn text-gray-800">
       {
     /* Driver Identity Card */
@@ -13,9 +41,9 @@ const ProfileView = ({
           <div className="relative">
             <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[#bec9c3]">
               <img
-    alt="Jan Wisniewski Profile"
+    alt={`${name} Profile`}
     className="w-full h-full object-cover"
-    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm"
+    src={profileImage}
     referrerPolicy="no-referrer"
   />
             </div>
@@ -25,17 +53,17 @@ const ProfileView = ({
           </div>
           
           <div className="flex-1 space-y-1">
-            <h2 className="text-lg font-extrabold text-gray-900">Jan Wisniewski</h2>
+            <h2 className="text-lg font-extrabold text-gray-900">{name}</h2>
             <p className="text-xs text-[#5d5f5b] flex items-center gap-1">
-              <span>🚲 E-bike</span>
+              <span className="capitalize">{vehicleType === "bike" ? "🚲" : vehicleType === "car" ? "🚗" : "🛵"} {vehicleName}</span>
               <span className="text-gray-300">•</span>
-              <span>Warsaw, Poland</span>
+              <span>{city}</span>
             </p>
             
             <div className="flex items-center gap-1.5 pt-1">
               <Award className="w-4 h-4 text-amber-500 fill-amber-500" />
-              <span className="text-xs font-bold text-gray-900">4.90 Rating</span>
-              <span className="text-[10px] text-gray-400 font-medium">(1,240 deliveries)</span>
+              <span className="text-xs font-bold text-gray-900">{Number(rating).toFixed(2)} Rating</span>
+              <span className="text-[10px] text-gray-400 font-medium">({ratingCount} deliveries)</span>
             </div>
           </div>
         </div>
@@ -179,7 +207,7 @@ const ProfileView = ({
               <span className="text-sm">🏦</span>
               <div>
                 <p className="text-xs font-bold text-gray-900">Bank Account</p>
-                <p className="text-[11px] text-[#5d5f5b]">ING Bank •••• 4291</p>
+                <p className="text-[11px] text-[#5d5f5b]">Bank •••• {bankAcc}</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />

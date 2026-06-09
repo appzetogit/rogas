@@ -67,23 +67,33 @@ export const registerDeliveryPartner = async (payload, files) => {
         );
     }
 
-    const partner = await FoodDeliveryPartner.create({
-        name,
-        phone,
-        email: email && String(email).trim() ? String(email).trim() : undefined,
-        countryCode,
-        address,
-        city,
-        state,
-        vehicleType,
-        vehicleName,
-        vehicleNumber,
-        drivingLicenseNumber,
-        panNumber,
-        aadharNumber,
-        status: 'pending',
-        ...images
-    });
+    let partner;
+    try {
+        partner = await FoodDeliveryPartner.create({
+            name,
+            phone,
+            email: email && String(email).trim() ? String(email).trim() : undefined,
+            countryCode,
+            address,
+            city,
+            state,
+            vehicleType,
+            vehicleName,
+            vehicleNumber,
+            drivingLicenseNumber,
+            panNumber,
+            aadharNumber,
+            zoneIds: payload.zoneId ? [payload.zoneId] : [],
+            status: 'pending',
+            ...images
+        });
+    } catch (err) {
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyValue)[0];
+            throw new ValidationError(`This ${field} is already registered.`);
+        }
+        throw err;
+    }
 
     // Update FCM token if provided
     if (fcmToken) {

@@ -3,18 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-
-
-
-
-
-
-
-
-
-
-
+import { useState, useEffect } from 'react';
+import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
+import { dmbVendorAPI } from '../../../services/api';
 
 export default function HomeDashboard({
   profile,
@@ -27,6 +18,90 @@ export default function HomeDashboard({
   subscriberCount
 }) {
   const [showOtaUpdate, setShowOtaUpdate] = useState(true);
+  const { acceptedBatch, clearAcceptedBatch } = useRestaurantNotifications();
+  const [otpInput, setOtpInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [isTrackingDriver, setIsTrackingDriver] = useState(false);
+  const [localBatch, setLocalBatch] = useState(null);
+
+  // Recover state if page was refreshed
+  useEffect(() => {
+    const checkActiveBatch = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const res = await dmbVendorAPI.getAssignedDriver(todayStr, 'lunch');
+        if (res.data?.success && res.data.driver) {
+          // Normalize to match what socket event expects
+          setLocalBatch({
+            batchId: res.data.batchId,
+            driverName: res.data.driver.name,
+            driverPhone: res.data.driver.phone,
+            driverPhoto: res.data.driver.profilePhoto,
+            driverVehicle: res.data.driver.vehicleNumber,
+            totalOrders: res.data.boxCount || 0,
+            otp: res.data.otp
+          });
+        }
+      } catch (err) {
+        // Ignore, probably no active batch
+      }
+    };
+    if (!acceptedBatch) checkActiveBatch();
+  }, [acceptedBatch]);
+
+  const displayBatch = acceptedBatch || localBatch;
+
+  const handleResendBatch = async () => {
+    try {
+      setIsResending(true);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const res = await dmbVendorAPI.resendBatch(todayStr, 'lunch');
+      if (res.data?.success) {
+        alert("Request resent to delivery boys successfully!");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to resend request. Make sure you marked orders as ready.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!acceptedBatch || !otpInput) return;
+    try {
+      setIsVerifying(true);
+      const res = await dmbVendorAPI.verifyBatchOtp(acceptedBatch.batchId, otpInput);
+      if (res.data?.success) {
+        alert("Batch verified and collected successfully!");
+        clearAcceptedBatch();
+      }
+    } catch (err) {
+      alert("Verification failed: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleTrackDriver = async () => {
+    try {
+      setIsTrackingDriver(true);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const res = await dmbVendorAPI.getAssignedDriver(todayStr, 'lunch');
+      if (res.data?.success && res.data.driver) {
+        const { lastLat, lastLng, name } = res.data.driver;
+        if (lastLat && lastLng) {
+          window.open(`https://www.google.com/maps?q=${lastLat},${lastLng}&z=16`, '_blank');
+        } else {
+          alert(`Driver ${name} has not shared their location yet.`);
+        }
+      }
+    } catch (err) {
+      alert("Driver location not available yet. Please wait for them to go online.");
+    } finally {
+      setIsTrackingDriver(false);
+    }
+  };
 
   // Derive stats dynamically from state
   const totalOrders = orders.length;
@@ -116,29 +191,77 @@ export default function HomeDashboard({
       {/* Driver status card */}
       <div className="bg-white rounded-xl p-4 shadow-sm space-y-3 mt-4 border border-outline-variant/30 text-left">
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider">Next Pickup</h3>
-          <span className="bg-primary/15 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-bold">INCOMING</span>
+          <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider">
+            {displayBatch ? "Driver Assigned" : "Next Pickup"}
+          </h3>
+          <span className="bg-primary/15 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+            {displayBatch ? "ARRIVING SOON" : "WAITING FOR DRIVER"}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 bg-surface-container shadow-xs">
-            <img
-              alt="Driver Headshot"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuABNCkUA7UlwmXWWi0In2EaDgxsLpoz95K9Ry6ONuPxVJus8yZfDfwzj3a-TTtybS41H2HxAi4Eb5F6MrgTM9sJcZtSq_tC876NnNRHzHQT43N3WXPXTvvsK0z02OugwZpaIDSzllwHb5WTPbGrmhZbxZ50bs62HCTtbWr150YW6HNdnjgrYhYP3v90IWj6gwAKU4D1GooeWgKE27BzeY9USwXAFavXdY1VwDRQ-Ta-FZ1ybl6FGtf-KHZ8UzzdV64XYOAdTmhK-Q" />
-            
+            {displayBatch?.driverPhoto ? (
+              <img alt="Driver" className="w-full h-full object-cover" src={displayBatch.driverPhoto} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                <span className="material-symbols-outlined text-primary text-[24px]">person</span>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="font-bold text-[14px] text-on-surface">Driver Jan W. arrives at ~11:45</p>
-            <p className="text-[13px] text-on-surface-variant">22 boxes ready to hand over</p>
+          <div className="flex-1">
+            <p className="font-bold text-[14px] text-on-surface">
+              {displayBatch ? `${displayBatch.driverName} is on the way` : "No driver assigned yet"}
+            </p>
+            <p className="text-[13px] text-on-surface-variant">
+              {displayBatch
+                ? `${displayBatch.totalOrders} boxes · ${displayBatch.driverVehicle || 'Vehicle N/A'}`
+                : "Waiting to assign batch"}
+            </p>
+            {displayBatch?.driverPhone && (
+              <a
+                href={`tel:${displayBatch.driverPhone}`}
+                className="text-[12px] text-primary font-semibold flex items-center gap-1 mt-0.5"
+              >
+                <span className="material-symbols-outlined text-[14px]">call</span>
+                {displayBatch.driverPhone}
+              </a>
+            )}
           </div>
         </div>
 
+        {!displayBatch && (
+          <button
+            onClick={handleResendBatch}
+            disabled={isResending}
+            className="w-full mt-3 bg-secondary-container text-on-secondary-container py-2 rounded-lg font-bold text-[13px] hover:brightness-105 transition-all shadow-sm"
+          >
+            {isResending ? "Resending..." : "Resend Request to Drivers"}
+          </button>
+        )}
+
         {/* Collection PIN slot */}
-        <div className="bg-primary-container/10 border border-primary-container/20 rounded-lg p-3 flex justify-between items-center transition-colors hover:bg-primary-container/15">
-          <span className="text-[13px] text-primary font-semibold">Collection PIN</span>
-          <span className="text-[16px] font-extrabold text-primary tracking-widest font-mono">7842</span>
-        </div>
+        {displayBatch && (
+          <div className="bg-primary-container/10 border border-primary-container/20 rounded-lg p-3 flex flex-col gap-2 transition-colors">
+            <div className="flex justify-between items-center">
+              <span className="text-[13px] text-primary font-semibold">Verify Driver OTP</span>
+              <button
+                onClick={handleTrackDriver}
+                disabled={isTrackingDriver}
+                className="text-[11px] text-primary font-bold flex items-center gap-1 hover:underline"
+              >
+                <span className="material-symbols-outlined text-[14px]">location_on</span>
+                {isTrackingDriver ? 'Loading...' : 'Track on Map'}
+              </button>
+            </div>
+            <div className="flex justify-center py-2">
+              <span className="text-3xl font-mono font-black tracking-[0.5em] text-primary">{displayBatch.otp || '****'}</span>
+            </div>
+            <p className="text-[11px] text-center text-on-surface-variant font-medium">
+              Share this 4-digit PIN with the driver when they arrive to confirm pickup.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Tomorrow forecast card */}

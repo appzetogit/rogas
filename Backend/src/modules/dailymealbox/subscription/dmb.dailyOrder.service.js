@@ -1,8 +1,12 @@
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { CollectionBatch } from '../delivery/collectionBatch.model.js';
+import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
+import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { getIO } from '../../../config/socket.js';
 import { logger } from '../../../utils/logger.js';
+import crypto from 'crypto';
 
 /**
  * DMB Daily Orders Service
@@ -520,6 +524,9 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
     if (slot) filter.deliverySlot = slot;
 
     const orders = await DMBDailyOrder.find(filter);
+    if (orders.length === 0) {
+        return { count: 0, date: dateStr(targetDate), slot, message: 'No pending orders found' };
+    }
 
     const io = getIO();
     let count = 0;
@@ -541,6 +548,72 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
                 updatedAt: new Date().toISOString()
             });
         }
+    }
+
+    // --- Broadcast to nearby delivery partners ---
+    try {
+        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city');
+        
+        const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
+        const vendorCity = vendor?.city || vendor?.location?.city;
+
+        // Build driver filter: zone match OR city match (fallback)
+        const driverFilter = {
+            availabilityStatus: 'online',
+            status: 'approved',
+        };
+
+        if (vendorZoneId) {
+            driverFilter.$or = [
+                { zoneIds: vendorZoneId },
+                { city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } }
+            ];
+        } else if (vendorCity) {
+            // No zone configured: fallback to city-only match
+            driverFilter.city = { $regex: new RegExp(`^${vendorCity}$`, 'i') };
+        } else {
+            logger.warn(`Vendor ${vendorId} has no zoneId or city configured. Cannot broadcast.`);
+            return { count, date: dateStr(targetDate), slot };
+        }
+
+        // Create an unassigned CollectionBatch for these orders
+        const batch = await CollectionBatch.create({
+            vendorId,
+            deliveryDate: targetDate,
+            deliverySlot: slot || 'lunch',
+            boxCount: orders.length,
+            orderIds: orders.map(o => o._id),
+            status: 'pending'
+        });
+
+        // Find online drivers in this zone/city
+        const onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id fcmTokens socketRoomId');
+
+        logger.info(`Vendor ${vendorId} broadcast query matched ${onlineDrivers.length} online drivers (filter: ${JSON.stringify(driverFilter)})`);
+
+        if (io && onlineDrivers.length > 0) {
+            const payload = {
+                batchId: batch.batchId,
+                vendorId: vendor._id,
+                vendorName: vendor.restaurantName,
+                vendorLocation: vendor.location,
+                boxCount: orders.length,
+                slot: slot || 'lunch',
+                totalOrders: orders.length,
+            };
+
+            // Broadcast to all matched online drivers
+            onlineDrivers.forEach(driver => {
+                const roomName = `delivery:${driver._id.toString()}`;
+                io.to(roomName).emit('new_delivery_request', payload);
+            });
+            
+            logger.info(`Vendor ${vendorId} batch ${batch.batchId} broadcasted to ${onlineDrivers.length} drivers`);
+        } else if (onlineDrivers.length === 0) {
+            logger.warn(`No online+approved drivers found for vendor ${vendorId} in city "${vendorCity}" / zone "${vendorZoneId}"`);
+        }
+    } catch (err) {
+        logger.error(`Error broadcasting delivery request for vendor ${vendorId}: ${err.message}`);
     }
 
     logger.info(`Vendor ${vendorId} marked ${count} orders as ready for ${dateStr(targetDate)} / ${slot}`);

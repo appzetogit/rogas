@@ -96,6 +96,8 @@ export const useRestaurantNotifications = () => {
     return null;
   }); // { orderId, otp, message }
 
+  const [acceptedBatch, setAcceptedBatch] = useState(null); // { batchId, driverName, otp, totalOrders }
+
   const setPickupOtpReveal = (data) => {
     setPickupOtpRevealState(data);
     if (typeof window !== 'undefined') {
@@ -658,6 +660,9 @@ export const useRestaurantNotifications = () => {
         };
         
         joinRoom();
+
+        // Also join the DailyMealBox vendor room so batch_accepted events are received
+        socketRef.current.emit('join_vendor_room', { vendorId: restaurantId });
       } else {
         debugWarn('?? Cannot join restaurant room: restaurantId is missing');
       }
@@ -714,9 +719,10 @@ export const useRestaurantNotifications = () => {
       debugLog(`? Reconnected after ${attemptNumber} attempts`);
       setIsConnected(true);
       
-      // Rejoin restaurant room after reconnection
+      // Rejoin restaurant room and DMB vendor room after reconnection
       if (restaurantId) {
         socketRef.current.emit('join-restaurant', restaurantId);
+        socketRef.current.emit('join_vendor_room', { vendorId: restaurantId });
       }
     });
 
@@ -789,6 +795,26 @@ export const useRestaurantNotifications = () => {
     socketRef.current.on('admin_notification', (payload) => {
       debugLog('?? Admin broadcast received:', payload);
       dispatchNotificationInboxRefresh();
+    });
+
+    socketRef.current.on('batch_accepted', (data) => {
+      debugLog('?? batch_accepted received:', data);
+      // Normalize: backend sends data.driver.name but dashboard expects data.driverName
+      const normalized = {
+        ...data,
+        driverName: data.driver?.name || data.driverName || 'Driver',
+        driverPhone: data.driver?.phone || data.driverPhone || '',
+        driverPhoto: data.driver?.profilePhoto || data.driverPhoto || null,
+        driverVehicle: data.driver?.vehicleNumber || data.driverVehicle || '',
+        totalOrders: data.boxCount || data.totalOrders || 0,
+      };
+      setAcceptedBatch(normalized);
+      playNotificationSound();
+    });
+
+    socketRef.current.on('batch_collected_success', (data) => {
+      debugLog('?? batch_collected_success received:', data);
+      setAcceptedBatch(null);
     });
 
     // Load notification sound
@@ -913,6 +939,8 @@ export const useRestaurantNotifications = () => {
     clearNewReservation: () => {
       setNewReservation(null);
     },
+    acceptedBatch,
+    clearAcceptedBatch: () => setAcceptedBatch(null),
     isConnected,
     playNotificationSound
   };

@@ -85,6 +85,10 @@ const dmbDailyOrderSchema = new mongoose.Schema(
             label: { type: String, default: 'Home' }
         },
 
+        dispatch: {
+            deliveryPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null }
+        },
+
         /** Timestamps for status transitions (for analytics & SLA tracking) */
         preparingAt: { type: Date, default: null },
         readyAt: { type: Date, default: null },

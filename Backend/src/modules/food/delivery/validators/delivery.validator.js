@@ -38,7 +38,8 @@ const deliveryRegisterSchema = z.object({
         .optional()
         .or(z.literal('')),
     fcmToken: z.string().optional().nullable(),
-    platform: z.enum(['web', 'mobile']).optional().default('web')
+    platform: z.enum(['web', 'mobile']).optional().default('web'),
+    zoneId: z.string().optional().nullable()
 });
 
 export const validateDeliveryRegisterDto = (body) => {

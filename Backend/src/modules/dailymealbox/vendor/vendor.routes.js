@@ -600,4 +600,176 @@ router.post('/daily-orders/mark-all-ready', authMiddleware, requireRoles('RESTAU
     }
 });
 
+// ─── Verify Driver OTP for Batch Collection ──────────────────────────────
+router.post('/daily-orders/verify-batch-otp', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { batchId, otp } = req.body;
+
+        if (!batchId || !otp) {
+            return res.status(400).json({ success: false, message: 'batchId and otp are required' });
+        }
+
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const batch = await CollectionBatch.findOne({ batchId, vendorId });
+
+        if (!batch) {
+            return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
+        if (batch.status === 'collected' || batch.pinVerified) {
+            return res.status(400).json({ success: false, message: 'Batch already collected' });
+        }
+
+        if (batch.collectionPinHash !== otp) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
+
+        batch.pinVerified = true;
+        batch.status = 'collected';
+        batch.collectedAt = new Date();
+        await batch.save();
+
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        // Update all orders in batch to picked_up
+        await DMBDailyOrder.updateMany(
+            { _id: { $in: batch.orderIds } },
+            { $set: { status: 'out_for_delivery', pickedUpAt: new Date() } }
+        );
+
+        // Notify driver
+        const io = (await import('../../../config/socket.js')).getIO();
+        if (io && batch.driverId) {
+            io.to(`delivery:${batch.driverId}`).emit('batch_collected_success', { batchId: batch.batchId });
+        }
+
+        res.json({ success: true, message: 'OTP verified, batch collected' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Resend Batch Request to Drivers ──────────────────────────────
+router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { date, slot } = req.body;
+        
+        const targetDate = date ? new Date(date) : new Date();
+        targetDate.setUTCHours(0, 0, 0, 0);
+
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const batch = await CollectionBatch.findOne({ 
+            vendorId, 
+            deliveryDate: targetDate, 
+            deliverySlot: slot || 'lunch',
+            status: 'pending' // Only allow resending if it's still pending (not assigned yet)
+        });
+
+        if (!batch) {
+            return res.status(404).json({ success: false, message: 'No unassigned batch found for this slot.' });
+        }
+
+        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city');
+        const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
+        const vendorCity = vendor?.city || vendor?.location?.city;
+
+        if (!vendorZoneId && !vendorCity) {
+            return res.status(400).json({ success: false, message: 'Vendor zone/city not configured.' });
+        }
+
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        
+        const driverFilter = {
+            availabilityStatus: 'online',
+            status: 'approved',
+        };
+
+        if (vendorZoneId) {
+            driverFilter.$or = [
+                { zoneIds: vendorZoneId },
+                { city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } }
+            ];
+        } else {
+            driverFilter.city = { $regex: new RegExp(`^${vendorCity}$`, 'i') };
+        }
+
+        const onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id');
+
+        if (onlineDrivers.length === 0) {
+            return res.status(400).json({ success: false, message: 'No online delivery partners found in your zone.' });
+        }
+
+        const io = (await import('../../../config/socket.js')).getIO();
+        if (io) {
+            const payload = {
+                batchId: batch.batchId,
+                vendorId: vendor._id,
+                vendorName: vendor.restaurantName,
+                vendorLocation: vendor.location,
+                boxCount: batch.boxCount,
+                slot: batch.deliverySlot
+            };
+
+            onlineDrivers.forEach(driver => {
+                io.to(`delivery:${driver._id.toString()}`).emit('new_delivery_request', payload);
+            });
+        }
+
+        res.json({ success: true, message: `Request resent to ${onlineDrivers.length} online drivers.` });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Get Assigned Driver Location for Vendor ──────────────────────
+router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { date, slot } = req.query;
+
+        const targetDate = date ? new Date(date) : new Date();
+        targetDate.setUTCHours(0, 0, 0, 0);
+
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const batch = await CollectionBatch.findOne({
+            vendorId,
+            deliveryDate: targetDate,
+            deliverySlot: slot || 'lunch',
+            status: 'driver_assigned'
+        });
+
+        if (!batch || !batch.driverId) {
+            return res.status(404).json({ success: false, message: 'No assigned driver found.' });
+        }
+
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        const driver = await FoodDeliveryPartner.findById(batch.driverId)
+            .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+
+        if (!driver) {
+            return res.status(404).json({ success: false, message: 'Driver not found.' });
+        }
+
+        res.json({
+            success: true,
+            driver: {
+                _id: driver._id,
+                name: driver.name,
+                phone: driver.phone,
+                profilePhoto: driver.profilePhoto,
+                vehicleNumber: driver.vehicleNumber,
+                lastLat: driver.lastLat,
+                lastLng: driver.lastLng,
+                lastLocationAt: driver.lastLocationAt,
+                isOnline: driver.availabilityStatus === 'online'
+            },
+            batchId: batch.batchId,
+            otp: batch.collectionPinHash
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 export default router;
