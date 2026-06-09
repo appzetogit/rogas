@@ -621,6 +621,8 @@ export const restaurantAPI = {
     return authService.verifyRestaurantOtp(phone, otp, fcmToken, platform);
   },
   getMe: () => authService.getMe("restaurant"),
+  /** Restaurant dashboard: fetch active zones */
+  getZones: (params = {}) => restaurantClient.get("/food/restaurant/zones", { params }),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
   /** Finance dashboard for `hub-finance`. */

@@ -188,3 +188,13 @@ export const getRestaurantComplaintsController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const listZonesController = async (req, res, next) => {
+    try {
+        const { FoodZone } = await import('../../admin/models/zone.model.js');
+        const zones = await FoodZone.find({ isActive: true }).select('name zoneName country').lean();
+        return sendResponse(res, 200, 'Zones fetched successfully', { zones });
+    } catch (error) {
+        next(error);
+    }
+};

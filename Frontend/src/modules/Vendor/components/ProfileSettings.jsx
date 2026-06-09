@@ -3,17 +3,208 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { restaurantAPI } from '../../../services/api/index';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%'
+};
 
+function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
+  const [zones, setZones] = useState([]);
+  const [selectedZone, setSelectedZone] = useState(profile?.zoneId || '');
+  const [address, setAddress] = useState(profile?.location?.formattedAddress || profile?.location?.address || profile?.address || '');
+  const [lat, setLat] = useState(profile?.location?.latitude || profile?.location?.coordinates?.[1] || 52.2297);
+  const [lng, setLng] = useState(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
+  const [showMap, setShowMap] = useState(false);
+  
+  const hasSavedLocation = profile?.zoneId || profile?.location?.address || profile?.address;
+  const [isEditing, setIsEditing] = useState(!hasSavedLocation);
 
+  useEffect(() => {
+    restaurantAPI.getZones().then(res => {
+      setZones(res.data?.data?.zones || res.data?.zones || []);
+    }).catch(err => {
+      triggerToast('Failed to load zones');
+    });
+  }, []);
 
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+  });
 
+  const fetchAddressFromCoordinates = (latitude, longitude) => {
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setAddress(results[0].formatted_address);
+        }
+      });
+    }
+  };
 
+  const handleLiveLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        setLat(latitude);
+        setLng(longitude);
+        fetchAddressFromCoordinates(latitude, longitude);
+        setShowMap(true);
+        triggerToast('Live location & address fetched successfully!');
+      }, (error) => {
+        triggerToast('Failed to get live location. Please allow location permissions.');
+      });
+    } else {
+      triggerToast('Geolocation is not supported by your browser');
+    }
+  };
 
+  const onMapClick = (e) => {
+    const latitude = e.latLng.lat();
+    const longitude = e.latLng.lng();
+    setLat(latitude);
+    setLng(longitude);
+    fetchAddressFromCoordinates(latitude, longitude);
+  };
 
+  const handleSave = async () => {
+    try {
+      await restaurantAPI.updateProfile({
+        zoneId: selectedZone,
+        location: {
+          latitude: lat,
+          longitude: lng,
+          address: address,
+          formattedAddress: address
+        }
+      });
+      onSave({ zoneId: selectedZone, location: { latitude: lat, longitude: lng, address, formattedAddress: address } });
+      triggerToast('Location & Zone updated successfully!');
+      onBack();
+    } catch (err) {
+      triggerToast('Failed to update location');
+    }
+  };
 
+  return (
+    <div className="space-y-5 animate-fadeIn text-left">
+      <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+        <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
+          <span className="material-symbols-outlined">arrow_back</span>
+        </button>
+        <h2 className="text-[16px] font-semibold">Location & Zone</h2>
+        <div className="w-6"></div>
+      </div>
 
+      <div className="pt-6 space-y-5">
+        {!isEditing ? (
+          <section className="space-y-4">
+            <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Saved Location & Zone</h2>
+            <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
+              <div>
+                <p className="text-[10px] text-outline uppercase font-bold mb-1">Service Zone</p>
+                <p className="text-[14px] font-bold text-on-surface">
+                  {zones.find(z => z._id === selectedZone)?.name || 'Not Selected'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-outline uppercase font-bold mb-1">Address</p>
+                <p className="text-[13px] font-medium text-on-surface-variant">
+                  {profile?.location?.formattedAddress || profile?.location?.address || profile?.address || 'Not Selected'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="w-full h-12 border border-primary text-primary rounded-xl font-bold text-[14px] active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">edit</span>
+              Change Location & Zone
+            </button>
+          </section>
+        ) : (
+          <>
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Service Zone</h2>
+              <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
+                <select 
+                  value={selectedZone} 
+                  onChange={(e) => setSelectedZone(e.target.value)}
+                  className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] text-on-surface"
+                >
+                  <option value="">Select a Zone</option>
+                  {zones.map(z => (
+                    <option key={z._id} value={z._id}>{z.name}</option>
+                  ))}
+                </select>
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Location Address</h2>
+              <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] resize-none"
+                  placeholder="Enter full address"
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowMap(!showMap)} 
+                    className="flex-1 py-2.5 rounded-lg text-[13px] font-bold border border-primary text-primary flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">location_on</span>
+                    {showMap ? 'Hide Map' : 'Set Pin on Map'}
+                  </button>
+                  <button 
+                    onClick={handleLiveLocation} 
+                    className="flex-1 py-2.5 rounded-lg text-[13px] font-bold bg-primary text-on-primary flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">my_location</span>
+                    Live Location
+                  </button>
+                </div>
+                
+                {showMap && (
+                  <div className="h-[250px] w-full rounded-lg overflow-hidden border border-outline-variant relative z-0 bg-surface-container-lowest">
+                    {isLoaded ? (
+                      <GoogleMap
+                        mapContainerStyle={mapContainerStyle}
+                        center={{ lat, lng }}
+                        zoom={13}
+                        onClick={onMapClick}
+                        options={{ disableDefaultUI: true, zoomControl: true }}
+                      >
+                        <Marker position={{ lat, lng }} />
+                      </GoogleMap>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-outline text-[12px]">Loading Map...</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <button
+              onClick={handleSave}
+              className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+            >
+              Save Location & Zone
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 
 export default function ProfileSettings({
@@ -137,7 +328,7 @@ export default function ProfileSettings({
               </button>
 
               <button
-              onClick={() => triggerToast(`Registered Zone: ${profile.city}`)}
+              onClick={() => setSubView('location')}
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
@@ -239,6 +430,15 @@ export default function ProfileSettings({
           </div>
         </div>
       }
+
+      {subView === 'location' && (
+        <LocationZoneSettings
+          profile={profile}
+          onBack={() => setSubView('profile')}
+          onSave={onUpdateProfile}
+          triggerToast={triggerToast}
+        />
+      )}
 
       {/* Screen 14: Vacation Mode setup */}
       {subView === 'vacation' &&
