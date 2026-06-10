@@ -644,6 +644,21 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
     }
 };
 
+export const notifyDriverOfRouteUpdate = (driverId) => {
+    try {
+        const io = getIO();
+        if (io && driverId) {
+            io.to(`delivery:${driverId.toString()}`).emit('order_status_update', {
+                timestamp: Date.now(),
+                message: 'Route updated'
+            });
+            logger.info(`Socket emitted order_status_update to driver ${driverId}`);
+        }
+    } catch (err) {
+        logger.warn(`Failed to notify driver of route update: ${err.message}`);
+    }
+};
+
 /**
  * Vendor updates order status → broadcasts via Socket.IO to customer
  */
@@ -712,6 +727,10 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
         await triggerDriverNotificationIfAllReady(order.vendorId, order.deliveryDate, order.deliverySlot);
     }
 
+    if (order.dispatch?.deliveryPartnerId) {
+        notifyDriverOfRouteUpdate(order.dispatch.deliveryPartnerId);
+    }
+
     logger.info(`DMB order ${order.orderId} status → ${status} by vendor ${vendorId}`);
     return order;
 };
@@ -755,6 +774,10 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
                 deliverySlot: order.deliverySlot,
                 updatedAt: new Date().toISOString()
             });
+        }
+
+        if (order.dispatch?.deliveryPartnerId) {
+            notifyDriverOfRouteUpdate(order.dispatch.deliveryPartnerId);
         }
     }
 

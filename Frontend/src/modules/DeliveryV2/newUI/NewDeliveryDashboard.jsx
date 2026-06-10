@@ -92,13 +92,25 @@ function NewDeliveryDashboard() {
             deliveryPin: o.deliveryPin,
             pin: o.pin,
             pickupTimeStr: o.deliverySlot,
-            dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00')
+            dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00'),
+            pickedUpAt: o.pickedUpAt
           }));
           setOrders(mappedOrders);
-          setStops(res.data.stops);
+          setStops(res.data.stops || []);
+          setRouteMetadata({
+            vendorName: res.data.vendorName || '',
+            vendorAddress: res.data.vendorAddress || '',
+            vendorPhone: res.data.vendorPhone || '',
+            vendorLocation: res.data.vendorLocation || null,
+            slotType: res.data.slotType || '',
+            totalMealBoxCount: res.data.totalMealBoxCount || 0,
+            stopsCount: res.data.stopsCount || 0,
+            deliveryDeadline: res.data.deliveryDeadline || null
+          });
         } else {
           setOrders([]);
           setStops([]);
+          setRouteMetadata(null);
         }
       }
     } catch (err) {
@@ -121,9 +133,18 @@ function NewDeliveryDashboard() {
     syncOnlineStatus();
   }, []);
 
-  const { newBatchRequest, clearNewBatchRequest } = useDeliveryNotificationContext();
+  const { newBatchRequest, clearNewBatchRequest, orderStatusUpdate, clearOrderStatusUpdate } = useDeliveryNotificationContext();
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptedBatchDetails, setAcceptedBatchDetails] = useState(null);
+  const [routeMetadata, setRouteMetadata] = useState(null);
+
+  // Listen for real-time status updates via Socket.IO
+  useEffect(() => {
+    if (orderStatusUpdate) {
+      fetchActiveRoute();
+      clearOrderStatusUpdate();
+    }
+  }, [orderStatusUpdate]);
 
   const handleAcceptBatch = async () => {
     if (!newBatchRequest || !newBatchRequest.batchId) return;
@@ -259,6 +280,7 @@ function NewDeliveryDashboard() {
           isAccepted={isRouteAccepted}
           onNextStep={handleNextRouteStep}
           activeOrder={activeOrder}
+          routeMetadata={routeMetadata}
         />;
       case "pickup":
         return <PickupVerification

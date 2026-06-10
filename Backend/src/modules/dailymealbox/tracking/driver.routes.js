@@ -8,6 +8,7 @@ import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.
 import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { CollectionBatch } from '../delivery/collectionBatch.model.js';
 import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
+import { notifyDriverOfRouteUpdate } from '../subscription/dmb.dailyOrder.service.js';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -62,29 +63,42 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
 
-        const orders = await DMBDailyOrder.find({
-            'dispatch.deliveryPartnerId': (req.user.userId || req.user._id),
-            status: { $in: ['ready', 'ready_for_pickup', 'picked_up', 'out_for_delivery'] },
-            deliveryDate: { $gte: today, $lt: tomorrow }
-        })
-            .populate('vendorId', 'restaurantName location addressLine1')
-            .populate('userId', 'name phone')
-            .sort({ deliverySlot: 1 });
-
-        // Retrieve collection batches for this driver to fetch the OTP (vendor pin)
+        // Fetch active collection batches for this driver
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
         const batches = await CollectionBatch.find({
             driverId: (req.user.userId || req.user._id),
-            deliveryDate: { $gte: today, $lt: tomorrow }
-        });
+            status: { $in: ['driver_assigned', 'driver_en_route', 'collected'] }
+        }).populate('vendorId', 'restaurantName location addressLine1 phone').sort({ createdAt: -1 });
 
-        // Create a map of orderId string to collection PIN (OTP)
+        let batch = null;
+        let orders = [];
+
+        for (const candidate of batches) {
+            const candidateOrders = await DMBDailyOrder.find({
+                _id: { $in: candidate.orderIds }
+            })
+                .populate('vendorId', 'restaurantName location addressLine1 phone')
+                .populate('userId', 'name phone')
+                .sort({ deliverySlot: 1 });
+
+            const isCompleted = candidateOrders.length > 0 && candidateOrders.every(o => ['delivered', 'skipped', 'failed'].includes(o.status));
+            if (!isCompleted) {
+                batch = candidate;
+                orders = candidateOrders;
+                break;
+            }
+        }
+
+        if (!batch) {
+            return res.json({ success: true, stops: [], orders: [], totalBoxes: 0 });
+        }
+
+
+        // Generate delivery Pin/OTP mapping if needed
         const batchOtpMap = new Map();
-        for (const batch of batches) {
-            if (batch.orderIds && batch.collectionPinHash) {
-                for (const oId of batch.orderIds) {
-                    batchOtpMap.set(oId.toString(), batch.collectionPinHash);
-                }
+        if (batch.orderIds && batch.collectionPinHash) {
+            for (const oId of batch.orderIds) {
+                batchOtpMap.set(oId.toString(), batch.collectionPinHash);
             }
         }
 
@@ -103,28 +117,99 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             ordersWithPins.push(orderObj);
         }
 
-        // Build stop list: pickups first, then deliveries
-        const stops = ordersWithPins.map((order, idx) => ({
-            order: idx + 1,
-            type: order.status === 'out_for_delivery' || order.status === 'picked_up' ? 'delivery' : 'pickup',
-            orderId: order._id,
-            displayOrderId: order.orderId,
-            vendorName: order.vendorId?.restaurantName,
-            vendorAddress: order.vendorId?.addressLine1,
-            vendorLat: order.vendorId?.location?.latitude || (order.vendorId?.location?.coordinates && order.vendorId.location.coordinates[1]),
-            vendorLng: order.vendorId?.location?.longitude || (order.vendorId?.location?.coordinates && order.vendorId.location.coordinates[0]),
-            customerName: order.userId?.name,
-            customerPhone: order.userId?.phone,
-            customerAddress: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
-            customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
-            customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
-            customerZone: order.deliveryAddress?.city,
-            deliverySlot: order.deliverySlot,
-            status: order.status,
-            boxNumber: idx + 1
-        }));
+        const vendorName = batch.vendorId?.restaurantName || 'Vendor';
+        const vendorAddress = batch.vendorId?.addressLine1 || 'Vendor Address';
+        const vendorPhone = batch.vendorId?.phone || '';
+        const vendorLocation = batch.vendorId?.location || null;
+        const slotType = batch.deliverySlot ? (batch.deliverySlot.charAt(0).toUpperCase() + batch.deliverySlot.slice(1)) : 'Slot';
+        const totalMealBoxCount = batch.boxCount || 0;
+        const stopsCount = orders.length;
 
-        res.json({ success: true, stops, orders: ordersWithPins, totalBoxes: ordersWithPins.length });
+        // Delivery timer: 3 hours countdown from collectedAt (when vendor pickup is verified)
+        const deliveryDeadline = batch.collectedAt 
+            ? new Date(batch.collectedAt.getTime() + 3 * 60 * 60 * 1000).toISOString()
+            : null;
+
+        // Build stops sequence
+        let stops = [];
+        if (batch.status !== 'collected') {
+            // Not collected yet: first stop is the Pickup at vendor
+            const vendorLat = batch.vendorId?.location?.latitude || (batch.vendorId?.location?.coordinates && batch.vendorId.location.coordinates[1]);
+            const vendorLng = batch.vendorId?.location?.longitude || (batch.vendorId?.location?.coordinates && batch.vendorId.location.coordinates[0]);
+            
+            stops = [
+                {
+                    id: 'pickup_' + batch._id,
+                    type: 'P',
+                    name: vendorName,
+                    address: vendorAddress,
+                    status: 'READY',
+                    orderId: orders[0]?._id,
+                    vendorLat,
+                    vendorLng
+                },
+                ...ordersWithPins.map((order, idx) => ({
+                    id: 'delivery_' + order._id,
+                    type: 'D',
+                    name: order.userId?.name || 'Customer',
+                    address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
+                    status: 'WAITING',
+                    orderId: order._id,
+                    customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
+                    customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
+                    boxNumber: idx + 1
+                }))
+            ];
+        } else {
+            // Already collected: stops are just the customer deliveries
+            // Sort so pending ones are listed first, and completed are at the end
+            const sortedOrders = [...ordersWithPins].sort((a, b) => {
+                const aDone = ['delivered', 'skipped', 'failed'].includes(a.status);
+                const bDone = ['delivered', 'skipped', 'failed'].includes(b.status);
+                if (aDone && !bDone) return 1;
+                if (!aDone && bDone) return -1;
+                return 0;
+            });
+
+            let firstPendingFound = false;
+            stops = sortedOrders.map((order, idx) => {
+                const isDone = ['delivered', 'skipped', 'failed'].includes(order.status);
+                let stopStatus = 'WAITING';
+                if (isDone) {
+                    stopStatus = order.status === 'delivered' ? 'COMPLETED' : 'FAILED';
+                } else if (!firstPendingFound) {
+                    stopStatus = 'READY';
+                    firstPendingFound = true;
+                }
+
+                return {
+                    id: 'delivery_' + order._id,
+                    type: 'D',
+                    name: order.userId?.name || 'Customer',
+                    address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
+                    status: stopStatus,
+                    orderId: order._id,
+                    customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
+                    customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
+                    boxNumber: idx + 1
+                };
+            });
+        }
+
+        res.json({
+            success: true,
+            stops,
+            orders: ordersWithPins,
+            totalBoxes: ordersWithPins.length,
+            vendorName,
+            vendorAddress,
+            vendorPhone,
+            vendorLocation,
+            slotType,
+            totalMealBoxCount,
+            stopsCount,
+            deliveryDeadline
+        });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -176,6 +261,8 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
             });
         }
 
+        notifyDriverOfRouteUpdate(driverId);
+
         res.json({ success: true, message: 'Batch collected successfully' });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -192,6 +279,7 @@ router.post('/verify-delivery-pin', authMiddleware, requireRoles('DELIVERY_PARTN
             driverId: (req.user.userId || req.user._id),
             deliveryGps
         });
+        notifyDriverOfRouteUpdate((req.user.userId || req.user._id));
         res.json({ success: true, ...result });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -210,6 +298,7 @@ router.post('/delivery-photo', authMiddleware, requireRoles('DELIVERY_PARTNER'),
             deliveryGps,
             proofPhotoUrl: photoUrl
         });
+        notifyDriverOfRouteUpdate((req.user.userId || req.user._id));
         res.json({ success: true, order });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -265,6 +354,8 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
             // This might require a specific namespace or a broadcast flag
             io.emit('remove_delivery_request', { batchId: batch.batchId });
         }
+
+        notifyDriverOfRouteUpdate((req.user.userId || req.user._id));
 
         res.json({ 
             success: true, 
