@@ -53,6 +53,16 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     loadDailyOrders(activeDate);
   }, [activeDate]);
 
+  useEffect(() => {
+    const handleStatusUpdate = (e) => {
+      loadDailyOrders(activeDate);
+    };
+    window.addEventListener('restaurantOrderStatusUpdate', handleStatusUpdate);
+    return () => {
+      window.removeEventListener('restaurantOrderStatusUpdate', handleStatusUpdate);
+    };
+  }, [activeDate]);
+
   // ─── Update single order status ──────────────────────────────────────────
   const handleStatusChange = async (orderId, newStatus) => {
     try {

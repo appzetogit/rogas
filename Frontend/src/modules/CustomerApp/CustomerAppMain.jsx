@@ -8,7 +8,7 @@ import { AuthPhoneScreen, OtpVerificationScreen, UserDetailsScreen } from "./com
 import { HomeScreen } from "./components/HomeScreen";
 import { PlansScreen } from "./components/PlansScreen";
 import { CalendarScreen } from "./components/CalendarScreen";
-import { OrdersScreen } from "./components/OrdersScreen";
+import { OrdersScreen, clearOrdersCache } from "./components/OrdersScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
 import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
@@ -81,6 +81,20 @@ export default function CustomerAppMain() {
     }
   }, []);
 
+  // Prevent access to authenticated routes until the user logs in again
+  useEffect(() => {
+    const publicPaths = [
+      "/user/welcome",
+      "/user/auth/login",
+      "/user/auth/signup",
+      "/user/otp"
+    ];
+    const token = localStorage.getItem("user_accessToken");
+    if (!token && !publicPaths.includes(location.pathname)) {
+      navigate("/user/welcome", { replace: true });
+    }
+  }, [location.pathname, navigate, currentUser]);
+
   const handleLoginSuccess = ({ accessToken, refreshToken, user }) => {
     localStorage.setItem("user_accessToken", accessToken);
     if (refreshToken) localStorage.setItem("user_refreshToken", refreshToken);
@@ -91,10 +105,40 @@ export default function CustomerAppMain() {
   const handleLogout = () => {
     const rt = localStorage.getItem("user_refreshToken");
     authAPI.logout(rt).catch(() => {});
+    
+    // Clear tokens and credentials
     localStorage.removeItem("user_accessToken");
     localStorage.removeItem("user_refreshToken");
     localStorage.removeItem("user_user");
+    
+    // Clear session storage
+    try {
+      sessionStorage.clear();
+    } catch (err) {
+      console.error("Failed to clear sessionStorage:", err);
+    }
+    
+    // Clear cookies
+    try {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    } catch (err) {
+      console.error("Failed to clear cookies:", err);
+    }
+    
+    // Reset React state
     setCurrentUser(null);
+    setTrackedOrder(null);
+    setSelectedPlanDetails(null);
+    setSignupName("");
+    setPhoneNumber("");
+    
+    // Clear in-memory caches
+    clearOrdersCache();
+    
     navigate("/user/welcome");
     showToast("👋 Logged out successfully");
   };

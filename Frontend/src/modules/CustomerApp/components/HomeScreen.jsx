@@ -190,6 +190,20 @@ export function HomeScreen({
     }
   }, [manageOrder, loadTodayMeals, onShowNotificationToast, closeManage]);
 
+  const handleUndoSkip = useCallback(async (meal) => {
+    if (!meal) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.undoSkipDailyOrder(meal._id);
+      loadTodayMeals({ bustCache: true });
+      onShowNotificationToast?.("✅ Order skip undone. Meal restored.");
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to undo skip");
+    } finally {
+      setLoadingAction(false);
+    }
+  }, [loadTodayMeals, onShowNotificationToast]);
+
   const handlePause = useCallback(async () => {
     if (!manageOrder) return;
     setLoadingAction(true);
@@ -357,6 +371,19 @@ export function HomeScreen({
               onClick={() => openChangeMeal(meal)}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
             >Change</button>
+          </div>
+        )}
+
+        {!isToday && status === "skipped" && (
+          <div className="flex gap-3 mt-3 pt-3 border-t border-[#f0eded]">
+            <button
+              onClick={() => handleUndoSkip(meal)}
+              disabled={loadingAction}
+              className="flex-grow py-2 rounded-full border border-primary text-primary hover:bg-[#e8f3f0] text-[13px] font-semibold text-center cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              {loadingAction && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
+              Undo Skip
+            </button>
           </div>
         )}
       </section>

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../../../core/auth/auth.middleware.js';
+import { getIO } from '../../../config/socket.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
 import {
     createSubscription,
@@ -88,6 +89,22 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER')
         }
         order.status = 'skipped';
         await order.save();
+
+        // Broadcast skip update via socket
+        const io = getIO();
+        if (io) {
+            const payload = {
+                orderId: order.orderId,
+                _id: order._id,
+                status: order.status,
+                deliveryDate: order.deliveryDate,
+                deliverySlot: order.deliverySlot,
+                updatedAt: new Date().toISOString()
+            };
+            io.to(`sub_${order.subscriptionId}`).emit('order_status_updated', payload);
+            io.to(`vendor_${order.vendorId}`).emit('order_status_update', payload);
+        }
+
         res.json({ success: true, message: 'Order skipped successfully', order });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -114,6 +131,22 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
         }
         order.status = 'scheduled';
         await order.save();
+
+        // Broadcast undo skip update via socket
+        const io = getIO();
+        if (io) {
+            const payload = {
+                orderId: order.orderId,
+                _id: order._id,
+                status: order.status,
+                deliveryDate: order.deliveryDate,
+                deliverySlot: order.deliverySlot,
+                updatedAt: new Date().toISOString()
+            };
+            io.to(`sub_${order.subscriptionId}`).emit('order_status_updated', payload);
+            io.to(`vendor_${order.vendorId}`).emit('order_status_update', payload);
+        }
+
         res.json({ success: true, message: 'Order skip undone successfully', order });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });

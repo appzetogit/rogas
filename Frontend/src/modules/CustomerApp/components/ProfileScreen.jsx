@@ -452,13 +452,9 @@ export function ProfileScreen({
               Account Actions
             </h4>
             <div className="bg-white rounded-2xl overflow-hidden border border-[#bec9c3]/20 shadow-sm divide-y divide-[#bec9c3]/20">
-              <button onClick={() => setShowDangerDialog("Pause Subscription")} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left">
-                <span className="material-symbols-outlined text-[#F59E0B]">pause_circle</span>
-                <span className="font-bold text-[13px] text-[#F59E0B]"> Pause Subscription</span>
-              </button>
-              <button onClick={() => setShowDangerDialog("Cancel Subscription")} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left">
-                <span className="material-symbols-outlined text-brand-red">cancel</span>
-                <span className="font-bold text-[13px] text-brand-red"> Cancel Subscription</span>
+              <button onClick={onLogout} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left">
+                <span className="material-symbols-outlined text-primary">logout</span>
+                <span className="font-bold text-[13px] text-primary"> Logout</span>
               </button>
               <button onClick={() => setShowDangerDialog("Delete My Account")} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left shadow-inner">
                 <span className="material-symbols-outlined text-brand-red">delete</span>

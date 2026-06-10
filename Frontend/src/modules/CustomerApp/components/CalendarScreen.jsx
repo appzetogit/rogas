@@ -406,6 +406,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
               borderClass = "border-outline/25 opacity-70";
             } else if (m.originalStatus === "skipped") {
               borderClass = "border-brand-red opacity-85";
+            } else if (m.originalStatus === "failed") {
+              borderClass = "border-red-500 opacity-85";
             } else if (m.originalStatus === "delivered") {
               borderClass = "border-green-500";
             } else if (m.isLocked && m.hasOrder) {
@@ -456,6 +458,11 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                       <div className="flex items-center gap-1 text-green-600 text-xs font-bold font-sans mt-0.5">
                         <span className="material-symbols-outlined text-[14px]">done_all</span>
                         <p>Delivered ✅</p>
+                      </div>
+                    ) : m.originalStatus === "failed" ? (
+                      <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
+                        <span className="material-symbols-outlined text-[14px]">error</span>
+                        <p>Failed ❌</p>
                       </div>
                     ) : m.isLocked ? (
                       <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>

@@ -1,35 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { dmbCustomerAPI } from "@food/api";
 
-const SLOT_LABELS = { breakfast: "Breakfast ☀️", lunch: "Lunch 🌤️", dinner: "Dinner 🌙" };
-
-const getUTCFormatDateStr = (dateInput) => {
-  if (!dateInput) return "";
-  const d = new Date(dateInput);
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-const getISTTodayStr = () => {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date());
-};
-
-const getISTTomorrowStr = () => {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const tomorrowDate = new Date(Date.now() + 86400000);
-  return formatter.format(tomorrowDate);
+// ─── Constants (module-level, never re-created) ───────────────────────────────
+const SLOT_LABELS = {
+  breakfast: "Breakfast ☀️",
+  lunch: "Lunch 🌤️",
+  dinner: "Dinner 🌙",
 };
 
 const STATUS_CONFIG = {
@@ -39,9 +15,33 @@ const STATUS_CONFIG = {
   out_for_delivery: { label: "On the Way 🛵", color: "bg-purple-100 text-purple-700", icon: "local_shipping", canManage: false },
   delivered: { label: "Delivered ✅", color: "bg-green-100 text-green-700", icon: "done_all", canManage: false },
   skipped: { label: "Skipped", color: "bg-red-100 text-red-600", icon: "cancel", canManage: false },
+  failed: { label: "Failed ❌", color: "bg-red-100 text-red-700", icon: "error", canManage: false },
 };
 
-// ─── Module-level cache (survives tab switches within a session) ────────────
+const TERMINAL_STATUSES = new Set(["skipped", "delivered", "failed"]);
+const INACTIVE_STATUSES = new Set(["skipped", "delivered", "failed"]);
+
+// ─── IST date helpers (pure, no closures) ────────────────────────────────────
+const IST_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Kolkata",
+  year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+function getUTCFormatDateStr(dateInput) {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getISTDateStr(offsetDays = 0) {
+  const d = new Date(Date.now() + offsetDays * 86_400_000);
+  return IST_FORMATTER.format(d);
+}
+
+// ─── Module-level cache (survives tab switches within a session) ──────────────
 // Structure: { upcoming: { data, fetchedAt }, past: { data, fetchedAt } }
 const _ordersCache = { upcoming: null, past: null };
 const CACHE_TTL_MS = 60_000; // 1 minute
@@ -62,8 +62,14 @@ export function clearOrdersCache() {
   _ordersCache.past = null;
 }
 
-// ─── Skeleton card ─────────────────────────────────────────────────────────
-function SkeletonCard() {
+// ─── Helpers to patch cache in-place without full refetch ────────────────────
+function patchCache(type, patchFn) {
+  const cached = getCached(type);
+  if (cached) setCached(type, patchFn(cached));
+}
+
+// ─── Static component — memoized so it never re-renders ──────────────────────
+const SkeletonCard = memo(function SkeletonCard() {
   return (
     <div className="bg-white rounded-[20px] p-4 shadow-sm border border-[#f0eded] animate-pulse space-y-3">
       <div className="flex justify-between">
@@ -79,15 +85,131 @@ function SkeletonCard() {
       </div>
     </div>
   );
-}
+});
 
+// ─── Individual order card — memoized to skip re-render unless order/state changes
+const OrderCard = memo(function OrderCard({
+  order,
+  isPast,
+  isRated,
+  onManage,
+  onTrackLive,
+  onRate,
+}) {
+  const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
+  const mealName = order.meals?.[0]?.name || "Meal";
+  const extraMeals = (order.meals?.length ?? 1) - 1;
+
+  // Compute date string once per render of this card
+  const dateStr = useMemo(() => {
+    const orderDateStr = getUTCFormatDateStr(order.deliveryDate);
+    if (orderDateStr === getISTDateStr(0)) return "TODAY";
+    if (orderDateStr === getISTDateStr(1)) return "TOMORROW";
+    const d = new Date(order.deliveryDate);
+    return `${d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()} ${d.getDate()} ${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}`;
+  }, [order.deliveryDate]);
+
+  const slotStr = (order.deliverySlot || "LUNCH").toUpperCase();
+  const isTerminal = TERMINAL_STATUSES.has(order.status);
+  const isInactive = INACTIVE_STATUSES.has(order.status);
+
+  const badgeColor =
+    order.status === "skipped" || order.status === "failed"
+      ? "bg-red-500"
+      : order.status === "delivered"
+        ? "bg-[#5c6e68]"
+        : "bg-[#2a7a62]";
+
+  const badgeLabel =
+    order.status === "skipped" ? "SKIPPED" :
+      order.status === "failed" ? "FAILED" :
+        order.status === "delivered" ? "COMPLETED" :
+          order.status === "scheduled" ? "SCHEDULED" : "ACTIVE";
+
+  return (
+    <div className="bg-white rounded-[20px] p-4 shadow-sm mb-3 border border-[#f0eded]">
+      {/* Top: Date + Status Badge */}
+      <div className="flex justify-between items-start mb-1">
+        <p className="text-[12px] font-bold text-[#5c6e68] tracking-wider uppercase font-sans">
+          {dateStr} · {slotStr}
+        </p>
+        <span className={`font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans text-white ${badgeColor}`}>
+          {badgeLabel}
+        </span>
+      </div>
+
+      {/* Meal Name */}
+      <h4 className="text-[18px] font-bold text-[#1b1c1c] leading-tight mb-1">
+        {mealName}
+        {extraMeals > 0 && (
+          <span className="text-[14px] text-gray-500 font-medium ml-1">+{extraMeals}</span>
+        )}
+      </h4>
+
+      {/* Customer Name */}
+      <div className="flex items-center gap-1.5 mb-4">
+        <span className="material-symbols-outlined text-[16px] text-[#5c6e68]">person</span>
+        <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || "Maria K."}</span>
+      </div>
+
+      <div className="h-[1px] bg-[#f0eded] w-full mb-3" />
+
+      {/* Bottom Action Row */}
+      <div className="flex items-center justify-between">
+        {isInactive ? (
+          <div className="flex items-center gap-1.5 text-[#5c6e68]">
+            <span className={`material-symbols-outlined text-[18px] ${order.status === "skipped" || order.status === "failed" ? "text-red-500" : ""
+              }`}>
+              {order.status === "skipped" ? "cancel" : order.status === "failed" ? "error" : "history"}
+            </span>
+            <span className={`text-[14px] font-medium ${order.status === "skipped" || order.status === "failed" ? "text-red-500" : ""
+              }`}>
+              {order.status === "skipped" ? "Skipped" : order.status === "failed" ? "Failed" : "Completed"}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-[#006a5c]">
+            <span className="material-symbols-outlined text-[18px]">{statusCfg.icon}</span>
+            <span className="text-[14px] font-medium">
+              {statusCfg.label.replace(/ [🔥✓🛵✅❌]/gu, "")}
+            </span>
+          </div>
+        )}
+
+        {!isPast && !isInactive ? (
+          <button
+            onClick={() => onTrackLive(order)}
+            className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
+          >
+            Track Live <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </button>
+        ) : isPast && order.status === "delivered" ? (
+          <button
+            onClick={() => onRate(order.orderId)}
+            className={`border rounded-xl px-4 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1 ${isRated ? "text-[#006a5c] border-[#006a5c]" : "text-gray-500 border-gray-300"
+              }`}
+          >
+            {isRated ? "Rated" : "Rate"}{" "}
+            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+          </button>
+        ) : isPast && !isTerminal && statusCfg.canManage ? (
+          <button
+            onClick={() => onManage(order)}
+            className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all"
+          >
+            Manage
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotificationToast, socket }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const cacheKey = activeTab === "Upcoming" ? "upcoming" : "past";
-
-  // ── Initialise from cache immediately to avoid spinner flash ──────────────
-  const [orders, setOrders] = useState(() => getCached(cacheKey) ?? []);
-  const [loading, setLoading] = useState(() => !getCached(cacheKey));
+  const [orders, setOrders] = useState(() => getCached("upcoming") ?? []);
+  const [loading, setLoading] = useState(() => !getCached("upcoming"));
   const [ratedOrders, setRatedOrders] = useState([]);
 
   // ─── Manage Sheet State ──────────────────────────────────────────────────
@@ -98,24 +220,36 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
   const [loadingAction, setLoadingAction] = useState(false);
   const [pauseDays, setPauseDays] = useState(1);
 
-  // ─── Load orders (stale-while-revalidate) ────────────────────────────────
+  // Keep latest activeTab accessible in stable callbacks without re-binding
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  // ─── loadOrders — stale-proof via type argument + ref check ──────────────
   const loadOrders = useCallback(async (type, { bustCache = false } = {}) => {
     const key = type === "Upcoming" ? "upcoming" : "past";
+
+    // Returns true if the tab has changed since we fired this fetch
+    const isStale = () => activeTabRef.current !== type;
+
     try {
       const token = localStorage.getItem("user_accessToken");
-      if (!token) { setOrders([]); setLoading(false); return; }
+      if (!token) {
+        if (!isStale()) { setOrders([]); setLoading(false); }
+        return;
+      }
 
-      // Serve cache instantly, then revalidate in background
       if (!bustCache) {
         const hit = getCached(key);
-        if (hit) {
+        if (hit && !isStale()) {
           setOrders(hit);
           setLoading(false);
-          // fall through to background revalidate (no spinner)
+          // Fall through to background revalidate — no spinner
         }
       }
 
       const res = await dmbCustomerAPI.getMyOrders(key);
+      if (isStale()) return; // Tab switched while fetching — discard
+
       if (res.data?.success) {
         const fresh = res.data.orders ?? [];
         setCached(key, fresh);
@@ -123,58 +257,55 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
       }
     } catch (err) {
       console.error("Failed to load orders:", err);
-      setOrders([]);
+      if (!isStale()) setOrders([]);
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
-  }, []);
+  }, []); // stable — no deps needed thanks to activeTabRef
 
-  // Re-fetch when tab changes; initialise from cache synchronously first
+  // Re-fetch when tab changes
   useEffect(() => {
-    const hit = getCached(cacheKey);
+    const key = activeTab === "Upcoming" ? "upcoming" : "past";
+    const hit = getCached(key);
     if (hit) { setOrders(hit); setLoading(false); }
     else { setOrders([]); setLoading(true); }
     loadOrders(activeTab);
   }, [activeTab, loadOrders]);
 
   // ─── Socket: real-time status + daily menu updates ───────────────────────
+  // Use refs for callbacks so socket.on/off doesn't need to re-bind on every render
+  const handleStatusUpdateRef = useRef(null);
+  const handleDailyMenuRef = useRef(null);
+
+  handleStatusUpdateRef.current = (data) => {
+    const patch = (list) =>
+      list.map(o =>
+        o.orderId === data.orderId || String(o._id) === String(data._id)
+          ? { ...o, status: data.status }
+          : o
+      );
+    setOrders(prev => patch(prev));
+    patchCache("upcoming", patch);
+    patchCache("past", patch);
+    const label = STATUS_CONFIG[data.status]?.label || data.status;
+    onShowNotificationToast?.(`🔔 Order ${data.orderId} → ${label}`);
+  };
+
+  handleDailyMenuRef.current = () => {
+    loadOrders(activeTabRef.current, { bustCache: true });
+  };
+
   useEffect(() => {
     if (!socket) return;
-
-    const handleStatusUpdate = (data) => {
-      setOrders(prev =>
-        prev.map(o =>
-          o.orderId === data.orderId || String(o._id) === String(data._id)
-            ? { ...o, status: data.status }
-            : o
-        )
-      );
-      // Keep cache in sync so next tab switch reflects reality
-      const key = activeTab === "Upcoming" ? "upcoming" : "past";
-      const cached = getCached(key);
-      if (cached) {
-        const updated = cached.map(o =>
-          o.orderId === data.orderId || String(o._id) === String(data._id)
-            ? { ...o, status: data.status }
-            : o
-        );
-        setCached(key, updated);
-      }
-      const label = STATUS_CONFIG[data.status]?.label || data.status;
-      onShowNotificationToast?.(`🔔 Order ${data.orderId} → ${label}`);
-    };
-
-    const handleDailyMenuUpdated = () => {
-      loadOrders(activeTab, { bustCache: true });
-    };
-
-    socket.on("order_status_updated", handleStatusUpdate);
-    socket.on("daily_menu_updated", handleDailyMenuUpdated);
+    const onStatus = (d) => handleStatusUpdateRef.current(d);
+    const onMenu = () => handleDailyMenuRef.current();
+    socket.on("order_status_updated", onStatus);
+    socket.on("daily_menu_updated", onMenu);
     return () => {
-      socket.off("order_status_updated", handleStatusUpdate);
-      socket.off("daily_menu_updated", handleDailyMenuUpdated);
+      socket.off("order_status_updated", onStatus);
+      socket.off("daily_menu_updated", onMenu);
     };
-  }, [socket, activeTab, loadOrders, onShowNotificationToast]);
+  }, [socket]); // binds once per socket instance — no stale closure
 
   // ─── Manage sheet helpers ─────────────────────────────────────────────────
   const openManage = useCallback((order) => {
@@ -195,15 +326,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
     setLoadingAction(true);
     try {
       await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
-      // Optimistic update — no need to refetch
-      setOrders(prev => prev.map(o =>
-        o._id === manageOrder._id ? { ...o, status: "skipped" } : o
-      ));
-      const key = activeTab === "Upcoming" ? "upcoming" : "past";
-      const cached = getCached(key);
-      if (cached) setCached(key, cached.map(o =>
-        o._id === manageOrder._id ? { ...o, status: "skipped" } : o
-      ));
+      const patch = (list) =>
+        list.map(o => o._id === manageOrder._id ? { ...o, status: "skipped" } : o);
+      setOrders(prev => patch(prev));
+      const key = activeTabRef.current === "Upcoming" ? "upcoming" : "past";
+      patchCache(key, patch);
       onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
       closeManage();
     } catch (err) {
@@ -211,7 +338,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, activeTab, onShowNotificationToast, closeManage]);
+  }, [manageOrder, onShowNotificationToast, closeManage]);
 
   const handlePause = useCallback(async () => {
     if (!manageOrder) return;
@@ -223,23 +350,23 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
         "Customer requested pause"
       );
       onShowNotificationToast?.(`⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`);
-      loadOrders(activeTab, { bustCache: true });
+      loadOrders(activeTabRef.current, { bustCache: true });
       closeManage();
     } catch (err) {
       onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, pauseDays, activeTab, loadOrders, onShowNotificationToast, closeManage]);
+  }, [manageOrder, pauseDays, loadOrders, onShowNotificationToast, closeManage]);
 
   const openChangeMeal = useCallback(async () => {
-    if (!manageOrder?.vendor?.name) { setManageMode("change_meal"); return; }
+    setManageMode("change_meal");
+    if (!manageOrder?.vendor?.name) return;
     try {
       const vendorId = manageOrder.vendorId || manageOrder._id;
       const res = await dmbCustomerAPI.getVendorMenu(vendorId);
       setAvailableMeals(res.data?.meals ?? res.data?.plans ?? []);
     } catch { /* show empty state */ }
-    setManageMode("change_meal");
   }, [manageOrder]);
 
   const handleChangeMeal = useCallback(async () => {
@@ -248,14 +375,14 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
     try {
       await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
       onShowNotificationToast?.("✅ Meal updated for this delivery!");
-      loadOrders(activeTab, { bustCache: true });
+      loadOrders(activeTabRef.current, { bustCache: true });
       closeManage();
     } catch (err) {
       onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, selectedMealIds, activeTab, loadOrders, onShowNotificationToast, closeManage]);
+  }, [manageOrder, selectedMealIds, loadOrders, onShowNotificationToast, closeManage]);
 
   const toggleMealSelection = useCallback((id) => {
     setSelectedMealIds(prev =>
@@ -263,20 +390,34 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
     );
   }, []);
 
-  // ─── Date helpers (stable, defined once) ─────────────────────────────────
+  // ─── Stable date formatters ───────────────────────────────────────────────
   const formatDate = useCallback((date) =>
-    new Date(date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }), []);
+    new Date(date).toLocaleDateString("en-IN", {
+      weekday: "short", day: "numeric", month: "short",
+    }), []);
 
-  const isTomorrow = useCallback((date) => {
-    const orderDateStr = getUTCFormatDateStr(date);
-    return orderDateStr === getISTTomorrowStr();
-  }, []);
+  // ─── Stable rate handler ──────────────────────────────────────────────────
+  const handleRate = useCallback((orderId) => {
+    setRatedOrders(prev => prev.includes(orderId) ? prev : [...prev, orderId]);
+    onShowNotificationToast?.(
+      ratedOrders.includes(orderId) ? "Already rated!" : "⭐ Thanks for rating!"
+    );
+  }, [ratedOrders, onShowNotificationToast]);
 
-  const isToday = useCallback((date) => {
-    const orderDateStr = getUTCFormatDateStr(date);
-    return orderDateStr === getISTTodayStr();
-  }, []);
+  // ─── Derived state ────────────────────────────────────────────────────────
+  const isPast = activeTab === "Past";
+  const ratedOrderSet = useMemo(() => new Set(ratedOrders), [ratedOrders]);
 
+  // Manage sheet derived values
+  const manageDeliveryInfo = useMemo(() => {
+    if (!manageOrder) return null;
+    const dateStr = formatDate(manageOrder.deliveryDate);
+    const slotLabel = SLOT_LABELS[manageOrder.deliverySlot] || "";
+    const isTomorrow = getUTCFormatDateStr(manageOrder.deliveryDate) === getISTDateStr(1);
+    return { dateStr, slotLabel, isTomorrow };
+  }, [manageOrder, formatDate]);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
       {/* Header */}
@@ -309,7 +450,6 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
         </div>
 
         {loading ? (
-          // Skeleton — matches real card shape, no layout shift
           <section className="space-y-4">
             {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
           </section>
@@ -317,112 +457,27 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-on-surface-variant">
             <span className="material-symbols-outlined text-[56px] text-[#bec9c3]">receipt_long</span>
             <p className="text-[15px] font-semibold text-center">
-              {activeTab === "Upcoming" ? "No upcoming deliveries" : "No past orders yet"}
+              {isPast ? "No past orders yet" : "No upcoming deliveries"}
             </p>
             <p className="text-[13px] text-center">
-              {activeTab === "Upcoming"
-                ? "Subscribe to a meal plan to get started!"
-                : "Your completed orders will appear here."}
+              {isPast
+                ? "Your completed orders will appear here."
+                : "Subscribe to a meal plan to get started!"}
             </p>
           </div>
         ) : (
           <section className="space-y-4">
-            {orders.map((order) => {
-              const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
-              const mealName = order.meals?.[0]?.name || "Meal";
-              const extraMeals = (order.meals?.length ?? 1) - 1;
-              const isPast = activeTab === "Past";
-              const isTomorrowOrder = isTomorrow(order.deliveryDate);
-              const isTodayOrder = isToday(order.deliveryDate);
-
-              let dateStr = "";
-              if (isTodayOrder) dateStr = "TODAY";
-              else if (isTomorrowOrder) dateStr = "TOMORROW";
-              else {
-                const d = new Date(order.deliveryDate);
-                dateStr = `${d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()} ${d.getDate()} ${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}`;
-              }
-              const slotStr = (order.deliverySlot || "LUNCH").toUpperCase();
-
-              return (
-                <div key={order._id || order.orderId} className="bg-white rounded-[20px] p-4 shadow-sm mb-3 border border-[#f0eded]">
-                  {/* Top: Date + Status Badge */}
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-[12px] font-bold text-[#5c6e68] tracking-wider uppercase font-sans">
-                      {dateStr} · {slotStr}
-                    </p>
-                    <span className={`font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans text-white ${order.status === "skipped" ? "bg-red-500" : "bg-[#2a7a62]"
-                      }`}>
-                      {order.status === "skipped" ? "SKIPPED" : order.status === "scheduled" ? "SCHEDULED" : "ACTIVE"}
-                    </span>
-                  </div>
-
-                  {/* Meal Name */}
-                  <h4 className="text-[18px] font-bold text-[#1b1c1c] leading-tight mb-1">
-                    {mealName}
-                    {extraMeals > 0 && (
-                      <span className="text-[14px] text-gray-500 font-medium ml-1">+{extraMeals}</span>
-                    )}
-                  </h4>
-
-                  {/* Customer Name */}
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <span className="material-symbols-outlined text-[16px] text-[#5c6e68]">person</span>
-                    <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || "Maria K."}</span>
-                  </div>
-
-                  <div className="h-[1px] bg-[#f0eded] w-full mb-3" />
-
-                  {/* Bottom Action Row */}
-                  <div className="flex items-center justify-between">
-                    {isPast || order.status === "skipped" ? (
-                      <div className="flex items-center gap-1.5 text-[#5c6e68]">
-                        <span className={`material-symbols-outlined text-[18px] ${order.status === "skipped" ? "text-red-500" : ""}`}>
-                          {order.status === "skipped" ? "cancel" : "history"}
-                        </span>
-                        <span className={`text-[14px] font-medium ${order.status === "skipped" ? "text-red-500" : ""}`}>
-                          {order.status === "skipped" ? "Skipped" : "Completed"}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-[#006a5c]">
-                        <span className="material-symbols-outlined text-[18px]">{statusCfg.icon}</span>
-                        <span className="text-[14px] font-medium">
-                          {statusCfg.label.replace(/ [🔥✓🛵✅]/gu, "")}
-                        </span>
-                      </div>
-                    )}
-
-                    {!isPast && order.status !== "skipped" ? (
-                      <button
-                        onClick={() => onTrackLive(order)}
-                        className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
-                      >
-                        Track Live <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                      </button>
-                    ) : isPast && order.status !== "skipped" ? (
-                      <button
-                        onClick={() => {
-                          setRatedOrders(prev =>
-                            prev.includes(order.orderId) ? prev : [...prev, order.orderId]
-                          );
-                          onShowNotificationToast?.(
-                            ratedOrders.includes(order.orderId) ? "Already rated!" : "⭐ Thanks for rating!"
-                          );
-                        }}
-                        className={`border rounded-xl px-4 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1 ${ratedOrders.includes(order.orderId)
-                          ? "text-[#006a5c] border-[#006a5c]"
-                          : "text-gray-500 border-gray-300"
-                          }`}
-                      >
-                        {ratedOrders.includes(order.orderId) ? "Rated" : "Rate"}{" "}
-                        <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
+            {orders.map(order => (
+              <OrderCard
+                key={order._id || order.orderId}
+                order={order}
+                isPast={isPast}
+                isRated={ratedOrderSet.has(order.orderId)}
+                onManage={openManage}
+                onTrackLive={onTrackLive}
+                onRate={handleRate}
+              />
+            ))}
           </section>
         )}
       </main>
@@ -444,9 +499,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                   {manageOrder.meals?.[0]?.name || "Meal"}
                 </p>
                 <p className="text-[12px] text-on-surface-variant mb-5">
-                  {formatDate(manageOrder.deliveryDate)} · {SLOT_LABELS[manageOrder.deliverySlot] || ""}
-                  {isTomorrow(manageOrder.deliveryDate) && (
-                    <span className="ml-2 bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold">TOMORROW</span>
+                  {manageDeliveryInfo?.dateStr} · {manageDeliveryInfo?.slotLabel}
+                  {manageDeliveryInfo?.isTomorrow && (
+                    <span className="ml-2 bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      TOMORROW
+                    </span>
                   )}
                 </p>
 
@@ -494,7 +551,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                   </button>
                 </div>
 
-                <button onClick={closeManage} className="w-full mt-4 py-3 text-center text-[14px] font-bold text-on-surface-variant">
+                <button
+                  onClick={closeManage}
+                  className="w-full mt-4 py-3 text-center text-[14px] font-bold text-on-surface-variant"
+                >
                   Cancel
                 </button>
               </>
@@ -504,10 +564,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Skip This Delivery?</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  Your {formatDate(manageOrder.deliveryDate)} delivery will be skipped and the day's amount will be credited to your wallet.
+                  Your {manageDeliveryInfo?.dateStr} delivery will be skipped and the day's amount will be credited to your wallet.
                 </p>
                 <div className="flex gap-3">
-                  <button onClick={() => setManageMode("actions")} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">
+                  <button
+                    onClick={() => setManageMode("actions")}
+                    className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50"
+                  >
                     Go Back
                   </button>
                   <button
@@ -515,7 +578,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                     disabled={loadingAction}
                     className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
-                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    {loadingAction && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
                     Confirm Skip
                   </button>
                 </div>
@@ -525,7 +590,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
             {manageMode === "pause" && (
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
-                <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription.</p>
+                <p className="text-[13px] text-on-surface-variant mb-5">
+                  Select how many days to pause your subscription.
+                </p>
                 <div className="flex gap-3 mb-6">
                   {[1, 2].map(d => (
                     <button
@@ -541,7 +608,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setManageMode("actions")} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">
+                  <button
+                    onClick={() => setManageMode("actions")}
+                    className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant"
+                  >
                     Go Back
                   </button>
                   <button
@@ -549,7 +619,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                     disabled={loadingAction}
                     className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
-                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    {loadingAction && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
                     Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
                   </button>
                 </div>
@@ -559,12 +631,16 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
             {manageMode === "change_meal" && (
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
-                <p className="text-[13px] text-on-surface-variant mb-4">Choose meals for this delivery from the vendor's menu.</p>
+                <p className="text-[13px] text-on-surface-variant mb-4">
+                  Choose meals for this delivery from the vendor's menu.
+                </p>
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
                     <span className="material-symbols-outlined text-[36px] text-slate-300 mb-2">restaurant_menu</span>
-                    <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
+                    <p className="text-[13px] text-slate-500 font-medium">
+                      No alternate meals available from this vendor right now.
+                    </p>
                     <p className="text-[12px] text-slate-400 mt-1">Current selection will be kept.</p>
                   </div>
                 ) : (
@@ -576,16 +652,22 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                         <button
                           key={id}
                           onClick={() => toggleMealSelection(id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${isSelected ? "border-primary bg-[#e8f3f0]" : "border-[#e4e2e1] bg-white hover:bg-slate-50"
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${isSelected
+                            ? "border-primary bg-[#e8f3f0]"
+                            : "border-[#e4e2e1] bg-white hover:bg-slate-50"
                             }`}
                         >
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"
                             }`}>
-                            {isSelected && <span className="material-symbols-outlined text-white text-[12px]">check</span>}
+                            {isSelected && (
+                              <span className="material-symbols-outlined text-white text-[12px]">check</span>
+                            )}
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">₹{meal.pricePerDay || meal.price || "—"}/day</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">
+                              ₹{meal.pricePerDay || meal.price || "—"}/day
+                            </p>
                           </div>
                         </button>
                       );
@@ -594,7 +676,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={() => setManageMode("actions")} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">
+                  <button
+                    onClick={() => setManageMode("actions")}
+                    className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant"
+                  >
                     Go Back
                   </button>
                   <button
@@ -602,7 +687,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                     disabled={loadingAction || selectedMealIds.length === 0}
                     className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
                   >
-                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    {loadingAction && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
                     Confirm Change
                   </button>
                 </div>

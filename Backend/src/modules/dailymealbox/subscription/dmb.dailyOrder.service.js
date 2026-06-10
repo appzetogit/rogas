@@ -337,7 +337,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
     const orderDocs = await DMBDailyOrder.find({
         userId,
         deliveryDate: { $gte: today, $lt: dayAfterTomorrow },
-        status: { $nin: ['skipped', 'failed'] }
+        status: { $nin: ['failed'] }
     }).sort({ deliveryDate: 1 });
 
     // Refresh meal names from latest DMBDailyMenu for each order
@@ -357,7 +357,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
     const orders = await DMBDailyOrder.find({
         userId,
         deliveryDate: { $gte: today, $lt: dayAfterTomorrow },
-        status: { $nin: ['skipped', 'failed'] }
+        status: { $nin: ['failed'] }
     })
         .populate('vendorId', 'restaurantName profileImage city')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
@@ -394,7 +394,10 @@ export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
         filter.deliveryDate = { $gte: today };
         filter.status = { $nin: ['delivered', 'failed'] };
     } else {
-        filter.deliveryDate = { $lt: today };
+        filter.$or = [
+            { deliveryDate: { $lt: today } },
+            { status: { $in: ['delivered', 'failed'] } }
+        ];
     }
 
     // For upcoming orders: refresh meal names from DMBDailyMenu first
@@ -425,7 +428,22 @@ export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
     // Attach custom photo, nutrition, description
     await attachDailyMenuDetails(orders);
 
-    return orders.map(formatOrderCard);
+    // Resolve order status dynamically before returning
+    const mappedOrders = orders.map(order => {
+        let status = order.status;
+        const deliveryDateOnly = toDateOnly(order.deliveryDate);
+        if (deliveryDateOnly < today) {
+            if (status !== 'delivered' && status !== 'skipped' && status !== 'failed') {
+                status = 'failed';
+            }
+        }
+        return {
+            ...order,
+            status
+        };
+    });
+
+    return mappedOrders.map(formatOrderCard);
 };
 
 /**
