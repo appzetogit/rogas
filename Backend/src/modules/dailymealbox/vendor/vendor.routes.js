@@ -719,7 +719,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             });
         }
 
-        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city');
+        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city phone');
         const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
         const vendorCity = vendor?.city || vendor?.location?.city;
 
@@ -753,11 +753,23 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         if (io) {
             const payload = {
                 batchId: batch.batchId,
+                slotType: batch.deliverySlot,      // Slot Type
+                totalMealBoxCount: batch.boxCount, // Total Meal Box Count for that slot
+                vendorInfo: {
+                    vendorId: vendor._id,
+                    vendorName: vendor.restaurantName,
+                    vendorLocation: vendor.location,
+                    vendorPhone: vendor.phone || ''
+                },
+                pickupStatus: batch.status,
+
+                // Backward compatibility
                 vendorId: vendor._id,
                 vendorName: vendor.restaurantName,
                 vendorLocation: vendor.location,
                 boxCount: batch.boxCount,
-                slot: batch.deliverySlot
+                slot: batch.deliverySlot,
+                totalOrders: batch.boxCount
             };
 
             onlineDrivers.forEach(driver => {

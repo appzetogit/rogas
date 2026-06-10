@@ -20,6 +20,16 @@ const STATUS_CONFIG = {
 export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatus, onBatchUpdateStatus }) {
   const [viewMode, setViewMode] = useState('daily');
   const [activeDate, setActiveDate] = useState('today');
+  
+  // Auto-detect slot based on current hour
+  const getInitialSlot = () => {
+    const hr = new Date().getHours();
+    if (hr < 10) return 'breakfast';
+    if (hr < 15) return 'lunch';
+    return 'dinner';
+  };
+
+  const [activeSlot, setActiveSlot] = useState(getInitialSlot());
   const [dailyOrders, setDailyOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
@@ -28,6 +38,11 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
   };
+
+  // Reset slot filter on date change to appropriate initial slot
+  useEffect(() => {
+    setActiveSlot(getInitialSlot());
+  }, [activeDate]);
 
   // ─── Load daily orders from backend ──────────────────────────────────────
   const loadDailyOrders = async (dateLabel = 'today') => {
@@ -63,8 +78,41 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     };
   }, [activeDate]);
 
+  // Frontend time window checks
+  const isWithinPrepWindow = (slot, date = new Date()) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const timeVal = hours * 60 + minutes;
+
+    if (slot === 'breakfast') {
+      return timeVal >= 4 * 60 + 30 && timeVal <= 6 * 60; // 04:30 to 06:00
+    }
+    if (slot === 'lunch') {
+      return timeVal >= 11 * 60 + 30 && timeVal <= 11 * 60 + 40; // 11:30 to 11:40
+    }
+    if (slot === 'dinner') {
+      return timeVal >= 16 * 60 + 30 && timeVal <= 18 * 60; // 16:30 to 18:00
+    }
+    return false;
+  };
+
   // ─── Update single order status ──────────────────────────────────────────
-  const handleStatusChange = async (orderId, newStatus) => {
+  const handleStatusChange = async (orderId, newStatus, deliverySlot) => {
+    if (newStatus === 'preparing') {
+      if (activeDate !== 'today') {
+        showToast('⚠️ Can only start preparation for today\'s orders!');
+        return;
+      }
+      if (!isWithinPrepWindow(deliverySlot)) {
+        let windowText = '';
+        if (deliverySlot === 'breakfast') windowText = '4:30 AM – 6:00 AM';
+        else if (deliverySlot === 'lunch') windowText = '11:30 AM – 11:40 AM';
+        else if (deliverySlot === 'dinner') windowText = '4:30 PM – 6:00 PM';
+        showToast(`⚠️ Preparation for ${deliverySlot} is only allowed during ${windowText}!`);
+        return;
+      }
+    }
+
     try {
       await dmbVendorAPI.updateDailyOrderStatus(orderId, newStatus);
       setDailyOrders(prev =>
@@ -83,21 +131,31 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
         ? new Date(Date.now() + 86400000).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
 
-      await dmbVendorAPI.markAllDailyOrdersReady(dateParam, null);
+      await dmbVendorAPI.markAllDailyOrdersReady(dateParam, activeSlot);
       setDailyOrders(prev =>
-        prev.map(o => ['scheduled', 'preparing'].includes(o.status) ? { ...o, status: 'ready' } : o)
+        prev.map(o => (
+          ['scheduled', 'preparing'].includes(o.status) &&
+          o.deliverySlot === activeSlot
+        ) ? { ...o, status: 'ready' } : o)
       );
-      showToast('✅ All orders marked as Ready!');
+      const slotLabel = activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1);
+      showToast(`✅ ${slotLabel} orders marked as Ready!`);
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to mark all ready');
     }
   };
 
-  // Summary stats
-  const scheduledCount = dailyOrders.filter(o => o.status === 'scheduled').length;
-  const preparingCount = dailyOrders.filter(o => o.status === 'preparing').length;
-  const readyCount = dailyOrders.filter(o => o.status === 'ready').length;
-  const pendingCount = dailyOrders.filter(o => ['scheduled', 'preparing'].includes(o.status)).length;
+  // Slot counts based on dailyOrders for the active date
+  const breakfastCount = dailyOrders.filter(o => o.deliverySlot === 'breakfast').length;
+  const lunchCount = dailyOrders.filter(o => o.deliverySlot === 'lunch').length;
+  const dinnerCount = dailyOrders.filter(o => o.deliverySlot === 'dinner').length;
+
+  const filteredOrders = dailyOrders.filter(o => o.deliverySlot === activeSlot);
+
+  // Summary stats (dynamic based on filtered orders)
+  const preparingCount = filteredOrders.filter(o => o.status === 'preparing').length;
+  const readyCount = filteredOrders.filter(o => o.status === 'ready').length;
+  const pendingCount = filteredOrders.filter(o => ['scheduled', 'preparing'].includes(o.status)).length;
 
   return (
     <div className="flex-grow pt-14 pb-[99px] font-sans px-4 select-none max-w-[390px] mx-auto w-full text-left">
@@ -140,12 +198,54 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             ))}
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-50 p-3 rounded-xl flex flex-col items-center border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Scheduled</span>
-              <span className="text-xl font-bold text-slate-700 mt-1">{scheduledCount}</span>
+          {/* Slot Filter Chips */}
+          <div className="flex gap-1.5 select-none">
+            {[
+              { id: 'breakfast', label: 'Breakfast', count: breakfastCount, icon: '☀️' },
+              { id: 'lunch', label: 'Lunch', count: lunchCount, icon: '🌤️' },
+              { id: 'dinner', label: 'Dinner', count: dinnerCount, icon: '🌙' }
+            ].map(slot => (
+              <button
+                key={slot.id}
+                onClick={() => setActiveSlot(slot.id)}
+                className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-bold border transition-all active:scale-95 ${
+                  activeSlot === slot.id
+                    ? 'bg-primary text-white border-primary shadow-sm font-extrabold'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span>{slot.icon}</span>
+                <span>{slot.label}</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
+                  activeSlot === slot.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}>
+                  {slot.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Meal Box Counts Card */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Meal Box Counts</h4>
+            <div className="grid grid-cols-3 gap-2 text-center text-[12px] font-bold text-slate-700">
+              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
+                <p className="text-[9px] text-slate-400 uppercase font-bold">Breakfast</p>
+                <p className="text-[14px] text-primary font-black mt-0.5">{breakfastCount} Boxes</p>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
+                <p className="text-[9px] text-slate-400 uppercase font-bold">Lunch</p>
+                <p className="text-[14px] text-primary font-black mt-0.5">{lunchCount} Boxes</p>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
+                <p className="text-[9px] text-slate-400 uppercase font-bold">Dinner</p>
+                <p className="text-[14px] text-primary font-black mt-0.5">{dinnerCount} Boxes</p>
+              </div>
             </div>
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-amber-50 p-3 rounded-xl flex flex-col items-center border border-amber-200">
               <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Preparing</span>
               <span className="text-xl font-bold text-amber-700 mt-1">{preparingCount}</span>
@@ -163,7 +263,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               className="w-full bg-primary text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">done_all</span>
-              Mark All {pendingCount} Orders as Ready
+              Mark All {pendingCount} {activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)} Orders as Ready
             </button>
           )}
 
@@ -179,9 +279,15 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               <p className="text-[14px] text-slate-500 font-bold mt-2">No subscription orders {activeDate}</p>
               <p className="text-[12px] text-slate-400 mt-1">Orders appear when customers have active subscriptions</p>
             </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6 animate-fadeIn">
+              <span className="material-symbols-outlined text-[40px] text-slate-300">inbox</span>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">No {activeSlot} orders {activeDate}</p>
+              <p className="text-[12px] text-slate-400 mt-1">Select another slot or check back later</p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {dailyOrders.map(order => {
+              {filteredOrders.map(order => {
                 const sc = STATUS_CONFIG[order.status] || STATUS_CONFIG.scheduled;
                 const mealName = order.meals?.[0]?.name || 'Meal';
                 const extraMeals = (order.meals?.length || 1) - 1;
@@ -224,7 +330,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
                           {canPrepare && (
                             <button
-                              onClick={() => handleStatusChange(order._id, 'preparing')}
+                              onClick={() => handleStatusChange(order._id, 'preparing', order.deliverySlot)}
                               className="flex-1 bg-amber-500 text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                             >
                               <span className="material-symbols-outlined text-[16px]">soup_kitchen</span>

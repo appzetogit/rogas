@@ -495,6 +495,158 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
 /**
  * Vendor updates order status → broadcasts via Socket.IO to customer
  */
+// ─── Prep Window Validation Helpers ─────────────────────────────────────────
+const isWithinPrepWindow = (slot, date = new Date()) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const timeVal = hours * 60 + minutes; // minutes from midnight
+
+    if (slot === 'breakfast') {
+        return timeVal >= 4 * 60 + 30 && timeVal <= 6 * 60; // 04:30 to 06:00
+    }
+    if (slot === 'lunch') {
+        return timeVal >= 11 * 60 + 30 && timeVal <= 11 * 60 + 40; // 11:30 to 11:40
+    }
+    if (slot === 'dinner') {
+        return timeVal >= 16 * 60 + 30 && timeVal <= 18 * 60; // 16:30 to 18:00
+    }
+    return false;
+};
+
+const getLocalDateString = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+/**
+ * Triggers driver notification if all orders in a slot are ready.
+ */
+export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) => {
+    const targetDate = toDateOnly(date);
+    const nextDay = new Date(targetDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    const filter = {
+        vendorId,
+        deliveryDate: { $gte: targetDate, $lt: nextDay },
+        deliverySlot: slot
+    };
+
+    const allOrdersInSlot = await DMBDailyOrder.find(filter);
+    if (allOrdersInSlot.length === 0) {
+        logger.info(`No orders found for vendor ${vendorId} in slot ${slot} on ${dateStr(targetDate)}`);
+        return;
+    }
+
+    // Check if there are any orders still in scheduled or preparing status
+    const pendingOrders = allOrdersInSlot.filter(o => ['scheduled', 'preparing'].includes(o.status));
+    if (pendingOrders.length > 0) {
+        logger.info(`Cannot notify driver: there are still ${pendingOrders.length} pending orders for vendor ${vendorId} in slot ${slot} on ${dateStr(targetDate)}`);
+        return;
+    }
+
+    // Check if there are ready orders to collect
+    const readyOrders = allOrdersInSlot.filter(o => o.status === 'ready');
+    if (readyOrders.length === 0) {
+        logger.info(`All orders processed for vendor ${vendorId} in slot ${slot} on ${dateStr(targetDate)}, but none are 'ready' (all might be skipped).`);
+        return;
+    }
+
+    try {
+        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city phone');
+        const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
+        const vendorCity = vendor?.city || vendor?.location?.city;
+
+        const driverFilter = {
+            availabilityStatus: 'online',
+            status: 'approved',
+        };
+
+        if (vendorZoneId) {
+            driverFilter.$or = [
+                { zoneIds: vendorZoneId },
+                { city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } }
+            ];
+        } else if (vendorCity) {
+            driverFilter.city = { $regex: new RegExp(`^${vendorCity}$`, 'i') };
+        } else {
+            logger.warn(`Vendor ${vendorId} has no zoneId or city configured. Cannot broadcast.`);
+            return;
+        }
+
+        // Find existing batch or create a new one
+        let batch = await CollectionBatch.findOne({
+            vendorId,
+            deliveryDate: targetDate,
+            deliverySlot: slot
+        });
+
+        if (batch && batch.status !== 'pending') {
+            logger.info(`Batch ${batch.batchId} status is ${batch.status}, not broadcasting again.`);
+            return;
+        }
+
+        if (!batch) {
+            const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
+            batch = await CollectionBatch.create({
+                vendorId,
+                deliveryDate: targetDate,
+                deliverySlot: slot,
+                collectionPinHash: pin, // Store raw 4-digit PIN for verification
+                boxCount: readyOrders.length,
+                orderIds: readyOrders.map(o => o._id),
+                status: 'pending'
+            });
+        } else {
+            batch.boxCount = readyOrders.length;
+            batch.orderIds = readyOrders.map(o => o._id);
+            await batch.save();
+        }
+
+        const onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id fcmTokens socketRoomId');
+        logger.info(`Vendor ${vendorId} automatic broadcast query matched ${onlineDrivers.length} online drivers`);
+
+        const io = getIO();
+        if (io && onlineDrivers.length > 0) {
+            const payload = {
+                batchId: batch.batchId,
+                slotType: slot,
+                totalMealBoxCount: batch.boxCount,
+                vendorInfo: {
+                    vendorId: vendor._id,
+                    vendorName: vendor.restaurantName,
+                    vendorLocation: vendor.location,
+                    vendorPhone: vendor.phone || ''
+                },
+                pickupStatus: batch.status,
+
+                // Backward compatibility
+                vendorId: vendor._id,
+                vendorName: vendor.restaurantName,
+                vendorLocation: vendor.location,
+                boxCount: batch.boxCount,
+                slot: slot,
+                totalOrders: batch.boxCount
+            };
+
+            onlineDrivers.forEach(driver => {
+                const roomName = `delivery:${driver._id.toString()}`;
+                io.to(roomName).emit('new_delivery_request', payload);
+            });
+
+            logger.info(`Automatic notification for vendor ${vendorId} slot ${slot} batch ${batch.batchId} broadcasted to ${onlineDrivers.length} drivers`);
+        }
+    } catch (err) {
+        logger.error(`Error in triggerDriverNotificationIfAllReady: ${err.message}`);
+    }
+};
+
+/**
+ * Vendor updates order status → broadcasts via Socket.IO to customer
+ */
 export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
     const validTransitions = {
         scheduled: ['preparing', 'skipped'],
@@ -508,6 +660,23 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
 
     const order = await DMBDailyOrder.findOne({ _id: orderId, vendorId });
     if (!order) throw new Error('Order not found or not authorized');
+
+    if (status === 'preparing') {
+        const orderDateStr = getLocalDateString(order.deliveryDate);
+        const todayStr = getLocalDateString(new Date());
+
+        if (orderDateStr !== todayStr) {
+            throw new Error('Can only start preparation for today\'s orders');
+        }
+
+        if (!isWithinPrepWindow(order.deliverySlot)) {
+            let windowText = '';
+            if (order.deliverySlot === 'breakfast') windowText = '4:30 AM – 6:00 AM';
+            else if (order.deliverySlot === 'lunch') windowText = '11:30 AM – 11:40 AM';
+            else if (order.deliverySlot === 'dinner') windowText = '4:30 PM – 6:00 PM';
+            throw new Error(`Cannot start preparation for ${order.deliverySlot} outside its configured preparation window (${windowText})`);
+        }
+    }
 
     const allowed = validTransitions[order.status] || [];
     if (!allowed.includes(status)) {
@@ -536,6 +705,11 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
             updatedAt: new Date().toISOString()
         });
         logger.info(`Socket emitted order_status_updated to room ${roomName}: ${status}`);
+    }
+
+    // Trigger driver notification if all orders in this slot are ready
+    if (status === 'ready') {
+        await triggerDriverNotificationIfAllReady(order.vendorId, order.deliveryDate, order.deliverySlot);
     }
 
     logger.info(`DMB order ${order.orderId} status → ${status} by vendor ${vendorId}`);
@@ -584,71 +758,8 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
         }
     }
 
-    // --- Broadcast to nearby delivery partners ---
-    try {
-        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city');
-        
-        const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
-        const vendorCity = vendor?.city || vendor?.location?.city;
-
-        // Build driver filter: zone match OR city match (fallback)
-        const driverFilter = {
-            availabilityStatus: 'online',
-            status: 'approved',
-        };
-
-        if (vendorZoneId) {
-            driverFilter.$or = [
-                { zoneIds: vendorZoneId },
-                { city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } }
-            ];
-        } else if (vendorCity) {
-            // No zone configured: fallback to city-only match
-            driverFilter.city = { $regex: new RegExp(`^${vendorCity}$`, 'i') };
-        } else {
-            logger.warn(`Vendor ${vendorId} has no zoneId or city configured. Cannot broadcast.`);
-            return { count, date: dateStr(targetDate), slot };
-        }
-
-        // Create an unassigned CollectionBatch for these orders
-        const batch = await CollectionBatch.create({
-            vendorId,
-            deliveryDate: targetDate,
-            deliverySlot: slot || 'lunch',
-            boxCount: orders.length,
-            orderIds: orders.map(o => o._id),
-            status: 'pending'
-        });
-
-        // Find online drivers in this zone/city
-        const onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id fcmTokens socketRoomId');
-
-        logger.info(`Vendor ${vendorId} broadcast query matched ${onlineDrivers.length} online drivers (filter: ${JSON.stringify(driverFilter)})`);
-
-        if (io && onlineDrivers.length > 0) {
-            const payload = {
-                batchId: batch.batchId,
-                vendorId: vendor._id,
-                vendorName: vendor.restaurantName,
-                vendorLocation: vendor.location,
-                boxCount: orders.length,
-                slot: slot || 'lunch',
-                totalOrders: orders.length,
-            };
-
-            // Broadcast to all matched online drivers
-            onlineDrivers.forEach(driver => {
-                const roomName = `delivery:${driver._id.toString()}`;
-                io.to(roomName).emit('new_delivery_request', payload);
-            });
-            
-            logger.info(`Vendor ${vendorId} batch ${batch.batchId} broadcasted to ${onlineDrivers.length} drivers`);
-        } else if (onlineDrivers.length === 0) {
-            logger.warn(`No online+approved drivers found for vendor ${vendorId} in city "${vendorCity}" / zone "${vendorZoneId}"`);
-        }
-    } catch (err) {
-        logger.error(`Error broadcasting delivery request for vendor ${vendorId}: ${err.message}`);
-    }
+    // Automatically trigger driver notification if all slot meals are ready
+    await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
 
     logger.info(`Vendor ${vendorId} marked ${count} orders as ready for ${dateStr(targetDate)} / ${slot}`);
     return { count, date: dateStr(targetDate), slot };
