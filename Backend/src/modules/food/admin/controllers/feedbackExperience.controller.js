@@ -8,7 +8,7 @@ import { sendResponse, sendError } from '../../../../utils/response.js';
 export const createFeedbackExperience = async (req, res) => {
     try {
         const { rating, comment, module } = req.body;
-        const userId = req.user?.userId; // Sahi field 'userId' hai, '_id' nahi
+        const userId = req.user?.userId; // Correct field is 'userId', not '_id'
 
         if (!rating || !module) {
             return sendError(res, 400, 'Rating and module are required');

@@ -132,7 +132,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
 }
 
 // ─── Plans Selection Modal ─────────────────────────────────────────────────────
-function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout }) {
+function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub }) {
   const [mealPlans, setMealPlans] = useState([]);
   const [selectedMeals, setSelectedMeals] = useState({}); // { [mealPlanId]: quantity }
   const [durationPlans, setDurationPlans] = useState([]);
@@ -141,6 +141,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [selectedDays, setSelectedDays] = useState("mon_fri");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showActiveSubWarning, setShowActiveSubWarning] = useState(false);
 
   // Map & Zone state
   const [zones, setZones] = useState([]);
@@ -199,7 +200,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
           dmbCustomerAPI.getDurationPlans(),
           dmbCustomerAPI.getPublicZones()
         ]);
-        
+
         const plans = plansRes.data?.mealPlans || [];
         setMealPlans(plans);
 
@@ -208,7 +209,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
         const activeZones = zonesRes.data?.data?.zones || zonesRes.data?.zones || [];
         setZones(activeZones);
-        
+
         // Auto-select "weekly" plan if it exists, or fallback to first duration plan
         const defaultDur = durations.find(d => d.code === "weekly") || durations[0] || null;
         setSelectedDuration(defaultDur);
@@ -285,8 +286,12 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       alert("Please select a delivery zone");
       return;
     }
-    if (!address.trim()) {
+    if (address.trim() === "") {
       alert("Please enter a delivery address");
+      return;
+    }
+    if (hasActiveSub) {
+      setShowActiveSubWarning(true);
       return;
     }
     onProceedToCheckout({
@@ -470,8 +475,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
               <section>
                 <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Service Zone</h3>
                 <div className="bg-white rounded-xl border-2 border-[#e4e2e1] overflow-hidden mb-4">
-                  <select 
-                    value={selectedZone} 
+                  <select
+                    value={selectedZone}
                     onChange={(e) => setSelectedZone(e.target.value)}
                     className="w-full bg-transparent px-4 py-3 text-[13px] text-[#1b1c1c] font-medium outline-none"
                   >
@@ -492,22 +497,22 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                     className="w-full bg-[#f9f9f7] rounded-lg px-3 py-2 text-[13px] font-medium text-[#1b1c1c] resize-none focus:outline-none"
                   />
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => setShowMap(!showMap)} 
+                    <button
+                      onClick={() => setShowMap(!showMap)}
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 transition-colors active:bg-primary/5"
                     >
                       <span className="material-symbols-outlined text-[16px]">location_on</span>
                       {showMap ? 'Hide Map' : 'Set on Map'}
                     </button>
-                    <button 
-                      onClick={handleLiveLocation} 
+                    <button
+                      onClick={handleLiveLocation}
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold bg-[#1F7A63]/10 text-[#1F7A63] flex items-center justify-center gap-1.5 transition-colors active:bg-[#1F7A63]/20"
                     >
                       <span className="material-symbols-outlined text-[16px]">my_location</span>
                       Live Location
                     </button>
                   </div>
-                  
+
                   {showMap && (
                     <div className="h-[200px] w-full rounded-lg overflow-hidden border border-[#e4e2e1] relative z-0">
                       {isLoaded ? (
@@ -575,6 +580,31 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
           )}
         </div>
       </div>
+
+      {showActiveSubWarning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[210] animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
+            <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
+              <span className="material-symbols-outlined">warning</span>
+              Active Subscription Exists
+            </h3>
+
+            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+              You already have an active or paused subscription plan. You cannot purchase another plan until your current subscription expires or is cancelled.
+            </p>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowActiveSubWarning(false)}
+                className="w-full bg-primary hover:bg-[#155a49] text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -586,6 +616,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
   const [loading, setLoading] = useState(true);
   const [openMenuFor, setOpenMenuFor] = useState(null);
   const [openPlansFor, setOpenPlansFor] = useState(null);
+  const [hasActiveSub, setHasActiveSub] = useState(false);
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -603,7 +634,21 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
         setLoading(false);
       }
     };
+    const checkActiveSub = async () => {
+      try {
+        const res = await dmbCustomerAPI.getMySubscriptions();
+        if (res.data?.success) {
+          const activeOrPaused = res.data.subscriptions?.some(
+            sub => sub.status === "active" || sub.status === "paused"
+          );
+          setHasActiveSub(activeOrPaused);
+        }
+      } catch (e) {
+        console.error("Error checking active subscriptions:", e);
+      }
+    };
     fetchVendors();
+    checkActiveSub();
   }, []);
 
   const activePlans = vendors.map((vendor) => {
@@ -650,22 +695,12 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
     <>
       <div className="bg-[#F5F5F0] text-on-surface min-h-screen pb-32">
         {/* Top Header */}
-        <header className="fixed top-0 left-0 w-full z-40 bg-white shadow-sm flex justify-between items-center px-5 h-14">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onGoBack}
-              className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#f5f5f0]"
-            >
-              arrow_back
-            </button>
-            <h1 className="text-xl font-extrabold text-[#1b1c1c]">Meal Plans</h1>
-          </div>
-          <button
-            onClick={onGoToProfile}
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/20"
-          >
-            <img alt="Profile" className="w-full h-full object-cover" src={IMAGES.profileAnnaSecondary} />
+        <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
+            arrow_back
           </button>
+          <h1 className="text-xl font-extrabold text-primary text-center">Meal Plans</h1>
+          <div className="w-8" />
         </header>
 
         <main className="pt-20 px-4">
@@ -833,6 +868,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
           vendorImage={openPlansFor.image}
           onClose={() => setOpenPlansFor(null)}
           onProceedToCheckout={handleProceedToCheckout}
+          hasActiveSub={hasActiveSub}
         />
       )}
     </>

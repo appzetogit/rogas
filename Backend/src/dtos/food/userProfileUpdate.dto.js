@@ -9,12 +9,12 @@ const isoDate = z
 
 const schema = z.object({
     name: z.string().max(200).optional(),
-    email: z.string().email().max(200).optional(),
+    email: z.union([z.string().email().max(200), z.literal('')]).optional(),
     phone: z.string().max(30).optional(),
     profileImage: z.string().max(2000).optional(),
-    dateOfBirth: isoDate.optional(),
-    anniversary: isoDate.optional(),
-    gender: genderEnum.optional()
+    dateOfBirth: z.union([isoDate, z.literal(''), z.null()]).optional(),
+    anniversary: z.union([isoDate, z.literal(''), z.null()]).optional(),
+    gender: z.union([genderEnum, z.literal('')]).optional()
 });
 
 export const validateUserProfileUpdateDto = (body) => {

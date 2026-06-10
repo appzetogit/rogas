@@ -177,7 +177,7 @@ export const PocketStatementV2 = () => {
              <div className="bg-white rounded-xl p-10 text-center shadow-sm border border-gray-100">
                 <Clock className="w-10 h-10 text-gray-200 mx-auto mb-4" />
                 <p className="text-gray-900 text-lg font-bold mb-1">No transactions</p>
-                <p className="text-gray-400 text-sm font-medium">Koi transaction nahi mili is hafta k liye.</p>
+                <p className="text-gray-400 text-sm font-medium">No transactions found for this week.</p>
              </div>
           ) : (
              <div className="space-y-4">

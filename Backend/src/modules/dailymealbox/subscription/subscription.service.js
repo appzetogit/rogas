@@ -28,8 +28,19 @@ export const createSubscription = async ({
     companyName,
     billingEmail
 }) => {
-    // Start date = always next Monday
-    const startDate = getNextMonday();
+    // Check if customer already has an active or paused subscription
+    const existingActive = await DMBSubscription.findOne({
+        userId,
+        status: { $in: ['active', 'paused'] }
+    });
+    if (existingActive) {
+        throw new Error('You already have an active or paused subscription plan.');
+    }
+
+    // Start date = always the day after purchase date, normalized to midnight
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(0, 0, 0, 0);
 
     // Map single mealPlanId to meals array if sent (for backward compatibility)
     let finalMeals = meals;

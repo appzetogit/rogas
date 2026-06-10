@@ -2018,12 +2018,16 @@ export const dmbCustomerAPI = {
   getMyOrders: (type = "upcoming") => userClient.get("/dmb/subscriptions/my-orders", { params: { type } }),
   /** NEW: Skip a specific daily order (only when status=scheduled) */
   skipDailyOrder: (orderId) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/skip`, {}),
+  /** NEW: Undo skip a specific daily order (only when status=skipped) */
+  undoSkipDailyOrder: (orderId) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/undo-skip`, {}),
   /** NEW: Change meal for a specific daily order (only when status=scheduled) */
   changeDailyOrderMeal: (orderId, mealPlanIds) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/change-meal`, { mealPlanIds }),
   /** Pause subscription for N days */
   pauseSubscription: (subscriptionId, pauseDays = 1, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/pause`, { pauseDays, reason }),
   /** Resume a paused subscription */
   resumeSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/activate`, {}),
+  /** Cancel a subscription */
+  cancelSubscription: (subscriptionId, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/cancel`, { reason }),
   /** Get vendor's available meal plans (for change-meal selection) */
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
 };

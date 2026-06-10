@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 
 const SLOT_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
+
 const STATUS_COLORS = {
   scheduled: "bg-[#E8F3F0] text-primary",
   preparing: "bg-amber-100 text-amber-700",
@@ -11,6 +12,7 @@ const STATUS_COLORS = {
   delivered: "bg-green-100 text-green-700",
   skipped: "bg-red-100 text-red-700",
 };
+
 const STATUS_LABELS = {
   scheduled: "Scheduled",
   preparing: "In Preparation 🔥",
@@ -20,152 +22,140 @@ const STATUS_LABELS = {
   skipped: "Skipped",
 };
 
+const FALLBACK_MEAL_PHOTO =
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60";
+
+// ─── Module-level cache (survives tab switches, cleared on logout) ──────────
+// Structure: { data: { today, tomorrow }, fetchedAt: timestamp }
+let _mealCache = null;
+const CACHE_TTL_MS = 60_000; // 1 minute
+
+export function clearMealCache() {
+  _mealCache = null;
+}
+
+function getCachedMeals() {
+  if (!_mealCache) return null;
+  if (Date.now() - _mealCache.fetchedAt > CACHE_TTL_MS) {
+    _mealCache = null;
+    return null;
+  }
+  return _mealCache.data;
+}
+
+function setCachedMeals(data) {
+  _mealCache = { data, fetchedAt: Date.now() };
+}
+
 export function HomeScreen({
-  onGoToPlans, onGoToCalendar, onGoToOrders, onGoToProfile,
-  onShowNotificationToast, tomorrowMeal, setTomorrowMeal, points, currentUser, onLogout,
-  socket
+  onGoToPlans,
+  onGoToCalendar,
+  onGoToOrders,
+  onGoToProfile,
+  onShowNotificationToast,
+  tomorrowMeal,
+  setTomorrowMeal,
+  points,
+  currentUser,
+  onLogout,
+  socket,
 }) {
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
-  const [todayMeal, setTodayMeal] = useState(null);
-  const [tomorrowMealData, setTomorrowMealData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const pollingRef = useRef(null);
 
-  // ─── HomeScreen Manage Sheet State ───────────────────────────────────────
+  // ── Strategy 1: Initialise state from cache immediately (no spinner flash) ─
+  const cached = getCachedMeals();
+  const [todayMeal, setTodayMeal] = useState(cached?.today ?? null);
+  const [tomorrowMealData, setTomorrowMealData] = useState(cached?.tomorrow ?? null);
+  // If we already have cached data, don't show the loading spinner at all
+  const [loading, setLoading] = useState(!cached);
+
+  // ─── Manage Sheet State ──────────────────────────────────────────────────
   const [manageOrder, setManageOrder] = useState(null);
-  const [manageMode, setManageMode] = useState(null); // 'change_meal' | 'pause' | 'confirm_skip'
+  const [manageMode, setManageMode] = useState(null);
   const [availableMeals, setAvailableMeals] = useState([]);
   const [selectedMealIds, setSelectedMealIds] = useState([]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [pauseDays, setPauseDays] = useState(1);
 
-  // ─── Load today + tomorrow meals from API ───────────────────────────────
-  const loadTodayMeals = async () => {
+  // ─── Fetch meals from API ────────────────────────────────────────────────
+  const loadTodayMeals = useCallback(async ({ bustCache = false } = {}) => {
     try {
       const token = localStorage.getItem("user_accessToken");
       if (!token) { setLoading(false); return; }
-      const res = await dmbCustomerAPI.getTodayMeal();
-      if (res.data?.success) {
-        setTodayMeal(res.data.today || null);
-        setTomorrowMealData(res.data.tomorrow || null);
-        // Sync legacy state so OrdersScreen also gets meal name
-        if (res.data.tomorrow?.meals?.[0]?.name) {
-          setTomorrowMeal(prev => ({ ...prev, name: res.data.tomorrow.meals[0].name, status: res.data.tomorrow.status }));
+
+      // ── Strategy 2: Return immediately from cache, refetch silently ────────
+      if (!bustCache) {
+        const hit = getCachedMeals();
+        if (hit) {
+          setTodayMeal(hit.today);
+          setTomorrowMealData(hit.tomorrow);
+          setLoading(false);
+          // Still do a background revalidation so data stays fresh
+          // (won't cause a visible spinner since loading is already false)
         }
       }
-    } catch (err) {
+
+      const res = await dmbCustomerAPI.getTodayMeal();
+      if (res.data?.success) {
+        const today = res.data.today ?? null;
+        const tomorrow = res.data.tomorrow ?? null;
+
+        setCachedMeals({ today, tomorrow });
+        setTodayMeal(today);
+        setTomorrowMealData(tomorrow);
+
+        const tomorrowName = tomorrow?.meals?.[0]?.name;
+        if (tomorrowName) {
+          setTomorrowMeal((prev) => ({
+            ...prev,
+            name: tomorrowName,
+            status: tomorrow.status,
+          }));
+        }
+      }
+    } catch {
       // Not logged in or no active subscription — silently ignore
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSkip = async () => {
-    if (!manageOrder) return;
-    setLoadingAction(true);
-    try {
-      await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
-      loadTodayMeals();
-      onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
-      setManageOrder(null);
-      setManageMode(null);
-    } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to skip order");
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  const handlePause = async () => {
-    if (!manageOrder) return;
-    setLoadingAction(true);
-    try {
-      await dmbCustomerAPI.pauseSubscription(
-        manageOrder.subscriptionId,
-        pauseDays,
-        "Customer requested pause from Home"
-      );
-      loadTodayMeals();
-      onShowNotificationToast?.(`⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`);
-      setManageOrder(null);
-      setManageMode(null);
-    } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  const openChangeMeal = async (order) => {
-    setManageOrder(order);
-    setSelectedMealIds(order.meals?.map(m => m.mealPlanId || m._id) || []);
-    setManageMode("change_meal");
-    try {
-      const vendorId = order.vendorId || order._id;
-      const res = await dmbCustomerAPI.getVendorMenu(vendorId);
-      if (res.data?.meals) setAvailableMeals(res.data.meals);
-      else if (res.data?.plans) setAvailableMeals(res.data.plans);
-    } catch (e) { }
-  };
-
-  const handleChangeMeal = async () => {
-    if (!manageOrder || selectedMealIds.length === 0) return;
-    setLoadingAction(true);
-    try {
-      await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
-      loadTodayMeals();
-      onShowNotificationToast?.("✅ Meal updated for this delivery!");
-      setManageOrder(null);
-      setManageMode(null);
-      setAvailableMeals([]);
-      setSelectedMealIds([]);
-    } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  const toggleMealSelection = (id) => {
-    setSelectedMealIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const closeManage = () => {
-    setManageOrder(null);
-    setManageMode(null);
-    setAvailableMeals([]);
-    setSelectedMealIds([]);
-  };
+  }, [setTomorrowMeal]);
 
   useEffect(() => {
     loadTodayMeals();
-  }, []);
+  }, [loadTodayMeals]);
 
-  // ─── Socket.IO: Real-time status updates & Daily Menu updates ───────────
+  // ─── Socket.IO real-time updates ─────────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
+
     const handleStatusUpdate = (data) => {
-      const updateCard = (card) => {
+      const updatedDate = new Date(data.deliveryDate).toDateString();
+      const patchCard = (card) => {
         if (!card) return card;
-        const orderDate = new Date(card.deliveryDate).toDateString();
-        const updatedDate = new Date(data.deliveryDate).toDateString();
-        if (orderDate === updatedDate) {
-          return { ...card, status: data.status };
-        }
-        return card;
+        return new Date(card.deliveryDate).toDateString() === updatedDate
+          ? { ...card, status: data.status }
+          : card;
       };
-      setTodayMeal(prev => updateCard(prev));
-      setTomorrowMealData(prev => updateCard(prev));
+      setTodayMeal((prev) => {
+        const next = patchCard(prev);
+        if (next !== prev && _mealCache) {
+          _mealCache.data.today = next; // keep cache in sync
+        }
+        return next;
+      });
+      setTomorrowMealData((prev) => {
+        const next = patchCard(prev);
+        if (next !== prev && _mealCache) {
+          _mealCache.data.tomorrow = next;
+        }
+        return next;
+      });
     };
 
     const handleDailyMenuUpdated = (data) => {
-      loadTodayMeals();
-      if (onShowNotificationToast) {
-        onShowNotificationToast(`📢 Tomorrow's meal updated to: "${data.dishName}"!`);
-      }
+      loadTodayMeals({ bustCache: true });
+      onShowNotificationToast?.(`📢 Tomorrow's meal updated to: "${data.dishName}"!`);
     };
 
     socket.on("order_status_updated", handleStatusUpdate);
@@ -175,28 +165,107 @@ export function HomeScreen({
       socket.off("order_status_updated", handleStatusUpdate);
       socket.off("daily_menu_updated", handleDailyMenuUpdated);
     };
-  }, [socket, onShowNotificationToast]);
+  }, [socket, loadTodayMeals, onShowNotificationToast]);
 
+  // ─── Action Handlers ─────────────────────────────────────────────────────
+  const closeManage = useCallback(() => {
+    setManageOrder(null);
+    setManageMode(null);
+    setAvailableMeals([]);
+    setSelectedMealIds([]);
+  }, []);
+
+  const handleSkip = useCallback(async () => {
+    if (!manageOrder) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
+      loadTodayMeals({ bustCache: true });
+      onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
+      closeManage();
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to skip order");
+    } finally {
+      setLoadingAction(false);
+    }
+  }, [manageOrder, loadTodayMeals, onShowNotificationToast, closeManage]);
+
+  const handlePause = useCallback(async () => {
+    if (!manageOrder) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.pauseSubscription(
+        manageOrder.subscriptionId,
+        pauseDays,
+        "Customer requested pause from Home"
+      );
+      loadTodayMeals({ bustCache: true });
+      onShowNotificationToast?.(
+        `⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`
+      );
+      closeManage();
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
+    } finally {
+      setLoadingAction(false);
+    }
+  }, [manageOrder, pauseDays, loadTodayMeals, onShowNotificationToast, closeManage]);
+
+  const openChangeMeal = useCallback(async (order) => {
+    setManageOrder(order);
+    setSelectedMealIds(order.meals?.map((m) => m.mealPlanId || m._id) ?? []);
+    setManageMode("change_meal");
+    try {
+      const vendorId = order.vendorId || order._id;
+      const res = await dmbCustomerAPI.getVendorMenu(vendorId);
+      setAvailableMeals(res.data?.meals ?? res.data?.plans ?? []);
+    } catch {
+      // Menu fetch failed — show empty state
+    }
+  }, []);
+
+  const handleChangeMeal = useCallback(async () => {
+    if (!manageOrder || selectedMealIds.length === 0) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
+      loadTodayMeals({ bustCache: true });
+      onShowNotificationToast?.("✅ Meal updated for this delivery!");
+      closeManage();
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
+    } finally {
+      setLoadingAction(false);
+    }
+  }, [manageOrder, selectedMealIds, loadTodayMeals, onShowNotificationToast, closeManage]);
+
+  const toggleMealSelection = useCallback((id) => {
+    setSelectedMealIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  // ─── Derived values ───────────────────────────────────────────────────────
   const userName = currentUser?.name?.split(" ")[0] || "there";
-  const now = new Date();
-  const hour = now.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const pointsPercent = Math.min((points / 300) * 100, 100);
 
+  // ─── Render helpers ───────────────────────────────────────────────────────
   const renderTomorrowMealPreviewCard = (meal) => {
     if (!meal) return null;
     const mealName = meal.meals?.[0]?.name || "Your Meal";
-    const mealPhoto = meal.meals?.[0]?.photo || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60";
-    const nutrition = meal.meals?.[0]?.nutrition;
-    const calories = nutrition?.calories || 450;
+    const mealPhoto = meal.meals?.[0]?.photo || FALLBACK_MEAL_PHOTO;
+    const calories = meal.meals?.[0]?.nutrition?.calories ?? 450;
 
     return (
       <section className="bg-white rounded-2xl p-5 shadow-md border border-[#e4e2e1] transition-all duration-300 space-y-4">
-        {/* Card Header */}
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[17px] font-extrabold text-on-surface">Tomorrow's Menu Preview 🍽️</h2>
-          </div>
-          <button 
+          <h2 className="text-[17px] font-extrabold text-on-surface">
+            Tomorrow's Menu Preview 🍽️
+          </h2>
+          <button
             onClick={onGoToOrders}
             className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 active:scale-90 transition-all cursor-pointer"
           >
@@ -204,26 +273,23 @@ export function HomeScreen({
           </button>
         </div>
 
-        {/* Meal Photo and Name Overlay */}
-        <div 
+        <div
           onClick={onGoToOrders}
           className="relative rounded-xl overflow-hidden h-44 shadow-inner group cursor-pointer"
         >
-          <img 
-            src={mealPhoto} 
-            alt={mealName} 
+          <img
+            src={mealPhoto}
+            alt={mealName}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          
-          {/* Dish Name */}
           <div className="absolute bottom-4 left-4 right-4">
             <h3 className="text-xl font-extrabold text-white tracking-wide drop-shadow-md">{mealName}</h3>
           </div>
         </div>
 
-        {/* Nutrition and Prep Info */}
         <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
           <div className="flex items-center gap-1.5">
             <span className="material-symbols-outlined text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
@@ -244,17 +310,25 @@ export function HomeScreen({
     const vendorName = meal.vendor?.name || "";
     const slot = SLOT_LABELS[meal.deliverySlot] || meal.deliverySlot;
     const status = meal.status || "scheduled";
-    const statusColor = STATUS_COLORS[status] || STATUS_COLORS.scheduled;
-    const statusLabel = STATUS_LABELS[status] || status;
-    const deliveryDate = new Date(meal.deliveryDate);
-    const dateStr = deliveryDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const statusColor = STATUS_COLORS[status] ?? STATUS_COLORS.scheduled;
+    const statusLabel = STATUS_LABELS[status] ?? status;
+    const dateStr = new Date(meal.deliveryDate).toLocaleDateString("en-IN", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
 
     return (
-      <section className={`bg-white rounded-2xl p-5 border-l-4 ${isToday ? "border-primary-container" : "border-[#bec9c3]"} shadow-md transition-all duration-300`}>
+      <section
+        className={`bg-white rounded-2xl p-5 border-l-4 ${isToday ? "border-primary-container" : "border-[#bec9c3]"
+          } shadow-md transition-all duration-300`}
+      >
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xl">{isToday ? "🍽️" : "🚚"}</span>
           <h2 className="text-[17px] font-extrabold text-on-surface">{label}</h2>
-          <span className="ml-auto text-[11px] text-on-surface-variant font-medium">{dateStr} · {slot}</span>
+          <span className="ml-auto text-[11px] text-on-surface-variant font-medium">
+            {dateStr} · {slot}
+          </span>
         </div>
 
         <div className="flex items-start justify-between mb-4">
@@ -269,39 +343,25 @@ export function HomeScreen({
           </span>
         </div>
 
-        {/* Skip, Pause, Change Actions Row */}
-        {!isToday && status === 'scheduled' && (
+        {!isToday && status === "scheduled" && (
           <div className="flex gap-3 mt-3 pt-3 border-t border-[#f0eded]">
             <button
-              onClick={() => {
-                setManageOrder(meal);
-                setManageMode("confirm_skip");
-              }}
+              onClick={() => { setManageOrder(meal); setManageMode("confirm_skip"); }}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >
-              Skip
-            </button>
+            >Skip</button>
             <button
-              onClick={() => {
-                setManageOrder(meal);
-                setManageMode("pause");
-              }}
+              onClick={() => { setManageOrder(meal); setManageMode("pause"); }}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >
-              Pause
-            </button>
+            >Pause</button>
             <button
               onClick={() => openChangeMeal(meal)}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >
-              Change
-            </button>
+            >Change</button>
           </div>
         )}
       </section>
     );
   };
-
 
   return (
     <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
@@ -309,15 +369,25 @@ export function HomeScreen({
       <header className="bg-primary px-5 pt-12 pb-8 rounded-b-[32px] shadow-md relative z-10 text-white">
         <div className="flex justify-between items-center mb-2">
           <div className="flex flex-col">
-            <h1 className="text-[22px] font-extrabold tracking-tight">{greeting}, {userName} 👋</h1>
+            <h1 className="text-[22px] font-extrabold tracking-tight">
+              {greeting}, {userName} 👋
+            </h1>
             <p className="text-[14px] opacity-90 font-medium">
               {tomorrowMealData
                 ? `Next delivery: ${SLOT_LABELS[tomorrowMealData.deliverySlot] || "Lunch"} · ${new Date(tomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
                 : "No upcoming deliveries"}
             </p>
           </div>
-          <button onClick={onGoToProfile} className="w-12 h-12 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow">
-            <img alt="User profile" className="w-full h-full object-cover" src={IMAGES.profileAnnaMain} />
+          <button
+            onClick={onGoToProfile}
+            className="w-12 h-12 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow"
+          >
+            <img
+              alt="User profile"
+              className="w-full h-full object-cover"
+              src={currentUser?.profileImage || IMAGES.profileAnnaMain}
+              loading="eager"
+            />
           </button>
         </div>
       </header>
@@ -330,28 +400,26 @@ export function HomeScreen({
               <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
               <p className="text-[13px] font-bold">Multi-meal subscriptions now available!</p>
             </div>
-            <button onClick={() => setShowBanner(false)} className="p-1 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center cursor-pointer">
+            <button
+              onClick={() => setShowBanner(false)}
+              className="p-1 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
         )}
 
+        {/* ── Strategy 3: Show skeleton instead of full spinner ───────────── */}
         {loading ? (
-          <div className="bg-white rounded-2xl p-5 shadow-md flex items-center justify-center h-28">
-            <div className="flex flex-col items-center gap-2 text-on-surface-variant">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-[13px] font-medium">Loading your meals…</p>
-            </div>
+          <div className="bg-white rounded-2xl p-5 shadow-md space-y-3 animate-pulse">
+            <div className="h-4 bg-slate-200 rounded w-1/2" />
+            <div className="h-3 bg-slate-100 rounded w-3/4" />
+            <div className="h-28 bg-slate-100 rounded-xl" />
           </div>
         ) : (
           <>
-            {/* Today's Meal */}
-            {/* {todayMeal && renderMealCard(todayMeal, "Today's Delivery", true)} */}
-
-            {/* Tomorrow's Meal */}
             {tomorrowMealData && renderMealCard(tomorrowMealData, "Tomorrow's Delivery")}
 
-            {/* No active subscription */}
             {!todayMeal && !tomorrowMealData && (
               <section
                 onClick={onGoToPlans}
@@ -380,7 +448,10 @@ export function HomeScreen({
               <span className="text-xl">⭐</span>
               <span className="text-[18px] font-extrabold text-on-surface">{points} points</span>
             </div>
-            <button onClick={() => setShowPointsHist(!showPointsHist)} className="text-primary-container hover:text-primary font-bold text-[13px]">
+            <button
+              onClick={() => setShowPointsHist((v) => !v)}
+              className="text-primary-container hover:text-primary font-bold text-[13px]"
+            >
               {showPointsHist ? "Close" : "History"}
             </button>
           </div>
@@ -394,53 +465,41 @@ export function HomeScreen({
           ) : (
             <>
               <div className="w-full bg-[#eae7e7] h-2.5 rounded-full overflow-hidden">
-                <div className="bg-primary-container h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min((points / 300) * 100, 100)}%` }} />
+                <div
+                  className="bg-primary-container h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${pointsPercent}%` }}
+                />
               </div>
-              <p className="text-[12px] text-on-surface-variant font-medium">10 pts per delivery · Redeem for discounts</p>
+              <p className="text-[12px] text-on-surface-variant font-medium">
+                10 pts per delivery · Redeem for discounts
+              </p>
             </>
           )}
         </section>
 
-        {/* Tomorrow's Meal Preview (below 120 points card) */}
+        {/* Tomorrow's Meal Preview */}
         {!loading && tomorrowMealData && renderTomorrowMealPreviewCard(tomorrowMealData)}
-
-        {/* Quick Actions */}
-        <section className="grid grid-cols-3 gap-3">
-          {[
-            { icon: "assignment", label: "My Plans", action: onGoToPlans },
-            { icon: "calendar_today", label: "Calendar", action: onGoToCalendar },
-            { icon: "shopping_bag", label: "Orders", action: onGoToOrders },
-          ].map(({ icon, label, action }) => (
-            <button
-              key={label}
-              onClick={action}
-              className="bg-white rounded-xl p-4 shadow-sm flex flex-col items-center gap-2 hover:shadow-md active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-              <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">{label}</span>
-            </button>
-          ))}
-        </section>
 
         <div className="h-8" />
       </main>
 
-      {/* ─── Manage Bottom Sheet ─────────────────────────────────────────────── */}
+      {/* ─── Manage Bottom Sheet ──────────────────────────────────────────── */}
       {manageOrder && manageMode && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={closeManage}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
             className="relative bg-white rounded-t-3xl shadow-2xl w-full max-w-[390px] mx-auto px-5 pt-5 pb-10 animate-slideUp text-left"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Handle */}
             <div className="w-10 h-1.5 bg-[#ddd] rounded-full mx-auto mb-4" />
 
             {manageMode === "confirm_skip" && (
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Skip This Delivery?</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  Your delivery for {new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} will be skipped and the day's amount will be credited to your wallet.
+                  Your delivery for{" "}
+                  {new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}{" "}
+                  will be skipped and the day's amount will be credited to your wallet.
                 </p>
                 <div className="flex gap-3">
                   <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">Cancel</button>
@@ -449,7 +508,7 @@ export function HomeScreen({
                     disabled={loadingAction}
                     className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
-                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     Confirm Skip
                   </button>
                 </div>
@@ -460,9 +519,8 @@ export function HomeScreen({
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
                 <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription.</p>
-
                 <div className="flex gap-3 mb-6">
-                  {[1, 2].map(d => (
+                  {[1, 2].map((d) => (
                     <button
                       key={d}
                       onClick={() => setPauseDays(d)}
@@ -473,7 +531,6 @@ export function HomeScreen({
                     </button>
                   ))}
                 </div>
-
                 <div className="flex gap-3">
                   <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
                   <button
@@ -481,7 +538,7 @@ export function HomeScreen({
                     disabled={loadingAction}
                     className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
-                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
                   </button>
                 </div>
@@ -501,7 +558,7 @@ export function HomeScreen({
                   </div>
                 ) : (
                   <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
-                    {availableMeals.map(meal => {
+                    {availableMeals.map((meal) => {
                       const id = meal._id || meal.id;
                       const isSelected = selectedMealIds.includes(id);
                       return (
@@ -531,7 +588,7 @@ export function HomeScreen({
                     disabled={loadingAction || selectedMealIds.length === 0}
                     className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
                   >
-                    {loadingAction ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     Confirm Change
                   </button>
                 </div>

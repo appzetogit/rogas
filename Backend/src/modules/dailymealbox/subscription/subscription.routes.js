@@ -37,7 +37,7 @@ router.post('/', authMiddleware, requireRoles('USER'), async (req, res) => {
 // ─── Get My Subscriptions ────────────────────────────────────────────────
 router.get('/my', authMiddleware, requireRoles('USER'), async (req, res) => {
     try {
-        const subscriptions = await getUserSubscriptions(req.user._id, req.query.status);
+        const subscriptions = await getUserSubscriptions(req.user._id || req.user.userId, req.query.status);
         res.json({ success: true, subscriptions });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -75,12 +75,46 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER')
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // Enforce: Cannot skip today's or past orders (tomorrow onwards only)
+        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+        const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
+        if (orderDateStr <= todayISTStr) {
+            return res.status(400).json({ success: false, message: "Cannot skip today's or past orders" });
+        }
+
         if (order.status !== 'scheduled') {
             return res.status(400).json({ success: false, message: `Cannot skip order in status: ${order.status}` });
         }
         order.status = 'skipped';
         await order.save();
         res.json({ success: true, message: 'Order skipped successfully', order });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Undo Skip for a Specific Daily Order ─────────────────────────────────────────
+// PATCH /dmb/subscriptions/daily-orders/:orderId/undo-skip
+router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('USER'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.userId;
+        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // Enforce: Cannot undo skip for today's or past orders (tomorrow onwards only)
+        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+        const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
+        if (orderDateStr <= todayISTStr) {
+            return res.status(400).json({ success: false, message: "Cannot undo skip for today's or past orders" });
+        }
+
+        if (order.status !== 'skipped') {
+            return res.status(400).json({ success: false, message: `Cannot undo skip for order in status: ${order.status}` });
+        }
+        order.status = 'scheduled';
+        await order.save();
+        res.json({ success: true, message: 'Order skip undone successfully', order });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -94,6 +128,14 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // Enforce: Cannot modify today's or past orders (tomorrow onwards only)
+        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+        const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
+        if (orderDateStr <= todayISTStr) {
+            return res.status(400).json({ success: false, message: "Cannot modify today's or past orders" });
+        }
+
         if (!['scheduled'].includes(order.status)) {
             return res.status(400).json({ success: false, message: 'Can only change meal before preparation starts' });
         }
@@ -117,7 +159,7 @@ router.patch('/:subscriptionId/skip', authMiddleware, requireRoles('USER'), asyn
     try {
         const result = await skipDelivery({
             subscriptionId: req.params.subscriptionId,
-            userId: req.user._id,
+            userId: req.user._id || req.user.userId,
             skipDate: req.body.skipDate,
             reason: req.body.reason
         });
@@ -132,7 +174,7 @@ router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER'), asy
     try {
         const result = await pauseSubscription({
             subscriptionId: req.params.subscriptionId,
-            userId: req.user._id,
+            userId: req.user._id || req.user.userId,
             pauseDays: req.body.pauseDays || 1,
             reason: req.body.reason
         });
@@ -147,7 +189,7 @@ router.patch('/:subscriptionId/cancel', authMiddleware, requireRoles('USER'), as
     try {
         const sub = await cancelSubscription({
             subscriptionId: req.params.subscriptionId,
-            userId: req.user._id,
+            userId: req.user._id || req.user.userId,
             reason: req.body.reason
         });
         res.json({ success: true, message: 'Subscription cancelled', subscription: sub });

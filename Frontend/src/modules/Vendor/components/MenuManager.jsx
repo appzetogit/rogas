@@ -763,9 +763,9 @@ export default function MenuManager({
                       /* Empty state */
                       <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-dashed border-outline-variant/40 text-center flex flex-col items-center justify-center min-h-[160px] animate-fadeIn">
                         <span className="material-symbols-outlined text-[40px] text-primary/30 mb-3">restaurant_menu</span>
-                        <p className="text-[13px] font-bold text-on-surface">Koi meal schedule nahi hai</p>
+                        <p className="text-[13px] font-bold text-on-surface">No meals scheduled</p>
                         <p className="text-[11px] text-outline mt-1 leading-relaxed max-w-[240px]">
-                          "Add Meal" click karo — customer ka tomorrow's order real-time mein update ho jayega.
+                          Click "Add Meal" — customer's tomorrow's order will be updated in real-time.
                         </p>
                       </div>
                     )}
@@ -1373,9 +1373,9 @@ export default function MenuManager({
           <div className="w-[390px] bg-white rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
             <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
               <div>
-                <h3 className="font-extrabold text-[16px] text-on-surface">Meal Select Karo</h3>
+                <h3 className="font-extrabold text-[16px] text-on-surface">Select Meal</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} ke liye
+                  For {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
                 </p>
               </div>
               <button
@@ -1391,7 +1391,7 @@ export default function MenuManager({
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <span className="material-symbols-outlined text-amber-600 text-[15px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
               <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
-                Ek din mein sirf ek meal — jo select karo woh customer ke "Tomorrow's Order" mein real-time update ho jayega.
+                Only one meal per day — whichever is selected will update the customer's "Tomorrow's Order" in real-time.
               </p>
             </div>
 
@@ -1399,9 +1399,9 @@ export default function MenuManager({
               {meals.filter(m => m.status === 'Active').length === 0 ? (
                 <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-outline-variant p-4">
                   <span className="material-symbols-outlined text-[32px] text-outline">restaurant_menu</span>
-                  <p className="text-[12px] text-outline mt-1 font-bold">Menu mein koi active meal nahi</p>
+                  <p className="text-[12px] text-outline mt-1 font-bold">No active meals in menu</p>
                   <p className="text-[11px] text-outline mt-0.5 px-4 font-medium leading-relaxed">
-                    Pehle Menu tab mein meals add karo.
+                    Add meals in the Menu tab first.
                   </p>
                 </div>
               ) : (

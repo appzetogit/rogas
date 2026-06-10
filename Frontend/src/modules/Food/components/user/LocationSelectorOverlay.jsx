@@ -1166,7 +1166,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         }
       }
 
-      // 3. Agar marker pehle se hai to update karein, nahi to naya banayein
+      // 3. If marker already exists, update it, otherwise create a new one
       if (userLocationMarkerRef.current) {
         try {
           if (userLocationMarkerRef.current.setLngLat) {

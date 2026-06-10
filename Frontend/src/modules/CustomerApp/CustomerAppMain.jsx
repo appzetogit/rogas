@@ -11,6 +11,7 @@ import { CalendarScreen } from "./components/CalendarScreen";
 import { OrdersScreen } from "./components/OrdersScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
+import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
@@ -96,6 +97,21 @@ export default function CustomerAppMain() {
     setCurrentUser(null);
     navigate("/user/welcome");
     showToast("👋 Logged out successfully");
+  };
+
+  const handleUpdateProfile = async (body) => {
+    const res = await userAPI.updateProfile(body);
+    const updatedUser = res.data?.data?.user || res.data?.user || res.data;
+    if (updatedUser) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem("user_user", JSON.stringify(updatedUser));
+    }
+    return updatedUser;
+  };
+
+  const handleUpdateProfileState = (user) => {
+    setCurrentUser(user);
+    localStorage.setItem("user_user", JSON.stringify(user));
   };
 
   // ─── App State ───────────────────────────────────────────────────────────────
@@ -366,6 +382,8 @@ export default function CustomerAppMain() {
               onGoBack={() => navigate("/user/home")}
               onGoToProfile={() => navigate("/user/profile")}
               onShowToast={showToast}
+              onGoToPlans={() => navigate("/user/plans")}
+              socket={socket}
             />
           } />
 
@@ -389,12 +407,23 @@ export default function CustomerAppMain() {
               onGoToOnboarding={() => navigate("/user/diet-prefs")}
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
               onGoToCheckout={() => navigate("/user/checkout")}
+              onGoToSubscription={() => navigate("/user/subscription")}
               onShowNotificationToast={showToast}
               dietaryPrefs={dietaryPrefs}
               invoicePrefs={invoicePrefs}
               points={points}
               currentUser={currentUser}
               onLogout={handleLogout}
+              onUpdateProfile={handleUpdateProfile}
+              onUpdateProfileState={handleUpdateProfileState}
+            />
+          } />
+
+          <Route path="subscription" element={
+            <SubscriptionDetailsScreen
+              onGoBack={() => navigate("/user/profile")}
+              onGoToPlans={() => navigate("/user/plans")}
+              onShowNotificationToast={showToast}
             />
           } />
 
