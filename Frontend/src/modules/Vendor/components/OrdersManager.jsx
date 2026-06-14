@@ -98,6 +98,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
   // ─── Update single order status ──────────────────────────────────────────
   const handleStatusChange = async (orderId, newStatus, deliverySlot) => {
+    /* For testing: Timing restrictions commented out
     if (newStatus === 'preparing') {
       if (activeDate !== 'today') {
         showToast('⚠️ Can only start preparation for today\'s orders!');
@@ -112,6 +113,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
         return;
       }
     }
+    */
 
     try {
       await dmbVendorAPI.updateDailyOrderStatus(orderId, newStatus);

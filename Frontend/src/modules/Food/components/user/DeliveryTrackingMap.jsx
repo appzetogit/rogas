@@ -176,10 +176,13 @@ const DeliveryTrackingMap = ({
     });
 
     socketRef.current.on('connect', () => {
-      trackingIds.forEach(id => socketRef.current.emit('join-tracking', id));
+      trackingIds.forEach(id => {
+        socketRef.current.emit('join-tracking', id);
+        socketRef.current.emit('join_order_tracking', { orderId: id });
+      });
     });
 
-    socketRef.current.on('location-update', (data) => {
+    const handleLocationData = (data) => {
       const dataOrderId = data?.orderId || data?.order_id || data?.trackingId || data?.order?.id || data?.order?._id;
       const matchedId = dataOrderId
         ? trackingIds.find(id => String(id) === String(dataOrderId))
@@ -205,7 +208,10 @@ const DeliveryTrackingMap = ({
 
         setRiderLocation(nextPos);
       }
-    });
+    };
+
+    socketRef.current.on('location-update', handleLocationData);
+    socketRef.current.on('driver_location_update', handleLocationData);
 
     return () => {
       unsubs.forEach(u => u?.());

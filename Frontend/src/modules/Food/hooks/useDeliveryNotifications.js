@@ -62,7 +62,7 @@ const isRiderOnline = () => {
       const parsed = JSON.parse(raw);
       return !!parsed?.state?.isOnline;
     }
-  } catch (e) {}
+  } catch (e) { }
   return false;
 };
 
@@ -182,10 +182,10 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 export const useDeliveryNotifications = () => {
   const context = useContext(DeliveryNotificationContext);
   if (context) return context;
-  
+
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Order: useRef -> useState -> useEffect -> useCallback
-  
+
   // Step 1: All refs first (unconditional)
   const socketRef = useRef(null);
   const audioRef = useRef(null);
@@ -196,7 +196,7 @@ export const useDeliveryNotifications = () => {
   const userInteractedRef = useRef(false);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
-  
+
   // Step 2: All state hooks (unconditional)
   const [newOrder, setNewOrder] = useState(null);
   const [orderReady, setOrderReady] = useState(null);
@@ -270,7 +270,7 @@ export const useDeliveryNotifications = () => {
       }
     }, ALERT_LOOP_INTERVAL_MS);
   }, [stopAlertLoop]);
-  
+
   const playNotificationSound = useCallback(async (orderData = {}) => {
     try {
       const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
@@ -285,7 +285,7 @@ export const useDeliveryNotifications = () => {
 
       // Always use original sound for delivery
       const soundFile = resolveAudioSource(originalSound, 'delivery-original');
-      
+
       // Update audio source if preference changed or initialize if not exists
       if (audioRef.current) {
         const currentSrc = audioRef.current.src;
@@ -306,7 +306,7 @@ export const useDeliveryNotifications = () => {
         audioRef.current.load();
         debugLog('?? Audio initialized with Original Sound', 'Source:', soundFile);
       }
-      
+
       if (audioRef.current) {
         audioRef.current.muted = false;
         audioRef.current.volume = 0.9;
@@ -394,8 +394,8 @@ export const useDeliveryNotifications = () => {
       const currentTrip =
         currentTripResult.status === 'fulfilled'
           ? currentTripResult.value?.data?.data ??
-            currentTripResult.value?.data ??
-            null
+          currentTripResult.value?.data ??
+          null
           : null;
 
       if (currentTrip) {
@@ -410,8 +410,8 @@ export const useDeliveryNotifications = () => {
       const availablePayload =
         availableResult.status === 'fulfilled'
           ? availableResult.value?.data?.data ??
-            availableResult.value?.data ??
-            {}
+          availableResult.value?.data ??
+          {}
           : {};
       const availableOrders = Array.isArray(availablePayload?.docs)
         ? availablePayload.docs
@@ -571,8 +571,8 @@ export const useDeliveryNotifications = () => {
           audioRef.current.muted = true;
           // Ensure src is set even if it was just initialized
           if (!audioRef.current.src || audioRef.current.src === window.location.href) {
-             const soundFile = resolveAudioSource(originalSound);
-             audioRef.current.src = soundFile;
+            const soundFile = resolveAudioSource(originalSound);
+            audioRef.current.src = soundFile;
           }
           audioRef.current.load();
           await audioRef.current.play();
@@ -598,13 +598,13 @@ export const useDeliveryNotifications = () => {
       document.removeEventListener('keydown', handleUserInteraction);
       window.removeEventListener('pointerdown', handleUserInteraction);
     };
-    
+
     // Listen for user interaction
     document.addEventListener('click', handleUserInteraction, { once: true });
     document.addEventListener('touchstart', handleUserInteraction, { once: true });
     document.addEventListener('keydown', handleUserInteraction, { once: true });
     window.addEventListener('pointerdown', handleUserInteraction, { once: true, passive: true });
-    
+
     return () => {
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
@@ -612,12 +612,12 @@ export const useDeliveryNotifications = () => {
       window.removeEventListener('pointerdown', handleUserInteraction);
     };
   }, []);
-  
+
   // Initialize audio on mount - use selected preference from localStorage
   useEffect(() => {
     // Always use original sound for delivery
     const soundFile = resolveAudioSource(originalSound, 'delivery-original');
-    
+
     if (!audioRef.current) {
       audioRef.current = new Audio(soundFile);
       audioRef.current.preload = 'auto';
@@ -634,7 +634,7 @@ export const useDeliveryNotifications = () => {
         debugLog('?? Audio updated to Original');
       }
     }
-    
+
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -663,9 +663,9 @@ export const useDeliveryNotifications = () => {
         if (response.data?.success && response.data.data) {
           const deliveryPartner = response.data.data.user || response.data.data.deliveryPartner;
           if (deliveryPartner) {
-            const id = deliveryPartner.id?.toString() || 
-                      deliveryPartner._id?.toString() || 
-                      deliveryPartner.deliveryId;
+            const id = deliveryPartner.id?.toString() ||
+              deliveryPartner._id?.toString() ||
+              deliveryPartner.deliveryId;
             if (id) {
               setDeliveryPartnerId(id);
               debugLog('? Delivery Partner ID fetched:', id);
@@ -695,7 +695,7 @@ export const useDeliveryNotifications = () => {
     const deliveryToken = localStorage.getItem('delivery_accessToken');
     if (!deliveryToken) {
       setIsConnected(false);
-      return () => {};
+      return () => { };
     }
 
     // IMPORTANT: Socket.IO server is on the origin (not /api/v1).
@@ -719,16 +719,16 @@ export const useDeliveryNotifications = () => {
         backendUrl = window.location.origin;
       }
     }
-    
+
     // Backend uses default namespace; rooms handle role separation.
     const socketUrl = `${backendUrl}`;
-    
+
     debugLog('?? Attempting to connect to Delivery Socket.IO:', socketUrl);
     debugLog('?? Backend URL:', backendUrl);
     debugLog('?? API_BASE_URL:', API_BASE_URL);
     debugLog('?? Delivery Partner ID:', deliveryPartnerId);
     debugLog('?? Environment: (ui-only mode)');
-    
+
     // Block localhost only in production builds. In dev, localhost is expected.
     if (import.meta.env.PROD && backendUrl.includes('localhost')) {
       debugError('? CRITICAL: Trying to connect Socket.IO to localhost in production!');
@@ -737,7 +737,7 @@ export const useDeliveryNotifications = () => {
       setIsConnected(false);
       return;
     }
-    
+
     // Validate backend URL format
     if (!backendUrl || !backendUrl.startsWith('http')) {
       debugError('? CRITICAL: Invalid backend URL format:', backendUrl);
@@ -745,7 +745,7 @@ export const useDeliveryNotifications = () => {
       debugError('?? Expected format: https://your-domain.com or ');
       return; // Don't try to connect with invalid URL
     }
-    
+
     // Validate socket URL format
     try {
       new URL(socketUrl); // This will throw if URL is invalid
@@ -842,7 +842,7 @@ export const useDeliveryNotifications = () => {
       });
       setIsConnected(false);
       joinedDeliveryRoomRef.current = null;
-      
+
       if (reason === 'io server disconnect') {
         socketRef.current.connect();
       }
@@ -941,10 +941,10 @@ export const useDeliveryNotifications = () => {
       stopAlertLoop();
       activeOrderRef.current = null;
       setNewOrder(null);
-      
+
       const cancelledId = statusData?.orderId || statusData?.orderMongoId || statusData?._id;
       if (cancelledId) setClaimedOrderId({ orderId: cancelledId, claimedBy: 'cancelled' });
-      
+
       setOrderStatusUpdate({
         ...(statusData || {}),
         status: 'cancelled'

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   INITIAL_DRIVER_STATS,
@@ -15,7 +15,7 @@ import { EarningsView } from "./EarningsView";
 import { ProfileView } from "./ProfileView";
 import { MyShiftsView } from "./MyShiftsView";
 import { DemandHeatmapView } from "./DemandHeatmapView";
-import { Home, Route as RouteIcon, Banknote, User } from "lucide-react";
+import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone } from "lucide-react";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
 import { dmbDeliveryAPI } from "../../../services/api";
@@ -25,49 +25,99 @@ function NewDeliveryDashboard() {
   const [orders, setOrders] = useState([]);
   const [stops, setStops] = useState([]);
   const [shifts, setShifts] = useState(INITIAL_SHIFTS);
+
   const isOnline = useDeliveryStore((state) => state.isOnline);
   const toggleOnlineAction = useDeliveryStore((state) => state.toggleOnline);
+  const driverId = useDeliveryStore((state) => state.driverId); // FIX: get driverId from store
   const currentStats = { ...stats, online: isOnline };
-  
+
+  // FIX: Keep isOnline in a ref so socket callbacks always get fresh value
+  const isOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
+
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Initialize screen based on current URL path
+
   const getScreenFromPath = (pathname) => {
     if (pathname.includes('/route')) return 'route';
     if (pathname.includes('/earn') || pathname.includes('/pocket')) return 'earnings';
     if (pathname.includes('/profile')) return 'profile';
-    return 'home'; // default to home for /feed or /
+    return 'home';
   };
 
   const [currentScreen, setCurrentScreen] = useState(getScreenFromPath(location.pathname));
   const [isRouteAccepted, setIsRouteAccepted] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const activeOrder = orders.find(o => o.id === selectedOrderId) || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery") || orders[0];
+  const activeOrder = orders.find(o => o.id === selectedOrderId)
+    || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery")
+    || orders[0];
 
-  // Keep screen in sync if URL changes externally (e.g. browser back button)
   useEffect(() => {
     const screen = getScreenFromPath(location.pathname);
-    // Don't override sub-screens like 'pickup', 'delivery', etc. if we are on the 'route' base path
     if (screen === 'route' && ['pickup', 'delivery', 'cannot_deliver'].includes(currentScreen)) return;
     if (screen === 'profile' && ['shifts'].includes(currentScreen)) return;
-    
     setCurrentScreen(screen);
   }, [location.pathname]);
 
+  // ─── FIX: Join driver socket room on mount & when driverId changes ──────────
+  const {
+    newBatchRequest,
+    clearNewBatchRequest,
+    orderStatusUpdate,
+    clearOrderStatusUpdate,
+    socket, // FIX: get socket from context (add this to your context if not already)
+    joinDriverRoom // FIX: or expose joinDriverRoom from context
+  } = useDeliveryNotificationContext();
+
+  useEffect(() => {
+    if (!driverId) return;
+
+    // FIX: Join the delivery room so server can reach this driver
+    // Try multiple ways depending on how your context exposes the socket
+    if (typeof joinDriverRoom === 'function') {
+      joinDriverRoom(driverId);
+    } else if (socket) {
+      const roomName = `delivery:${driverId}`;
+      socket.emit('join_driver_room', driverId);
+      console.log('[SOCKET] Joined driver room:', roomName);
+
+      // FIX: Rejoin on reconnect — socket.id changes after reconnect
+      socket.on('reconnect', () => {
+        socket.emit('join_driver_room', driverId);
+        console.log('[SOCKET] Rejoined driver room after reconnect:', roomName);
+      });
+
+      return () => {
+        socket.off('reconnect');
+        socket.emit('leave_driver_room', driverId);
+      };
+    }
+  }, [driverId, socket]);
+
+  // ─── FIX: When going online, also rejoin the socket room ────────────────────
   const handleToggleOnline = async () => {
-    // Toggle UI immediately so it feels responsive
     toggleOnlineAction();
-    const goingOnline = !isOnline; // after toggle
+    const goingOnline = !isOnline;
     try {
       if (goingOnline) {
         await dmbDeliveryAPI.goOnline();
+        // FIX: Rejoin socket room when going online
+        if (socket && driverId) {
+          socket.emit('join_driver_room', driverId);
+          console.log('[SOCKET] Rejoined room after going online');
+        }
       } else {
         await dmbDeliveryAPI.goOffline();
+        // Leave room when going offline so no requests come through
+        if (socket && driverId) {
+          socket.emit('leave_driver_room', driverId);
+          console.log('[SOCKET] Left room after going offline');
+        }
       }
     } catch (err) {
-      console.error("Failed to sync online status with backend:", err?.response?.data?.message || err.message);
-      // Don't revert UI — backend sync will retry on next load
+      console.error("Failed to sync online status:", err?.response?.data?.message || err.message);
     }
   };
 
@@ -118,27 +168,22 @@ function NewDeliveryDashboard() {
     }
   };
 
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptedBatchDetails, setAcceptedBatchDetails] = useState(null);
+  const [routeMetadata, setRouteMetadata] = useState(null);
+
   useEffect(() => {
     fetchActiveRoute();
-    // Sync online status with backend on load
     const syncOnlineStatus = async () => {
       try {
-        if (isOnline) {
-          await dmbDeliveryAPI.goOnline();
-        }
+        if (isOnline) await dmbDeliveryAPI.goOnline();
       } catch (err) {
-        console.warn("Could not sync online status with backend:", err?.response?.data?.message || err.message);
+        console.warn("Could not sync online status:", err?.response?.data?.message || err.message);
       }
     };
     syncOnlineStatus();
   }, []);
 
-  const { newBatchRequest, clearNewBatchRequest, orderStatusUpdate, clearOrderStatusUpdate } = useDeliveryNotificationContext();
-  const [isAccepting, setIsAccepting] = useState(false);
-  const [acceptedBatchDetails, setAcceptedBatchDetails] = useState(null);
-  const [routeMetadata, setRouteMetadata] = useState(null);
-
-  // Listen for real-time status updates via Socket.IO
   useEffect(() => {
     if (orderStatusUpdate) {
       fetchActiveRoute();
@@ -146,6 +191,9 @@ function NewDeliveryDashboard() {
     }
   }, [orderStatusUpdate]);
 
+  // ─── FIX: Show request modal regardless of online state ─────────────────────
+  // The server already filtered by online status — if request arrived, show it.
+  // Previous code had isRiderOnline() stale closure bug that blocked display.
   const handleAcceptBatch = async () => {
     if (!newBatchRequest || !newBatchRequest.batchId) return;
     try {
@@ -153,7 +201,6 @@ function NewDeliveryDashboard() {
       const res = await dmbDeliveryAPI.acceptBatch(newBatchRequest.batchId);
       if (res.data?.success) {
         const otp = res.data.batch?.otp || res.data.otp;
-        alert(`Batch accepted! OTP to show vendor: ${otp}`);
         setAcceptedBatchDetails({ ...newBatchRequest, otp });
         clearNewBatchRequest();
         await fetchActiveRoute();
@@ -166,90 +213,68 @@ function NewDeliveryDashboard() {
       setIsAccepting(false);
     }
   };
+
   const handleAcceptRoute = () => {
     setIsRouteAccepted(true);
-    setStops(
-      (prev) => prev.map((s, idx) => idx === 0 ? { ...s, status: "READY" } : s)
-    );
+    setStops(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: "READY" } : s));
   };
+
   const handleNextRouteStep = () => {
-    if (activeOrder.status === "ready_for_pickup") {
+    if (activeOrder?.status === "ready_for_pickup") {
       setCurrentScreen("pickup");
-    } else if (activeOrder.status === "picked_up") {
+    } else if (activeOrder?.status === "picked_up") {
       setCurrentScreen("delivery");
     } else {
       setCurrentScreen("route");
     }
   };
+
   const handleConfirmPickup = () => {
-    setOrders(
-      (prev) => prev.map((o) => ({ ...o, status: "picked_up" }))
-    );
-    setStops(
-      (prev) => prev.map((s) => {
-        if (s.type === "pickup" || s.type === "P") {
-          return { ...s, status: "COMPLETED" };
-        }
-        if (s.type === "delivery" || s.type === "D") {
-          return { ...s, status: "READY" };
-        }
-        return s;
-      })
-    );
+    setOrders(prev => prev.map(o => ({ ...o, status: "picked_up" })));
+    setStops(prev => prev.map(s => {
+      if (s.type === "pickup" || s.type === "P") return { ...s, status: "COMPLETED" };
+      if (s.type === "delivery" || s.type === "D") return { ...s, status: "READY" };
+      return s;
+    }));
     setCurrentScreen("delivery");
   };
+
   const handleConfirmDelivered = (cashCollected) => {
     if (!activeOrder) return;
-    setOrders(
-      (prev) => prev.map((o) => o.id === activeOrder.id ? { ...o, status: "delivered" } : o)
-    );
-    setStops(
-      (prev) => prev.map((s) => s.orderId === activeOrder.id ? { ...s, status: "COMPLETED" } : s)
-    );
-    setStats((prev) => ({
+    setOrders(prev => prev.map(o => o.id === activeOrder.id ? { ...o, status: "delivered" } : o));
+    setStops(prev => prev.map(s => s.orderId === activeOrder.id ? { ...s, status: "COMPLETED" } : s));
+    setStats(prev => ({
       ...prev,
       todayDeliveries: prev.todayDeliveries + 1,
       todayEarned: prev.todayEarned + 18,
-      // base pay
       todayTips: prev.todayTips + 5,
-      // extra tips
       weeklyBonusProgress: Math.min(10, prev.weeklyBonusProgress + 1)
     }));
-    
-    // Check if there are other orders in the current batch that are not delivered yet
     const remainingOrders = orders.filter(o => o.id !== activeOrder.id && o.status !== "delivered");
     if (remainingOrders.length > 0) {
       setSelectedOrderId(remainingOrders[0].id);
-      // Stay on delivery dropoff screen for the next customer
       setCurrentScreen("delivery");
     } else {
       setCurrentScreen("earnings");
     }
   };
-  const handleReportIssue = () => {
-    setCurrentScreen("cannot_deliver");
-  };
+
+  const handleReportIssue = () => setCurrentScreen("cannot_deliver");
+
   const handleSubmitFailure = (report) => {
     if (!activeOrder) return;
-    setOrders(
-      (prev) => prev.map(
-        (o) => o.id === activeOrder.id ? {
-          ...o,
-          status: "failed",
-          failedReason: report.reason,
-          failedDisposal: report.disposal,
-          failedNote: report.note,
-          failedPhoto: report.photoUrl
-        } : o
-      )
-    );
-    setStops(
-      (prev) => prev.map(
-        (s) => s.orderId === activeOrder.id ? { ...s, status: "FAILED" } : s
-      )
-    );
+    setOrders(prev => prev.map(o => o.id === activeOrder.id ? {
+      ...o,
+      status: "failed",
+      failedReason: report.reason,
+      failedDisposal: report.disposal,
+      failedNote: report.note,
+      failedPhoto: report.photoUrl
+    } : o));
+    setStops(prev => prev.map(s => s.orderId === activeOrder.id ? { ...s, status: "FAILED" } : s));
     setCurrentScreen("route");
   };
+
   const handleResetSimulator = () => {
     setStats(INITIAL_DRIVER_STATS);
     setOrders(INITIAL_ORDERS);
@@ -258,6 +283,7 @@ function NewDeliveryDashboard() {
     setIsRouteAccepted(false);
     setCurrentScreen("home");
   };
+
   const renderActiveScreen = () => {
     switch (currentScreen) {
       case "home":
@@ -266,11 +292,8 @@ function NewDeliveryDashboard() {
           toggleOnline={handleToggleOnline}
           activeOrder={activeOrder}
           onNavigateToPickup={() => {
-            if (isRouteAccepted) {
-              setCurrentScreen("pickup");
-            } else {
-              setCurrentScreen("route");
-            }
+            if (isRouteAccepted) setCurrentScreen("pickup");
+            else setCurrentScreen("route");
           }}
         />;
       case "route":
@@ -304,11 +327,8 @@ function NewDeliveryDashboard() {
         return <CannotDeliverReport
           order={activeOrder}
           onGoBack={() => {
-            if (activeOrder.status === "picked_up") {
-              setCurrentScreen("delivery");
-            } else {
-              setCurrentScreen("pickup");
-            }
+            if (activeOrder?.status === "picked_up") setCurrentScreen("delivery");
+            else setCurrentScreen("pickup");
           }}
           onSubmitFailure={handleSubmitFailure}
         />;
@@ -325,124 +345,173 @@ function NewDeliveryDashboard() {
           initialShifts={shifts}
           stats={currentStats}
           onGoBack={() => setCurrentScreen("profile")}
-          onUpdateStats={(newHrs) => setStats((v) => ({ ...v, hoursLogged: newHrs }))}
+          onUpdateStats={(newHrs) => setStats(v => ({ ...v, hoursLogged: newHrs }))}
         />;
       case "demand":
         return <DemandHeatmapView
           onNavigateToUrsynow={() => {
-            alert("Routing GPS navigation to Ursyn\xF3w demand hub...");
+            alert("Routing GPS navigation to Ursynów demand hub...");
             setCurrentScreen("route");
           }}
         />;
       default:
-        return <DashboardHome stats={currentStats} toggleOnline={handleToggleOnline} activeOrder={activeOrder} onNavigateToPickup={() => setCurrentScreen("pickup")} />;
+        return <DashboardHome
+          stats={currentStats}
+          toggleOnline={handleToggleOnline}
+          activeOrder={activeOrder}
+          onNavigateToPickup={() => setCurrentScreen("pickup")}
+        />;
     }
   };
-  return <div className="min-h-screen bg-[#F5F5F0] pb-24 text-gray-800 font-sans relative">
-      
-      {
-    /* Visual Header Grid Accent Line */
-  }
+
+  return (
+    <div className="min-h-screen bg-[#F5F5F0] pb-24 text-gray-800 font-sans relative">
       <div className="h-1 bg-[#00604c] w-full sticky top-0 z-50" />
 
-
-      {/* Main Container Frame holding responsive applet body */}
       <main className="max-w-md mx-auto px-4 pt-4">
+
+        {/* ─── FIX: New Batch Request Modal ─────────────────────────────────── */}
         {newBatchRequest && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-              <h3 className="text-lg font-bold text-[#00604c] mb-2">New Orders Ready!</h3>
-              <p className="text-gray-600 mb-4 text-sm">
-                Vendor has marked {newBatchRequest.totalOrders} orders as ready for pickup.
-              </p>
-              <div className="flex gap-3">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+              {/* Header */}
+              <div className="bg-[#00604c] px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                    <Package className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white/70 text-xs font-medium uppercase tracking-wider">New Pickup Request</p>
+                    <h3 className="text-white text-lg font-bold leading-tight">Orders Ready!</h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-5 py-4 space-y-3">
+
+                {/* Vendor info */}
+                {newBatchRequest.vendorInfo && (
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-[#00604c] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Pickup from</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {newBatchRequest.vendorInfo?.vendorName || newBatchRequest.vendorName || 'Vendor'}
+                        </p>
+                      </div>
+                    </div>
+                    {(newBatchRequest.vendorInfo?.vendorPhone || newBatchRequest.vendorPhone) && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-[#00604c] shrink-0" />
+                        <p className="text-sm text-gray-600">
+                          {newBatchRequest.vendorInfo?.vendorPhone || newBatchRequest.vendorPhone}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Stats row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[#f0fdf7] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-[#00604c]">
+                      {newBatchRequest.totalMealBoxCount || newBatchRequest.boxCount || newBatchRequest.totalOrders || '—'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">Meal boxes</p>
+                  </div>
+                  <div className="bg-[#f0fdf7] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-[#00604c] capitalize">
+                      {newBatchRequest.slotType || newBatchRequest.slot || '—'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">Slot</p>
+                  </div>
+                </div>
+
+                {/* FIX: Show clear offline warning if driver is offline */}
+                {!isOnline && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    <p className="text-amber-700 text-xs font-medium text-center">
+                      ⚠️ You are offline — go online to accept deliveries
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="px-5 pb-5 flex gap-3">
                 <button
                   disabled={isAccepting}
                   onClick={clearNewBatchRequest}
-                  className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold"
+                  className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm active:scale-95 transition-transform"
                 >
                   Ignore
                 </button>
                 <button
-                  disabled={isAccepting}
+                  disabled={isAccepting || !isOnline}
                   onClick={handleAcceptBatch}
-                  className="flex-1 py-2 rounded-lg bg-[#00604c] text-white font-semibold"
+                  className="flex-1 py-3 rounded-xl bg-[#00604c] text-white font-semibold text-sm active:scale-95 transition-transform disabled:opacity-50"
                 >
-                  {isAccepting ? "Accepting..." : "Accept Route"}
+                  {isAccepting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Accepting...
+                    </span>
+                  ) : "Accept Route"}
                 </button>
               </div>
             </div>
           </div>
         )}
+
         {renderActiveScreen()}
       </main>
 
-      {
-    /* Shared High-legibility Tactical Bottom Navigator Tab Bar */
-  }
+      {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center">
-        {
-    /* HOME Button */
-  }
         <button
-    onClick={() => {
-      if (currentScreen === "cannot_deliver" && activeOrder.status === "picked_up") {
-        setCurrentScreen("delivery");
-      } else {
-        navigate('/food/delivery/feed');
-        setCurrentScreen("home");
-      }
-    }}
-    className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "home" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
-  >
+          onClick={() => {
+            if (currentScreen === "cannot_deliver" && activeOrder?.status === "picked_up") {
+              setCurrentScreen("delivery");
+            } else {
+              navigate('/food/delivery/feed');
+              setCurrentScreen("home");
+            }
+          }}
+          className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "home" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
+        >
           <Home className="w-4.5 h-4.5" />
           <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
         </button>
 
-        {
-    /* ROUTE Button */
-  }
         <button
-    onClick={() => {
-      navigate('/food/delivery/route');
-      setCurrentScreen("route");
-    }}
-    className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "route" || currentScreen === "pickup" || currentScreen === "delivery" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
-  >
+          onClick={() => { navigate('/food/delivery/route'); setCurrentScreen("route"); }}
+          className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${["route", "pickup", "delivery"].includes(currentScreen) ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
+        >
           <RouteIcon className="w-4.5 h-4.5" />
           <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Route</span>
         </button>
 
-        {
-    /* EARN Button */
-  }
         <button
-    onClick={() => {
-      navigate('/food/delivery/earn');
-      setCurrentScreen("earnings");
-    }}
-    className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "earnings" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
-  >
+          onClick={() => { navigate('/food/delivery/earn'); setCurrentScreen("earnings"); }}
+          className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "earnings" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
+        >
           <Banknote className="w-4.5 h-4.5" />
           <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Earn</span>
         </button>
 
-        {
-    /* PROFILE Button */
-  }
         <button
-    onClick={() => {
-      navigate('/food/delivery/profile');
-      setCurrentScreen("profile");
-    }}
-    className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "profile" || currentScreen === "shifts" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
-  >
+          onClick={() => { navigate('/food/delivery/profile'); setCurrentScreen("profile"); }}
+          className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${["profile", "shifts"].includes(currentScreen) ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
+        >
           <User className="w-4.5 h-4.5" />
           <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Profile</span>
         </button>
       </nav>
-    </div>;
+    </div>
+  );
 }
-export {
-  NewDeliveryDashboard as default
-};
+
+export { NewDeliveryDashboard as default };

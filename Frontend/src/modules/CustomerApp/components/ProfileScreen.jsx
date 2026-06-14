@@ -446,6 +446,7 @@ export function ProfileScreen({
             </div>
           </div>
 
+
           {/* Danger zone actions */}
           <div className="mt-6 mb-4 flex flex-col gap-3">
             <h4 className="text-[11px] font-bold text-[#6e7a74] px-1 uppercase tracking-widest">

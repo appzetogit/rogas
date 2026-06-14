@@ -47,6 +47,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [error, setError] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [skipTarget, setSkipTarget] = useState(null); // { orderId, mealName }
+  const [hasFullWeekSub, setHasFullWeekSub] = useState(false);
 
   // Load orders
   const loadOrders = async () => {
@@ -58,9 +59,10 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         setOrders([]);
         return;
       }
-      const [upcomingRes, pastRes] = await Promise.all([
+      const [upcomingRes, pastRes, activeSubsRes] = await Promise.all([
         dmbCustomerAPI.getMyOrders("upcoming"),
-        dmbCustomerAPI.getMyOrders("past")
+        dmbCustomerAPI.getMyOrders("past"),
+        dmbCustomerAPI.getMySubscriptions("active")
       ]);
 
       let combined = [];
@@ -81,6 +83,12 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       });
 
       setOrders(deduped);
+
+      if (activeSubsRes.data?.success) {
+        const activeSubs = activeSubsRes.data?.subscriptions || [];
+        const hasFullWeek = activeSubs.some(sub => sub.deliveryDays === 'full_week');
+        setHasFullWeekSub(hasFullWeek);
+      }
     } catch (err) {
       console.error("Failed to load orders for calendar:", err);
       setError("Failed to load meal data. Please try again later.");
@@ -289,7 +297,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
         dayNum: date.getDate(),
         dateStr: dateKeyStr,
-        name: isSunday ? "Rest Day (Sunday)" : "No delivery scheduled",
+        name: (isSunday && !hasFullWeekSub) ? "Rest Day (Sunday)" : "No delivery scheduled",
         isLocked: true,
         originalStatus: ""
       };

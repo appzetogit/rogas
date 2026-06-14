@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IMAGES } from "../types";
+import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
 
 export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder, socket }) {
-  const [driverX, setDriverX] = useState(250);
-  const [driverY, setDriverY] = useState(300);
   const [arrivingMin, setArrivingMin] = useState(8);
   const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
+
+  const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || "Jan W.";
+  const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto || IMAGES.driverMaleApproachable;
+  const driverVehicle = trackedOrder?.dispatch?.deliveryPartner?.vehicleType || "E-bike";
+  const driverPhone = trackedOrder?.dispatch?.deliveryPartner?.phone || "";
 
   // Subscribe to real-time status updates via Socket
   useEffect(() => {
@@ -34,76 +38,49 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
     };
   }, [socket, trackedOrder?._id, onShowNotificationToast]);
 
-  // Animate the driver icon along the track line
-  useEffect(() => {
-    if (orderStatus === "delivered") {
-      setDriverX(120);
-      setDriverY(700);
-      setArrivingMin(0);
-      return;
+  const restaurantCoords = useMemo(() => {
+    const coords = trackedOrder?.vendor?.location?.coordinates || trackedOrder?.vendorId?.location?.coordinates || trackedOrder?.vendor?.coordinates;
+    if (Array.isArray(coords) && coords.length === 2) {
+      return { lat: Number(coords[1]), lng: Number(coords[0]) };
     }
-    
-    let step = 0;
-    const interval = setInterval(() => {
-      step += 0.05;
-      // Interpolate along the path: start at top-right, move towards bottom-left destination (x: 120, y: 700)
-      const startX = 280;
-      const startY = 180;
-      const endX = 120;
-      const endY = 700;
-      const currentX = startX + (endX - startX) * Math.sin(step % (Math.PI / 2));
-      const currentY = startY + (endY - startY) * Math.sin(step % (Math.PI / 2));
-      setDriverX(Math.round(currentX));
-      setDriverY(Math.round(currentY));
-      // countdown arrival min
-      setArrivingMin((prev) => {
-        if (prev <= 1)
-          return 8; // reset loop for demo
-        return Math.round(8 - (step % 2) * 5) || 1;
-      });
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [orderStatus]);
+    // Default fallback to Warsaw center coordinates
+    return { lat: 52.2297, lng: 21.0122 };
+  }, [trackedOrder]);
+
+  const customerCoords = useMemo(() => {
+    const coords = trackedOrder?.deliveryAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length === 2) {
+      return { lat: Number(coords[1]), lng: Number(coords[0]) };
+    }
+    return { lat: 52.235, lng: 21.018 };
+  }, [trackedOrder]);
 
   const handleCall = () => {
-    onShowNotificationToast("📞 Initiating secure telephone call to Jan W. (E-bike driver)...");
+    if (driverPhone) {
+      onShowNotificationToast(`📞 Initiating secure telephone call to ${driverName} (${driverPhone})...`);
+    } else {
+      onShowNotificationToast(`📞 Initiating secure telephone call to ${driverName}...`);
+    }
   };
 
   const handleChat = () => {
-    onShowNotificationToast("💬 Opening secure chat with Jan W.: 'Hello, I'll be downstairs in 5 mins!'");
+    onShowNotificationToast(`💬 Opening secure chat with ${driverName}...`);
   };
 
   return (
     <div className="relative w-full h-[844px] overflow-hidden bg-[#242f3e] shadow-2xl flex flex-col mx-auto rounded-[32px] border-4 border-on-surface">
-      {/* Warsaw Night style map overlay layout */}
+      {/* Live tracking Google Map */}
       <div className="absolute inset-0 z-0">
-        <img alt="Warsaw map digital night traces" className="w-full h-full object-cover opacity-60 grayscale contrast-125 saturate-50" src={IMAGES.warsawMapGISDark} />
-
-        {/* SVG Navigation pathway tracer */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 390 844" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Path Line emerald glowing */}
-          <path d="M120 700C120 700 150 600 200 550C250 500 280 400 280 300L320 180" stroke="#1F7A63" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" className="opacity-75" />
-          <path d="M120 700C120 700 150 600 200 550C250 500 280 400 280 300L320 180" stroke="#82d6bb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Home target indicator */}
-          <circle cx="120" cy="700" r="10" fill="#ffffff" stroke="#1F7A63" strokeWidth="4" />
-          <circle cx="120" cy="700" r="4" fill="#1f7a63" />
-        </svg>
-
-        {/* Dynamic biking driver dot marker with pulsating ripple loops */}
-        <div className="absolute flex items-center justify-center transition-all duration-1000 ease-out" style={{ left: `${driverX}px`, top: `${driverY}px`, transform: "translate(-50%, -50%)" }}>
-          <div className="relative flex items-center justify-center">
-            {/* Pulsing radar triggers */}
-            <div className="absolute w-12 h-12 bg-primary-container rounded-full animate-ping opacity-60"></div>
-            <div className="absolute w-8 h-8 bg-[#82d6bb]/50 rounded-full animate-pulse"></div>
-
-            {/* Bike dot */}
-            <div className="w-10 h-10 bg-primary-container rounded-full border-4 border-white flex items-center justify-center shadow-lg relative z-10">
-              <span className="material-symbols-outlined text-white text-[20px] font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }}>
-                directions_bike
-              </span>
-            </div>
-          </div>
-        </div>
+        <DeliveryTrackingMap
+          orderId={trackedOrder?._id}
+          restaurantCoords={restaurantCoords}
+          customerCoords={customerCoords}
+          order={trackedOrder}
+          onEtaUpdate={(eta) => {
+            const minutes = parseInt(eta) || 8;
+            setArrivingMin(minutes);
+          }}
+        />
       </div>
 
       {/* Top Floating App Bar */}
@@ -117,10 +94,10 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
             <div className="bg-white rounded-2xl p-3 flex items-center justify-between shadow-lg border border-[#bec9c3]/20">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-[#e4e2e1]">
-                  <img alt="Driver Jan portrait" className="w-full h-full object-cover" src={IMAGES.driverMaleApproachable} />
+                  <img alt={`Driver ${driverName} portrait`} className="w-full h-full object-cover" src={driverPhoto} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-on-surface leading-tight">Jan W. · E-bike</span>
+                  <span className="text-xs font-bold text-on-surface leading-tight">{driverName} · {driverVehicle}</span>
                   <div className="flex items-center gap-0.5 mt-0.5">
                     <span className="material-symbols-outlined text-[13px] text-secondary font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }}>
                       star
