@@ -200,6 +200,13 @@ export const adminAPI = {
     const resolvedFcmToken = fcmToken || (typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_admin") : null);
     return authService.logout(token, resolvedFcmToken, platform);
   },
+  // Order-Based Delivery Fee and Commission Audit
+  getDeliveryOrderFeeSettings: () =>
+    adminClient.get("/food/admin/delivery/order-fee-settings"),
+  updateDeliveryOrderFeeSettings: (body) =>
+    adminClient.post("/food/admin/delivery/order-fee-settings", body),
+  getDeliveryCommissionAudit: (params = {}) =>
+    adminClient.get("/food/admin/delivery/commission-audit", { params }),
   // Restaurant approvals and join requests
   getPendingRestaurants: () =>
     adminClient.get("/food/admin/restaurants/pending"),
@@ -1249,7 +1256,9 @@ export const dmbDeliveryAPI = {
   goOffline: () => deliveryClient.patch("/dmb/driver/go-offline"),
   verifyCollectionPin: (pin, collectionGps = null) => deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps }),
   verifyDeliveryPin: (orderId, pin, deliveryGps = null) => deliveryClient.post("/dmb/driver/verify-delivery-pin", { orderId, pin, deliveryGps }),
-  uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps })
+  uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps }),
+  confirmPayment: (orderId, method) => deliveryClient.post("/dmb/driver/confirm-payment", { orderId, method }),
+  getDashboardStats: () => deliveryClient.get("/food/delivery/dashboard-stats")
 };
 
 export const deliveryAPI = {
@@ -2030,4 +2039,6 @@ export const dmbCustomerAPI = {
   cancelSubscription: (subscriptionId, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/cancel`, { reason }),
   /** Get vendor's available meal plans (for change-meal selection) */
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
+  /** Rate a delivered order (rating + optional feedback + tip) */
+  rateOrder: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/rate`, data),
 };

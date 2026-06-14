@@ -190,6 +190,7 @@ export const adminSidebarMenu = [
     type: "section",
     label: "DELIVERYMAN MANAGEMENT",
     items: [
+      { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "IndianRupee" },
       { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "IndianRupee" },
       { type: "link", label: "Delivery & Platform Fee", path: "/admin/food/fee-settings", icon: "DollarSign" },
       { type: "link", label: "Cash limit settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
@@ -256,15 +257,6 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "App Intro & Ads", path: "/admin/food/app-intro-ads", icon: "Image" },
       { type: "link", label: "Landing Page Management", path: "/admin/food/hero-banner-management", icon: "Image" },
-    ],
-  },
-  {
-    type: "section",
-    label: "DINING MANAGEMENT",
-    items: [
-      { type: "link", label: "Dining Banners", path: "/admin/food/dining-management", icon: "UtensilsCrossed" },
-      { type: "link", label: "Dining List", path: "/admin/food/dining-list", icon: "FileText" },
-      { type: "link", label: "Dining Category Request", path: "/admin/food/dining-requests", icon: "CheckCircle" },
     ],
   },
   {

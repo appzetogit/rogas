@@ -160,6 +160,9 @@ router.patch('/delivery/withdrawals/:id', adminController.updateDeliveryWithdraw
 router.get('/delivery/cash-limit-settlements', adminController.getCashLimitSettlements);
 
 // ----- Delivery partners & general -----
+router.get('/delivery/order-fee-settings', adminController.getDeliveryOrderFeeSettings);
+router.post('/delivery/order-fee-settings', adminController.updateDeliveryOrderFeeSettings);
+router.get('/delivery/commission-audit', adminController.getDeliveryCommissionAudit);
 router.get('/delivery/join-requests', adminController.getDeliveryJoinRequests);
 router.get('/delivery/available-partners', adminController.getAvailableDeliveryPartners);
 router.get('/delivery/wallets', adminController.getDeliveryWallets);

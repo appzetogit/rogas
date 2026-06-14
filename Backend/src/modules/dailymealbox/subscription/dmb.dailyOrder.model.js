@@ -100,6 +100,20 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         pickedUpAt: { type: Date, default: null },
         deliveredAt: { type: Date, default: null },
 
+        /** Customer rating for the delivery (1-5 stars) */
+        deliveryRating: { type: Number, default: null, min: 1, max: 5 },
+        /** Customer feedback text */
+        ratingFeedback: { type: String, default: '' },
+        /** Tip amount given to driver */
+        driverTip: { type: Number, default: 0, min: 0 },
+        /** Whether rating has been submitted */
+        isRated: { type: Boolean, default: false },
+
+        /** Payment and Earnings tracking */
+        riderEarning: { type: Number, default: 0 },
+        paymentMethod: { type: String, enum: ['CASH', 'ONLINE', 'QR', ''], default: '' },
+        paymentConfirmed: { type: Boolean, default: false },
+
         notes: { type: String, default: '' }
     },
     {

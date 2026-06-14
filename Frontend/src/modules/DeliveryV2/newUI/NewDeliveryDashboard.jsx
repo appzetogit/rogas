@@ -50,6 +50,12 @@ function NewDeliveryDashboard() {
   const [currentScreen, setCurrentScreen] = useState(getScreenFromPath(location.pathname));
   const [isRouteAccepted, setIsRouteAccepted] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const selectedOrderIdRef = useRef(null);
+
+  useEffect(() => {
+    selectedOrderIdRef.current = selectedOrderId;
+  }, [selectedOrderId]);
+
   const activeOrder = orders.find(o => o.id === selectedOrderId)
     || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery")
     || orders[0];
@@ -131,6 +137,8 @@ function NewDeliveryDashboard() {
             vendorName: o.vendorId?.restaurantName || 'Vendor',
             vendorAddress: o.vendorId?.addressLine1 || 'Vendor Address',
             vendorPhone: o.vendorId?.phone || "N/A",
+            vendorLat: o.vendorId?.location?.latitude || o.vendorId?.location?.coordinates?.[1] || null,
+            vendorLng: o.vendorId?.location?.longitude || o.vendorId?.location?.coordinates?.[0] || null,
             customerName: o.userId?.name || 'Customer',
             customerAddress: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.city || 'Customer Address',
             customerLat: o.deliveryAddress?.location?.latitude || o.deliveryAddress?.location?.coordinates?.[1] || null,
@@ -145,9 +153,19 @@ function NewDeliveryDashboard() {
             dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00'),
             pickedUpAt: o.pickedUpAt
           }));
-          setOrders(mappedOrders);
-          setStops(res.data.stops || []);
-          setRouteMetadata({
+          setOrders(prev => {
+            const lockedId = selectedOrderIdRef.current;
+            if (lockedId) {
+               // Payment screen is open. Don't replace the list, just update statuses so UI doesn't crash.
+               return prev.map(oldOrder => {
+                 const fresh = mappedOrders.find(mo => mo.id === oldOrder.id);
+                 return fresh ? fresh : { ...oldOrder, status: "delivered" };
+               });
+            }
+            return mappedOrders;
+          });
+          setStops(prev => selectedOrderIdRef.current ? prev : (res.data.stops || []));
+          setRouteMetadata(prev => selectedOrderIdRef.current ? prev : {
             vendorName: res.data.vendorName || '',
             vendorAddress: res.data.vendorAddress || '',
             vendorPhone: res.data.vendorPhone || '',
@@ -158,9 +176,14 @@ function NewDeliveryDashboard() {
             deliveryDeadline: res.data.deliveryDeadline || null
           });
         } else {
-          setOrders([]);
-          setStops([]);
-          setRouteMetadata(null);
+          setOrders(prev => {
+             if (selectedOrderIdRef.current) {
+                return prev.map(o => ({ ...o, status: "delivered" }));
+             }
+             return [];
+          });
+          setStops(prev => selectedOrderIdRef.current ? prev : []);
+          setRouteMetadata(prev => selectedOrderIdRef.current ? prev : null);
         }
       }
     } catch (err) {
@@ -172,8 +195,23 @@ function NewDeliveryDashboard() {
   const [acceptedBatchDetails, setAcceptedBatchDetails] = useState(null);
   const [routeMetadata, setRouteMetadata] = useState(null);
 
+  const fetchDashboardStats = async () => {
+    try {
+      const res = await dmbDeliveryAPI.getDashboardStats();
+      if (res.data?.success) {
+        setStats(prev => ({
+          ...prev,
+          ...res.data.data
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats", error);
+    }
+  };
+
   useEffect(() => {
     fetchActiveRoute();
+    fetchDashboardStats();
     const syncOnlineStatus = async () => {
       try {
         if (isOnline) await dmbDeliveryAPI.goOnline();
@@ -187,6 +225,7 @@ function NewDeliveryDashboard() {
   useEffect(() => {
     if (orderStatusUpdate) {
       fetchActiveRoute();
+      fetchDashboardStats();
       clearOrderStatusUpdate();
     }
   }, [orderStatusUpdate]);
@@ -239,23 +278,23 @@ function NewDeliveryDashboard() {
     setCurrentScreen("delivery");
   };
 
-  const handleConfirmDelivered = (cashCollected) => {
+  const handleConfirmDelivered = async (cashCollected) => {
     if (!activeOrder) return;
     setOrders(prev => prev.map(o => o.id === activeOrder.id ? { ...o, status: "delivered" } : o));
     setStops(prev => prev.map(s => s.orderId === activeOrder.id ? { ...s, status: "COMPLETED" } : s));
-    setStats(prev => ({
-      ...prev,
-      todayDeliveries: prev.todayDeliveries + 1,
-      todayEarned: prev.todayEarned + 18,
-      todayTips: prev.todayTips + 5,
-      weeklyBonusProgress: Math.min(10, prev.weeklyBonusProgress + 1)
-    }));
+    
+    // Refresh live stats from backend to reflect new delivery earnings and COD wallet
+    await fetchDashboardStats();
+
     const remainingOrders = orders.filter(o => o.id !== activeOrder.id && o.status !== "delivered");
     if (remainingOrders.length > 0) {
       setSelectedOrderId(remainingOrders[0].id);
       setCurrentScreen("delivery");
     } else {
+      setSelectedOrderId(null);
       setCurrentScreen("earnings");
+      // Now that the lock is lifted, fetch the active route fully so it clears empty batch
+      fetchActiveRoute();
     }
   };
 

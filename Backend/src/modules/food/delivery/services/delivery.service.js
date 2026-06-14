@@ -145,12 +145,13 @@ export const updateDeliveryPartnerProfile = async (userId, payload, files) => {
     }
 
     const {
-        name, countryCode, address, city, state,
+        name, email, countryCode, address, city, state,
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
         fcmToken, platform
     } = payload;
 
     if (name) partner.name = name;
+    if (email !== undefined) partner.email = email;
     if (countryCode !== undefined) partner.countryCode = countryCode;
     if (address !== undefined) partner.address = address;
     if (city !== undefined) partner.city = city;
@@ -854,3 +855,92 @@ export const getActiveEarningAddonsForPartner = async (deliveryPartnerId) => {
     };
 };
 
+export const getDeliveryDashboardStats = async (deliveryPartnerId) => {
+    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
+        throw new ValidationError('Delivery partner not found');
+    }
+    const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+    
+    // Get Rating and Profile Info from Partner
+    const partner = await FoodDeliveryPartner.findById(partnerId).select('rating name profilePhoto documents').lean();
+    const rating = partner?.rating || 0;
+    const name = partner?.name || "Delivery Partner";
+    const profileImage = partner?.profilePhoto || partner?.documents?.photo || "https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm";
+
+    const now = new Date();
+    
+    const todayRange = computeRange('daily', now);
+    const weekRange = computeRange('weekly', now);
+    const monthRange = computeRange('monthly', now);
+
+    const buildMatch = (range) => ({
+        'dispatch.deliveryPartnerId': partnerId,
+        orderStatus: 'delivered',
+        'deliveryState.deliveredAt': { $gte: range.start, $lte: range.end }
+    });
+
+    const buildDMBMatch = (range) => ({
+        'dispatch.deliveryPartnerId': partnerId,
+        status: 'delivered',
+        deliveredAt: { $gte: range.start, $lte: range.end }
+    });
+
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+    const [
+        todayOrders, todayAgg, todayDMBOrders, todayDMBAgg,
+        weekOrders, weekAgg, weekDMBOrders, weekDMBAgg,
+        monthOrders, monthAgg, monthDMBOrders, monthDMBAgg
+    ] = await Promise.all([
+        FoodOrder.countDocuments(buildMatch(todayRange)),
+        FoodOrder.aggregate([
+            { $match: buildMatch(todayRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$tipAmount', 0] } } } }
+        ]),
+        DMBDailyOrder.countDocuments(buildDMBMatch(todayRange)),
+        DMBDailyOrder.aggregate([
+            { $match: buildDMBMatch(todayRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$driverTip', 0] } } } }
+        ]),
+        FoodOrder.countDocuments(buildMatch(weekRange)),
+        FoodOrder.aggregate([
+            { $match: buildMatch(weekRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$tipAmount', 0] } } } }
+        ]),
+        DMBDailyOrder.countDocuments(buildDMBMatch(weekRange)),
+        DMBDailyOrder.aggregate([
+            { $match: buildDMBMatch(weekRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$driverTip', 0] } } } }
+        ]),
+        FoodOrder.countDocuments(buildMatch(monthRange)),
+        FoodOrder.aggregate([
+            { $match: buildMatch(monthRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$tipAmount', 0] } } } }
+        ]),
+        DMBDailyOrder.countDocuments(buildDMBMatch(monthRange)),
+        DMBDailyOrder.aggregate([
+            { $match: buildDMBMatch(monthRange) },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$riderEarning', 0] } }, tips: { $sum: { $ifNull: ['$driverTip', 0] } } } }
+        ])
+    ]);
+
+    const formatStats = (orders, agg, dmbOrders, dmbAgg) => {
+        const earned = (Number(agg?.[0]?.total) || 0) + (Number(dmbAgg?.[0]?.total) || 0);
+        const tips = (Number(agg?.[0]?.tips) || 0) + (Number(dmbAgg?.[0]?.tips) || 0);
+        return {
+            deliveries: orders + dmbOrders,
+            earned: earned,
+            tips: tips,
+            topUp: 0
+        };
+    };
+
+    return {
+        name,
+        profileImage,
+        rating,
+        today: formatStats(todayOrders, todayAgg, todayDMBOrders, todayDMBAgg),
+        week: formatStats(weekOrders, weekAgg, weekDMBOrders, weekDMBAgg),
+        month: formatStats(monthOrders, monthAgg, monthDMBOrders, monthDMBAgg)
+    };
+};

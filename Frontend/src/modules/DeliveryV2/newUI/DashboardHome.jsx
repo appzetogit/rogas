@@ -13,16 +13,16 @@ const DashboardHome = ({
         <div className="flex items-center gap-3">
           <div className="relative">
             <img
-    alt="Jan Wisniewski"
+    alt={stats?.name || "Delivery Partner"}
     className="w-12 h-12 rounded-full border border-[#bec9c3] object-cover"
-    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDD2_lMXh8dhOlTWeYSkHItytPk5uzDBhawYjfPwJs-PtVgUhSwqy36J6R-4DoKas8gpTeiha4dx5AHukgQKjXvMgqXpnMdn1EC7sPE4E9WhiieZ5DvKcSezk8FwQxV4aVeUEjoymn9M17VrWwTIIPYsDzhXS704LBs998TQfmDJAxCIrqiuDZY-EnsVhc5nySTdKZPztVoEhGkiihaO1DJaMlHwFO4uD5li-43YQ49fK6OUt3xSRLLc4_CP6OGpXnptuQRok-hK_Ih"
+    src={stats?.profileImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuDD2_lMXh8dhOlTWeYSkHItytPk5uzDBhawYjfPwJs-PtVgUhSwqy36J6R-4DoKas8gpTeiha4dx5AHukgQKjXvMgqXpnMdn1EC7sPE4E9WhiieZ5DvKcSezk8FwQxV4aVeUEjoymn9M17VrWwTIIPYsDzhXS704LBs998TQfmDJAxCIrqiuDZY-EnsVhc5nySTdKZPztVoEhGkiihaO1DJaMlHwFO4uD5li-43YQ49fK6OUt3xSRLLc4_CP6OGpXnptuQRok-hK_Ih"}
     referrerPolicy="no-referrer"
   />
             {stats.online && <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00604c] border-2 border-white rounded-full" />}
           </div>
           <div>
             <p className="text-xs text-[#3e4945] font-semibold uppercase tracking-wider">FreshDash Partner</p>
-            <h1 className="text-lg font-bold text-[#00604c]">Good morning, Jan</h1>
+            <h1 className="text-lg font-bold text-[#00604c]">Good morning, {(stats?.name || "Partner").split(" ")[0]}</h1>
           </div>
         </div>
 
@@ -62,13 +62,13 @@ const DashboardHome = ({
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-white p-4 rounded-xl border border-[#e0e3e0] flex flex-col items-center justify-center text-center">
           <ShoppingBag className="w-5 h-5 text-[#00604c] mb-1" />
-          <span className="text-lg font-bold text-[#181d1b]">{stats.todayDeliveries}</span>
+          <span className="text-lg font-bold text-[#181d1b]">{stats?.today?.deliveries || 0}</span>
           <span className="text-[10px] uppercase font-bold text-[#3e4945] tracking-wider">Deliveries</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-[#e0e3e0] flex flex-col items-center justify-center text-center">
           <DollarSign className="w-5 h-5 text-[#00604c] mb-1" />
-          <span className="text-lg font-bold text-[#181d1b]">{stats.todayEarned.toFixed(0)} PLN</span>
+          <span className="text-lg font-bold text-[#181d1b]">{(stats?.today?.earned || 0).toFixed(0)} PLN</span>
           <span className="text-[10px] uppercase font-bold text-[#3e4945] tracking-wider">Earned</span>
         </div>
 
@@ -143,7 +143,7 @@ const DashboardHome = ({
           <Wallet className="w-5 h-5 text-amber-600" />
           <div>
             <span className="text-[11px] font-semibold text-[#3e4945] block uppercase tracking-wider">Cash (COD)</span>
-            <span className="text-lg font-bold text-gray-900">32.50 PLN</span>
+            <span className="text-lg font-bold text-gray-900">{stats.cashInHand ? stats.cashInHand.toFixed(2) : "0.00"} PLN</span>
           </div>
         </div>
 
@@ -151,7 +151,7 @@ const DashboardHome = ({
           <HeartHandshake className="w-5 h-5 text-[#00604c]" />
           <div>
             <span className="text-[11px] font-semibold text-[#3e4945] block uppercase tracking-wider font-sans">Tips Today</span>
-            <span className="text-lg font-bold text-gray-900">12.00 PLN</span>
+            <span className="text-lg font-bold text-gray-900">{stats.today?.tips ? stats.today.tips.toFixed(2) : "0.00"} PLN</span>
           </div>
         </div>
       </div>

@@ -312,14 +312,8 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
 
         if (!order) throw new Error('Daily Order not found');
 
-        // Update driver earnings & delivery count
-        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-        await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
-            $inc: {
-                earningsToday: 18, // standard DMB fee
-                deliveriesToday: 1
-            }
-        });
+        // Delivery count will be incremented upon payment confirmation
+        // Notification to customer remains unchanged
 
         // Notify customer: delivered!
         await sendNotificationToUser({
@@ -345,6 +339,9 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
             });
         }
     } else {
+        const existingOrder = await FoodOrder.findById(orderId);
+        if (!existingOrder) throw new Error('Order not found');
+
         // Fallback to legacy FoodOrder update
         order = await FoodOrder.findByIdAndUpdate(
             orderId,
@@ -374,14 +371,8 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
 
         if (!order) throw new Error('Order not found');
 
-        // Update driver earnings & delivery count
-        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-        await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
-            $inc: {
-                earningsToday: order.pricing?.deliveryFee || 0,
-                deliveriesToday: 1
-            }
-        });
+        // Delivery count will be incremented upon payment confirmation
+        // Notification to customer remains unchanged
 
         // Notify customer: delivered!
         await sendNotificationToUser({

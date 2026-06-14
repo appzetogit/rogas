@@ -372,5 +372,68 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
     }
 });
 
+// ─── Confirm Payment (QR or Cash) ──────────────────────────────────────────
+router.post('/confirm-payment', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const { orderId, method } = req.body;
+        const driverId = req.user.userId || req.user._id;
+
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        const { FoodOrder } = await import('../../food/orders/models/order.model.js');
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+
+        // Check if it has already been paid/confirmed to prevent double earnings
+        let order = await DMBDailyOrder.findById(orderId);
+        let isFoodOrder = false;
+        
+        if (!order) {
+            order = await FoodOrder.findById(orderId);
+            isFoodOrder = true;
+        }
+
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (order.paymentConfirmed) {
+            return res.status(400).json({ success: false, message: 'Payment already confirmed for this order' });
+        }
+
+        // Fetch dynamic delivery fee configured by Admin
+        let riderEarning = 18; // fallback default
+        try {
+            const orderFeeSettings = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+            if (orderFeeSettings && Number(orderFeeSettings.feePerOrder) > 0) {
+                riderEarning = Number(orderFeeSettings.feePerOrder);
+            }
+        } catch (err) {
+            console.error("Failed to fetch DeliveryOrderFeeSettings", err);
+        }
+
+        // Apply earning to driver
+        await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
+            $inc: {
+                earningsToday: riderEarning,
+                deliveriesToday: 1
+            }
+        });
+
+        // If Cash, update payment status so COD wallet reflects it
+        if (isFoodOrder) {
+            const updateDoc = { paymentConfirmed: true, riderEarning };
+            if (method === 'CASH' && order.payment?.method === 'cash') {
+                updateDoc['payment.status'] = 'paid';
+            }
+            await FoodOrder.findByIdAndUpdate(orderId, { $set: updateDoc });
+        } else {
+            // For DMB Orders
+            await DMBDailyOrder.findByIdAndUpdate(orderId, { $set: { paymentConfirmed: true, riderEarning, paymentMethod: method } });
+        }
+
+        res.json({ success: true, riderEarning, message: 'Payment confirmed successfully' });
+    } catch (err) {
+        console.error("Confirm payment error:", err);
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 export default router;
 

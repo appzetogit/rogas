@@ -9,9 +9,6 @@ import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
 
-// Lazy Loading Components
-const UserRouter = lazy(() => import("@food/components/user/UserRouter"))
-
 // Restaurant Module
 const RestaurantRouter = lazy(() => import("@food/components/restaurant/RestaurantRouter"))
 
@@ -106,16 +103,8 @@ export default function App() {
               element={<DeliveryRouter />}
             />
 
-            {/* User Module - Explicitly mapped to /user and the catch-all for /food/ and / */}
-            {/* NOTE: /user/food is a common mis-navigation - redirect to correct /food/user home */}
-            <Route path="user/food" element={<Navigate to="/food/user" replace />} />
-            <Route
-              path="user/*"
-              element={<UserRouter />}
-            />
-
-            {/* Make UserRouter the default for all other paths to handle / and /food/ as user home */}
-            <Route path="/*" element={<UserRouter />} />
+            {/* Catch-all redirect to CustomerApp */}
+            <Route path="*" element={<Navigate to="/user" replace />} />
           </Routes>
         </Suspense>
       </>

@@ -4,36 +4,39 @@ import { deliveryAPI } from "@food/api";
 const EarningsView = ({ stats }) => {
   const [activeTab, setActiveTab] = useState("today");
   const getTotalsByTab = () => {
+    const periodData = stats[activeTab === "week" ? "week" : activeTab === "month" ? "month" : "today"] || {
+      deliveries: 0,
+      earned: 0,
+      tips: 0,
+      topUp: 0
+    };
+
+    const baseData = {
+      total: periodData.earned + periodData.tips + periodData.topUp,
+      deliveries: periodData.earned,
+      tips: periodData.tips,
+      topUp: periodData.topUp,
+      orders: periodData.deliveries
+    };
+
     switch (activeTab) {
       case "today":
         return {
-          total: stats.todayEarned + stats.todayTips + stats.guaranteeTopUp,
-          deliveries: stats.todayEarned,
-          tips: stats.todayTips,
-          topUp: stats.guaranteeTopUp,
-          orders: 8,
+          ...baseData,
           progressText: "Progress 4/10",
           progressPercent: 40,
           progressDesc: "Deliver 6 more orders today to earn 25 PLN extra."
         };
       case "week":
         return {
-          total: 820.5,
-          deliveries: 680,
-          tips: 95.5,
-          topUp: 45,
-          orders: 42,
+          ...baseData,
           progressText: "Progress 8/10",
           progressPercent: 80,
           progressDesc: "Deliver 8 more shifts this week to achieve Elite partner status."
         };
       case "month":
         return {
-          total: 3450,
-          deliveries: 2900,
-          tips: 420,
-          topUp: 130,
-          orders: 182,
+          ...baseData,
           progressText: "Progress 10/10",
           progressPercent: 100,
           progressDesc: "Monthly quest completed! Enjoy your 250 PLN bonus payout."

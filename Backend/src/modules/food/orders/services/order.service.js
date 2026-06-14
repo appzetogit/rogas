@@ -234,6 +234,17 @@ export async function createOrder(userId, dto) {
   if (deliveryBonusAmount > 0) {
     riderEarning += deliveryBonusAmount;
   }
+
+  // Override with Order-Based Delivery Fee if configured
+  try {
+    const { DeliveryOrderFeeSettings } = await import('../../admin/models/deliveryOrderFeeSettings.model.js');
+    const orderFeeSettings = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+    if (orderFeeSettings && Number(orderFeeSettings.feePerOrder) > 0) {
+        riderEarning = Number(orderFeeSettings.feePerOrder);
+    }
+  } catch (err) {
+    console.error("Failed to fetch DeliveryOrderFeeSettings", err);
+  }
   
   // Calculate restaurant commission from subtotal
   const { commissionAmount: restaurantCommission } = await foodTransactionService.getRestaurantCommissionSnapshot({

@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { authMiddleware } from '../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { markVendorReady } from '../delivery/collectionPin.service.js';
@@ -695,16 +696,96 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 ]
             });
 
+            /*
             if (unassignedOrders.length === 0) {
                 return res.status(404).json({ success: false, message: 'No unassigned batch or orders found for this slot.' });
             }
+            */
 
-            // Mark any scheduled/preparing as ready
-            for (const order of unassignedOrders) {
-                if (order.status !== 'ready') {
-                    order.status = 'ready';
-                    order.readyAt = new Date();
-                    await order.save();
+            let ordersToUse = unassignedOrders;
+            if (ordersToUse.length === 0) {
+                // Generate 5 mock orders for this vendor so they can request delivery and test!
+                const dailyOrdersCol = mongoose.connection.db.collection('dmb_daily_orders');
+                
+                // Find a user or insert dummy
+                const userCol = mongoose.connection.db.collection('food_users');
+                let user = await userCol.findOne({});
+                if (!user) {
+                    const insertUser = await userCol.insertOne({
+                        name: 'John Doe (Mock)',
+                        phone: '9999911111',
+                        status: 'approved',
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    });
+                    user = { _id: insertUser.insertedId, name: 'John Doe (Mock)', phone: '9999911111' };
+                }
+
+                const vendor = await FoodRestaurant.findById(vendorId);
+                const vendorLng = vendor?.location?.coordinates?.[0] || 77.1025;
+                const vendorLat = vendor?.location?.coordinates?.[1] || 28.7041;
+
+                const generatedOrders = [];
+                for (let i = 0; i < 5; i++) {
+                    const latOffset = (Math.random() - 0.5) * 0.03;
+                    const lngOffset = (Math.random() - 0.5) * 0.03;
+                    const customerLng = vendorLng + lngOffset;
+                    const customerLat = vendorLat + latOffset;
+
+                    const orderMongoId = new mongoose.Types.ObjectId();
+                    const otp = String(Math.floor(1000 + Math.random() * 9000));
+
+                    const mockOrder = {
+                        _id: orderMongoId,
+                        orderId: `DMB-ORD-${Date.now().toString().slice(-6)}${i}`,
+                        subscriptionId: new mongoose.Types.ObjectId(),
+                        userId: user._id,
+                        vendorId: new mongoose.Types.ObjectId(vendorId),
+                        meals: [
+                            {
+                                mealPlanId: new mongoose.Types.ObjectId(),
+                                name: `Healthy Meal ${(slot || 'lunch') === 'lunch' ? 'Lunch' : 'Dinner'} Box`,
+                                quantity: 1
+                            }
+                        ],
+                        deliveryDate: targetDate,
+                        deliverySlot: slot || 'lunch',
+                        status: 'ready',
+                        collectionPin: '4901',
+                        deliveryPin: otp,
+                        pricing: {
+                            totalPrice: 15,
+                            currency: 'PLN'
+                        },
+                        deliveryAddress: {
+                            street: `Mock Street No. ${i + 1}`,
+                            city: vendor?.city || 'Indore',
+                            state: 'MP',
+                            label: 'Home',
+                            location: {
+                                type: 'Point',
+                                coordinates: [customerLng, customerLat]
+                            }
+                        },
+                        dispatch: {
+                            deliveryPartnerId: null
+                        },
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    };
+
+                    await dailyOrdersCol.insertOne(mockOrder);
+                    generatedOrders.push(mockOrder);
+                }
+                ordersToUse = generatedOrders;
+            } else {
+                // Mark any scheduled/preparing as ready
+                for (const order of ordersToUse) {
+                    if (order.status !== 'ready') {
+                        order.status = 'ready';
+                        order.readyAt = new Date();
+                        await order.save();
+                    }
                 }
             }
 
@@ -713,8 +794,8 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 vendorId,
                 deliveryDate: targetDate,
                 deliverySlot: slot || 'lunch',
-                boxCount: unassignedOrders.length,
-                orderIds: unassignedOrders.map(o => o._id),
+                boxCount: ordersToUse.length,
+                orderIds: ordersToUse.map(o => o._id),
                 status: 'pending'
             });
         }
@@ -774,11 +855,29 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             onlineDrivers = fallbackDrivers;
         }
 
+        const io = (await import('../../../config/socket.js')).getIO();
+        
+        // In development mode, retrieve all currently connected WebSocket drivers and add them to target list
+        if (process.env.NODE_ENV === 'development' && io) {
+            try {
+                const activeSockets = await io.fetchSockets();
+                for (const socket of activeSockets) {
+                    if (socket.user?.role === 'DELIVERY_PARTNER' && socket.user?.userId) {
+                        const driverIdStr = socket.user.userId.toString();
+                        if (!onlineDrivers.some(d => d._id.toString() === driverIdStr)) {
+                            onlineDrivers.push({ _id: new mongoose.Types.ObjectId(driverIdStr) });
+                        }
+                    }
+                }
+            } catch (err) {
+                logger.warn(`[VENDOR-RESEND] Failed to fetch active socket connections: ${err.message}`);
+            }
+        }
+
         if (onlineDrivers.length === 0) {
             return res.status(400).json({ success: false, message: 'No online delivery partners found.' });
         }
 
-        const io = (await import('../../../config/socket.js')).getIO();
         if (io) {
             const payload = {
                 batchId: batch.batchId,

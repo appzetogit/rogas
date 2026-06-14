@@ -5240,3 +5240,82 @@ export async function deleteVendorSubscriptionPlan(id) {
     return plan;
 }
 
+// ─── Delivery Order Fee Settings & Commission Audit ────────────────────────────
+export async function getDeliveryOrderFeeSettings() {
+    const { DeliveryOrderFeeSettings } = await import('../models/deliveryOrderFeeSettings.model.js');
+    let settings = await DeliveryOrderFeeSettings.findOne({ isActive: true });
+    if (!settings) {
+        settings = await DeliveryOrderFeeSettings.create({
+            feePerOrder: 0,
+            commissionPerDay: 0,
+            commissionPerWeek: 0,
+            commissionPerMonth: 0,
+            isActive: true
+        });
+    }
+    return settings;
+}
+
+export async function updateDeliveryOrderFeeSettings(body = {}) {
+    const { DeliveryOrderFeeSettings } = await import('../models/deliveryOrderFeeSettings.model.js');
+    
+    const feePerOrder = Number(body.feePerOrder) || 0;
+    const commissionPerDay = Number(body.commissionPerDay) || 0;
+    const commissionPerWeek = Number(body.commissionPerWeek) || 0;
+    const commissionPerMonth = Number(body.commissionPerMonth) || 0;
+
+    let settings = await DeliveryOrderFeeSettings.findOne({ isActive: true });
+    if (settings) {
+        settings.feePerOrder = Math.max(0, feePerOrder);
+        settings.commissionPerDay = Math.max(0, commissionPerDay);
+        settings.commissionPerWeek = Math.max(0, commissionPerWeek);
+        settings.commissionPerMonth = Math.max(0, commissionPerMonth);
+        await settings.save();
+    } else {
+        settings = await DeliveryOrderFeeSettings.create({
+            feePerOrder: Math.max(0, feePerOrder),
+            commissionPerDay: Math.max(0, commissionPerDay),
+            commissionPerWeek: Math.max(0, commissionPerWeek),
+            commissionPerMonth: Math.max(0, commissionPerMonth),
+            isActive: true
+        });
+    }
+    return settings;
+}
+
+export async function getDeliveryCommissionAudit(query = {}) {
+    const { DeliveryOrderFeeSettings } = await import('../models/deliveryOrderFeeSettings.model.js');
+    const { FoodDeliveryPartner } = await import('../../delivery/models/deliveryPartner.model.js');
+    
+    const settings = await getDeliveryOrderFeeSettings();
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 1000);
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const filter = { status: 'approved' }; // Active drivers
+
+    const [partners, total] = await Promise.all([
+        FoodDeliveryPartner.find(filter)
+            .select('user partnerName phone zoneId currentStatus vehicle.type')
+            .populate('zoneId', 'name zoneName')
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        FoodDeliveryPartner.countDocuments(filter)
+    ]);
+
+    // For each partner, we return what they owe based on the current settings.
+    // (This acts as a display grid for the admin).
+    const auditData = partners.map(p => ({
+        partnerId: p._id,
+        partnerName: p.partnerName || 'Unknown',
+        phone: p.phone || 'N/A',
+        zone: p.zoneId?.zoneName || p.zoneId?.name || 'Unassigned',
+        currentStatus: p.currentStatus || 'offline',
+        dailyCommissionOwed: settings.commissionPerDay,
+        weeklyCommissionOwed: settings.commissionPerWeek,
+        monthlyCommissionOwed: settings.commissionPerMonth,
+    }));
+
+    return { auditData, total, page, limit, settings };
+}

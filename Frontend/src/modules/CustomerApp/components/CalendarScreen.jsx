@@ -49,6 +49,13 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [skipTarget, setSkipTarget] = useState(null); // { orderId, mealName }
   const [hasFullWeekSub, setHasFullWeekSub] = useState(false);
 
+  // Rating Modal state
+  const [ratingModalOrder, setRatingModalOrder] = useState(null);
+  const [ratingVal, setRatingVal] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [tipAmount, setTipAmount] = useState(0);
+  const [customTip, setCustomTip] = useState("");
+
   // Load orders
   const loadOrders = async () => {
     setLoading(true);
@@ -112,6 +119,9 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             : o
         )
       );
+      if (data.status === 'delivered') {
+        setRatingModalOrder(data);
+      }
     };
 
     const handleDailyMenuUpdated = () => {
@@ -203,6 +213,39 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     }
   };
 
+  const handleSubmitRating = async () => {
+    if (!ratingModalOrder || ratingVal === 0) {
+      onShowToast("Please select a star rating");
+      return;
+    }
+    setLoadingAction(true);
+    try {
+      let finalTip = tipAmount;
+      if (tipAmount === "custom") {
+        finalTip = Number(customTip);
+      }
+      await dmbCustomerAPI.rateOrder(ratingModalOrder._id, {
+        rating: ratingVal,
+        comment: feedbackText,
+        tipAmount: finalTip
+      });
+      onShowToast("Thank you for your feedback!");
+      setRatingModalOrder(null);
+      setRatingVal(0);
+      setFeedbackText("");
+      setTipAmount(0);
+      setCustomTip("");
+      
+      // Update local state to reflect it's rated
+      setOrders(prev => prev.map(o => String(o._id) === String(ratingModalOrder._id) ? { ...o, isRated: true } : o));
+    } catch (err) {
+      const errMsg = err.response?.data?.message || "Failed to submit rating";
+      onShowToast(errMsg);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
   const showLockedMessage = () => {
     onShowToast("🔒 This order is locked because it is today's or a past meal.");
   };
@@ -256,8 +299,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     orderMap[key].push(o);
   });
 
-  // Build the list of visible days
-  const getMealForDay = (date) => {
+  // Build the list of visible days — returns an ARRAY of entries (one per order for that day)
+  const getMealsForDay = (date) => {
     const dateKeyStr = getLocalFormatDateStr(date);
 
     const isYesterday = dateKeyStr === getLocalFormatDateStr(yesterday);
@@ -265,34 +308,32 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
     const dayOrders = orderMap[dateKeyStr] || [];
     if (dayOrders.length > 0) {
-      const order = dayOrders[0];
+      return dayOrders.map((order, idx) => {
+        // Determine if locked (yesterday & today are strictly non-editable)
+        let isLocked = false;
+        if (isYesterday || isToday) {
+          isLocked = true;
+        } else {
+          isLocked = isOrderLocked(order);
+        }
 
-      // Determine if locked (yesterday & today are strictly non-editable)
-      let isLocked = false;
-      if (isYesterday || isToday) {
-        isLocked = true;
-      } else {
-        isLocked = isOrderLocked(order);
-      }
+        // Show individual meal name for THIS specific order
+        const mealName = order.meals?.[0]?.name || "Meal Box";
 
-      // Deduplicate meal names
-      const mealNames = order.meals?.map(m => m.name).filter(Boolean) || [];
-      const uniqueMealNames = [...new Set(mealNames)];
-      const name = uniqueMealNames.join(", ") || "Meal Box";
-
-      return {
-        hasOrder: true,
-        order,
-        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
-        dayNum: date.getDate(),
-        dateStr: dateKeyStr,
-        name,
-        isLocked,
-        originalStatus: order.status
-      };
+        return {
+          hasOrder: true,
+          order,
+          dayName: idx === 0 ? date.toLocaleDateString("en-US", { weekday: "short" }) : "",
+          dayNum: idx === 0 ? date.getDate() : "",
+          dateStr: dateKeyStr,
+          name: mealName,
+          isLocked,
+          originalStatus: order.status
+        };
+      });
     } else {
       const isSunday = date.getDay() === 0;
-      return {
+      return [{
         hasOrder: false,
         dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
         dayNum: date.getDate(),
@@ -300,11 +341,11 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         name: (isSunday && !hasFullWeekSub) ? "Rest Day (Sunday)" : "No delivery scheduled",
         isLocked: true,
         originalStatus: ""
-      };
+      }];
     }
   };
 
-  const weekMeals = weekDays.map(d => getMealForDay(d));
+  const weekMeals = weekDays.flatMap(d => getMealsForDay(d));
 
   const daysOfWeekStrip = weekDays.map((date) => ({
     label: date.toLocaleDateString("en-US", { weekday: "short" })[0], // 'M', 'T', etc.
@@ -570,6 +611,104 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 className="flex-grow bg-brand-red text-white py-2.5 rounded-full font-extrabold text-[13px] hover:bg-red-600 active:scale-95 transition-all"
               >
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating & Tip Modal */}
+      {ratingModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setRatingModalOrder(null)} />
+          
+          <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10 animate-slideUp">
+            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3 border-4 border-white shadow-sm -mt-10">
+              <span className="material-symbols-outlined text-green-500 text-[32px]">celebration</span>
+            </div>
+            
+            <h3 className="text-xl font-black text-[#00604c] mb-1">Meal Delivered!</h3>
+            <p className="text-xs text-on-surface-variant mb-5 font-semibold">How was your delivery experience?</p>
+            
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRatingVal(star)}
+                  className={`material-symbols-outlined text-4xl transition-all ${
+                    star <= ratingVal ? "text-amber-400 [font-variation-settings:'FILL'1]" : "text-gray-200"
+                  } hover:scale-110 active:scale-95`}
+                >
+                  star
+                </button>
+              ))}
+            </div>
+
+            {/* Feedback */}
+            <textarea
+              placeholder="Any feedback? (Optional)"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[#00604c] focus:ring-1 focus:ring-[#00604c] mb-4 h-20 resize-none"
+            />
+
+            {/* Tip Section */}
+            <div className="mb-6">
+              <p className="text-xs font-bold text-[#3e4945] mb-2 uppercase tracking-wider text-left">Add a Tip for Driver</p>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[0, 5, 10, 15].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => { setTipAmount(amt); setCustomTip(""); }}
+                    className={`py-2 rounded-lg font-bold text-sm transition-colors border ${
+                      tipAmount === amt 
+                        ? "bg-[#00604c] text-white border-[#00604c]" 
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
+                    }`}
+                  >
+                    {amt === 0 ? "No" : `${amt}zł`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                   onClick={() => setTipAmount("custom")}
+                   className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors border ${
+                    tipAmount === "custom" 
+                      ? "bg-[#00604c] text-white border-[#00604c]" 
+                      : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
+                  }`}
+                >
+                  Custom
+                </button>
+                {tipAmount === "custom" && (
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="zł"
+                    value={customTip}
+                    onChange={(e) => setCustomTip(e.target.value)}
+                    className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-[#00604c] font-bold text-center"
+                  />
+                )}
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSubmitRating}
+                disabled={loadingAction || ratingVal === 0}
+                className="w-full bg-[#00604c] text-white py-3.5 rounded-xl font-black text-sm hover:bg-[#1f7a63] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+              >
+                {loadingAction ? "Submitting..." : "Submit Rating"}
+                <span className="material-symbols-outlined text-[18px]">send</span>
+              </button>
+              <button 
+                onClick={() => setRatingModalOrder(null)} 
+                className="w-full py-2.5 rounded-xl font-bold text-xs text-gray-500 hover:bg-gray-50 active:scale-95 transition-all"
+              >
+                Maybe Later
               </button>
             </div>
           </div>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
-import { dmbDeliveryAPI } from "../../../services/api";
+import { dmbDeliveryAPI, deliveryAPI, uploadAPI } from "../../../services/api";
+import { ActionSlider } from "../components/ui/ActionSlider";
 
 const mapContainerStyle = {
   width: "100%",
@@ -23,12 +24,177 @@ const DeliveryConfirmation = ({
   const [errorText, setErrorText] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Live Camera states
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [photoBlob, setPhotoBlob] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const videoRef = useRef(null);
+
+  // Payment Options page states
+  const [paymentScreenOpen, setPaymentScreenOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [loadingQr, setLoadingQr] = useState(false);
+  const [qrError, setQrError] = useState("");
+
   useEffect(() => {
     setPinDigits(["", "", "", ""]);
     setPhotoCaptured(false);
     setErrorText("");
     setSuccess(false);
+
+    // Reset camera state
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+    setCameraActive(false);
+    setCameraStream(null);
+    setPhotoBlob(null);
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl);
+      setPhotoPreviewUrl(null);
+    }
+    setUploadingPhoto(false);
+
+    // Reset payment screen state
+    setPaymentScreenOpen(false);
+    setSelectedPaymentMethod("");
+    setQrCodeUrl("");
+    setLoadingQr(false);
+    setQrError("");
   }, [order?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    };
+  }, [cameraStream, photoPreviewUrl]);
+
+  const startCamera = async () => {
+    try {
+      setErrorText("");
+      setPhotoPreviewUrl(null);
+      setPhotoBlob(null);
+      setPhotoCaptured(false);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
+      setCameraStream(stream);
+      setCameraActive(true);
+      
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => console.error("Error playing video:", err));
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      setErrorText("Camera access denied or unavailable. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+      if (blob) {
+        setPhotoBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setPhotoPreviewUrl(url);
+        setPhotoCaptured(true);
+      }
+    }, "image/jpeg", 0.85);
+
+    stopCamera();
+  };
+
+  const retakePhoto = () => {
+    setPhotoCaptured(false);
+    setPhotoBlob(null);
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl);
+      setPhotoPreviewUrl(null);
+    }
+    startCamera();
+  };
+
+  const handleSelectQrPayment = async () => {
+    setSelectedPaymentMethod("QR");
+    setLoadingQr(true);
+    setQrError("");
+    setQrCodeUrl("");
+    try {
+      const res = await deliveryAPI.createCollectQr(order.id);
+      if (res.data?.success && res.data?.imageUrl) {
+        setQrCodeUrl(res.data.imageUrl);
+      } else {
+        const amount = order.cashAmount || order.pricing?.total || 15;
+        const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "Vendor")}&am=${amount}&cu=INR`;
+        const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
+        setQrCodeUrl(fallbackUrl);
+      }
+    } catch (err) {
+      console.warn("Failed to generate Razorpay QR code:", err);
+      const amount = order.cashAmount || order.pricing?.total || 15;
+      const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "Vendor")}&am=${amount}&cu=INR`;
+      const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
+      setQrCodeUrl(fallbackUrl);
+    } finally {
+      setLoadingQr(false);
+    }
+  };
+
+  const handleSelectCashPayment = () => {
+    setSelectedPaymentMethod("CASH");
+  };
+
+  const handleConfirmQrPayment = async () => {
+    try {
+      setSuccess(true);
+      await dmbDeliveryAPI.confirmPayment(order.id, 'QR');
+      setTimeout(() => {
+        onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      setErrorText("Error confirming payment on server.");
+      setSuccess(false);
+    }
+  };
+
+  const handleConfirmCashPayment = async () => {
+    try {
+      await dmbDeliveryAPI.confirmPayment(order.id, 'CASH');
+      onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
+    } catch (err) {
+      console.error(err);
+      setErrorText(err.response?.data?.message || "Error confirming payment on server.");
+      throw err;
+    }
+  };
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const { isLoaded, loadError } = useJsApiLoader({
@@ -53,6 +219,7 @@ const DeliveryConfirmation = ({
   const centerLat = order?.customerLat || (deliveryStops.find(s => s.id === order?.id)?.lat) || 52.21;
   const centerLng = order?.customerLng || (deliveryStops.find(s => s.id === order?.id)?.lng) || 20.98;
   const center = { lat: centerLat, lng: centerLng };
+  
   const handlePinChange = (index, val) => {
     const cleaned = val.replace(/[^0-9]/g, "").slice(-1);
     const newDigits = [...pinDigits];
@@ -64,7 +231,13 @@ const DeliveryConfirmation = ({
       nextInput?.focus();
     }
   };
+
   const handleConfirm = async () => {
+    // Lock the current order as the active selection so live socket updates don't prematurely switch screens
+    if (onSelectOrder && order?.id) {
+      onSelectOrder(order.id);
+    }
+
     const pinStr = pinDigits.join("");
     const isLiveOrder = /^[0-9a-fA-F]{24}$/.test(order?.id);
 
@@ -75,22 +248,38 @@ const DeliveryConfirmation = ({
       }
 
       if (photoCaptured) {
+        if (!photoBlob) {
+          setErrorText("Captured photo data is missing. Please capture again.");
+          return;
+        }
+
         try {
           setErrorText("");
           setSuccess(false);
-          const photoUrl = "https://images.unsplash.com/photo-1594488651083-023b8a44d81c?auto=format&fit=crop&q=80&w=800";
+          setUploadingPhoto(true);
+
+          // Upload real photo to media storage
+          const file = new File([photoBlob], `proof-${order.id}.jpg`, { type: "image/jpeg" });
+          const uploadRes = await uploadAPI.uploadMedia(file, { folder: "appzeto/delivery/proofs" });
+          
+          if (!uploadRes.data?.success || !uploadRes.data?.data) {
+            throw new Error("Failed to upload image to media storage.");
+          }
+
+          const photoUrl = uploadRes.data.data.url || uploadRes.data.data.secure_url;
+          
+          // Submit photo url to delivery endpoint
           const res = await dmbDeliveryAPI.uploadDeliveryPhoto(order.id, photoUrl);
           if (res.data?.success) {
-            setSuccess(true);
-            setTimeout(() => {
-              onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
-            }, 1200);
+            setPaymentScreenOpen(true);
           } else {
             setErrorText(res.data?.message || "Failed to verify photo proof");
           }
         } catch (err) {
-          console.error("Failed to verify photo via backend:", err);
-          setErrorText(err.response?.data?.message || "Server error confirming photo delivery.");
+          console.error("Failed to verify photo:", err);
+          setErrorText(err.response?.data?.message || err.message || "Server error confirming photo delivery.");
+        } finally {
+          setUploadingPhoto(false);
         }
       } else {
         try {
@@ -98,15 +287,12 @@ const DeliveryConfirmation = ({
           setSuccess(false);
           const res = await dmbDeliveryAPI.verifyDeliveryPin(order.id, pinStr);
           if (res.data?.success) {
-            setSuccess(true);
-            setTimeout(() => {
-              onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
-            }, 1200);
+            setPaymentScreenOpen(true);
           } else {
             setErrorText(res.data?.message || "Invalid customer PIN");
           }
         } catch (err) {
-          console.error("Failed to verify delivery PIN via backend:", err);
+          console.error("Failed to verify delivery PIN:", err);
           setErrorText(err.response?.data?.message || "Incorrect PIN or server error.");
         }
       }
@@ -116,21 +302,135 @@ const DeliveryConfirmation = ({
         setErrorText(`Please enter correct customer PIN (${expectedPin}) or capture a delivery photo first.`);
         return;
       }
-      setSuccess(true);
-      setTimeout(() => {
-        onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
-      }, 1200);
+      setPaymentScreenOpen(true);
     }
   };
+
+  const getButtonText = () => {
+    if (uploadingPhoto) return "UPLOADING PHOTO...";
+    if (success) return "VERIFIED!";
+    return "Confirm Delivery";
+  };
+
+  if (paymentScreenOpen) {
+    return (
+      <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-[#e0e3e0]">
+          <button
+            onClick={() => setPaymentScreenOpen(false)}
+            className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-[#00604c] font-black text-sm">&larr; Back</span>
+          </button>
+          <div className="text-center">
+            <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Payment Collection</p>
+            <h2 className="text-sm font-bold text-gray-900">Order #{order.id?.slice(-6) || "Payment"}</h2>
+          </div>
+          <div className="w-8 h-8" />
+        </div>
+
+        {/* Amount Card */}
+        <div className="bg-white border border-[#e0e3e0] rounded-xl p-6 shadow-sm text-center space-y-2">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Amount to Collect</p>
+          <p className="text-3xl font-black text-[#00604c]">
+            {order.cashAmount || order.pricing?.totalPrice || order.pricing?.total || 0} PLN
+          </p>
+          <p className="text-xs text-gray-400">Please choose a payment method below to verify collection.</p>
+        </div>
+
+        {/* Payment Methods Selection */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={handleSelectQrPayment}
+            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+              selectedPaymentMethod === "QR"
+                ? "border-[#00604c] bg-[#9ef3d7]/10"
+                : "border-[#e0e3e0] bg-white hover:border-[#00604c]/40"
+            }`}
+          >
+            <span className="text-2xl mb-1">📱</span>
+            <span className="font-bold text-sm text-gray-900">QR Payment</span>
+            <span className="text-[10px] text-gray-500 mt-1">Scan Razorpay QR</span>
+          </button>
+
+          <button
+            onClick={handleSelectCashPayment}
+            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+              selectedPaymentMethod === "CASH"
+                ? "border-[#00604c] bg-[#9ef3d7]/10"
+                : "border-[#e0e3e0] bg-white hover:border-[#00604c]/40"
+            }`}
+          >
+            <span className="text-2xl mb-1">💰</span>
+            <span className="font-bold text-sm text-gray-900">Collect Cash</span>
+            <span className="text-[10px] text-gray-500 mt-1">Physical Cash</span>
+          </button>
+        </div>
+
+        {/* QR Payment View */}
+        {selectedPaymentMethod === "QR" && (
+          <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm flex flex-col items-center space-y-4 animate-slideUp">
+            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">Razorpay QR Code</h3>
+            
+            {loadingQr ? (
+              <div className="w-48 h-48 bg-gray-50 border border-dashed rounded-xl flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-[#00604c] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : qrError ? (
+              <div className="w-48 h-48 bg-red-50 border border-red-200 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                <span className="text-red-500 font-bold text-xs">{qrError}</span>
+              </div>
+            ) : qrCodeUrl ? (
+              <div className="p-2 border border-gray-100 rounded-xl bg-white shadow-inner">
+                <img src={qrCodeUrl} alt="Razorpay QR" className="w-48 h-48 object-contain" />
+              </div>
+            ) : null}
+
+            <p className="text-[10px] font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-100 text-center">
+              Let the customer scan the QR to complete online transfer.
+            </p>
+
+            <button
+              onClick={handleConfirmQrPayment}
+              className="w-full h-12 bg-[#00604c] hover:bg-[#1f7a63] text-white font-bold rounded-xl flex items-center justify-center transition-all shadow-md cursor-pointer"
+            >
+              Confirm Paid & Complete
+            </button>
+          </div>
+        )}
+
+        {/* Cash Payment Slider View */}
+        {selectedPaymentMethod === "CASH" && (
+          <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm space-y-4 animate-slideUp">
+            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">Confirm Cash Collection</h3>
+            <p className="text-xs text-gray-500">
+              Please count and verify that you have collected exactly <span className="font-extrabold text-gray-900">{order.cashAmount || order.pricing?.totalPrice || order.pricing?.total || 0} PLN</span> in cash.
+            </p>
+
+            <div className="pt-2">
+              <ActionSlider
+                label="Slide to Confirm Collection"
+                successLabel="Cash Collected ✓"
+                onConfirm={handleConfirmCashPayment}
+                color="bg-[#00604c]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
       {
     /* Header Info Bar */
   }
       <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-[#e0e3e0]">
         <button
-    onClick={onGoBack}
-    className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-  >
+          onClick={onGoBack}
+          className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+        >
           <span className="text-[#00604c] font-black text-sm">&larr; Back</span>
         </button>
         <div className="text-center">
@@ -139,11 +439,11 @@ const DeliveryConfirmation = ({
         </div>
         <div className="w-8 h-8 rounded-full overflow-hidden border border-[#e0e3e0]">
           <img
-    alt="Jan Wisniewski Profile"
-    className="w-full h-full object-cover"
-    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsfrq_0ZjpgdHuNrT-iHoHJIUmjDGQw9kLQ8CWwL5t08A99XVq3Qml0_dqJCnug2otKGKy_FzVDNiFLRDupl6Bx81pLpQhMWXbJWg1eaLT2tMExu5FoJVqAamFTuaQewI2pJmtY3e-Db8KJKMoKZQ6w3QrYfgmjXrHjgCtB6lUxuSqI2qbuMXswZAD1Bbfkn0cY9odKH7b7zcMghtsqjyeZOmIrsWU4OJOry9HN_GRn95yAyq_7C3YpNM5UpV94AZdmoDHcFVcL2Kf text-xs"
-    referrerPolicy="no-referrer"
-  />
+            alt="Jan Wisniewski Profile"
+            className="w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsfrq_0ZjpgdHuNrT-iHoHJIUmjDGQw9kLQ8CWwL5t08A99XVq3Qml0_dqJCnug2otKGKy_FzVDNiFLRDupl6Bx81pLpQhMWXbJWg1eaLT2tMExu5FoJVqAamFTuaQewI2pJmtY3e-Db8KJKMoKZQ6w3QrYfgmjXrHjgCtB6lUxuSqI2qbuMXswZAD1Bbfkn0cY9odKH7b7zcMghtsqjyeZOmIrsWU4OJOry9HN_GRn95yAyq_7C3YpNM5UpV94AZdmoDHcFVcL2Kf text-xs"
+            referrerPolicy="no-referrer"
+          />
         </div>
       </div>
 
@@ -229,15 +529,15 @@ const DeliveryConfirmation = ({
           
           <div className="flex gap-2">
             <a
-    href="tel:+48987654321"
-    className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
-  >
+              href="tel:+48987654321"
+              className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
+            >
               <Phone className="w-4 h-4" />
             </a>
             <button
-    onClick={onOpenChat}
-    className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
-  >
+              onClick={onOpenChat}
+              className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
+            >
               <MessageSquare className="w-4 h-4" />
             </button>
           </div>
@@ -283,15 +583,15 @@ const DeliveryConfirmation = ({
           <p className="text-xs font-bold text-[#3e4945]">Enter customer PIN</p>
           <div className="flex justify-between gap-1.5">
             {pinDigits.map((digit, idx) => <input
-    key={idx}
-    id={`del-pin-${idx}`}
-    type="text"
-    maxLength={1}
-    value={digit}
-    onChange={(e) => handlePinChange(idx, e.target.value)}
-    className="w-12 h-14 text-center text-xl font-extrabold bg-white border border-[#bec9c3] focus:border-[#00604c] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#00604c]"
-    placeholder="•"
-  />)}
+              key={idx}
+              id={`del-pin-${idx}`}
+              type="text"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handlePinChange(idx, e.target.value)}
+              className="w-12 h-14 text-center text-xl font-extrabold bg-white border border-[#bec9c3] focus:border-[#00604c] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#00604c]"
+              placeholder="•"
+            />)}
           </div>
           <p className="text-[10px] text-[#5d5f5b] font-medium italic">
             Tip: Share PIN <span className="font-bold underline text-[#00604c] text-xs">{order?.deliveryPin || order?.pin || "1234"}</span> with customer.
@@ -309,30 +609,58 @@ const DeliveryConfirmation = ({
     /* Camera visual triggers */
   }
         <div className="space-y-2">
-          {!photoCaptured ? <button
-    onClick={() => setPhotoCaptured(true)}
-    className="w-full h-14 border-2 border-dashed border-[#bec9c3] hover:border-[#00604c] text-[#5d5f5b] rounded-xl flex items-center justify-center gap-2.5 transition-colors active:bg-[#f1f4f1] font-bold text-xs"
-  >
-              <Camera className="w-5 h-5 text-[#5d5f5b]" />
-              Open Camera Proof
-            </button> : <div className="relative w-full h-44 rounded-xl overflow-hidden border-2 border-[#00604c] shadow-sm group">
+          {cameraActive ? (
+            <div className="relative w-full h-64 rounded-xl overflow-hidden border-2 border-[#00604c] bg-black shadow-inner flex flex-col justify-end">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="relative z-10 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex justify-center gap-4">
+                <button
+                  onClick={stopCamera}
+                  className="bg-gray-800/80 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={capturePhoto}
+                  className="bg-[#00604c] hover:bg-[#1f7a63] text-white px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Capture Photo
+                </button>
+              </div>
+            </div>
+          ) : photoCaptured && photoPreviewUrl ? (
+            <div className="relative w-full h-44 rounded-xl overflow-hidden border-2 border-[#00604c] shadow-sm group">
               <img
-    alt="Confirmation Door Photo"
-    className="w-full h-full object-cover"
-    src="https://images.unsplash.com/photo-1594488651083-023b8a44d81c?auto=format&fit=crop&q=80&w=800"
-  />
+                alt="Confirmation Live Photo"
+                className="w-full h-full object-cover"
+                src={photoPreviewUrl}
+              />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <span className="bg-[#00604c] text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <Check className="w-4 h-4 stroke-[3]" /> Photo Captured Successfully
+                  <Check className="w-4 h-4 stroke-[3]" /> Live Photo Captured
                 </span>
               </div>
               <button
-    onClick={() => setPhotoCaptured(false)}
-    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2.5 py-1 rounded"
-  >
-                Reset
+                onClick={retakePhoto}
+                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2.5 py-1 rounded cursor-pointer animate-fadeIn"
+              >
+                Retake
               </button>
-            </div>}
+            </div>
+          ) : (
+            <button
+              onClick={startCamera}
+              className="w-full h-14 border-2 border-dashed border-[#bec9c3] hover:border-[#00604c] text-[#5d5f5b] rounded-xl flex items-center justify-center gap-2.5 transition-colors active:bg-[#f1f4f1] font-bold text-xs cursor-pointer"
+            >
+              <Camera className="w-5 h-5 text-[#5d5f5b]" />
+              Open Camera Proof
+            </button>
+          )}
         </div>
       </div>
 
@@ -354,24 +682,26 @@ const DeliveryConfirmation = ({
   }
       <div className="space-y-4">
         <button
-    onClick={handleConfirm}
-    className="w-full h-[52px] bg-[#00604c] hover:bg-[#1f7a63] text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-transform shadow-md shadow-[#00604c]/25 text-base"
-  >
-          {success ? "CONFIRMING..." : "Confirm Delivered"}
+          onClick={handleConfirm}
+          disabled={uploadingPhoto || success}
+          className="w-full h-[52px] bg-[#00604c] hover:bg-[#1f7a63] disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-transform shadow-md shadow-[#00604c]/25 text-base cursor-pointer"
+        >
+          {getButtonText()}
           <Check className="w-5 h-5 stroke-[2.5]" />
         </button>
 
         <div className="text-center">
           <button
-    onClick={onReportIssue}
-    className="text-xs font-semibold text-[#ba1a1a] hover:underline"
-  >
+            onClick={onReportIssue}
+            className="text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
+          >
             Cannot complete delivery? Report failed dropoff
           </button>
         </div>
       </div>
     </div>;
 };
+
 export {
   DeliveryConfirmation
 };

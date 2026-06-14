@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner } from '../services/delivery.service.js';
+import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats } from '../services/delivery.service.js';
 import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
@@ -186,6 +186,22 @@ export const getEarningsController = async (req, res, next) => {
         const deliveryPartnerId = req.user?.userId;
         const data = await getDeliveryPartnerEarnings(deliveryPartnerId, req.query || {});
         return sendResponse(res, 200, 'Earnings fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getDashboardStatsController = async (req, res, next) => {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const data = await getDeliveryDashboardStats(deliveryPartnerId);
+        
+        // Fetch the wallet to get live COD cash
+        const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
+        data.cashInHand = wallet.cashInHand;
+        data.weeklyBonusProgress = Math.min(10, wallet.deliveriesThisWeek || data.week.deliveries || 0);
+
+        return sendResponse(res, 200, 'Dashboard stats fetched successfully', data);
     } catch (error) {
         next(error);
     }

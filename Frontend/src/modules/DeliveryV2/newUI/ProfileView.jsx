@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 
 const ProfileView = ({
@@ -8,7 +8,12 @@ const ProfileView = ({
   onLogout
 }) => {
   const [profile, setProfile] = useState(null);
-
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({});
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const fileInputRef = useRef(null);
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -23,6 +28,58 @@ const ProfileView = ({
     fetchProfile();
   }, []);
 
+  const handleEditClick = () => {
+    setFormData({
+      name: profile?.name || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
+      address: profile?.address || profile?.location?.city || "",
+      vehicleName: profile?.vehicleName || profile?.vehicle?.brand || "",
+      vehicleType: profile?.vehicleType || profile?.vehicle?.type || "bike",
+      vehicleNumber: profile?.vehicleNumber || ""
+    });
+    setPhotoPreview(null);
+    setSelectedPhoto(null);
+    setIsEditing(true);
+  };
+
+  const handlePhotoChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const data = new FormData();
+      if (formData.name) data.append("name", formData.name);
+      if (formData.email) data.append("email", formData.email);
+      if (formData.address) data.append("address", formData.address);
+      if (formData.vehicleName) data.append("vehicleName", formData.vehicleName);
+      if (formData.vehicleType) data.append("vehicleType", formData.vehicleType);
+      if (formData.vehicleNumber) data.append("vehicleNumber", formData.vehicleNumber);
+      if (selectedPhoto) data.append("profilePhoto", selectedPhoto);
+
+      // Call API
+      await deliveryAPI.updateProfileMultipart(data);
+      
+      // Refresh
+      const response = await deliveryAPI.getProfile();
+      if (response?.data?.success && response?.data?.data?.profile) {
+        setProfile(response.data.data.profile);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      alert("Failed to save profile updates.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const name = profile?.name || "Jan Wisniewski";
   const city = profile?.location?.city || "Warsaw, Poland";
   const vehicleName = profile?.vehicle?.brand || "E-bike";
@@ -36,35 +93,176 @@ const ProfileView = ({
       {
     /* Driver Identity Card */
   }
-      <section className="bg-white rounded-2xl p-4 border border-[#e0e3e0] shadow-xs">
-        <div className="flex items-start gap-4">
+      <section className="bg-white rounded-2xl p-4 border border-[#e0e3e0] shadow-xs relative">
+        {!isEditing && (
+          <button 
+            onClick={handleEditClick}
+            className="absolute top-4 right-4 p-2 bg-[#f1f4f1] rounded-full text-[#00604c] hover:bg-[#e0e3e0] transition-colors"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+        )}
+
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[#bec9c3]">
+            <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden border border-[#bec9c3] relative group">
               <img
-    alt={`${name} Profile`}
-    className="w-full h-full object-cover"
-    src={profileImage}
-    referrerPolicy="no-referrer"
-  />
+                alt={`${name} Profile`}
+                className="w-full h-full object-cover"
+                src={photoPreview || profileImage}
+                referrerPolicy="no-referrer"
+              />
+              {isEditing && (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              )}
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-[#00604c] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full border-2 border-white shadow-sm">
-              Active
-            </div>
+            {!isEditing && (
+              <div className="absolute -bottom-2 -right-2 bg-[#00604c] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full border-2 border-white shadow-sm">
+                Active
+              </div>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handlePhotoChange}
+            />
           </div>
           
-          <div className="flex-1 space-y-1">
-            <h2 className="text-lg font-extrabold text-gray-900">{name}</h2>
-            <p className="text-xs text-[#5d5f5b] flex items-center gap-1">
-              <span className="capitalize">{vehicleType === "bike" ? "🚲" : vehicleType === "car" ? "🚗" : "🛵"} {vehicleName}</span>
-              <span className="text-gray-300">•</span>
-              <span>{city}</span>
-            </p>
-            
-            <div className="flex items-center gap-1.5 pt-1">
-              <Award className="w-4 h-4 text-amber-500 fill-amber-500" />
-              <span className="text-xs font-bold text-gray-900">{Number(rating).toFixed(2)} Rating</span>
-              <span className="text-[10px] text-gray-400 font-medium">({ratingCount} deliveries)</span>
-            </div>
+          <div className="flex-1 space-y-1 text-center md:text-left w-full">
+            {isEditing ? (
+              <div className="space-y-3 mt-2">
+                <div>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Full Name</label>
+                  <input 
+                    type="text" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full mt-1 p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm font-bold text-gray-900 focus:outline-none focus:border-[#00604c]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full mt-1 p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase flex items-center justify-between">
+                    Mobile Number <span className="text-red-500 text-[9px] font-normal lowercase">(Read-only)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.phone}
+                    disabled
+                    className="w-full mt-1 p-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Address</label>
+                  <input 
+                    type="text" 
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full mt-1 p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
+                  />
+                </div>
+                
+                <div className="pt-2 border-t border-[#e0e3e0]">
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Vehicle Details</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <select 
+                      value={formData.vehicleType}
+                      onChange={(e) => setFormData({...formData, vehicleType: e.target.value})}
+                      className="p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
+                    >
+                      <option value="bike">Bicycle 🚲</option>
+                      <option value="scooter">Scooter 🛵</option>
+                      <option value="car">Car 🚗</option>
+                    </select>
+                    <input 
+                      type="text" 
+                      placeholder="Brand/Model"
+                      value={formData.vehicleName}
+                      onChange={(e) => setFormData({...formData, vehicleName: e.target.value})}
+                      className="p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
+                    />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Plate/Reg Number (Optional)"
+                    value={formData.vehicleNumber}
+                    onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
+                    className="w-full mt-2 p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <button 
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSaving}
+                    className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-1 py-2.5 bg-[#00604c] text-white rounded-xl font-bold text-sm hover:bg-[#014d3d] flex justify-center items-center gap-2 disabled:opacity-70"
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                    {!isSaving && <Save className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-lg font-extrabold text-gray-900">{name}</h2>
+                <p className="text-xs text-[#5d5f5b] flex items-center justify-center md:justify-start gap-1">
+                  <span className="capitalize">{vehicleType === "bike" ? "🚲" : vehicleType === "car" ? "🚗" : "🛵"} {vehicleName}</span>
+                  {profile?.vehicleNumber && <span className="font-semibold px-1">({profile.vehicleNumber})</span>}
+                  <span className="text-gray-300">•</span>
+                  <span>{city}</span>
+                </p>
+                <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1">
+                  <Phone className="w-3.5 h-3.5" />
+                  {profile?.phone || "No phone added"}
+                </div>
+                <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1 truncate max-w-full">
+                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{profile?.email || "No email added"}</span>
+                </div>
+                <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1 truncate max-w-full">
+                  <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{profile?.address || city}</span>
+                </div>
+                
+                <div className="flex items-center justify-center md:justify-start gap-1.5 pt-3">
+                  <Award className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <span className="text-xs font-bold text-gray-900">{Number(rating).toFixed(2)} Rating</span>
+                  <span className="text-[10px] text-gray-400 font-medium">({ratingCount} deliveries)</span>
+                </div>
+                
+                {profile?.zoneIds?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1 justify-center md:justify-start">
+                    {profile.zoneIds.map((zone, idx) => (
+                      <span key={idx} className="bg-[#9ef3d7]/30 text-[#00604c] px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-[#9ef3d7]">
+                        Zone Assigned
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </section>

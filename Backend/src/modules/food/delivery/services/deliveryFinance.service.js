@@ -72,30 +72,49 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         ...(lastDepositAt ? { createdAt: { $gt: new Date(lastDepositAt) } } : {})
     };
 
-    const cashCollectedAgg = await FoodOrder.aggregate([
-        { $match: cashInHandMatchStage },
-        {
-            $lookup: {
-                from: 'food_transactions',
-                localField: '_id',
-                foreignField: 'orderId',
-                as: 'tx'
-            }
-        },
-        {
-            $match: {
-                $or: [
-                    { 'tx.paymentMethod': 'cash' },
-                    { 'tx': { $size: 0 }, 'payment.method': 'cash' }
-                ]
-            }
-        },
-        { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } } } }
+    const dmbCashInHandMatchStage = {
+        'dispatch.deliveryPartnerId': partnerId,
+        status: 'delivered',
+        paymentMethod: 'CASH',
+        ...(lastDepositAt ? { createdAt: { $gt: new Date(lastDepositAt) } } : {})
+    };
+
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+    const [cashCollectedAgg, dmbCashCollectedAgg, dmbEarningsAgg] = await Promise.all([
+        FoodOrder.aggregate([
+            { $match: cashInHandMatchStage },
+            {
+                $lookup: {
+                    from: 'food_transactions',
+                    localField: '_id',
+                    foreignField: 'orderId',
+                    as: 'tx'
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { 'tx.paymentMethod': 'cash' },
+                        { 'tx': { $size: 0 }, 'payment.method': 'cash' }
+                    ]
+                }
+            },
+            { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } } } }
+        ]),
+        DMBDailyOrder.aggregate([
+            { $match: dmbCashInHandMatchStage },
+            { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.totalPrice', 0] } } } }
+        ]),
+        DMBDailyOrder.aggregate([
+            { $match: { 'dispatch.deliveryPartnerId': partnerId, status: 'delivered' } },
+            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } } } }
+        ])
     ]);
 
-    const totalEarned = Number(earningsAgg?.[0]?.totalEarned) || 0;
+    const totalEarned = (Number(earningsAgg?.[0]?.totalEarned) || 0) + (Number(dmbEarningsAgg?.[0]?.totalEarned) || 0);
     // Cash in hand = COD collected since last deposit (no subtraction needed - already scoped by date)
-    const cashInHand = Math.max(0, Number(cashCollectedAgg?.[0]?.cashCollected) || 0);
+    const cashInHand = Math.max(0, (Number(cashCollectedAgg?.[0]?.cashCollected) || 0) + (Number(dmbCashCollectedAgg?.[0]?.cashCollected) || 0));
     const totalBonus = Number(bonusAgg?.[0]?.total) || 0;
     const totalWithdrawn = Number(withdrawalAgg?.[0]?.totalWithdrawn) || 0;
     const pendingWithdrawals = Number(withdrawalAgg?.[0]?.pendingWithdrawals) || 0;

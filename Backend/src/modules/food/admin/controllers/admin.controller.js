@@ -1703,3 +1703,30 @@ export async function deleteVendorSubscriptionPlan(req, res, next) {
     }
 }
 
+// ─── Delivery Order Fee Settings & Commission Audit ────────────────────────────
+export async function getDeliveryOrderFeeSettings(req, res, next) {
+    try {
+        const data = await adminService.getDeliveryOrderFeeSettings();
+        res.status(200).json({ success: true, message: 'Settings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateDeliveryOrderFeeSettings(req, res, next) {
+    try {
+        const updated = await adminService.updateDeliveryOrderFeeSettings(req.body || {});
+        res.status(200).json({ success: true, message: 'Settings updated successfully', data: updated });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDeliveryCommissionAudit(req, res, next) {
+    try {
+        const data = await adminService.getDeliveryCommissionAudit(req.query || {});
+        res.status(200).json({ success: true, message: 'Commission audit fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}

@@ -89,7 +89,6 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Auth Module */}
-      <Route path="/delivery/auth/*" element={<AuthApp />} />
       <Route path="/restaurant/auth/*" element={<AuthApp />} />
 
       {/* Customer Module */}

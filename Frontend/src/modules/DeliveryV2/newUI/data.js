@@ -1,14 +1,11 @@
 const INITIAL_DRIVER_STATS = {
-  todayDeliveries: 8,
-  todayEarned: 144,
-  todayTips: 18,
-  guaranteeTopUp: 13.5,
-  weeklyBonusProgress: 4,
-  // 4 orders out of 10 done (40%)
-  hoursLogged: 32.5,
-  hoursTarget: 40,
-  rating: 4.9,
-  online: true
+  name: "Loading...",
+  profileImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm",
+  rating: 0,
+  online: false,
+  today: { deliveries: 0, earned: 0, tips: 0, topUp: 0 },
+  week: { deliveries: 0, earned: 0, tips: 0, topUp: 0 },
+  month: { deliveries: 0, earned: 0, tips: 0, topUp: 0 }
 };
 const INITIAL_ORDERS = [
   {

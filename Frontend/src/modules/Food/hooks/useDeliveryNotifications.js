@@ -1086,6 +1086,19 @@ export const useDeliveryNotifications = () => {
     setAdminNotification(null);
   };
 
+  const clearNewBatchRequest = () => {
+    setNewBatchRequest(null);
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (err) {
+        // Safe check
+      }
+    }
+    stopAlertLoop();
+  };
+
   const emitLocation = useCallback((data) => {
     if (socketRef.current && socketRef.current.connected) {
       // debugLog('? Emitting location via socket:', data);
@@ -1105,7 +1118,7 @@ export const useDeliveryNotifications = () => {
     adminNotification,
     clearAdminNotification,
     newBatchRequest,
-    clearNewBatchRequest: () => setNewBatchRequest(null),
+    clearNewBatchRequest,
     claimedOrderId,
     clearClaimedOrderId,
     isConnected,

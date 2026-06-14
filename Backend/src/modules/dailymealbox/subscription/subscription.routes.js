@@ -300,4 +300,56 @@ router.delete('/durations/:id', authMiddleware, requireRoles('ADMIN'), async (re
     }
 });
 
+// ─── Rate a Delivered Order ──────────────────────────────────────────────────
+// POST /dmb/subscriptions/daily-orders/:orderId/rate
+router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.userId;
+        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        if (order.status !== 'delivered') {
+            return res.status(400).json({ success: false, message: 'Can only rate delivered orders' });
+        }
+        if (order.isRated) {
+            return res.status(400).json({ success: false, message: 'Order has already been rated' });
+        }
+
+        const { rating, comment, tipAmount } = req.body;
+
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+        }
+
+        order.deliveryRating = rating;
+        order.ratingFeedback = comment || '';
+        order.driverTip = Math.max(0, Number(tipAmount) || 0);
+        order.isRated = true;
+        await order.save();
+
+        // Update delivery partner's aggregate rating if assigned
+        if (order.dispatch?.deliveryPartnerId) {
+            try {
+                const { default: mongoose } = await import('mongoose');
+                const FoodDeliveryPartner = mongoose.model('FoodDeliveryPartner');
+                const partner = await FoodDeliveryPartner.findById(order.dispatch.deliveryPartnerId);
+                if (partner) {
+                    const totalRatings = (partner.totalRatings || 0) + 1;
+                    const currentTotal = (partner.rating || 0) * (partner.totalRatings || 0);
+                    partner.rating = (currentTotal + rating) / totalRatings;
+                    partner.totalRatings = totalRatings;
+                    await partner.save();
+                }
+            } catch (partnerErr) {
+                console.error('Failed to update delivery partner rating:', partnerErr);
+                // Non-critical — don't fail the request
+            }
+        }
+
+        res.json({ success: true, message: 'Rating submitted successfully' });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 export default router;

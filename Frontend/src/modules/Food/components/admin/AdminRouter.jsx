@@ -75,6 +75,7 @@ const DeliverymanBonus = lazy(() => import("@food/pages/admin/delivery-partners/
 const EarningAddon = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddon"));
 const EarningAddonHistory = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddonHistory"));
 const DeliveryEarnings = lazy(() => import("@food/pages/admin/delivery-partners/DeliveryEarnings"));
+const OrderBasedDeliveryFee = lazy(() => import("@food/pages/admin/delivery-partners/OrderBasedDeliveryFee"));
 // Disbursement Management
 // Report Management
 const TransactionReport = lazy(() => import("@food/pages/admin/reports/TransactionReport"));
@@ -125,9 +126,6 @@ const CleanDatabase = lazy(() => import("@food/pages/admin/system/CleanDatabase"
 const AddonActivation = lazy(() => import("@food/pages/admin/system/AddonActivation"));
 const LandingPageManagement = lazy(() => import("@food/pages/admin/system/LandingPageManagement"));
 const AppIntroAds = lazy(() => import("@food/pages/admin/advertisement/AppIntroAds"));
-const DiningManagement = lazy(() => import("@food/pages/admin/system/DiningManagement"));
-const DiningList = lazy(() => import("@food/pages/admin/system/DiningList"));
-const DiningRequests = lazy(() => import("@food/pages/admin/system/DiningRequests"));
 const EditRestaurant = lazy(() => import("@food/pages/admin/restaurant/EditRestaurant"));
 const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"));
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"));
@@ -248,6 +246,7 @@ export default function AdminRouter() {
             <Route path="delivery-partners/earning-addon" element={<EarningAddon />} />
             <Route path="delivery-partners/earning-addon-history" element={<EarningAddonHistory />} />
             <Route path="delivery-partners/earnings" element={<DeliveryEarnings />} />
+            <Route path="order-based-delivery-fee" element={<OrderBasedDeliveryFee />} />
 
 
             {/* REPORTS & SETTINGS */}
@@ -302,9 +301,6 @@ export default function AdminRouter() {
             <Route path="addon-activation" element={<AddonActivation />} />
             <Route path="hero-banner-management" element={<LandingPageManagement />} />
             <Route path="app-intro-ads" element={<AppIntroAds />} />
-            <Route path="dining-management" element={<DiningManagement />} />
-            <Route path="dining-list" element={<DiningList />} />
-            <Route path="dining-requests" element={<DiningRequests />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}
