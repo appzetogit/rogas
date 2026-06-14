@@ -111,7 +111,7 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 // ─── Indexes ────────────────────────────────────────────────────────────────
 dmbDailyOrderSchema.index({ userId: 1, deliveryDate: 1 });
 dmbDailyOrderSchema.index({ vendorId: 1, deliveryDate: 1, status: 1 });
-dmbDailyOrderSchema.index({ subscriptionId: 1, deliveryDate: 1 });
+dmbDailyOrderSchema.index({ subscriptionId: 1, deliveryDate: 1 }, { unique: true });
 
 // ─── Pre-save: generate orderId and deliveryPin ──────────────────────────────
 dmbDailyOrderSchema.pre('save', function (next) {

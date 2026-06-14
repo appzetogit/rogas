@@ -302,9 +302,15 @@ export const initSocket = async (server) => {
             const trackingRoom = roomNames.tracking(data.orderId);
             socket.to(trackingRoom).emit('location-update', payload);
 
+            // Also broadcast to DailyMealBox customer order tracking room
+            const dmbTrackingRoom = `order_tracking_${data.orderId}`;
+            socket.to(dmbTrackingRoom).emit('driver_location_update', payload);
+            socket.to(dmbTrackingRoom).emit('location-update', payload);
+
             // Also emit to the specific user room if userId is provided
             if (data.userId) {
                 socket.to(roomNames.user(data.userId)).emit('location-update', payload);
+                socket.to(roomNames.user(data.userId)).emit('driver_location_update', payload);
             }
 
             if (data.restaurantId) {

@@ -734,19 +734,48 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             status: 'approved',
         };
 
+        const locationConditions = [];
+
         if (vendorZoneId) {
-            driverFilter.$or = [
-                { zoneIds: vendorZoneId },
-                { city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } }
-            ];
-        } else {
-            driverFilter.city = { $regex: new RegExp(`^${vendorCity}$`, 'i') };
+            locationConditions.push({ zoneIds: vendorZoneId });
+            locationConditions.push({ zoneIds: vendorZoneId.toString() }); // handle ObjectId vs string mismatch
+            try {
+                const mongoose = (await import('mongoose')).default;
+                if (mongoose.Types.ObjectId.isValid(vendorZoneId)) {
+                    locationConditions.push({ zoneIds: new mongoose.Types.ObjectId(vendorZoneId.toString()) });
+                }
+            } catch (e) {
+                // ignore
+            }
         }
 
-        const onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id');
+        if (vendorCity) {
+            const trimmedCity = vendorCity.trim();
+            if (trimmedCity) {
+                locationConditions.push({ city: { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
+                locationConditions.push({ 'location.city': { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
+            }
+        }
+
+        if (locationConditions.length > 0) {
+            driverFilter.$or = locationConditions;
+        }
+
+        let onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id');
 
         if (onlineDrivers.length === 0) {
-            return res.status(400).json({ success: false, message: 'No online delivery partners found in your zone.' });
+            logger.warn(`[VENDOR-RESEND] Zero drivers matched zone/city. Filter: ${JSON.stringify(driverFilter)}`);
+            // Last-resort fallback: fetch ANY online approved driver in the system
+            const fallbackDrivers = await FoodDeliveryPartner.find({
+                availabilityStatus: 'online',
+                status: 'approved'
+            }).select('_id').limit(50);
+            logger.warn(`[VENDOR-RESEND] Fallback: found ${fallbackDrivers.length} online drivers in system`);
+            onlineDrivers = fallbackDrivers;
+        }
+
+        if (onlineDrivers.length === 0) {
+            return res.status(400).json({ success: false, message: 'No online delivery partners found.' });
         }
 
         const io = (await import('../../../config/socket.js')).getIO();

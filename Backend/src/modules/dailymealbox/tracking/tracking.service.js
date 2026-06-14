@@ -2,6 +2,7 @@ import { getIO } from '../../../config/socket.js';
 import { getRedis } from '../../../config/redis.js';
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
+import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { logger } from '../../../utils/logger.js';
 
 const DRIVER_LOCATION_TTL = 30; // Redis TTL in seconds (5s emit, 30s TTL)
@@ -67,6 +68,36 @@ export const handleDriverLocationUpdate = async ({ driverId, lat, lng, timestamp
                 await triggerArrivingSoon(order, driverId, distance, io);
             }
         }
+    }
+
+    // 3b. Get driver's active DailyMealBox orders to broadcast to customer rooms
+    try {
+        const activeDmbOrders = await DMBDailyOrder.find({
+            'dispatch.deliveryPartnerId': driverId,
+            status: { $in: ['picked_up'] }
+        }).select('_id userId deliveryAddress');
+
+        for (const order of activeDmbOrders) {
+            // Emit to customer DMB tracking room
+            io.to(`order_tracking_${order._id}`).emit('driver_location_update', {
+                lat,
+                lng,
+                timestamp,
+                orderId: order._id
+            });
+
+            // Emit to standard tracking room for client map compatibility
+            io.to(`tracking:${order._id}`).emit('location-update', {
+                orderId: order._id,
+                deliveryPartnerId: driverId,
+                lat,
+                lng,
+                heading: 0,
+                timestamp
+            });
+        }
+    } catch (err) {
+        logger.error(`Error broadcasting DailyMealBox driver location: ${err.message}`);
     }
 
     // 4. Get driver city for admin broadcast
