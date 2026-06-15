@@ -22,6 +22,14 @@ const appConfigSchema = new mongoose.Schema({
     fontFamily: {
         type: String,
         default: "'Poppins', sans-serif"
+    },
+    backgroundColor: {
+        type: String,
+        default: '#f8fafc'
+    },
+    textColor: {
+        type: String,
+        default: '#0f172a'
     }
 }, { timestamps: true });
 

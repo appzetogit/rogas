@@ -11,6 +11,7 @@ const AuthApp = lazy(() => import('../modules/auth/routes'))
 const CustomerApp = lazy(() => import('../modules/CustomerApp/routes'))
 const VendorApp = lazy(() => import('../modules/Vendor/routes'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
+import { applyDynamicTheme } from '../modules/Food/utils/themeSettings'
 
 const PageLoader = () => <AppShellSkeleton />
 
@@ -65,6 +66,10 @@ const AdminRouter = lazy(() => import('../modules/Food/components/admin/AdminRou
 
 const AppRoutes = () => {
   const location = useLocation()
+
+  useEffect(() => {
+    applyDynamicTheme();
+  }, [location.pathname]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return

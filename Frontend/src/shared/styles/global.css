@@ -244,3 +244,209 @@
   z-index: 999999 !important;
   pointer-events: auto !important;
 }
+
+/* ==========================================================================
+   Admin Panel Dynamic Theme Styling Overrides
+   ========================================================================== */
+.admin-theme-container {
+  background-color: var(--ad-background) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+/* Base Layout and Page Content Backgrounds */
+.admin-theme-container body,
+.admin-theme-container main,
+.admin-theme-container .bg-neutral-100,
+.admin-theme-container .bg-neutral-200,
+.admin-theme-container .bg-slate-50,
+.admin-theme-container .bg-slate-100 {
+  background-color: var(--ad-background) !important;
+}
+
+/* Top Navigation Bar / Header */
+.admin-theme-container header,
+.admin-theme-container header.bg-white {
+  background-color: var(--ad-card-bg) !important;
+  border-color: var(--ad-card-border) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+/* Card Components */
+.admin-theme-container .bg-white,
+.admin-theme-container .bg-card,
+.admin-theme-container .rounded-3xl.bg-white,
+.admin-theme-container .rounded-2xl.bg-white {
+  background-color: var(--ad-card-bg) !important;
+  border-color: var(--ad-card-border) !important;
+}
+
+/* Typography elements */
+.admin-theme-container h1,
+.admin-theme-container h2,
+.admin-theme-container h3,
+.admin-theme-container h4,
+.admin-theme-container h5,
+.admin-theme-container h6,
+.admin-theme-container .text-neutral-900,
+.admin-theme-container .text-slate-900,
+.admin-theme-container .text-slate-800,
+.admin-theme-container .text-neutral-800,
+.admin-theme-container .font-semibold.text-neutral-900,
+.admin-theme-container .font-bold.text-slate-800,
+.admin-theme-container .font-semibold.text-slate-900 {
+  color: var(--ad-text-primary) !important;
+}
+
+.admin-theme-container p,
+.admin-theme-container span,
+.admin-theme-container .text-neutral-500,
+.admin-theme-container .text-slate-500 {
+  color: var(--ad-card-text-muted);
+}
+
+/* Form input, textarea, and select fields override */
+.admin-theme-container input,
+.admin-theme-container select,
+.admin-theme-container textarea,
+.admin-theme-container [role="combobox"],
+.admin-theme-container .border-neutral-300,
+.admin-theme-container .border-slate-300 {
+  background-color: var(--ad-input-bg) !important;
+  border-color: var(--ad-input-border) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+.admin-theme-container input::placeholder,
+.admin-theme-container textarea::placeholder {
+  color: var(--ad-card-text-muted) !important;
+  opacity: 0.7;
+}
+
+/* Form field focus ring custom styling */
+.admin-theme-container input:focus,
+.admin-theme-container select:focus,
+.admin-theme-container textarea:focus,
+.admin-theme-container [role="combobox"]:focus {
+  outline: 2px solid var(--ad-primary) !important;
+  outline-offset: 1px;
+}
+
+/* Primary Action Buttons */
+.admin-theme-container button.bg-blue-600,
+.admin-theme-container button.bg-primary,
+.admin-theme-container .bg-blue-600,
+.admin-theme-container .bg-primary {
+  background-color: var(--ad-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--ad-primary-strong) !important;
+}
+
+.admin-theme-container button.bg-blue-600:hover,
+.admin-theme-container button.bg-primary:hover,
+.admin-theme-container .bg-blue-600:hover,
+.admin-theme-container .bg-primary:hover {
+  background-color: var(--ad-primary-strong) !important;
+}
+
+/* List Item / Hover Overlays */
+.admin-theme-container .hover\:bg-neutral-50:hover,
+.admin-theme-container .hover\:bg-slate-50:hover,
+.admin-theme-container .hover\:bg-gray-50:hover,
+.admin-theme-container .hover\:bg-neutral-100:hover {
+  background-color: var(--ad-background) !important;
+}
+
+/* General Layout Borders & Lines */
+.admin-theme-container .border-neutral-200,
+.admin-theme-container .border-slate-200,
+.admin-theme-container .border-gray-200,
+.admin-theme-container .border-b,
+.admin-theme-container .border-t,
+.admin-theme-container .border-r {
+  border-color: var(--ad-card-border) !important;
+}
+
+/* Tables Styling */
+.admin-theme-container table,
+.admin-theme-container thead,
+.admin-theme-container tbody tr,
+.admin-theme-container th,
+.admin-theme-container td {
+  background-color: var(--ad-card-bg) !important;
+  border-color: var(--ad-card-border) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+.admin-theme-container tbody tr:hover {
+  background-color: var(--ad-background) !important;
+}
+
+/* Recharts Tooltips overrides */
+.admin-theme-container .recharts-default-tooltip {
+  background-color: var(--ad-card-bg) !important;
+  border-color: var(--ad-card-border) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+/* Badge components */
+.admin-theme-container .badge {
+  border-color: var(--ad-primary) !important;
+}
+
+/* Operations Alerts */
+.admin-theme-container .alert,
+.admin-theme-container [role="alert"] {
+  background-color: var(--ad-primary-light) !important;
+  border-color: var(--ad-primary) !important;
+  color: var(--ad-text-primary) !important;
+}
+/* Modal and dialog wrappers */
+.admin-theme-container .bg-black\/50,
+.admin-theme-container .bg-gray-900\/50 {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Sidebar Text & Elements Color Preservation to White/Light */
+.admin-theme-container .admin-sidebar-container h2,
+.admin-theme-container .admin-sidebar-container p,
+.admin-theme-container .admin-sidebar-container span,
+.admin-theme-container .admin-sidebar-container div,
+.admin-theme-container .admin-sidebar-container a,
+.admin-theme-container .admin-sidebar-container button,
+.admin-theme-container .admin-sidebar-container svg {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.admin-theme-container .admin-sidebar-container .text-white,
+.admin-theme-container .admin-sidebar-container a.text-white,
+.admin-theme-container .admin-sidebar-container span.text-white,
+.admin-theme-container .admin-sidebar-container .bg-white\/10 {
+  color: #ffffff !important;
+}
+
+.admin-theme-container .admin-sidebar-container .text-neutral-100,
+.admin-theme-container .admin-sidebar-container a.text-neutral-100,
+.admin-theme-container .admin-sidebar-container span.text-neutral-100 {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.admin-theme-container .admin-sidebar-container .text-neutral-300,
+.admin-theme-container .admin-sidebar-container svg.text-neutral-300 {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.admin-theme-container .admin-sidebar-container .text-neutral-400,
+.admin-theme-container .admin-sidebar-container svg.text-neutral-400 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Sidebar Search Input Override Exclusions */
+.admin-theme-container .admin-sidebar-container input {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.admin-theme-container .admin-sidebar-container input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
