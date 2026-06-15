@@ -36,7 +36,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ"
             alt="Vendor Banner"
             className="w-full h-full object-cover" />
-          
+
         </div>
 
         <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight">
@@ -72,7 +72,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
                 className="flex-1 px-4 text-[14px] font-semibold text-on-surface focus:outline-none bg-white"
                 maxLength={selectedCountry.phoneLength}
                 autoFocus />
-              
+
             </div>
           </div>
 
@@ -81,7 +81,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
               type="submit"
               disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
               className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
-              
+
               Send OTP
             </button>
             <p className="text-[10px] text-center text-outline px-4 mt-2">
@@ -154,15 +154,15 @@ export function OtpScreen({ phone, onVerify, onBack }) {
 
         <div className="flex gap-2 mb-6">
           {otp.map((digit, i) =>
-          <input
-            key={i}
-            ref={inputRefs[i]}
-            type="text"
-            inputMode="numeric"
-            value={digit}
-            onChange={(e) => handleChange(i, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(i, e)}
-            className="w-11 h-14 bg-white border border-outline-variant rounded-xl text-center text-xl font-bold text-primary shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+            <input
+              key={i}
+              ref={inputRefs[i]}
+              type="text"
+              inputMode="numeric"
+              value={digit}
+              onChange={(e) => handleChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              className="w-11 h-14 bg-white border border-outline-variant rounded-xl text-center text-xl font-bold text-primary shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
 
           )}
         </div>
@@ -176,7 +176,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
             onClick={handleSubmit}
             disabled={otp.join('').length < 6}
             className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
-            
+
             Verify OTP
           </button>
           <button className="text-primary text-[13px] font-semibold hover:underline text-center">
@@ -265,7 +265,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             alt="Professional Kitchen"
             className="w-full h-full object-cover"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXsX9d8XMpwF5Tw4kddacTToegaCMSYMVoC8ZXLcqCVvjiBBTp6pXW9dSWMkQey2DTX1Nf679p-8IaTY83GqfChcw__RPS8QBKYBfGZifRi2XniFtkEv6TWZH5dXWAYKlexLFH4DVd7rLGKmUxeITtOvItA4_QLQYRh77BQsYRcyQo8OKIVDDIojTzjHgqdDmZVo61yx6mgYUZSrY9psO04CvnWdhw2a5KK8ydCKwzEK4TaaKaer3tr8yoGCSN__Qjli1C_MRAXg" />
-          
+
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
         </div>
 
@@ -280,7 +280,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   type="text"
                   value={kitchenName}
                   onChange={(e) => setKitchenName(e.target.value)} />
-                
+
                 <span className="absolute right-4 top-3 text-primary">
                   <span className="material-symbols-outlined text-[20px]">storefront</span>
                 </span>
@@ -295,7 +295,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)} />
-                
+
                 <span className="absolute right-4 top-3 text-primary">
                   <span className="material-symbols-outlined text-[20px]">call</span>
                 </span>
@@ -310,7 +310,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)} />
-                
+
                 <span className="absolute right-4 top-3 text-primary">
                   <span className="material-symbols-outlined text-[20px]">location_on</span>
                 </span>
@@ -321,11 +321,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VENDOR TYPE</label>
               <div className="grid grid-cols-2 gap-3">
                 {['Home Cook', 'Cloud Kitchen', 'Restaurant', 'Catering'].map((t) =>
-                <button
-                  key={t}
-                  onClick={() => setType(t)}
-                  className={`h-10 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 transition-transform active:scale-95 ${type === t ? 'bg-primary text-on-primary' : 'border border-primary text-primary bg-white'}`}>
-                  
+                  <button
+                    key={t}
+                    onClick={() => setType(t)}
+                    className={`h-10 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 transition-transform active:scale-95 ${type === t ? 'bg-primary text-on-primary' : 'border border-primary text-primary bg-white'}`}>
+
                     {type === t && <span className="material-symbols-outlined text-[16px]">check</span>}
                     {t}
                   </button>
@@ -440,7 +440,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             <button
               onClick={handleSubmit}
               className="w-full h-14 bg-primary text-on-primary rounded-xl text-[16px] font-bold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
-              
+
               Continue
               <span className="material-symbols-outlined">arrow_forward</span>
             </button>
@@ -461,9 +461,9 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 export function UnderReviewScreen({ onApproved }) {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const phone = location.state?.phone || localStorage.getItem('restaurant_register_phone') || '';
-  
+
   const [checking, setChecking] = useState(false);
   const [status, setStatus] = useState(location.state?.status || 'pending');
   const [rejectionReason, setRejectionReason] = useState(location.state?.rejectionReason || '');
@@ -475,17 +475,17 @@ export function UnderReviewScreen({ onApproved }) {
       setErrorMsg('No phone number found to check status. Please register/log in.');
       return;
     }
-    
+
     try {
       setChecking(true);
       setErrorMsg('');
       const res = await dmbVendorAPI.getRegistrationStatus(phone);
       const data = res.data?.data || res.data;
-      
+
       setStatus(data.status);
       setRejectionReason(data.rejectionReason || '');
       setRestaurantName(data.restaurantName || '');
-      
+
       if (data.status === 'approved') {
         alert('Your application has been approved! Redirecting you to welcome login.');
         navigate('/vendor/welcome');

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Phone, User, AlertCircle, Loader2, UtensilsCrossed } from "lucide-react"
+import { toast } from "sonner"
 import { restaurantAPI } from "@food/api"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
@@ -148,6 +149,7 @@ export default function RestaurantSignup() {
         error?.response?.data?.error ||
         "Failed to send OTP. Please try again."
       setApiError(message)
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }
