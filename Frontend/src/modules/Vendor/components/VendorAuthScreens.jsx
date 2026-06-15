@@ -59,7 +59,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
                   setPhone("");
                 }}
                 className="shrink-0"
-                buttonClassName="flex items-center justify-between gap-1 px-4 h-14 border-r border-outline-variant bg-white dark:bg-[#1a1a1a] text-on-surface-variant text-sm font-bold min-w-[95px] cursor-pointer"
+                buttonClassName="flex items-center justify-between gap-1 px-4 h-14 border-r border-outline-variant bg-white dark:bg-white text-slate-800 dark:text-slate-800 text-sm font-bold min-w-[95px] cursor-pointer"
               />
               <input
                 type="tel"
