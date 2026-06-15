@@ -148,8 +148,64 @@ const validatePhoneCountryAndLength = (phone) => {
   throw new ValidationError("Invalid phone number format or unsupported country code prefix.");
 };
 
+export const checkPhoneConflict = async (phone, expectedRole) => {
+  if (!phone) return;
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return;
+  const last10 = digits.slice(-10);
+
+  const candidates = [phone, digits, last10].filter(Boolean);
+
+  // 1. Check Customer (FoodUser)
+  if (expectedRole !== "USER") {
+    const userQuery = {
+      $or: [
+        { phone: { $in: candidates } },
+        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
+      ]
+    };
+    const user = await FoodUser.findOne(userQuery).lean();
+    if (user) {
+      throw new ValidationError("This phone number is already registered.");
+    }
+  }
+
+  // 2. Check Vendor (FoodRestaurant)
+  if (expectedRole !== "RESTAURANT") {
+    const phoneOrFields = (field) => [
+      { [field]: { $in: candidates } },
+      ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
+    ];
+    const restaurant = await FoodRestaurant.findOne({
+      $or: [
+        ...phoneOrFields("ownerPhone"),
+        ...phoneOrFields("primaryContactNumber"),
+        ...phoneOrFields("ownerPhoneDigits"),
+        ...phoneOrFields("ownerPhoneLast10"),
+      ],
+    }).lean();
+    if (restaurant && restaurant.status !== 'rejected') {
+      throw new ValidationError("This phone number is already registered.");
+    }
+  }
+
+  // 3. Check Delivery Partner (FoodDeliveryPartner)
+  if (expectedRole !== "DELIVERY_PARTNER") {
+    const deliveryPartner = await FoodDeliveryPartner.findOne({
+      $or: [
+        { phone: { $in: candidates } },
+        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
+      ]
+    }).lean();
+    if (deliveryPartner && deliveryPartner.status !== 'rejected') {
+      throw new ValidationError("This phone number is already registered.");
+    }
+  }
+};
+
 export const requestUserOtp = async (phone) => {
   validatePhoneCountryAndLength(phone);
+  await checkPhoneConflict(phone, "USER");
 
   const otp = await createOrUpdateOtp(phone);
   // TODO: integrate SMS provider here
@@ -377,6 +433,7 @@ export const adminLogin = async (email, password) => {
 
 export const requestRestaurantOtp = async (phone) => {
   validatePhoneCountryAndLength(phone);
+  await checkPhoneConflict(phone, "RESTAURANT");
   const otp = await createOrUpdateOtp(phone);
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
@@ -475,6 +532,7 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
 
 export const requestDeliveryOtp = async (phone) => {
   validatePhoneCountryAndLength(phone);
+  await checkPhoneConflict(phone, "DELIVERY_PARTNER");
   const otp = await createOrUpdateOtp(phone);
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =

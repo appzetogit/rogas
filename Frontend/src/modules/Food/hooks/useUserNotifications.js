@@ -68,7 +68,7 @@ export const useUserNotifications = () => {
     }
 
     const socketUrl = `${backendUrl}`;
-    
+
     // Auth token
     const token = localStorage.getItem('user_accessToken') || localStorage.getItem('accessToken');
     if (!token) return;
@@ -91,7 +91,7 @@ export const useUserNotifications = () => {
 
     socketRef.current.on('order_status_update', (data) => {
       debugLog('🔔 Order status update received:', data);
-      
+
       const title = data.title || `Order #${data.orderId || 'Update'}`;
       const message = data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`;
 
@@ -187,7 +187,7 @@ export const useUserNotifications = () => {
 
     socketRef.current.on('connect_error', (error) => {
       if (import.meta.env.DEV) {
-        // debugLog('❌ Socket connection error:', error.message);
+        // debugLog('Socket connection error:', error.message);
       }
       setIsConnected(false);
       if (typeof window !== 'undefined') window.orderSocketConnected = false;

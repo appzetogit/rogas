@@ -40,11 +40,11 @@ const sendSmsViaMsg91 = async (phone, otp) => {
             const errMsg = `MSG91 ERROR for ${phone}: ${parsed.message || resultText}`;
             logger.error(errMsg);
             // eslint-disable-next-line no-console
-            console.error(`❌ [SMS ERROR] ${errMsg}`);
+            console.error(` [SMS ERROR] ${errMsg}`);
         } else if (!response.ok) {
             logger.error(`SMS API HTTP error for ${phone}: ${response.status} – ${resultText}`);
         } else {
-            logger.info(`✅ SMS sent successfully to ${msisdn} via MSG91`);
+            logger.info(` SMS sent successfully to ${msisdn} via MSG91`);
         }
     } catch (error) {
         logger.error(`Error sending SMS to ${phone} via MSG91: ${error.message}`);

@@ -6,6 +6,7 @@ import { FoodEarningAddon } from '../../admin/models/earningAddon.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
+import { checkPhoneConflict } from '../../../../core/auth/auth.service.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 
 export const registerDeliveryPartner = async (payload, files) => {
@@ -15,6 +16,8 @@ export const registerDeliveryPartner = async (payload, files) => {
         fcmToken, platform 
     } = payload;
     const refRaw = typeof payload?.ref === 'string' ? String(payload.ref).trim() : '';
+
+    await checkPhoneConflict(phone, "DELIVERY_PARTNER");
 
     const existing = await FoodDeliveryPartner.findOne({ phone });
     if (existing) {

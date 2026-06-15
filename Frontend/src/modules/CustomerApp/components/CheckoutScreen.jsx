@@ -48,7 +48,7 @@ export function CheckoutScreen({
       // Step 1: Load Razorpay script
       const loaded = await loadRazorpayScript();
       if (!loaded) {
-        onShowNotificationToast("❌ Razorpay failed to load. Check network.");
+        onShowNotificationToast(" Razorpay failed to load. Check network.");
         setPaying(false);
         return;
       }
@@ -88,7 +88,7 @@ export function CheckoutScreen({
             });
             onConfirmSubscription();
           } catch (err) {
-            onShowNotificationToast("❌ Payment verification failed: " + (err?.response?.data?.message || err.message));
+            onShowNotificationToast("Payment verification failed: " + (err?.response?.data?.message || err.message));
           }
         },
         prefill: {
@@ -106,13 +106,13 @@ export function CheckoutScreen({
 
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", (resp) => {
-        onShowNotificationToast("❌ Payment failed: " + resp.error.description);
+        onShowNotificationToast(" Payment failed: " + resp.error.description);
         setPaying(false);
       });
       rzp.open();
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || "Failed to initiate payment";
-      onShowNotificationToast("❌ " + msg);
+      onShowNotificationToast(" " + msg);
       setPaying(false);
     }
   };
@@ -150,7 +150,7 @@ export function CheckoutScreen({
         <section>
           <h2 className="text-[17px] font-extrabold mb-3 text-[#1b1c1c]">Order Summary</h2>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4e2e1]/30 space-y-3">
-            
+
             {/* Selected Meals List */}
             <div className="space-y-2">
               <p className="text-[12px] font-bold text-[#6e7a74] uppercase tracking-wider mb-1">Selected Meals</p>
@@ -200,11 +200,10 @@ export function CheckoutScreen({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setInvoicePrefs({ ...invoicePrefs, receiptType: "simple" })}
-              className={`py-3 px-4 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm ${
-                (invoicePrefs?.receiptType || "simple") === "simple"
+              className={`py-3 px-4 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm ${(invoicePrefs?.receiptType || "simple") === "simple"
                   ? "bg-[#1F7A63] text-white"
                   : "border border-primary text-primary bg-white hover:bg-slate-50"
-              }`}
+                }`}
             >
               {(invoicePrefs?.receiptType || "simple") === "simple" && (
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -217,11 +216,10 @@ export function CheckoutScreen({
                 onShowNotificationToast("💼 Switched to B2B Full Invoice mode.");
                 setTimeout(() => onGoToInvoiceSettings(), 700);
               }}
-              className={`py-3 px-4 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm ${
-                invoicePrefs?.receiptType === "vat"
+              className={`py-3 px-4 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm ${invoicePrefs?.receiptType === "vat"
                   ? "bg-[#1F7A63] text-white"
                   : "border border-primary text-primary bg-white hover:bg-slate-50"
-              }`}
+                }`}
             >
               {invoicePrefs?.receiptType === "vat" && (
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>

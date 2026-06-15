@@ -81,13 +81,13 @@ async function run() {
       if (!selectedDriver) {
         try {
           selectedDriver = await driverCol.findOne({ _id: new mongoose.Types.ObjectId(driverInput) });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
     if (!selectedDriver) {
       if (allDrivers.length === 0) {
-        console.log('❌ No delivery partners found in the database.');
+        console.log(' No delivery partners found in the database.');
         rl.close();
         await mongoose.disconnect();
         return;
@@ -111,12 +111,12 @@ async function run() {
         try {
           const manualId = new mongoose.Types.ObjectId(driverIndexInput.trim());
           selectedDriver = await driverCol.findOne({ _id: manualId });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
     if (!selectedDriver) {
-      console.log('❌ Invalid selection or Driver ID.');
+      console.log('Invalid selection or Driver ID.');
       rl.close();
       await mongoose.disconnect();
       return;
@@ -127,7 +127,7 @@ async function run() {
     // Ensure driver is online and approved in DB
     if (selectedDriver.status !== 'approved' || selectedDriver.availabilityStatus !== 'online') {
       console.log(`\n⚠️  Warning: Driver is currently: Status = "${selectedDriver.status}", Availability = "${selectedDriver.availabilityStatus}"`);
-      
+
       let autoForce = false;
       if (args.force === 'true' || args.force === 'yes' || args.force === 'y') {
         autoForce = true;
@@ -169,7 +169,7 @@ async function run() {
       if (!selectedVendor) {
         try {
           selectedVendor = await vendorCol.findOne({ _id: new mongoose.Types.ObjectId(vendorInput) });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -199,7 +199,7 @@ async function run() {
       };
     } else {
       if (args.vendor) {
-        console.log('❌ Selected vendor not found, falling back to custom mock vendor details.');
+        console.log(' Selected vendor not found, falling back to custom mock vendor details.');
       }
       console.log('\n--- Enter Custom Mock Vendor Details ---');
       const vName = args.vendorName || await askQuestion('Vendor Name (default: Mock Vendor Kitchen): ');
@@ -263,16 +263,16 @@ async function run() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       const resData = await response.json();
       if (response.ok && resData.success) {
-        console.log('\n✅ Success! Fake delivery request broadcasted to the driver successfully.');
+        console.log('\n Success! Fake delivery request broadcasted to the driver successfully.');
         console.log('Server Response:', resData);
       } else {
-        console.error('\n❌ Server rejected request:', resData);
+        console.error('\n Server rejected request:', resData);
       }
     } catch (err) {
-      console.error('\n❌ Error sending request to backend server. Make sure node server is running!');
+      console.error('\n Error sending request to backend server. Make sure node server is running!');
       console.error(err.message);
     }
 

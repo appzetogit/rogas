@@ -1,6 +1,7 @@
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { uploadImageBuffer, uploadFileBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
+import { checkPhoneConflict } from '../../../../core/auth/auth.service.js';
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
@@ -279,6 +280,8 @@ export const registerRestaurant = async (payload, files) => {
     if (!ownerPhone) {
         throw new ValidationError('Owner phone is required to register a restaurant');
     }
+
+    await checkPhoneConflict(ownerPhone, "RESTAURANT");
 
     const { digits: ownerPhoneDigits, last10: ownerPhoneLast10 } = normalizePhone(ownerPhone);
     if (!ownerPhoneLast10) {

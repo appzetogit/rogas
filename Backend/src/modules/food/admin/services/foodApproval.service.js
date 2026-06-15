@@ -93,7 +93,7 @@ export async function listPendingFoodApprovals(query = {}) {
         description: a.draft?.description || ''
     }));
 
-    const allRequests = [...foodRequests, ...addonRequests].sort((a, b) => 
+    const allRequests = [...foodRequests, ...addonRequests].sort((a, b) =>
         new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
     );
 
@@ -112,7 +112,7 @@ export async function approveFoodItem(id) {
     if (updated?.restaurantId) {
         // Single DB update; makes user-facing menu reflect approval immediately.
         await syncMenuItemApprovalStatus(updated.restaurantId, updated._id, 'approved', '');
-        
+
         try {
             const { notifyOwnersSafely } = await import('../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
@@ -150,13 +150,13 @@ export async function rejectFoodItem(id, reason) {
     ).lean();
     if (updated?.restaurantId) {
         await syncMenuItemApprovalStatus(updated.restaurantId, updated._id, 'rejected', r);
-        
+
         try {
             const { notifyOwnersSafely } = await import('../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated.restaurantId }],
                 {
-                    title: 'Dish Rejected ❌',
+                    title: 'Dish Rejected ',
                     body: `Your dish "${updated.name}" was rejected. Reason: ${r}`,
                     image: updated.image || 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {

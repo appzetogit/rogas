@@ -235,7 +235,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       setFeedbackText("");
       setTipAmount(0);
       setCustomTip("");
-      
+
       // Update local state to reflect it's rated
       setOrders(prev => prev.map(o => String(o._id) === String(ratingModalOrder._id) ? { ...o, isRated: true } : o));
     } catch (err) {
@@ -511,7 +511,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                     ) : m.originalStatus === "failed" ? (
                       <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
                         <span className="material-symbols-outlined text-[14px]">error</span>
-                        <p>Failed ❌</p>
+                        <p>Failed </p>
                       </div>
                     ) : m.isLocked ? (
                       <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>
@@ -587,21 +587,21 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={() => setSkipTarget(null)} />
-          
+
           {/* Modal Content */}
           <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10">
             <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-brand-red text-[28px]">cancel</span>
             </div>
-            
+
             <h3 className="text-lg font-extrabold text-on-surface mb-2">Skip Meal?</h3>
             <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
               Are you sure you want to skip <strong>{skipTarget.mealName || "this meal"}</strong>? Confirming this will skip your meal.
             </p>
-            
+
             <div className="flex gap-3">
-              <button 
-                onClick={() => setSkipTarget(null)} 
+              <button
+                onClick={() => setSkipTarget(null)}
                 className="flex-grow border border-[#e4e2e1] py-2.5 rounded-full font-extrabold text-[13px] text-on-surface-variant hover:bg-slate-50 active:scale-95 transition-all"
               >
                 Go Back
@@ -621,24 +621,23 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       {ratingModalOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setRatingModalOrder(null)} />
-          
+
           <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10 animate-slideUp">
             <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3 border-4 border-white shadow-sm -mt-10">
               <span className="material-symbols-outlined text-green-500 text-[32px]">celebration</span>
             </div>
-            
+
             <h3 className="text-xl font-black text-[#00604c] mb-1">Meal Delivered!</h3>
             <p className="text-xs text-on-surface-variant mb-5 font-semibold">How was your delivery experience?</p>
-            
+
             {/* Star Rating */}
             <div className="flex justify-center gap-2 mb-5">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onClick={() => setRatingVal(star)}
-                  className={`material-symbols-outlined text-4xl transition-all ${
-                    star <= ratingVal ? "text-amber-400 [font-variation-settings:'FILL'1]" : "text-gray-200"
-                  } hover:scale-110 active:scale-95`}
+                  className={`material-symbols-outlined text-4xl transition-all ${star <= ratingVal ? "text-amber-400 [font-variation-settings:'FILL'1]" : "text-gray-200"
+                    } hover:scale-110 active:scale-95`}
                 >
                   star
                 </button>
@@ -661,11 +660,10 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                   <button
                     key={amt}
                     onClick={() => { setTipAmount(amt); setCustomTip(""); }}
-                    className={`py-2 rounded-lg font-bold text-sm transition-colors border ${
-                      tipAmount === amt 
-                        ? "bg-[#00604c] text-white border-[#00604c]" 
+                    className={`py-2 rounded-lg font-bold text-sm transition-colors border ${tipAmount === amt
+                        ? "bg-[#00604c] text-white border-[#00604c]"
                         : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
-                    }`}
+                      }`}
                   >
                     {amt === 0 ? "No" : `${amt}zł`}
                   </button>
@@ -673,12 +671,11 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
               </div>
               <div className="flex items-center gap-2">
                 <button
-                   onClick={() => setTipAmount("custom")}
-                   className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors border ${
-                    tipAmount === "custom" 
-                      ? "bg-[#00604c] text-white border-[#00604c]" 
+                  onClick={() => setTipAmount("custom")}
+                  className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors border ${tipAmount === "custom"
+                      ? "bg-[#00604c] text-white border-[#00604c]"
                       : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
-                  }`}
+                    }`}
                 >
                   Custom
                 </button>
@@ -694,7 +691,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 )}
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleSubmitRating}
@@ -704,8 +701,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 {loadingAction ? "Submitting..." : "Submit Rating"}
                 <span className="material-symbols-outlined text-[18px]">send</span>
               </button>
-              <button 
-                onClick={() => setRatingModalOrder(null)} 
+              <button
+                onClick={() => setRatingModalOrder(null)}
                 className="w-full py-2.5 rounded-xl font-bold text-xs text-gray-500 hover:bg-gray-50 active:scale-95 transition-all"
               >
                 Maybe Later

@@ -57,7 +57,7 @@ export async function topupCustomerWallet(req, res, next) {
     try {
         const { id } = req.params;
         const { amount, description } = req.body;
-        
+
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'Invalid customer id' });
         }
@@ -66,7 +66,7 @@ export async function topupCustomerWallet(req, res, next) {
         }
 
         const adminId = req.user ? req.user.id : null;
-        
+
         const result = await topupUserWalletByAdmin(id, amount, adminId, description);
         res.status(200).json({ success: true, message: 'Wallet topped up successfully', data: result });
     } catch (error) {
@@ -308,9 +308,9 @@ export async function getRestaurantMenuPdfDownloadUrl(req, res, next) {
         }
         const data = await adminService.getRestaurantMenuPdfDownloadUrl(id);
         if (!data) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Menu PDF not found. Please ensure a menu PDF has been uploaded for this restaurant.' 
+            return res.status(404).json({
+                success: false,
+                message: 'Menu PDF not found. Please ensure a menu PDF has been uploaded for this restaurant.'
             });
         }
         res.status(200).json({ success: true, message: 'Menu PDF download link generated', data });
@@ -331,15 +331,15 @@ export async function downloadRestaurantMenuPdf(req, res, next) {
             .lean();
 
         if (!restaurant) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Restaurant not found' 
+            return res.status(404).json({
+                success: false,
+                message: 'Restaurant not found'
             });
         }
 
         if (!restaurant.menuPdf) {
-            return res.status(404).json({ 
-                success: false, 
+            return res.status(404).json({
+                success: false,
                 message: 'Menu PDF not uploaded for this restaurant. Please upload a menu PDF first.'
             });
         }
@@ -379,19 +379,19 @@ export async function downloadRestaurantMenuPdf(req, res, next) {
             res.setHeader('Content-Disposition', `attachment; filename="${restaurantName}.pdf"`);
             res.setHeader('Content-Length', pdfResponse.data.length);
             res.setHeader('Cache-Control', 'public, max-age=3600');
-            
-            console.log(`✅ PDF downloaded successfully: ${pdfResponse.data.length} bytes`);
+
+            console.log(` PDF downloaded successfully: ${pdfResponse.data.length} bytes`);
             // Send the PDF data
             res.send(pdfResponse.data);
         } catch (fetchError) {
-            console.error('❌ Error fetching PDF from Cloudinary:', {
+            console.error(' Error fetching PDF from Cloudinary:', {
                 message: fetchError.message,
                 status: fetchError.response?.status,
                 primaryUrl: String(primaryUrl).substring(0, 100),
                 fallbackUrl: String(fallbackUrl).substring(0, 100)
             });
-            return res.status(500).json({ 
-                success: false, 
+            return res.status(500).json({
+                success: false,
                 message: 'Failed to download PDF. The file may have been deleted from the server. Please re-upload the menu PDF.'
             });
         }
@@ -1158,7 +1158,7 @@ export async function createRestaurant(req, res, next) {
                 const pdfUrl = settings?.termsAndConditionsPdf?.url || null;
                 const email = req.body?.ownerEmail || restaurant.ownerEmail;
                 const restaurantName = req.body?.restaurantName || restaurant.restaurantName;
-                
+
                 if (email) {
                     await sendRestaurantOnboardingEmail(email, restaurantName, pdfUrl);
                 }
@@ -1540,15 +1540,15 @@ export async function processRefund(req, res, next) {
         if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
             return res.status(400).json({ success: false, message: 'Invalid order id' });
         }
-        
+
         // This is a stub for the actual refund logic.
         // We will assume adminService.processRefund exists and handles the refund.
         const updated = await adminService.processRefund(orderId, refundAmount);
-        
+
         // Let's add the push notification here if we have access to the user ID
         // First we need to get the order to find the user ID
         const order = await mongoose.model('FoodOrder').findById(orderId).lean();
-        
+
         if (order && order.userId) {
             const { notifyOwnersSafely } = await import('../../notifications/firebase.service.js');
             await notifyOwnersSafely(
@@ -1565,7 +1565,7 @@ export async function processRefund(req, res, next) {
                 }
             );
         }
-        
+
         res.status(200).json({ success: true, message: 'Refund processed successfully', data: updated });
     } catch (error) {
         next(error);

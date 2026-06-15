@@ -17,7 +17,7 @@ const STATUS_CONFIG = {
   out_for_delivery: { label: "On the Way 🛵", color: "bg-purple-100 text-purple-700", icon: "local_shipping", canManage: false },
   delivered: { label: "Delivered ✅", color: "bg-green-100 text-green-700", icon: "done_all", canManage: false },
   skipped: { label: "Skipped", color: "bg-red-100 text-red-600", icon: "cancel", canManage: false },
-  failed: { label: "Failed ❌", color: "bg-red-100 text-red-700", icon: "error", canManage: false },
+  failed: { label: "Failed ", color: "bg-red-100 text-red-700", icon: "error", canManage: false },
 };
 
 const TERMINAL_STATUSES = new Set(["skipped", "delivered", "failed"]);
@@ -190,22 +190,20 @@ const OrderCard = memo(function OrderCard({
           <div className="flex gap-2">
             <button
               onClick={() => onRate(order)}
-              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${
-                order.isRated
+              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${order.isRated
                   ? "text-[#006a5c] border-[#006a5c] bg-[#e8f3f0]"
                   : "text-gray-500 border-gray-300 hover:bg-slate-50"
-              }`}
+                }`}
             >
               <Star className={`w-3.5 h-3.5 ${order.isRated ? "fill-[#006a5c] text-[#006a5c]" : "text-gray-400"}`} />
               <span>{order.isRated ? `Rated (${order.deliveryRating})` : "Rate"}</span>
             </button>
             <button
               onClick={() => onTip(order)}
-              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${
-                order.driverTip > 0
+              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${order.driverTip > 0
                   ? "text-amber-700 border-amber-300 bg-amber-50"
                   : "text-gray-500 border-gray-300 hover:bg-slate-50"
-              }`}
+                }`}
             >
               <Coins className={`w-3.5 h-3.5 ${order.driverTip > 0 ? "text-amber-500 fill-amber-500" : "text-gray-400"}`} />
               <span>{order.driverTip > 0 ? `Tipped: ₹${order.driverTip}` : "Tip"}</span>
@@ -881,7 +879,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
               <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
                 <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
               </div>
-              
+
               <h3 className="text-lg font-bold text-gray-900 mb-1">Rate Delivery Partner</h3>
               <p className="text-xs text-gray-500 mb-6 font-medium">
                 For order #{ratingModal.order.orderId}
@@ -900,11 +898,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                       className="transition-transform active:scale-90 hover:scale-110"
                     >
                       <Star
-                        className={`w-8 h-8 ${
-                          isHighlighted
+                        className={`w-8 h-8 ${isHighlighted
                             ? "fill-amber-400 text-amber-400"
                             : "text-gray-300"
-                        }`}
+                          }`}
                       />
                     </button>
                   );
@@ -973,11 +970,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                     type="button"
                     disabled={tipModal.loading}
                     onClick={() => setTipModal(prev => ({ ...prev, amount: String(val) }))}
-                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-all active:scale-95 ${
-                      tipModal.amount === String(val)
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-all active:scale-95 ${tipModal.amount === String(val)
                         ? "border-[#006a5c] bg-[#e8f3f0] text-[#006a5c]"
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     ₹{val}
                   </button>

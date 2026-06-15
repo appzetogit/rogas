@@ -1,10 +1,56 @@
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import App from './app/App.jsx'
 import { isModuleAuthenticated } from './modules/Food/utils/auth.js'
 import './shared/styles/global.css'
+
+// Keep references to original toast functions
+const originalToastError = toast.error;
+const originalToastSuccess = toast.success;
+
+// Global toast decorators for Vendor & Delivery Boy modules to render them styled as the green notification popup
+toast.error = (message, options) => {
+  const path = window.location.pathname;
+  const isVendorOrDelivery = path.includes('/restaurant') || path.includes('/vendor') || path.includes('/delivery');
+
+  if (isVendorOrDelivery) {
+    let msg = message;
+    if (typeof message === 'string' && !message.startsWith('') && !message.startsWith('✅')) {
+      msg = `${message}`;
+    }
+    return originalToastSuccess(msg, {
+      ...options,
+      style: { background: "#00604c", color: "#fff", border: "none", ...options?.style },
+    });
+  }
+
+  return originalToastError(message, options);
+};
+
+toast.success = (message, options) => {
+  const path = window.location.pathname;
+  const isVendorOrDelivery = path.includes('/restaurant') || path.includes('/vendor') || path.includes('/delivery');
+
+  if (isVendorOrDelivery) {
+    let msg = message;
+    if (typeof message === 'string' && !message.startsWith('') && !message.startsWith('✅')) {
+      // Check if the message starts with an ASCII letter, digit, space, or standard punctuation
+      const hasEmoji = !/^[A-Za-z0-9\s!"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(message);
+      if (!hasEmoji) {
+        msg = `✅ ${message}`;
+      }
+    }
+    return originalToastSuccess(msg, {
+      ...options,
+      style: { background: "#00604c", color: "#fff", border: "none", ...options?.style },
+    });
+  }
+
+  return originalToastSuccess(message, options);
+};
+
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 

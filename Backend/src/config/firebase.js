@@ -70,10 +70,10 @@ export const initializeFirebaseRealtime = () => {
         db = admin.database();
         messaging = admin.messaging();
 
-        logger.info('✅ Firebase Realtime Database Initialized Successfully');
+        logger.info(' Firebase Realtime Database Initialized Successfully');
         return { db, messaging };
     } catch (error) {
-        logger.error(`❌ Firebase Initialization Error: ${error.message}`);
+        logger.error(` Firebase Initialization Error: ${error.message}`);
         return null;
     }
 };

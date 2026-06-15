@@ -68,7 +68,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         showCancelModal.subscriptionId,
         cancelReason
       );
-      onShowNotificationToast("❌ Subscription cancelled successfully.");
+      onShowNotificationToast(" Subscription cancelled successfully.");
       setShowCancelModal(null);
       setCancelReason("");
       fetchSubscriptions();
@@ -316,9 +316,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               <span className="material-symbols-outlined">warning</span>
               Confirm Subscription Pause
             </h3>
-            
+
             <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              Are you sure you want to pause subscription <strong>{showPauseModal.subscriptionId}</strong>? 
+              Are you sure you want to pause subscription <strong>{showPauseModal.subscriptionId}</strong>?
               You can pause for up to 2 days, and billing will be adjusted accordingly.
             </p>
 
@@ -381,11 +381,11 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               <span className="material-symbols-outlined">warning</span>
               Cancel Subscription?
             </h3>
-            
+
             <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
               Are you sure you want to cancel subscription <strong>{showCancelModal.subscriptionId}</strong>?
             </p>
-            
+
             <div className="p-3 bg-red-50 border border-red-100 rounded-2xl text-[11px] text-brand-red font-semibold leading-relaxed">
               ⚠️ Warning: This is an immediate action. Auto-renewal will be turned off and upcoming deliveries for this cycle will stop.
             </div>

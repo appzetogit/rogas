@@ -52,7 +52,7 @@ export default function CustomerAppMain() {
           subs.forEach(sub => {
             sock.emit("join_room", `sub_${sub._id}`);
           });
-        }).catch(() => {});
+        }).catch(() => { });
       });
     });
 
@@ -104,20 +104,20 @@ export default function CustomerAppMain() {
 
   const handleLogout = () => {
     const rt = localStorage.getItem("user_refreshToken");
-    authAPI.logout(rt).catch(() => {});
-    
+    authAPI.logout(rt).catch(() => { });
+
     // Clear tokens and credentials
     localStorage.removeItem("user_accessToken");
     localStorage.removeItem("user_refreshToken");
     localStorage.removeItem("user_user");
-    
+
     // Clear session storage
     try {
       sessionStorage.clear();
     } catch (err) {
       console.error("Failed to clear sessionStorage:", err);
     }
-    
+
     // Clear cookies
     try {
       document.cookie.split(";").forEach((c) => {
@@ -128,17 +128,17 @@ export default function CustomerAppMain() {
     } catch (err) {
       console.error("Failed to clear cookies:", err);
     }
-    
+
     // Reset React state
     setCurrentUser(null);
     setTrackedOrder(null);
     setSelectedPlanDetails(null);
     setSignupName("");
     setPhoneNumber("");
-    
+
     // Clear in-memory caches
     clearOrdersCache();
-    
+
     navigate("/user/welcome");
     showToast("👋 Logged out successfully");
   };
@@ -263,7 +263,7 @@ export default function CustomerAppMain() {
                   navigate("/user/otp");
                   showToast("📱 OTP sent to " + fullPhone);
                 } catch (err) {
-                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to send OTP"));
+                  showToast((err?.response?.data?.message || err.message || "Failed to send OTP"));
                 }
               }}
               onBack={() => navigate("/user/welcome")}
@@ -285,7 +285,7 @@ export default function CustomerAppMain() {
                   navigate("/user/otp");
                   showToast("📱 OTP sent to " + fullPhone);
                 } catch (err) {
-                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to send OTP"));
+                  showToast((err?.response?.data?.message || err.message || "Failed to send OTP"));
                 }
               }}
               onBack={() => navigate("/user/welcome")}
@@ -323,15 +323,15 @@ export default function CustomerAppMain() {
                     showToast(`✅ Welcome back, ${user?.name || ""}!`);
                   }
                 } catch (err) {
-                  showToast("❌ " + (err?.response?.data?.message || err.message || "OTP verification failed"));
+                  showToast((err?.response?.data?.message || err.message || "OTP verification failed"));
                 }
               }}
               onResend={async () => {
                 try {
                   await authAPI.sendOTP(phoneNumber);
-                  showToast("📱 OTP resent!");
+                  showToast("OTP resent!");
                 } catch (err) {
-                  showToast("❌ Failed to resend OTP");
+                  showToast(" Failed to resend OTP");
                 }
               }}
               onBack={() => navigate(authMode === "login" ? "/user/auth/login" : "/user/auth/signup")}
@@ -354,9 +354,9 @@ export default function CustomerAppMain() {
                   });
 
                   navigate("/user/location");
-                  showToast(`✅ Welcome, ${details.firstName}!`);
+                  showToast(` Welcome, ${details.firstName}!`);
                 } catch (err) {
-                  showToast("❌ " + (err?.response?.data?.message || err.message || "Failed to update profile details"));
+                  showToast((err?.response?.data?.message || err.message || "Failed to update profile details"));
                 }
               }}
               onBack={() => navigate("/user/otp")}
