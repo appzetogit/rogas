@@ -25,8 +25,43 @@ export default function HomeDashboard({
   const [isTrackingDriver, setIsTrackingDriver] = useState(false);
   const [localBatch, setLocalBatch] = useState(null);
 
-  const getCurrentSlot = () => {
-    const hr = new Date().getHours();
+  const [timingConfig, setTimingConfig] = useState(null);
+
+  // Fetch admin timing config once on mount
+  useEffect(() => {
+    dmbVendorAPI.getTimingSettings()
+      .then(res => {
+        if (res?.data?.data) {
+          setTimingConfig(res.data.data);
+        }
+      })
+      .catch(() => { /* fail silently */ });
+  }, []);
+
+  const hhmmToMin = (str) => {
+    if (!str) return null;
+    const [h, m] = str.split(':').map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+  };
+
+  const getCurrentSlot = (config = timingConfig) => {
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    if (config) {
+      for (const slot of ['breakfast', 'lunch', 'dinner']) {
+        const cfg = config[slot];
+        if (cfg && cfg.isEnabled !== false) {
+          const start = hhmmToMin(cfg.startTime);
+          const end   = hhmmToMin(cfg.endTime);
+          if (start !== null && end !== null && curMin >= start && curMin <= end) {
+            return slot;
+          }
+        }
+      }
+    }
+
+    const hr = now.getHours();
     if (hr < 10) return 'breakfast';
     if (hr < 15) return 'lunch';
     return 'dinner';
@@ -55,7 +90,7 @@ export default function HomeDashboard({
       }
     };
     if (!acceptedBatch) checkActiveBatch();
-  }, [acceptedBatch]);
+  }, [acceptedBatch, timingConfig]);
 
   const displayBatch = acceptedBatch || localBatch;
 

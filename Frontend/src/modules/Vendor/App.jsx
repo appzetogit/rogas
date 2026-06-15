@@ -52,6 +52,7 @@ export default function App() {
   const [cutoff, setCutoff] = useState({ ...INITIAL_CUTOFF });
   const [surpriseBoxes, setSurpriseBoxes] = useState([...INITIAL_SURPRISE_BOXES]);
   const [subscriberCount, setSubscriberCount] = useState(null);
+  const [timingConfig, setTimingConfig] = useState(null);
 
   const [authPhone, setAuthPhone] = useState('');
   const [showSubView, setShowSubView] = useState(null);
@@ -132,6 +133,18 @@ export default function App() {
       navigate('/vendor/dashboard');
     }
   }, [profile.isRegistered, location.pathname, navigate]);
+
+  // Load vendor timing settings
+  useEffect(() => {
+    if (!profile.isRegistered) return;
+    dmbVendorAPI.getTimingSettings()
+      .then(res => {
+        if (res?.data?.data) {
+          setTimingConfig(res.data.data);
+        }
+      })
+      .catch(() => { /* fail silently */ });
+  }, [profile.isRegistered]);
 
   // Load vendor data from backend
   useEffect(() => {
@@ -253,8 +266,29 @@ export default function App() {
     }
   };
 
-  const getCurrentSlot = () => {
-    const hr = new Date().getHours();
+  const getCurrentSlot = (config = timingConfig) => {
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    if (config) {
+      for (const slot of ['breakfast', 'lunch', 'dinner']) {
+        const cfg = config[slot];
+        if (cfg && cfg.isEnabled !== false) {
+          const hhmmToMin = (str) => {
+            if (!str) return null;
+            const [h, m] = str.split(':').map(Number);
+            return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+          };
+          const start = hhmmToMin(cfg.startTime);
+          const end   = hhmmToMin(cfg.endTime);
+          if (start !== null && end !== null && curMin >= start && curMin <= end) {
+            return slot;
+          }
+        }
+      }
+    }
+
+    const hr = now.getHours();
     if (hr < 10) return 'breakfast';
     if (hr < 15) return 'lunch';
     return 'dinner';

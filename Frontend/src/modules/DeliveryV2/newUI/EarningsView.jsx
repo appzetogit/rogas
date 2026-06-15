@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Info, Gift, CalendarDays, ShieldCheck } from "lucide-react";
+import { Info, Gift, CalendarDays, ShieldCheck, Coins } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 const EarningsView = ({ stats }) => {
   const [activeTab, setActiveTab] = useState("today");
@@ -60,6 +60,31 @@ const EarningsView = ({ stats }) => {
       }
     };
     fetchWalletBalance();
+  }, []);
+
+  const [tipsData, setTipsData] = useState({
+    totalTips: 0,
+    todayTips: 0,
+    weeklyTips: 0,
+    monthlyTips: 0,
+    history: []
+  });
+  const [tipsLoading, setTipsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTips = async () => {
+      try {
+        const res = await deliveryAPI.getTips();
+        if (res.data?.success) {
+          setTipsData(res.data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching tips stats:", err);
+      } finally {
+        setTipsLoading(false);
+      }
+    };
+    fetchTips();
   }, []);
 
   return <div className="space-y-4 pb-12 animate-fadeIn text-gray-800">
@@ -240,6 +265,64 @@ const EarningsView = ({ stats }) => {
           </p>
         </div>
       </div>
+
+      {/* Dedicated Tips Overview & History Section */}
+      <section className="bg-white border border-[#e0e3e0] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-500 fill-amber-500" />
+            <h3 className="font-extrabold text-gray-900 text-sm">Tips Overview</h3>
+          </div>
+          <span className="text-xs font-bold text-gray-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+            Total: ₹{tipsData.totalTips.toFixed(2)}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Today</span>
+            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.todayTips.toFixed(2)}</span>
+          </div>
+          <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">This Week</span>
+            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.weeklyTips.toFixed(2)}</span>
+          </div>
+          <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">This Month</span>
+            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.monthlyTips.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <hr className="border-[#e0e3e0]/60 my-2" />
+
+        <div>
+          <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">Recent Tip History</h4>
+          {tipsLoading ? (
+            <div className="py-4 text-center text-xs text-gray-400">Loading tip history...</div>
+          ) : tipsData.history.length === 0 ? (
+            <div className="py-4 text-center text-xs text-gray-400 font-medium">No tips received yet.</div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {tipsData.history.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-slate-50/50 border border-slate-100 hover:border-slate-200 transition-colors p-2.5 rounded-xl text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-gray-700">Order #{item.orderId}</span>
+                    <span className="text-[10px] text-gray-400 block">
+                      {new Date(item.date).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
+                  </div>
+                  <span className="font-extrabold text-emerald-600 font-sans">+₹{item.amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {
     /* Visual Anchor Poster: Courier on the road */

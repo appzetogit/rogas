@@ -944,3 +944,132 @@ export const getDeliveryDashboardStats = async (deliveryPartnerId) => {
         month: formatStats(monthOrders, monthAgg, monthDMBOrders, monthDMBAgg)
     };
 };
+
+export const getDeliveryPartnerRatings = async (deliveryPartnerId) => {
+    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
+        throw new ValidationError('Delivery partner not found');
+    }
+    const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+    const partner = await FoodDeliveryPartner.findById(partnerId).select('rating totalRatings').lean();
+    if (!partner) throw new ValidationError('Delivery partner not found');
+
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+    
+    // Fetch recent rated subscription orders
+    const recentDMB = await DMBDailyOrder.find({
+        'dispatch.deliveryPartnerId': partnerId,
+        isRated: true
+    })
+    .sort({ deliveredAt: -1 })
+    .limit(20)
+    .select('orderId deliveryRating ratingFeedback deliveredAt')
+    .lean();
+
+    // Fetch recent rated one-time orders
+    const recentFood = await FoodOrder.find({
+        'dispatch.deliveryPartnerId': partnerId,
+        'ratings.deliveryPartner.rating': { $exists: true }
+    })
+    .sort({ 'deliveryState.deliveredAt': -1 })
+    .limit(20)
+    .select('orderId ratings.deliveryPartner deliveryState.deliveredAt')
+    .lean();
+
+    const mappedDMB = recentDMB.map(r => ({
+        orderId: r.orderId,
+        rating: r.deliveryRating,
+        comment: r.ratingFeedback || 'No comment',
+        date: r.deliveredAt
+    }));
+
+    const mappedFood = recentFood.map(r => ({
+        orderId: r.orderId,
+        rating: r.ratings.deliveryPartner.rating,
+        comment: r.ratings.deliveryPartner.comment || 'No comment',
+        date: r.deliveryState?.deliveredAt
+    }));
+
+    const history = [...mappedDMB, ...mappedFood]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 20);
+
+    return {
+        averageRating: partner.rating || 0,
+        totalRatings: partner.totalRatings || 0,
+        history
+    };
+};
+
+export const getDeliveryPartnerTips = async (deliveryPartnerId) => {
+    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
+        throw new ValidationError('Delivery partner not found');
+    }
+    const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+
+    const { FoodDeliveryTipTransaction } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+    // Query DMB tip transactions
+    const dmbTips = await FoodDeliveryTipTransaction.find({
+        deliveryPartnerId: partnerId,
+        status: 'completed'
+    })
+    .sort({ createdAt: -1 })
+    .populate('orderId', 'orderId')
+    .lean();
+
+    // Query FoodOrder tips
+    const foodOrdersWithTips = await FoodOrder.find({
+        'dispatch.deliveryPartnerId': partnerId,
+        orderStatus: 'delivered',
+        tipAmount: { $gt: 0 }
+    })
+    .sort({ 'deliveryState.deliveredAt': -1 })
+    .select('orderId tipAmount deliveryState.deliveredAt')
+    .lean();
+
+    const dmbHistory = dmbTips.map(t => ({
+        orderId: t.orderId?.orderId || 'DMB-ORD',
+        amount: t.amount,
+        date: t.createdAt
+    }));
+
+    const foodHistory = foodOrdersWithTips.map(o => ({
+        orderId: o.orderId || 'FOOD-ORD',
+        amount: o.tipAmount,
+        date: o.deliveryState?.deliveredAt || o.createdAt
+    }));
+
+    const history = [...dmbHistory, ...foodHistory]
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Calculate sum of tips for today, week, month
+    const now = new Date();
+    const today = computeRange('daily', now);
+    const week = computeRange('weekly', now);
+    const month = computeRange('monthly', now);
+
+    const todayTips = history.filter(h => {
+        const d = new Date(h.date);
+        return d >= today.start && d <= today.end;
+    }).reduce((sum, h) => sum + h.amount, 0);
+
+    const weeklyTips = history.filter(h => {
+        const d = new Date(h.date);
+        return d >= week.start && d <= week.end;
+    }).reduce((sum, h) => sum + h.amount, 0);
+
+    const monthlyTips = history.filter(h => {
+        const d = new Date(h.date);
+        return d >= month.start && d <= month.end;
+    }).reduce((sum, h) => sum + h.amount, 0);
+
+    const totalTips = history.reduce((sum, h) => sum + h.amount, 0);
+
+    return {
+        totalTips,
+        todayTips,
+        weeklyTips,
+        monthlyTips,
+        history: history.slice(0, 50)
+    };
+};

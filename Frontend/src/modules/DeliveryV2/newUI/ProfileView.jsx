@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car } from "lucide-react";
+import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2 } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 
 const ProfileView = ({
@@ -26,6 +26,29 @@ const ProfileView = ({
       }
     };
     fetchProfile();
+  }, []);
+
+  const [ratingsData, setRatingsData] = useState({
+    averageRating: 0,
+    totalRatings: 0,
+    history: []
+  });
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRatings = async () => {
+      try {
+        const res = await deliveryAPI.getRatings();
+        if (res.data?.success) {
+          setRatingsData(res.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching ratings:", error);
+      } finally {
+        setRatingsLoading(false);
+      }
+    };
+    fetchRatings();
   }, []);
 
   const handleEditClick = () => {
@@ -379,6 +402,77 @@ const ProfileView = ({
             <button className="bg-[#1f7a63] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-[#005140] active:scale-95 transition-transform">
               📄 Agreement
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Ratings & Feedback Section */}
+      <section className="space-y-2 animate-fadeIn">
+        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">RATINGS &amp; FEEDBACK</h3>
+        <div className="bg-white rounded-2xl p-4 border border-[#bec9c3] shadow-xs space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 min-w-[90px]">
+              <span className="text-2xl font-extrabold text-[#00604c] flex items-center gap-1 font-sans">
+                {ratingsData.averageRating > 0 ? ratingsData.averageRating.toFixed(1) : Number(rating).toFixed(1)}
+              </span>
+              <div className="flex items-center gap-0.5 mt-1">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const avg = ratingsData.averageRating > 0 ? ratingsData.averageRating : rating;
+                  const isFilled = star <= Math.round(avg);
+                  return (
+                    <Star
+                      key={star}
+                      className={`w-3 h-3 ${isFilled ? "text-amber-500 fill-amber-500" : "text-gray-300"}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Performance Rating</p>
+              <p className="text-xs text-gray-500 leading-normal">
+                Based on {ratingsData.totalRatings > 0 ? ratingsData.totalRatings : ratingCount} total customer reviews.
+              </p>
+            </div>
+          </div>
+
+          <hr className="border-[#bec9c3]/30" />
+
+          <div>
+            <h4 className="text-[10px] font-bold text-[#5d5f5b] uppercase tracking-widest mb-3">Recent Reviews</h4>
+            {ratingsLoading ? (
+              <div className="py-4 text-center text-xs text-gray-400">Loading feedback...</div>
+            ) : ratingsData.history.length === 0 ? (
+              <div className="py-4 text-center text-xs text-gray-400 font-medium">No reviews received yet.</div>
+            ) : (
+              <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                {ratingsData.history.map((item, idx) => (
+                  <div key={idx} className="bg-slate-50/50 border border-slate-100 p-3 rounded-xl space-y-1">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold text-gray-700">Order #{item.orderId}</span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-2.5 h-2.5 ${s <= item.rating ? "text-amber-500 fill-amber-500" : "text-gray-200"}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed font-medium">"{item.comment}"</p>
+                    {item.date && (
+                      <span className="text-[9px] text-gray-400 block font-sans">
+                        {new Date(item.date).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

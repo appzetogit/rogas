@@ -141,3 +141,56 @@ dmbDailyOrderSchema.pre('save', function (next) {
 });
 
 export const DMBDailyOrder = mongoose.model('DMBDailyOrder', dmbDailyOrderSchema);
+
+const foodDeliveryTipTransactionSchema = new mongoose.Schema(
+    {
+        deliveryPartnerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodDeliveryPartner',
+            required: true,
+            index: true
+        },
+        orderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DMBDailyOrder',
+            required: true,
+            index: true
+        },
+        orderType: {
+            type: String,
+            enum: ['subscription', 'one-time'],
+            default: 'subscription'
+        },
+        amount: {
+            type: Number,
+            required: true,
+            min: 0.01
+        },
+        razorpayOrderId: {
+            type: String,
+            required: true,
+            unique: true,
+            index: true
+        },
+        razorpayPaymentId: {
+            type: String,
+            default: ''
+        },
+        razorpaySignature: {
+            type: String,
+            default: ''
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'completed', 'failed'],
+            default: 'pending',
+            index: true
+        }
+    },
+    {
+        collection: 'food_delivery_tip_transactions',
+        timestamps: true
+    }
+);
+
+export const FoodDeliveryTipTransaction = mongoose.model('FoodDeliveryTipTransaction', foodDeliveryTipTransactionSchema);

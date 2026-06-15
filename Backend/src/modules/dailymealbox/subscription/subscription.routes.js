@@ -352,4 +352,115 @@ router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER'),
     }
 });
 
+// ─── Create Razorpay Order for Driver Tip ────────────────────────────────────
+// POST /dmb/subscriptions/daily-orders/:orderId/tip/payment-order
+router.post('/daily-orders/:orderId/tip/payment-order', authMiddleware, requireRoles('USER'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.userId;
+        const { amount } = req.body;
+        if (!amount || Number(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid tip amount' });
+        }
+
+        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (order.status !== 'delivered') {
+            return res.status(400).json({ success: false, message: 'Can only tip after successful delivery' });
+        }
+
+        // Check if delivery partner is assigned
+        const driverId = order.dispatch?.deliveryPartnerId;
+        if (!driverId) {
+            return res.status(400).json({ success: false, message: 'No delivery partner assigned to this order' });
+        }
+
+        // Create a Razorpay Order
+        const amountPaise = Math.round(Number(amount) * 100);
+        const currency = 'INR';
+        const receipt = `tip_${order._id.toString().slice(-12)}_${Date.now()}`;
+
+        const { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured } = await import('../../food/orders/helpers/razorpay.helper.js');
+
+        let rzOrder = null;
+        if (isRazorpayConfigured()) {
+            rzOrder = await createRazorpayOrder(amountPaise, currency, receipt);
+        } else {
+            // Dev mode stub
+            rzOrder = { id: `rzp_tip_dev_${Math.random().toString(36).substr(2, 9)}`, amount: amountPaise, currency };
+        }
+
+        // Create a pending tip transaction record
+        const { FoodDeliveryTipTransaction } = await import('./dmb.dailyOrder.model.js');
+        await FoodDeliveryTipTransaction.create({
+            deliveryPartnerId: driverId,
+            orderId: order._id,
+            orderType: 'subscription',
+            amount: Number(amount),
+            razorpayOrderId: rzOrder.id,
+            status: 'pending'
+        });
+
+        res.json({
+            success: true,
+            razorpay: {
+                key: getRazorpayKeyId() || 'rzp_test_dummy',
+                amount: amountPaise,
+                currency,
+                order_id: rzOrder.id,
+                name: 'Rogas Delivery Tip',
+                description: `Tip for Order ${order.orderId}`
+            }
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Verify payment signature & credit driver tip ────────────────────────────
+// POST /dmb/subscriptions/daily-orders/:orderId/tip/verify-payment
+router.post('/daily-orders/:orderId/tip/verify-payment', authMiddleware, requireRoles('USER'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.userId;
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        const { FoodDeliveryTipTransaction } = await import('./dmb.dailyOrder.model.js');
+        const tipTx = await FoodDeliveryTipTransaction.findOne({ razorpayOrderId: razorpay_order_id });
+        if (!tipTx) return res.status(404).json({ success: false, message: 'Tip transaction not found' });
+
+        if (tipTx.status === 'completed') {
+            return res.json({ success: true, message: 'Payment already verified' });
+        }
+
+        const { verifyPaymentSignature, isRazorpayConfigured } = await import('../../food/orders/helpers/razorpay.helper.js');
+
+        let isValid = true;
+        if (isRazorpayConfigured()) {
+            isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+        }
+
+        if (!isValid) {
+            tipTx.status = 'failed';
+            await tipTx.save();
+            return res.status(400).json({ success: false, message: 'Payment signature verification failed' });
+        }
+
+        // Complete payment
+        tipTx.razorpayPaymentId = razorpay_payment_id || `rzp_pay_dev_${Math.random().toString(36).substr(2, 9)}`;
+        tipTx.razorpaySignature = razorpay_signature || `rzp_sig_dev_${Math.random().toString(36).substr(2, 9)}`;
+        tipTx.status = 'completed';
+        await tipTx.save();
+
+        // Add tip to order document
+        order.driverTip = (order.driverTip || 0) + tipTx.amount;
+        await order.save();
+
+        res.json({ success: true, message: 'Payment verified and tip credited successfully' });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 export default router;

@@ -31,7 +31,7 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         // 1. Total Earnings from Delivered Orders
         FoodOrder.aggregate([
             { $match: { 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered' } },
-            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } } } }
+            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } }, totalTips: { $sum: { $ifNull: ['$tipAmount', 0] } } } }
         ]),
         // 2. Admin Bonuses
         DeliveryBonusTransaction.aggregate([
@@ -108,11 +108,13 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         ]),
         DMBDailyOrder.aggregate([
             { $match: { 'dispatch.deliveryPartnerId': partnerId, status: 'delivered' } },
-            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } } } }
+            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } }, totalTips: { $sum: { $ifNull: ['$driverTip', 0] } } } }
         ])
     ]);
 
-    const totalEarned = (Number(earningsAgg?.[0]?.totalEarned) || 0) + (Number(dmbEarningsAgg?.[0]?.totalEarned) || 0);
+    const totalEarnedFee = (Number(earningsAgg?.[0]?.totalEarned) || 0) + (Number(dmbEarningsAgg?.[0]?.totalEarned) || 0);
+    const totalTips = (Number(earningsAgg?.[0]?.totalTips) || 0) + (Number(dmbEarningsAgg?.[0]?.totalTips) || 0);
+    const totalEarned = totalEarnedFee + totalTips;
     // Cash in hand = COD collected since last deposit (no subtraction needed - already scoped by date)
     const cashInHand = Math.max(0, (Number(cashCollectedAgg?.[0]?.cashCollected) || 0) + (Number(dmbCashCollectedAgg?.[0]?.cashCollected) || 0));
     const totalBonus = Number(bonusAgg?.[0]?.total) || 0;

@@ -1565,6 +1565,10 @@ export const deliveryAPI = {
     deliveryClient.get("/food/delivery/earnings", {
       params: params ?? {}
     }),
+  getRatings: () =>
+    deliveryClient.get("/food/delivery/ratings"),
+  getTips: () =>
+    deliveryClient.get("/food/delivery/tips"),
   /** Earning Addons (Hotspots/Bonus) */
   getActiveEarningAddons: () =>
     deliveryClient.get("/food/delivery/earning-addons/active"),
@@ -2044,4 +2048,8 @@ export const dmbCustomerAPI = {
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
   /** Rate a delivered order (rating + optional feedback + tip) */
   rateOrder: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/rate`, data),
+  /** Create Razorpay order for tip */
+  createTipOrder: (orderId, amount) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/payment-order`, { amount }),
+  /** Verify Razorpay payment signature for tip */
+  verifyTipPayment: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/verify-payment`, data),
 };

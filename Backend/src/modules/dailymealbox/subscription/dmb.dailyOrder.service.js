@@ -1306,7 +1306,7 @@ const hhmmToMinutes = (str) => {
  * Checks whether the current server time falls inside the admin-configured
  * prep window for the given slot.  Returns { allowed: bool, message: string }.
  */
-const checkAdminTimingWindow = async (slot) => {
+export const checkAdminTimingWindow = async (slot) => {
     try {
         const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
         const timing = await getVendorTimingSettings();
@@ -1425,7 +1425,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
 
     try {
         const vendor = await FoodRestaurant.findById(vendorId)
-            .select('restaurantName location zoneId serviceZone city phone');
+            .select('restaurantName location zoneId serviceZone city phone addressLine1');
 
         // FIX: log vendor details so we can debug city/zone issues easily
         logger.info(`[DRIVER-NOTIFY] Vendor details — city: "${vendor?.city}", location.city: "${vendor?.location?.city}", zoneId: "${vendor?.zoneId}"`);
@@ -1498,6 +1498,18 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                 pricing: o.pricing
             }));
 
+            let feePerOrder = 18; // fallback default
+            try {
+                const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+                const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+                if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
+                    feePerOrder = Number(feeConfig.feePerOrder);
+                }
+            } catch (feeErr) {
+                logger.error(`[DRIVER-NOTIFY] Failed to fetch fee settings: ${feeErr.message}`);
+            }
+            const totalEarnings = feePerOrder * batch.boxCount;
+
             const payload = {
                 batchId: batch.batchId,
                 slotType: slot,
@@ -1506,10 +1518,12 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                     vendorId: vendor._id,
                     vendorName: vendor.restaurantName,
                     vendorLocation: vendor.location,
+                    vendorAddress: vendor.addressLine1 || '',
                     vendorPhone: vendor.phone || ''
                 },
                 pickupStatus: batch.status,
                 orders: ordersDetails,
+                totalEarnings: totalEarnings,
                 // backward compat
                 vendorId: vendor._id,
                 vendorName: vendor.restaurantName,
@@ -1601,9 +1615,11 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
         logger.info(`Socket emitted order_status_updated to room ${roomName}: ${status}`);
     }
 
+    /*
     if (status === 'ready') {
         await triggerDriverNotificationIfAllReady(order.vendorId, order.deliveryDate, order.deliverySlot);
     }
+    */
 
     if (order.dispatch?.deliveryPartnerId) {
         notifyDriverOfRouteUpdate(order.dispatch.deliveryPartnerId);
@@ -1666,7 +1682,8 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
         }
     }
 
-    await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
+    // Commented out automatic driver notification triggers to allow meal slot-based Request Delivery button flow
+    // await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
 
     logger.info(`Vendor ${vendorId} marked ${count} orders as ready for ${dateStr(targetDate)} / ${slot}`);
     return { count, date: dateStr(targetDate), slot };
@@ -1696,6 +1713,10 @@ const formatOrderCard = (order) => ({
     subscriptionId: order.subscriptionId,
     deliveryPin: order.deliveryPin || '',
     deliveryAddress: order.deliveryAddress,
+    isRated: order.isRated || false,
+    deliveryRating: order.deliveryRating || null,
+    ratingFeedback: order.ratingFeedback || '',
+    driverTip: order.driverTip || 0,
     dispatch: order.dispatch ? {
         deliveryPartner: order.dispatch.deliveryPartnerId ? {
             _id: order.dispatch.deliveryPartnerId._id,

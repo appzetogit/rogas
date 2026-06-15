@@ -655,15 +655,55 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
     try {
         const vendorId = req.user.userId || req.user._id;
         const { date, slot } = req.body;
+        const requestedSlot = slot || 'lunch';
         
         const targetDate = date ? new Date(date) : new Date();
         targetDate.setUTCHours(0, 0, 0, 0);
+
+        // 1. Verify that the requested slot is the currently active meal slot according to admin timing settings.
+        const { checkAdminTimingWindow } = await import('../subscription/dmb.dailyOrder.service.js');
+        const timingCheck = await checkAdminTimingWindow(requestedSlot);
+        if (!timingCheck.allowed) {
+            return res.status(400).json({ success: false, message: `Cannot request delivery partner outside active meal slot window: ${timingCheck.message}` });
+        }
+
+        // 2. Fetch all daily orders for this slot and date to perform readiness validations.
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        const allOrders = await DMBDailyOrder.find({
+            vendorId,
+            deliveryDate: targetDate,
+            deliverySlot: requestedSlot
+        });
+
+        // 3. Verify that orders exist.
+        if (allOrders.length === 0) {
+            return res.status(400).json({ success: false, message: `No orders found for the ${requestedSlot} slot on this date.` });
+        }
+
+        // 4. Verify that all eligible/active orders in the slot are Ready (none are scheduled or preparing).
+        const eligibleOrders = allOrders.filter(o => ['scheduled', 'preparing', 'ready'].includes(o.status));
+        const pendingOrders = eligibleOrders.filter(o => ['scheduled', 'preparing'].includes(o.status));
+        if (pendingOrders.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot request delivery partner: ${pendingOrders.length} orders in this slot are still pending (scheduled or preparing). All orders must be marked Ready first.`
+            });
+        }
+
+        // 5. Verify that there is at least one Ready order to request delivery for.
+        const readyOrders = eligibleOrders.filter(o => o.status === 'ready');
+        if (readyOrders.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: `No ready orders found to request delivery for (they may already be in transit or delivered).`
+            });
+        }
 
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
         let batch = await CollectionBatch.findOne({ 
             vendorId, 
             deliveryDate: targetDate, 
-            deliverySlot: slot || 'lunch',
+            deliverySlot: requestedSlot,
             status: { $in: ['pending', 'driver_assigned'] }
         });
 
@@ -675,60 +715,27 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 await batch.save();
 
                 // Clear driverId on all daily orders in this batch
-                const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
                 await DMBDailyOrder.updateMany(
                     { _id: { $in: batch.orderIds } },
                     { $set: { 'dispatch.deliveryPartnerId': null } }
                 );
             }
         } else {
-            // Check if there are unassigned 'ready' or 'scheduled'/'preparing' orders that can form a new batch!
-            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
-            const unassignedOrders = await DMBDailyOrder.find({
-                vendorId,
-                deliveryDate: targetDate,
-                deliverySlot: slot || 'lunch',
-                status: { $in: ['scheduled', 'preparing', 'ready'] },
-                $or: [
-                    { 'dispatch.deliveryPartnerId': null },
-                    { 'dispatch.deliveryPartnerId': { $exists: false } },
-                    { dispatch: { $exists: false } }
-                ]
-            });
-
-            /*
-            if (unassignedOrders.length === 0) {
-                return res.status(404).json({ success: false, message: 'No unassigned batch or orders found for this slot.' });
-            }
-            */
-
-            let ordersToUse = unassignedOrders;
-            if (ordersToUse.length === 0) {
-                // Mock order generation has been removed/commented out to prevent sending fake testing orders.
-                return res.status(404).json({ success: false, message: 'No unassigned orders found for this slot.' });
-            } else {
-                // Mark any scheduled/preparing as ready
-                for (const order of ordersToUse) {
-                    if (order.status !== 'ready') {
-                        order.status = 'ready';
-                        order.readyAt = new Date();
-                        await order.save();
-                    }
-                }
-            }
-
-            // Create a new batch for these unassigned ready orders!
+            // Create a new batch for these ready orders!
+            const crypto = await import('crypto');
+            const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
             batch = await CollectionBatch.create({
                 vendorId,
                 deliveryDate: targetDate,
-                deliverySlot: slot || 'lunch',
-                boxCount: ordersToUse.length,
-                orderIds: ordersToUse.map(o => o._id),
+                deliverySlot: requestedSlot,
+                collectionPinHash: pin,
+                boxCount: readyOrders.length,
+                orderIds: readyOrders.map(o => o._id),
                 status: 'pending'
             });
         }
 
-        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city phone');
+        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city phone addressLine1');
         const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
         const vendorCity = vendor?.city || vendor?.location?.city;
 
@@ -793,6 +800,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                     if (socket.user?.role === 'DELIVERY_PARTNER' && socket.user?.userId) {
                         const driverIdStr = socket.user.userId.toString();
                         if (!onlineDrivers.some(d => d._id.toString() === driverIdStr)) {
+                            const mongoose = (await import('mongoose')).default;
                             onlineDrivers.push({ _id: new mongoose.Types.ObjectId(driverIdStr) });
                         }
                     }
@@ -807,7 +815,6 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         }
 
         if (io) {
-            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
             const ordersInBatch = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone');
             const ordersDetails = ordersInBatch.map(o => ({
                 _id: o._id,
@@ -822,6 +829,18 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 pricing: o.pricing
             }));
 
+            let feePerOrder = 18; // fallback default
+            try {
+                const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+                const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+                if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
+                    feePerOrder = Number(feeConfig.feePerOrder);
+                }
+            } catch (feeErr) {
+                logger.error(`[VENDOR-RESEND] Failed to fetch fee settings: ${feeErr.message}`);
+            }
+            const totalEarnings = feePerOrder * batch.boxCount;
+
             const payload = {
                 batchId: batch.batchId,
                 slotType: batch.deliverySlot,      // Slot Type
@@ -830,6 +849,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                     vendorId: vendor._id,
                     vendorName: vendor.restaurantName,
                     vendorLocation: vendor.location,
+                    vendorAddress: vendor.addressLine1 || '',
                     vendorPhone: vendor.phone || ''
                 },
                 pickupStatus: batch.status,

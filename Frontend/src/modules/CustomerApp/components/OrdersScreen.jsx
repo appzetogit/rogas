@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { dmbCustomerAPI } from "@food/api";
+import { Star, Coins, X, Loader2 } from "lucide-react";
+import { initRazorpayPayment } from "../../Food/utils/razorpay";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
 const SLOT_LABELS = {
@@ -95,6 +97,7 @@ const OrderCard = memo(function OrderCard({
   onManage,
   onTrackLive,
   onRate,
+  onTip,
 }) {
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
   const mealName = order.meals?.[0]?.name || "Meal";
@@ -184,14 +187,30 @@ const OrderCard = memo(function OrderCard({
             Track Live <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
           </button>
         ) : isPast && order.status === "delivered" ? (
-          <button
-            onClick={() => onRate(order.orderId)}
-            className={`border rounded-xl px-4 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1 ${isRated ? "text-[#006a5c] border-[#006a5c]" : "text-gray-500 border-gray-300"
+          <div className="flex gap-2">
+            <button
+              onClick={() => onRate(order)}
+              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${
+                order.isRated
+                  ? "text-[#006a5c] border-[#006a5c] bg-[#e8f3f0]"
+                  : "text-gray-500 border-gray-300 hover:bg-slate-50"
               }`}
-          >
-            {isRated ? "Rated" : "Rate"}{" "}
-            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-          </button>
+            >
+              <Star className={`w-3.5 h-3.5 ${order.isRated ? "fill-[#006a5c] text-[#006a5c]" : "text-gray-400"}`} />
+              <span>{order.isRated ? `Rated (${order.deliveryRating})` : "Rate"}</span>
+            </button>
+            <button
+              onClick={() => onTip(order)}
+              className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${
+                order.driverTip > 0
+                  ? "text-amber-700 border-amber-300 bg-amber-50"
+                  : "text-gray-500 border-gray-300 hover:bg-slate-50"
+              }`}
+            >
+              <Coins className={`w-3.5 h-3.5 ${order.driverTip > 0 ? "text-amber-500 fill-amber-500" : "text-gray-400"}`} />
+              <span>{order.driverTip > 0 ? `Tipped: ₹${order.driverTip}` : "Tip"}</span>
+            </button>
+          </div>
         ) : isPast && !isTerminal && statusCfg.canManage ? (
           <button
             onClick={() => onManage(order)}
@@ -211,6 +230,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
   const [orders, setOrders] = useState(() => getCached("upcoming") ?? []);
   const [loading, setLoading] = useState(() => !getCached("upcoming"));
   const [ratedOrders, setRatedOrders] = useState([]);
+
+  // ─── Rating & Tip States ──────────────────────────────────────────────────
+  const [ratingModal, setRatingModal] = useState({ show: false, order: null, rating: 0, comment: "", loading: false });
+  const [tipModal, setTipModal] = useState({ show: false, order: null, amount: "", loading: false });
 
   // ─── Manage Sheet State ──────────────────────────────────────────────────
   const [manageOrder, setManageOrder] = useState(null);
@@ -396,13 +419,152 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
       weekday: "short", day: "numeric", month: "short",
     }), []);
 
-  // ─── Stable rate handler ──────────────────────────────────────────────────
-  const handleRate = useCallback((orderId) => {
-    setRatedOrders(prev => prev.includes(orderId) ? prev : [...prev, orderId]);
-    onShowNotificationToast?.(
-      ratedOrders.includes(orderId) ? "Already rated!" : "⭐ Thanks for rating!"
-    );
-  }, [ratedOrders, onShowNotificationToast]);
+  // ─── Stable rate & tip handlers ──────────────────────────────────────────
+  const openRatingModal = useCallback((order) => {
+    setRatingModal({
+      show: true,
+      order,
+      rating: order.deliveryRating || 0,
+      comment: order.ratingFeedback || "",
+      loading: false
+    });
+  }, []);
+
+  const openTipModal = useCallback((order) => {
+    setTipModal({
+      show: true,
+      order,
+      amount: "",
+      loading: false
+    });
+  }, []);
+
+  const submitRating = async () => {
+    const { order, rating, comment } = ratingModal;
+    if (!order) return;
+    if (rating < 1 || rating > 5) {
+      onShowNotificationToast?.("Please select a rating between 1 and 5 stars");
+      return;
+    }
+    setRatingModal(prev => ({ ...prev, loading: true }));
+    try {
+      await dmbCustomerAPI.rateOrder(order._id, { rating, comment });
+      onShowNotificationToast?.("Rating submitted successfully!");
+      const patch = (list) =>
+        list.map(o =>
+          o._id === order._id
+            ? { ...o, isRated: true, deliveryRating: rating, ratingFeedback: comment }
+            : o
+        );
+      setOrders(prev => patch(prev));
+      patchCache("past", patch);
+      setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false });
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to submit rating");
+      setRatingModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const submitTip = async () => {
+    const { order, amount } = tipModal;
+    if (!order) return;
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      onShowNotificationToast?.("Please enter a valid tip amount");
+      return;
+    }
+    setTipModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await dmbCustomerAPI.createTipOrder(order._id, numAmount);
+      if (res.data?.success) {
+        const rpOpts = res.data.razorpay;
+
+        if (rpOpts.key === "rzp_test_dummy" || rpOpts.order_id.startsWith("rzp_tip_dev_")) {
+          onShowNotificationToast?.("Demo mode: Simulating payment...");
+          setTimeout(async () => {
+            try {
+              const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
+                razorpay_order_id: rpOpts.order_id,
+                razorpay_payment_id: `rzp_pay_dev_${Math.random().toString(36).substr(2, 9)}`,
+                razorpay_signature: `rzp_sig_dev_${Math.random().toString(36).substr(2, 9)}`
+              });
+              if (verifyRes.data?.success) {
+                onShowNotificationToast?.("Tip payment simulated successfully!");
+                const patch = (list) =>
+                  list.map(o =>
+                    o._id === order._id
+                      ? { ...o, driverTip: (o.driverTip || 0) + numAmount }
+                      : o
+                  );
+                setOrders(prev => patch(prev));
+                patchCache("past", patch);
+                setTipModal({ show: false, order: null, amount: "", loading: false });
+              } else {
+                onShowNotificationToast?.("Failed to verify simulated tip");
+                setTipModal(prev => ({ ...prev, loading: false }));
+              }
+            } catch (err) {
+              onShowNotificationToast?.(err.response?.data?.message || "Simulation failed");
+              setTipModal(prev => ({ ...prev, loading: false }));
+            }
+          }, 1500);
+          return;
+        }
+
+        const checkoutOptions = {
+          key: rpOpts.key,
+          amount: rpOpts.amount,
+          currency: rpOpts.currency,
+          order_id: rpOpts.order_id,
+          name: rpOpts.name,
+          description: rpOpts.description,
+          handler: async function (response) {
+            try {
+              const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+              if (verifyRes.data?.success) {
+                onShowNotificationToast?.("Tip payment verified and credited!");
+                const patch = (list) =>
+                  list.map(o =>
+                    o._id === order._id
+                      ? { ...o, driverTip: (o.driverTip || 0) + numAmount }
+                      : o
+                  );
+                setOrders(prev => patch(prev));
+                patchCache("past", patch);
+                setTipModal({ show: false, order: null, amount: "", loading: false });
+              } else {
+                onShowNotificationToast?.("Failed to verify tip payment signature");
+                setTipModal(prev => ({ ...prev, loading: false }));
+              }
+            } catch (err) {
+              onShowNotificationToast?.(err.response?.data?.message || "Verification failed");
+              setTipModal(prev => ({ ...prev, loading: false }));
+            }
+          },
+          onError: function (err) {
+            onShowNotificationToast?.("Payment failed: " + (err.description || "Try again"));
+            setTipModal(prev => ({ ...prev, loading: false }));
+          },
+          onClose: function () {
+            onShowNotificationToast?.("Payment modal closed");
+            setTipModal(prev => ({ ...prev, loading: false }));
+          }
+        };
+
+        await initRazorpayPayment(checkoutOptions);
+      } else {
+        onShowNotificationToast?.("Failed to create tip order");
+        setTipModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      onShowNotificationToast?.(err.response?.data?.message || "Failed to initialize tip payment");
+      setTipModal(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   // ─── Derived state ────────────────────────────────────────────────────────
   const isPast = activeTab === "Past";
@@ -472,10 +634,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                 key={order._id || order.orderId}
                 order={order}
                 isPast={isPast}
-                isRated={ratedOrderSet.has(order.orderId)}
+                isRated={order.isRated}
                 onManage={openManage}
                 onTrackLive={onTrackLive}
-                onRate={handleRate}
+                onRate={openRatingModal}
+                onTip={openTipModal}
               />
             ))}
           </section>
@@ -695,6 +858,161 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Rating Modal ─────────────────────────────────────────────────── */}
+      {ratingModal.show && ratingModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false })}>
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[360px] p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false })}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+                <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
+              </div>
+              
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Rate Delivery Partner</h3>
+              <p className="text-xs text-gray-500 mb-6 font-medium">
+                For order #{ratingModal.order.orderId}
+              </p>
+
+              {/* Star Selector */}
+              <div className="flex gap-2.5 mb-6">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isHighlighted = star <= ratingModal.rating;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      disabled={ratingModal.order.isRated}
+                      onClick={() => setRatingModal(prev => ({ ...prev, rating: star }))}
+                      className="transition-transform active:scale-90 hover:scale-110"
+                    >
+                      <Star
+                        className={`w-8 h-8 ${
+                          isHighlighted
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Comment Input */}
+              <textarea
+                value={ratingModal.comment}
+                disabled={ratingModal.order.isRated || ratingModal.loading}
+                onChange={(e) => setRatingModal(prev => ({ ...prev, comment: e.target.value }))}
+                placeholder="Write optional feedback about the delivery..."
+                className="w-full min-h-[80px] p-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] mb-6 resize-none placeholder:text-gray-400"
+              />
+
+              {/* Submit Button */}
+              {!ratingModal.order.isRated ? (
+                <button
+                  onClick={submitRating}
+                  disabled={ratingModal.loading || ratingModal.rating === 0}
+                  className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {ratingModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Submit Rating
+                </button>
+              ) : (
+                <div className="w-full bg-slate-50 border border-gray-200 py-3 rounded-2xl text-center text-sm font-semibold text-gray-500">
+                  Rating Submitted
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tip Modal ────────────────────────────────────────────────────── */}
+      {tipModal.show && tipModal.order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setTipModal({ show: false, order: null, amount: "", loading: false })}>
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[360px] p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setTipModal({ show: false, order: null, amount: "", loading: false })}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+                <Coins className="w-6 h-6 text-amber-500" />
+              </div>
+
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Tip Your Delivery Partner</h3>
+              <p className="text-xs text-gray-500 mb-6 leading-relaxed px-4 text-center">
+                100% of your tip goes directly to the delivery partner for their exceptional service.
+              </p>
+
+              {/* Quick Select Buttons */}
+              <div className="flex gap-2 w-full mb-4">
+                {[10, 20, 50, 100].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    disabled={tipModal.loading}
+                    onClick={() => setTipModal(prev => ({ ...prev, amount: String(val) }))}
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-all active:scale-95 ${
+                      tipModal.amount === String(val)
+                        ? "border-[#006a5c] bg-[#e8f3f0] text-[#006a5c]"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    ₹{val}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Amount Input */}
+              <div className="w-full relative mb-6">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
+                  ₹
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={tipModal.loading}
+                  value={tipModal.amount}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setTipModal(prev => ({ ...prev, amount: val }));
+                  }}
+                  placeholder="Enter custom tip amount"
+                  className="w-full pl-8 pr-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                />
+              </div>
+
+              {/* Pay Button */}
+              <button
+                onClick={submitTip}
+                disabled={tipModal.loading || !tipModal.amount || Number(tipModal.amount) <= 0}
+                className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {tipModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {tipModal.loading ? "Processing..." : `Send Tip of ₹${tipModal.amount || "0"}`}
+              </button>
+            </div>
           </div>
         </div>
       )}

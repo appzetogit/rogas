@@ -36,18 +36,35 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   const [timingConfig, setTimingConfig] = useState(null); // admin timing from backend
   const timingFetched = useRef(false);
 
-  // Auto-detect slot based on current hour
-  const getInitialSlot = () => {
-    const hr = new Date().getHours();
+  // Auto-detect slot based on current hour / admin timing config
+  const getInitialSlot = (config = timingConfig) => {
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    if (config) {
+      for (const slot of ['breakfast', 'lunch', 'dinner']) {
+        const cfg = config[slot];
+        if (cfg && cfg.isEnabled !== false) {
+          const start = hhmmToMin(cfg.startTime);
+          const end   = hhmmToMin(cfg.endTime);
+          if (start !== null && end !== null && curMin >= start && curMin <= end) {
+            return slot;
+          }
+        }
+      }
+    }
+
+    const hr = now.getHours();
     if (hr < 10) return 'breakfast';
     if (hr < 15) return 'lunch';
     return 'dinner';
   };
 
-  const [activeSlot, setActiveSlot] = useState(getInitialSlot());
+  const [activeSlot, setActiveSlot] = useState(() => getInitialSlot(null));
   const [dailyOrders, setDailyOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
+  const [isRequestingDelivery, setIsRequestingDelivery] = useState(false);
 
   const [now, setNow] = useState(new Date());
 
@@ -68,15 +85,19 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     timingFetched.current = true;
     dmbVendorAPI.getTimingSettings()
       .then(res => {
-        if (res?.data?.data) setTimingConfig(res.data.data);
+        if (res?.data?.data) {
+          const cfg = res.data.data;
+          setTimingConfig(cfg);
+          setActiveSlot(getInitialSlot(cfg));
+        }
       })
       .catch(() => { /* fail silently — no restriction */ });
   }, []);
 
   // Reset slot filter on date change
   useEffect(() => {
-    setActiveSlot(getInitialSlot());
-  }, [activeDate]);
+    setActiveSlot(getInitialSlot(timingConfig));
+  }, [activeDate, timingConfig]);
 
 
   // ─── Load daily orders from backend ──────────────────────────────────────
@@ -182,6 +203,25 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       showToast(`✅ ${slotLabel} orders marked as Ready!`);
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to mark all ready');
+    }
+  };
+
+  const handleRequestDeliveryPartner = async () => {
+    try {
+      setIsRequestingDelivery(true);
+      const dateParam = activeDate === 'tomorrow'
+        ? new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+
+      const res = await dmbVendorAPI.resendBatch(dateParam, activeSlot);
+      if (res.data?.success) {
+        showToast(`✅ Delivery partner requested for ${activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)}!`);
+        loadDailyOrders(activeDate);
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to request delivery partner');
+    } finally {
+      setIsRequestingDelivery(false);
     }
   };
 
@@ -326,6 +366,18 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             >
               <span className="material-symbols-outlined text-[18px]">done_all</span>
               Mark All {pendingCount} {activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)} Orders as Ready
+            </button>
+          )}
+
+          {/* Request Delivery Partner */}
+          {pendingCount === 0 && readyCount > 0 && (
+            <button
+              onClick={handleRequestDeliveryPartner}
+              disabled={isRequestingDelivery}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+              {isRequestingDelivery ? "Requesting..." : `Request Delivery Partner for ${activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)}`}
             </button>
           )}
 

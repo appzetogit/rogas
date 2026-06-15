@@ -337,6 +337,7 @@ function NewDeliveryDashboard() {
           }}
         />;
       case "route":
+        const totalEarnings = orders.reduce((sum, o) => sum + (o.riderEarning || 0), 0);
         return <RouteView
           stops={stops}
           onAcceptRoute={handleAcceptRoute}
@@ -344,6 +345,7 @@ function NewDeliveryDashboard() {
           onNextStep={handleNextRouteStep}
           activeOrder={activeOrder}
           routeMetadata={routeMetadata}
+          totalEarnings={totalEarnings}
         />;
       case "pickup":
         return <PickupVerification
@@ -441,6 +443,11 @@ function NewDeliveryDashboard() {
                         <p className="text-sm font-semibold text-gray-800">
                           {newBatchRequest.vendorInfo?.vendorName || newBatchRequest.vendorName || 'Vendor'}
                         </p>
+                        {newBatchRequest.vendorInfo?.vendorAddress && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            📍 {newBatchRequest.vendorInfo.vendorAddress}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {(newBatchRequest.vendorInfo?.vendorPhone || newBatchRequest.vendorPhone) && (
@@ -469,6 +476,32 @@ function NewDeliveryDashboard() {
                     <p className="text-xs text-gray-500 mt-0.5">Slot</p>
                   </div>
                 </div>
+
+                {/* Total Delivery Earnings */}
+                {newBatchRequest.totalEarnings !== undefined && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center">
+                    <span className="text-xs font-bold text-emerald-800">Est. Delivery Earnings</span>
+                    <span className="text-base font-black text-emerald-700">₹{Number(newBatchRequest.totalEarnings).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Stops Details & Sequence */}
+                {newBatchRequest.orders && newBatchRequest.orders.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2 text-left">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Delivery Stops Sequence ({newBatchRequest.orders.length})</p>
+                    <div className="max-h-28 overflow-y-auto space-y-2 pr-1 font-sans">
+                      {newBatchRequest.orders.map((order, idx) => (
+                        <div key={order._id || idx} className="text-xs border-b border-gray-200/60 pb-2 last:border-0 last:pb-0">
+                          <p className="font-extrabold text-gray-800">Stop #{idx + 1}: {order.customer?.name || 'Customer'}</p>
+                          <p className="text-gray-500 mt-0.5">📍 {order.deliveryAddress?.street || 'No Street'}, {order.deliveryAddress?.city || 'No City'}</p>
+                          {order.customer?.phone && (
+                            <p className="text-gray-400 text-[10px] mt-0.5">📞 {order.customer.phone}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* FIX: Show clear offline warning if driver is offline */}
                 {!isOnline && (

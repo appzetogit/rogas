@@ -7,7 +7,8 @@ const RouteView = ({
   isAccepted,
   onNextStep,
   activeOrder,
-  routeMetadata
+  routeMetadata,
+  totalEarnings
 }) => {
   const [sliderPosition, setSliderPosition] = useState(0);
   const [justAccepted, setJustAccepted] = useState(isAccepted);
@@ -117,26 +118,34 @@ const RouteView = ({
         </div>
 
         {/* Load, Stops & Time Grid */}
-        <div className="grid grid-rows-3 gap-2">
+        <div className="flex flex-col gap-1 justify-between h-40">
           {/* TOTAL LOAD */}
-          <div className="bg-white border border-[#e0e3e0] rounded-xl px-3 py-2 flex items-center justify-between shadow-sm text-left">
-            <span className="text-[10px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">MEAL BOXES</span>
+          <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
+            <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">MEAL BOXES</span>
             <span className="font-extrabold text-xs text-[#00604c]">{routeMetadata?.totalMealBoxCount || 0}</span>
           </div>
 
           {/* STOPS */}
-          <div className="bg-white border border-[#e0e3e0] rounded-xl px-3 py-2 flex items-center justify-between shadow-sm text-left">
-            <span className="text-[10px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">STOPS</span>
+          <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
+            <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">STOPS</span>
             <span className="font-extrabold text-xs text-gray-900">{routeMetadata?.stopsCount || 0}</span>
           </div>
 
           {/* TIME REMAINING */}
-          <div className="bg-white border border-[#e0e3e0] rounded-xl px-3 py-2 flex items-center justify-between shadow-sm text-left">
-            <span className="text-[10px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">TIME LEFT</span>
-            <span className={`font-mono text-xs font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#00604c]'}`}>
+          <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
+            <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">TIME LEFT</span>
+            <span className={`font-mono text-[11px] font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#00604c]'}`}>
               {timeRemaining || "3h 00m"}
             </span>
           </div>
+
+          {/* TOTAL EARNINGS */}
+          {totalEarnings !== undefined && (
+            <div className="bg-[#f0fdf7] border border-emerald-200 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left animate-fadeIn">
+              <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider font-sans">EARNINGS</span>
+              <span className="font-extrabold text-xs text-emerald-700 font-sans">₹{totalEarnings.toFixed(2)}</span>
+            </div>
+          )}
         </div>
       </div>
 
