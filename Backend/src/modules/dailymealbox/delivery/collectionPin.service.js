@@ -6,6 +6,9 @@ import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { getIO } from '../../../config/socket.js';
 import { logger } from '../../../utils/logger.js';
+import { enqueueOrderEvent } from '../../food/orders/services/order.helpers.js';
+import * as foodTransactionService from '../../food/orders/services/foodTransaction.service.js';
+import { FoodTransaction } from '../../food/orders/models/foodTransaction.model.js';
 
 const COLLECTION_PIN_EXPIRY_SECONDS = parseInt(process.env.COLLECTION_PIN_EXPIRY_SECONDS || '7200'); // 2 hours
 const MAX_PIN_ATTEMPTS = 3;
@@ -370,6 +373,39 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
         );
 
         if (!order) throw new Error('Order not found');
+
+        try {
+            const tx = await FoodTransaction.findOne({ orderId: order._id }).lean();
+            const prevPayStatus = String(tx?.payment?.status || order?.payment?.status || 'cod_pending');
+            const payMethod = String(tx?.payment?.method || order?.payment?.method || order?.paymentMethod || 'cash');
+
+            let finalPayMethod = payMethod;
+            if (finalPayMethod === 'qr') finalPayMethod = 'razorpay_qr';
+
+            const ledgerKind =
+                finalPayMethod === 'cash'
+                    ? 'cod_marked_paid_on_delivery'
+                    : (finalPayMethod === 'razorpay_qr' ? 'cod_collect_qr_settled' : 'payment_snapshot_sync');
+
+            await foodTransactionService.updateTransactionStatus(order._id, ledgerKind, {
+                status: 'captured',
+                paymentMethod: finalPayMethod,
+                recordedByRole: 'DELIVERY_PARTNER',
+                recordedById: driverId,
+                note: `Rider finalized payment as ${finalPayMethod}. Order is now delivered.`,
+            });
+
+            enqueueOrderEvent('delivery_completed', {
+                orderMongoId: order._id?.toString?.(),
+                orderId: order.orderId || order._id.toString(),
+                deliveryPartnerId: driverId,
+                payMethod: finalPayMethod,
+                prevPayStatus,
+                paymentStatus: 'paid'
+            });
+        } catch (err) {
+            logger.error(`Error updating financial ledger for delivered order ${orderId}: ${err.message}`);
+        }
 
         // Delivery count will be incremented upon payment confirmation
         // Notification to customer remains unchanged

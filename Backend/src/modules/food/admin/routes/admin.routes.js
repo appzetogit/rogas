@@ -234,5 +234,10 @@ router.post('/vendor-subscription-plans', adminController.createVendorSubscripti
 router.put('/vendor-subscription-plans/:id', adminController.updateVendorSubscriptionPlan);
 router.delete('/vendor-subscription-plans/:id', adminController.deleteVendorSubscriptionPlan);
 
+// ----- Vendor Timing Settings -----
+router.get('/vendor-timing-settings', adminController.getVendorTimingSettingsController);
+router.put('/vendor-timing-settings', adminController.updateVendorTimingSettingsController);
+
 export default router;
+
 

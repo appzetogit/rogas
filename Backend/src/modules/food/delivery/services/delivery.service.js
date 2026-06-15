@@ -409,7 +409,7 @@ export const getDeliveryPartnerWallet = async (deliveryPartnerId) => {
             {
                 $group: {
                     _id: null,
-                    cashInHand: { $sum: { $ifNull: ['$riderEarning', 0] } }
+                    cashInHand: { $sum: { $add: [{ $ifNull: ['$pricing.total', 0] }, { $ifNull: ['$riderEarning', 0] }] } }
                 }
             }
         ])

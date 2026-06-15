@@ -5319,3 +5319,55 @@ export async function getDeliveryCommissionAudit(query = {}) {
 
     return { auditData, total, page, limit, settings };
 }
+
+// ─── Vendor Timing Settings ────────────────────────────────────────────────
+
+const DEFAULT_TIMING = {
+    breakfast: { startTime: '04:00', endTime: '10:00', maxPrepMinutes: 60, isEnabled: true },
+    lunch:     { startTime: '11:00', endTime: '15:00', maxPrepMinutes: 60, isEnabled: true },
+    dinner:    { startTime: '17:00', endTime: '21:00', maxPrepMinutes: 90, isEnabled: true }
+};
+
+export async function getVendorTimingSettings() {
+    const { VendorTimingSettings } = await import('../models/vendorTimingSettings.model.js');
+    let doc = await VendorTimingSettings.findOne({ isActive: true }).lean();
+    if (!doc) {
+        doc = DEFAULT_TIMING;
+    }
+    return {
+        breakfast: doc.breakfast || DEFAULT_TIMING.breakfast,
+        lunch:     doc.lunch     || DEFAULT_TIMING.lunch,
+        dinner:    doc.dinner    || DEFAULT_TIMING.dinner
+    };
+}
+
+const isValidTime = (t) => /^\d{2}:\d{2}$/.test(t || '');
+
+export async function upsertVendorTimingSettings(payload) {
+    const { VendorTimingSettings } = await import('../models/vendorTimingSettings.model.js');
+
+    const sanitizeSlot = (slot, defaults) => {
+        if (!slot || typeof slot !== 'object') return defaults;
+        const startTime      = isValidTime(slot.startTime)  ? slot.startTime  : defaults.startTime;
+        const endTime        = isValidTime(slot.endTime)    ? slot.endTime    : defaults.endTime;
+        const maxPrepMinutes = Number.isFinite(Number(slot.maxPrepMinutes)) && Number(slot.maxPrepMinutes) > 0
+            ? Number(slot.maxPrepMinutes)
+            : defaults.maxPrepMinutes;
+        const isEnabled      = slot.isEnabled !== undefined ? Boolean(slot.isEnabled) : defaults.isEnabled;
+        return { startTime, endTime, maxPrepMinutes, isEnabled };
+    };
+
+    const update = {
+        breakfast: sanitizeSlot(payload.breakfast, DEFAULT_TIMING.breakfast),
+        lunch:     sanitizeSlot(payload.lunch,     DEFAULT_TIMING.lunch),
+        dinner:    sanitizeSlot(payload.dinner,    DEFAULT_TIMING.dinner),
+        isActive:  true
+    };
+
+    const doc = await VendorTimingSettings.findOneAndUpdate(
+        { isActive: true },
+        { $set: update },
+        { new: true, upsert: true, runValidators: false }
+    ).lean();
+    return doc;
+}

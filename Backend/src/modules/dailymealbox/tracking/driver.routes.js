@@ -94,6 +94,18 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         }
 
 
+        // Fetch dynamic delivery fee configured by Admin
+        let riderEarningSetting = 0;
+        try {
+            const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+            const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+            if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
+                riderEarningSetting = Number(feeConfig.feePerOrder);
+            }
+        } catch (err) {
+            console.error("Failed to fetch DeliveryOrderFeeSettings in /my-route", err);
+        }
+
         // Generate delivery Pin/OTP mapping if needed
         const batchOtpMap = new Map();
         if (batch.orderIds && batch.collectionPinHash) {
@@ -106,6 +118,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         for (const order of orders) {
             const orderObj = order.toObject();
             orderObj.pin = batchOtpMap.get(order._id.toString()) || '4901';
+            
+            // Assign Admin-configured delivery fee to riderEarning
+            orderObj.riderEarning = orderObj.riderEarning || riderEarningSetting;
 
             if (!orderObj.deliveryPin) {
                 const randomPin = String(Math.floor(1000 + Math.random() * 9000));

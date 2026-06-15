@@ -149,6 +149,7 @@ function NewDeliveryDashboard() {
             status: o.status,
             deliveryPin: o.deliveryPin,
             pin: o.pin,
+            riderEarning: o.riderEarning || 0,
             pickupTimeStr: o.deliverySlot,
             dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00'),
             pickedUpAt: o.pickedUpAt

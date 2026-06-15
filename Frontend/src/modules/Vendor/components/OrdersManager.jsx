@@ -1,12 +1,8 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
 
 const SLOT_LABEL = { breakfast: 'Breakfast ☀️', lunch: 'Lunch 🌤️', dinner: 'Dinner 🌙' };
+const SLOT_EMOJI = { breakfast: '🌅', lunch: '🌤️', dinner: '🌙' };
 
 const STATUS_CONFIG = {
   scheduled: { label: 'Scheduled', color: 'bg-slate-100 text-slate-600', border: 'border-slate-300' },
@@ -17,10 +13,29 @@ const STATUS_CONFIG = {
   skipped: { label: 'Skipped', color: 'bg-red-100 text-red-600', border: 'border-red-300' },
 };
 
+/** Convert "HH:MM" string to minutes since midnight */
+const hhmmToMin = (str) => {
+  if (!str) return null;
+  const [h, m] = str.split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+};
+
+/** Format minutes as "H:MM AM/PM" */
+const fmtMin = (mins) => {
+  if (mins === null || mins === undefined) return '';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+};
+
 export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatus, onBatchUpdateStatus }) {
   const [viewMode, setViewMode] = useState('daily');
   const [activeDate, setActiveDate] = useState('today');
-  
+  const [timingConfig, setTimingConfig] = useState(null); // admin timing from backend
+  const timingFetched = useRef(false);
+
   // Auto-detect slot based on current hour
   const getInitialSlot = () => {
     const hr = new Date().getHours();
@@ -34,15 +49,35 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
 
+  const [now, setNow] = useState(new Date());
+
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setTimeout(() => setToast(''), 4000);
   };
 
-  // Reset slot filter on date change to appropriate initial slot
+  // Refresh current time every minute so window status updates live
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch admin timing config once on mount
+  useEffect(() => {
+    if (timingFetched.current) return;
+    timingFetched.current = true;
+    dmbVendorAPI.getTimingSettings()
+      .then(res => {
+        if (res?.data?.data) setTimingConfig(res.data.data);
+      })
+      .catch(() => { /* fail silently — no restriction */ });
+  }, []);
+
+  // Reset slot filter on date change
   useEffect(() => {
     setActiveSlot(getInitialSlot());
   }, [activeDate]);
+
 
   // ─── Load daily orders from backend ──────────────────────────────────────
   const loadDailyOrders = async (dateLabel = 'today') => {
@@ -78,42 +113,39 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     };
   }, [activeDate]);
 
-  // Frontend time window checks
-  const isWithinPrepWindow = (slot, date = new Date()) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const timeVal = hours * 60 + minutes;
-
-    if (slot === 'breakfast') {
-      return timeVal >= 4 * 60 + 30 && timeVal <= 6 * 60; // 04:30 to 06:00
-    }
-    if (slot === 'lunch') {
-      return timeVal >= 11 * 60 + 30 && timeVal <= 11 * 60 + 40; // 11:30 to 11:40
-    }
-    if (slot === 'dinner') {
-      return timeVal >= 16 * 60 + 30 && timeVal <= 18 * 60; // 16:30 to 18:00
-    }
-    return false;
+  // ─── Live timing window check (uses admin config) ───────────────────────────
+  const getWindowForSlot = (slot) => {
+    const cfg = timingConfig?.[slot];
+    if (!cfg || cfg.isEnabled === false) return null;
+    const start = hhmmToMin(cfg.startTime);
+    const end   = hhmmToMin(cfg.endTime);
+    return (start !== null && end !== null) ? { start, end } : null;
   };
+
+  const isWithinPrepWindow = (slot, date = now) => {
+    const win = getWindowForSlot(slot);
+    if (!win) return true; // no config → always allowed
+    const cur = date.getHours() * 60 + date.getMinutes();
+    return cur >= win.start && cur <= win.end;
+  };
+
+  const getWindowLabel = (slot) => {
+    const win = getWindowForSlot(slot);
+    if (!win) return null;
+    return `${fmtMin(win.start)} – ${fmtMin(win.end)}`;
+  };
+
 
   // ─── Update single order status ──────────────────────────────────────────
   const handleStatusChange = async (orderId, newStatus, deliverySlot) => {
-    /* For testing: Timing restrictions commented out
-    if (newStatus === 'preparing') {
-      if (activeDate !== 'today') {
-        showToast('⚠️ Can only start preparation for today\'s orders!');
-        return;
-      }
+    if ((newStatus === 'preparing' || newStatus === 'ready') && activeDate === 'today') {
       if (!isWithinPrepWindow(deliverySlot)) {
-        let windowText = '';
-        if (deliverySlot === 'breakfast') windowText = '4:30 AM – 6:00 AM';
-        else if (deliverySlot === 'lunch') windowText = '11:30 AM – 11:40 AM';
-        else if (deliverySlot === 'dinner') windowText = '4:30 PM – 6:00 PM';
-        showToast(`⚠️ Preparation for ${deliverySlot} is only allowed during ${windowText}!`);
+        const label = SLOT_LABEL[deliverySlot] || deliverySlot;
+        const win = getWindowLabel(deliverySlot);
+        showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
         return;
       }
     }
-    */
 
     try {
       await dmbVendorAPI.updateDailyOrderStatus(orderId, newStatus);
@@ -128,6 +160,12 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
   // ─── Mark ALL orders ready ────────────────────────────────────────────────
   const handleMarkAllReady = async () => {
+    if (activeDate === 'today' && !isWithinPrepWindow(activeSlot)) {
+      const label = SLOT_LABEL[activeSlot] || activeSlot;
+      const win = getWindowLabel(activeSlot);
+      showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
+      return;
+    }
     try {
       const dateParam = activeDate === 'tomorrow'
         ? new Date(Date.now() + 86400000).toISOString().split('T')[0]
@@ -146,6 +184,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       showToast(err.response?.data?.message || 'Failed to mark all ready');
     }
   };
+
 
   // Slot counts based on dailyOrders for the active date
   const breakfastCount = dailyOrders.filter(o => o.deliverySlot === 'breakfast').length;
@@ -226,6 +265,27 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               </button>
             ))}
           </div>
+
+          {/* Timing Window Banner */}
+          {(() => {
+            const win = getWindowLabel(activeSlot);
+            const allowed = isWithinPrepWindow(activeSlot);
+            const slotLabel = SLOT_LABEL[activeSlot] || activeSlot;
+            if (!win) return null; // no admin config — no banner
+            return (
+              <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold border transition-all ${
+                allowed
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'bg-amber-50 border-amber-300 text-amber-700'
+              }`}>
+                <span className="text-base">{allowed ? '✅' : '⏰'}</span>
+                <span>
+                  {slotLabel} window: <strong>{win}</strong>
+                  {!allowed && ' — Outside prep window'}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Meal Box Counts Card */}
           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left">

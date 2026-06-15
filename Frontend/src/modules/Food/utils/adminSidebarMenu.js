@@ -54,6 +54,12 @@ export const adminSidebarMenu = [
       },
       {
         type: "link",
+        label: "Vendor Timing",
+        path: "/admin/food/vendor-timing",
+        icon: "Clock",
+      },
+      {
+        type: "link",
         label: "Subscription Plans",
         path: "/admin/food/subscription-plans",
         icon: "Award",

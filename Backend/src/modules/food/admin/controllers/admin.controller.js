@@ -1730,3 +1730,23 @@ export async function getDeliveryCommissionAudit(req, res, next) {
         next(error);
     }
 }
+
+// ─── Vendor Timing Settings ────────────────────────────────────────────────
+
+export async function getVendorTimingSettingsController(req, res, next) {
+    try {
+        const data = await adminService.getVendorTimingSettings();
+        res.status(200).json({ success: true, message: 'Vendor timing settings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateVendorTimingSettingsController(req, res, next) {
+    try {
+        const data = await adminService.upsertVendorTimingSettings(req.body || {});
+        res.status(200).json({ success: true, message: 'Vendor timing settings updated successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}

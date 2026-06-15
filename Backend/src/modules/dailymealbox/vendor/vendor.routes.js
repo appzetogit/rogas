@@ -704,80 +704,8 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
 
             let ordersToUse = unassignedOrders;
             if (ordersToUse.length === 0) {
-                // Generate 5 mock orders for this vendor so they can request delivery and test!
-                const dailyOrdersCol = mongoose.connection.db.collection('dmb_daily_orders');
-                
-                // Find a user or insert dummy
-                const userCol = mongoose.connection.db.collection('food_users');
-                let user = await userCol.findOne({});
-                if (!user) {
-                    const insertUser = await userCol.insertOne({
-                        name: 'John Doe (Mock)',
-                        phone: '9999911111',
-                        status: 'approved',
-                        createdAt: new Date(),
-                        updatedAt: new Date()
-                    });
-                    user = { _id: insertUser.insertedId, name: 'John Doe (Mock)', phone: '9999911111' };
-                }
-
-                const vendor = await FoodRestaurant.findById(vendorId);
-                const vendorLng = vendor?.location?.coordinates?.[0] || 77.1025;
-                const vendorLat = vendor?.location?.coordinates?.[1] || 28.7041;
-
-                const generatedOrders = [];
-                for (let i = 0; i < 5; i++) {
-                    const latOffset = (Math.random() - 0.5) * 0.03;
-                    const lngOffset = (Math.random() - 0.5) * 0.03;
-                    const customerLng = vendorLng + lngOffset;
-                    const customerLat = vendorLat + latOffset;
-
-                    const orderMongoId = new mongoose.Types.ObjectId();
-                    const otp = String(Math.floor(1000 + Math.random() * 9000));
-
-                    const mockOrder = {
-                        _id: orderMongoId,
-                        orderId: `DMB-ORD-${Date.now().toString().slice(-6)}${i}`,
-                        subscriptionId: new mongoose.Types.ObjectId(),
-                        userId: user._id,
-                        vendorId: new mongoose.Types.ObjectId(vendorId),
-                        meals: [
-                            {
-                                mealPlanId: new mongoose.Types.ObjectId(),
-                                name: `Healthy Meal ${(slot || 'lunch') === 'lunch' ? 'Lunch' : 'Dinner'} Box`,
-                                quantity: 1
-                            }
-                        ],
-                        deliveryDate: targetDate,
-                        deliverySlot: slot || 'lunch',
-                        status: 'ready',
-                        collectionPin: '4901',
-                        deliveryPin: otp,
-                        pricing: {
-                            totalPrice: 15,
-                            currency: 'PLN'
-                        },
-                        deliveryAddress: {
-                            street: `Mock Street No. ${i + 1}`,
-                            city: vendor?.city || 'Indore',
-                            state: 'MP',
-                            label: 'Home',
-                            location: {
-                                type: 'Point',
-                                coordinates: [customerLng, customerLat]
-                            }
-                        },
-                        dispatch: {
-                            deliveryPartnerId: null
-                        },
-                        createdAt: new Date(),
-                        updatedAt: new Date()
-                    };
-
-                    await dailyOrdersCol.insertOne(mockOrder);
-                    generatedOrders.push(mockOrder);
-                }
-                ordersToUse = generatedOrders;
+                // Mock order generation has been removed/commented out to prevent sending fake testing orders.
+                return res.status(404).json({ success: false, message: 'No unassigned orders found for this slot.' });
             } else {
                 // Mark any scheduled/preparing as ready
                 for (const order of ordersToUse) {
@@ -879,6 +807,21 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         }
 
         if (io) {
+            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+            const ordersInBatch = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone');
+            const ordersDetails = ordersInBatch.map(o => ({
+                _id: o._id,
+                orderId: o.orderId,
+                status: o.status,
+                deliveryAddress: o.deliveryAddress,
+                meals: o.meals,
+                customer: {
+                    name: o.userId?.name || 'Customer',
+                    phone: o.userId?.phone || ''
+                },
+                pricing: o.pricing
+            }));
+
             const payload = {
                 batchId: batch.batchId,
                 slotType: batch.deliverySlot,      // Slot Type
@@ -890,6 +833,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                     vendorPhone: vendor.phone || ''
                 },
                 pickupStatus: batch.status,
+                orders: ordersDetails,
 
                 // Backward compatibility
                 vendorId: vendor._id,
@@ -956,6 +900,17 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
             batchId: batch.batchId,
             otp: batch.collectionPinHash
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Vendor Timing Settings (read-only for vendor panel) ────────────────────
+router.get('/timing-settings', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
+        const data = await getVendorTimingSettings();
+        res.json({ success: true, data });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

@@ -606,22 +606,23 @@ export const adminAPI = {
     adminClient.patch(`/food/admin/addons/${String(id)}/approve`, {}),
   rejectRestaurantAddon: (id, reason) =>
     adminClient.patch(`/food/admin/addons/${String(id)}/reject`, { reason: String(reason || "").trim() }),
-  /** Business Settings (admin) */
-  getBusinessSettings: () =>
-    adminClient.get(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS),
-  updateBusinessSettings: (data, files = {}) => {
-    const formData = new FormData();
-    // Add JSON data
-    formData.append("data", JSON.stringify(data));
-    // Add files
-    if (files.logo) formData.append("logo", files.logo);
-    if (files.favicon) formData.append("favicon", files.favicon);
+  /** Vendor Subscription Plans (admin) */
+  getVendorSubscriptionPlans: (params = {}) =>
+    adminClient.get("/food/admin/vendor-subscription-plans", { params }),
+  createVendorSubscriptionPlan: (body) =>
+    adminClient.post("/food/admin/vendor-subscription-plans", body ?? {}),
+  updateVendorSubscriptionPlan: (id, body) =>
+    adminClient.put(`/food/admin/vendor-subscription-plans/${String(id)}`, body ?? {}),
+  deleteVendorSubscriptionPlan: (id) =>
+    adminClient.delete(`/food/admin/vendor-subscription-plans/${String(id)}`),
 
-    return adminClient.patch(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  },
+  /** Vendor Timing Settings (admin) */
+  getVendorTimingSettings: () =>
+    adminClient.get("/food/admin/vendor-timing-settings"),
+  updateVendorTimingSettings: (body) =>
+    adminClient.put("/food/admin/vendor-timing-settings", body ?? {}),
 };
+
 
 /** Restaurant API - OTP login via new backend; no email/password. */
 export const restaurantAPI = {
@@ -1997,6 +1998,8 @@ export const dmbVendorAPI = {
   getAssignedDriver: (date, slot) => restaurantClient.get("/dmb/vendor/daily-orders/assigned-driver", { params: { date, slot } }),
   /** Verify OTP from delivery boy */
   verifyBatchOtp: (batchId, otp) => restaurantClient.post("/dmb/vendor/daily-orders/verify-otp", { batchId, otp }),
+  /** Get admin-configured meal timing windows */
+  getTimingSettings: () => restaurantClient.get("/dmb/vendor/timing-settings"),
 };
 
 

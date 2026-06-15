@@ -41,12 +41,12 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         // 3. Withdrawal Aggregates (Approved vs Pending)
         FoodDeliveryWithdrawal.aggregate([
             { $match: { deliveryPartnerId: partnerId } },
-            { 
-                $group: { 
-                    _id: null, 
+            {
+                $group: {
+                    _id: null,
                     totalWithdrawn: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$amount', 0] } },
                     pendingWithdrawals: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] } }
-                } 
+                }
             }
         ]),
         // 4. Recent Withdrawals for History
@@ -100,11 +100,11 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
                     ]
                 }
             },
-            { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } } } }
+            { $group: { _id: null, cashCollected: { $sum: { $add: [{ $ifNull: ['$pricing.total', 0] }, { $ifNull: ['$riderEarning', 0] }] } } } }
         ]),
         DMBDailyOrder.aggregate([
             { $match: dmbCashInHandMatchStage },
-            { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.totalPrice', 0] } } } }
+            { $group: { _id: null, cashCollected: { $sum: { $add: [{ $ifNull: ['$riderEarning', 0] }] } } } }
         ]),
         DMBDailyOrder.aggregate([
             { $match: { 'dispatch.deliveryPartnerId': partnerId, status: 'delivered' } },

@@ -1294,15 +1294,55 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
 };
 
 // ─── Prep Window Validation Helpers ─────────────────────────────────────────
-const isWithinPrepWindow = (slot, date = new Date()) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const timeVal = hours * 60 + minutes;
+// Converts "HH:MM" string to minutes-since-midnight
+const hhmmToMinutes = (str) => {
+    if (!str) return null;
+    const [h, m] = str.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+};
 
-    if (slot === 'breakfast') return timeVal >= 4 * 60 + 30 && timeVal <= 6 * 60;
-    if (slot === 'lunch') return timeVal >= 11 * 60 + 30 && timeVal <= 11 * 60 + 40;
-    if (slot === 'dinner') return timeVal >= 16 * 60 + 30 && timeVal <= 18 * 60;
-    return false;
+/**
+ * Checks whether the current server time falls inside the admin-configured
+ * prep window for the given slot.  Returns { allowed: bool, message: string }.
+ */
+const checkAdminTimingWindow = async (slot) => {
+    try {
+        const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
+        const timing = await getVendorTimingSettings();
+        const slotCfg = timing[slot];
+
+        if (!slotCfg) return { allowed: true }; // unknown slot → don't block
+        if (slotCfg.isEnabled === false) return { allowed: true }; // slot timing disabled → no restriction
+
+        const now = new Date();
+        const curMinutes = now.getHours() * 60 + now.getMinutes();
+        const start = hhmmToMinutes(slotCfg.startTime);
+        const end   = hhmmToMinutes(slotCfg.endTime);
+
+        if (start === null || end === null) return { allowed: true };
+
+        if (curMinutes >= start && curMinutes <= end) {
+            return { allowed: true };
+        }
+
+        // Format human-friendly window
+        const fmt = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            const ampm = h < 12 ? 'AM' : 'PM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+        };
+        const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
+        return {
+            allowed: false,
+            message: `⏰ ${slotLabel} preparation is only allowed between ${fmt(start)} and ${fmt(end)}. Current time is outside this window.`
+        };
+    } catch (err) {
+        logger.warn(`[TIMING] Failed to fetch vendor timing settings: ${err.message}`);
+        return { allowed: true }; // fail-open so backend issues don't break vendor ops
+    }
 };
 
 const getLocalDateString = (date) => {
@@ -1365,7 +1405,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         deliverySlot: slot
     };
 
-    const allOrdersInSlot = await DMBDailyOrder.find(filter);
+    const allOrdersInSlot = await DMBDailyOrder.find(filter).populate('userId', 'name phone');
     if (allOrdersInSlot.length === 0) {
         logger.info(`[DRIVER-NOTIFY] No orders for vendor ${vendorId} slot ${slot} on ${dateStr(targetDate)}`);
         return;
@@ -1445,6 +1485,19 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         }
 
         if (onlineDrivers.length > 0) {
+            const ordersDetails = readyOrders.map(o => ({
+                _id: o._id,
+                orderId: o.orderId,
+                status: o.status,
+                deliveryAddress: o.deliveryAddress,
+                meals: o.meals,
+                customer: {
+                    name: o.userId?.name || 'Customer',
+                    phone: o.userId?.phone || ''
+                },
+                pricing: o.pricing
+            }));
+
             const payload = {
                 batchId: batch.batchId,
                 slotType: slot,
@@ -1456,6 +1509,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                     vendorPhone: vendor.phone || ''
                 },
                 pickupStatus: batch.status,
+                orders: ordersDetails,
                 // backward compat
                 vendorId: vendor._id,
                 vendorName: vendor.restaurantName,
@@ -1517,6 +1571,14 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
         throw new Error(`Cannot transition from ${order.status} to ${status}`);
     }
 
+    // ─── Enforce admin-configured timing window ───────────────────────────────
+    if (status === 'preparing' || status === 'ready') {
+        const timingCheck = await checkAdminTimingWindow(order.deliverySlot);
+        if (!timingCheck.allowed) {
+            throw new Error(timingCheck.message);
+        }
+    }
+
     if (status === 'preparing') order.preparingAt = new Date();
     if (status === 'ready') order.readyAt = new Date();
     if (status === 'out_for_delivery') order.pickedUpAt = new Date();
@@ -1569,6 +1631,14 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
     const orders = await DMBDailyOrder.find(filter);
     if (orders.length === 0) {
         return { count: 0, date: dateStr(targetDate), slot, message: 'No pending orders found' };
+    }
+
+    // ─── Enforce admin-configured timing window ───────────────────────────
+    if (slot) {
+        const timingCheck = await checkAdminTimingWindow(slot);
+        if (!timingCheck.allowed) {
+            throw new Error(timingCheck.message);
+        }
     }
 
     const io = getIO();
