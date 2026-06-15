@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { deliveryAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
+import { SUPPORTED_COUNTRIES } from "@/config/countries";
+import CountrySelector from "@/shared/components/CountrySelector";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -31,60 +34,104 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
   </span>
 );
 
-function formatPhone(raw) {
-  const digits = raw.replace(/\D/g, "").slice(0, 9);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return digits.slice(0, 3) + " " + digits.slice(3);
-  return digits.slice(0, 3) + " " + digits.slice(3, 6) + " " + digits.slice(6);
-}
+const matchCountryFromPhone = (phoneVal) => {
+  if (!phoneVal) return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+  const cleanDigits = phoneVal.replace(/\D/g, "");
+  const sorted = [...SUPPORTED_COUNTRIES].sort(
+    (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
+  );
+  for (const c of sorted) {
+    const codeDigits = c.code.replace(/\D/g, "");
+    if (cleanDigits.startsWith(codeDigits)) {
+      return c;
+    }
+  }
+  return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+};
+
+const getPhoneInitialValue = (draft, country) => {
+  const prefix = country.code;
+  let local = "";
+  if (draft.startsWith(prefix)) {
+    local = draft.slice(prefix.length).replace(/\D/g, "");
+  } else {
+    local = draft.replace(/\D/g, "");
+    const prefixDigits = prefix.replace(/\D/g, "");
+    if (local.startsWith(prefixDigits)) {
+      local = local.slice(prefixDigits.length);
+    }
+  }
+  const truncatedLocal = local.slice(0, country.phoneLength);
+  return prefix + (truncatedLocal ? " " + truncatedLocal : "");
+};
 
 export default function DeliverySignIn() {
   const navigate = useNavigate();
+  const { t, changeLanguage } = useTranslation();
   const submitting = useRef(false);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
 
-  const [phone, setPhone] = useState(() => {
+  const [selectedCountry, setSelectedCountry] = useState(() => {
     const draft = sessionStorage.getItem("delivery_draft_phone");
-    if (draft) return formatPhone(draft);
+    if (draft) return matchCountryFromPhone(draft);
     const stored = sessionStorage.getItem("deliveryAuthData");
     if (stored) {
       try {
         const data = JSON.parse(stored);
-        if (data.phone) {
-          const raw = data.phone.replace("+48", "").trim();
-          return formatPhone(raw);
-        }
-      } catch (e) {
-        return "";
-      }
+        if (data.phone) return matchCountryFromPhone(data.phone);
+      } catch (e) {}
     }
-    return "";
+    return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
   });
 
-  const handlePhoneChange = (e) => {
-    const formatted = formatPhone(e.target.value);
-    setPhone(formatted);
-    sessionStorage.setItem("delivery_draft_phone", formatted.replace(/\s/g, ""));
+  const [phone, setPhone] = useState(() => {
+    let draft = sessionStorage.getItem("delivery_draft_phone") || "";
+    if (!draft) {
+      const stored = sessionStorage.getItem("deliveryAuthData");
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          if (data.phone) draft = data.phone;
+        } catch (e) {}
+      }
+    }
+    const country = matchCountryFromPhone(draft);
+    const prefix = country.code;
+    if (draft.startsWith(prefix)) {
+      return draft.slice(prefix.length).replace(/\D/g, "").slice(0, country.phoneLength);
+    }
+    return draft.replace(/\D/g, "").slice(0, country.phoneLength);
+  });
+
+  const normalizedPhone = () => {
+    const cleanDigits = phone.replace(/\D/g, "");
+    return cleanDigits.length === selectedCountry.phoneLength ? `${selectedCountry.code}${cleanDigits}` : "";
   };
 
-  const validatePhone = (num) => {
-    const digits = num.replace(/\D/g, "");
-    return digits.length >= 9 && digits.length <= 11;
+  const handlePhoneChange = (val, country) => {
+    const cleanDigits = val.replace(/\D/g, "").slice(0, country.phoneLength);
+    setPhone(cleanDigits);
+    sessionStorage.setItem("delivery_draft_phone", country.code + cleanDigits);
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const slicedDigits = phone.slice(0, country.phoneLength);
+    setPhone(slicedDigits);
+    sessionStorage.setItem("delivery_draft_phone", country.code + slicedDigits);
   };
 
   const handleSendOTP = async (e) => {
     if (e) e.preventDefault();
-    if (!validatePhone(phone)) {
-      toast.error("Please enter a valid mobile number (9 digits)");
+    const fullPhone = normalizedPhone();
+    if (!fullPhone) {
+      toast.error(`Please enter a valid mobile number (${selectedCountry.phoneLength} digits)`);
       return;
     }
     if (submitting.current) return;
     submitting.current = true;
     setLoading(true);
-
-    const rawPhone = phone.replace(/\s/g, "");
-    const fullPhone = `+48 ${rawPhone}`.trim();
 
     try {
       clearModuleAuth("delivery");
@@ -107,10 +154,6 @@ export default function DeliverySignIn() {
       setLoading(false);
       submitting.current = false;
     }
-  };
-
-  const handleCountryPicker = () => {
-    toast.info("Defaulting to Poland (+48)");
   };
 
   return (
@@ -148,40 +191,65 @@ export default function DeliverySignIn() {
             style={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               padding: "0 16px",
               height: "56px",
             }}
           >
-            <button
-              onClick={() => navigate("/food/delivery/welcome")}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <button
+                onClick={() => navigate("/food/delivery/welcome")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px",
+                  borderRadius: "9999px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: COLORS.primary,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.surfaceContainerLow)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              >
+                <MaterialIcon name="arrow_back" style={{ color: COLORS.primary }} />
+              </button>
+              <h1
+                style={{
+                  marginLeft: "16px",
+                  fontSize: "18px",
+                  lineHeight: "24px",
+                  fontWeight: 600,
+                  color: COLORS.primary,
+                }}
+              >
+                DailyMealBox
+              </h1>
+            </div>
+
+            {/* Language Switcher */}
+            <select
+              value={localStorage.getItem("app_lang") || "en"}
+              onChange={(e) => changeLanguage(e.target.value)}
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px",
-                borderRadius: "9999px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: COLORS.primary,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.surfaceContainerLow)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-            >
-              <MaterialIcon name="arrow_back" style={{ color: COLORS.primary }} />
-            </button>
-            <h1
-              style={{
-                marginLeft: "16px",
-                fontSize: "18px",
-                lineHeight: "24px",
+                marginLeft: "auto",
+                background: "transparent",
+                border: `1px solid ${COLORS.outlineVariant}`,
+                borderRadius: "8px",
+                padding: "6px 10px",
+                fontSize: "12px",
                 fontWeight: 600,
-                color: COLORS.primary,
+                color: COLORS.outline,
+                cursor: "pointer",
+                outline: "none",
               }}
             >
-              DailyMealBox
-            </h1>
+              <option value="en">English</option>
+              <option value="pl">Polski</option>
+              <option value="hi">हिन्दी</option>
+            </select>
           </div>
         </header>
 
@@ -222,7 +290,7 @@ export default function DeliverySignIn() {
                   margin: 0,
                 }}
               >
-                Welcome Back
+                {t("welcome", "Welcome Back")}
               </h2>
               <p
                 style={{
@@ -233,7 +301,7 @@ export default function DeliverySignIn() {
                   margin: 0,
                 }}
               >
-                Enter your phone number to sign in
+                {t("login_phone_subtitle", "Enter your phone number to sign in")}
               </p>
             </div>
 
@@ -283,52 +351,23 @@ export default function DeliverySignIn() {
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {/* Country Picker */}
-                  <button
-                    type="button"
-                    onClick={handleCountryPicker}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "0 12px",
-                      height: "48px",
-                      background: COLORS.surface,
-                      border: `1px solid ${COLORS.outlineVariant}`,
-                      borderRadius: "12px",
-                      cursor: "pointer",
-                      transition: "background 0.15s",
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.surfaceContainerHigh)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = COLORS.surface)}
-                  >
-                    <span
-                      style={{
-                        fontSize: "14px",
-                        lineHeight: "20px",
-                        fontWeight: 400,
-                        color: COLORS.onSurface,
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      +48
-                    </span>
-                    <MaterialIcon
-                      name="expand_more"
-                      style={{ fontSize: "18px", color: COLORS.onSurfaceVariant }}
-                    />
-                  </button>
+                  <CountrySelector
+                    selectedCountry={selectedCountry}
+                    onSelect={handleCountryChange}
+                    className="shrink-0"
+                    buttonClassName="flex items-center justify-between gap-1 px-3 h-[48px] border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] text-gray-800 dark:text-gray-200 rounded-md shadow-sm hover:border-gray-400 dark:hover:border-gray-600 transition-colors shrink-0 cursor-pointer min-w-[95px]"
+                  />
 
                   {/* Phone Input */}
                   <input
                     id="phone"
                     type="tel"
                     value={phone}
-                    onChange={handlePhoneChange}
+                    onChange={(e) => handlePhoneChange(e.target.value, selectedCountry)}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
-                    placeholder="000 000 000"
-                    maxLength={11}
+                    placeholder={selectedCountry.placeholder}
+                    maxLength={selectedCountry.phoneLength}
                     required
                     style={{
                       flexGrow: 1,
@@ -353,7 +392,7 @@ export default function DeliverySignIn() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading || phone.replace(/\s/g, "").length < 9}
+                disabled={loading || !normalizedPhone()}
                 style={{
                   width: "100%",
                   height: "52px",
@@ -364,7 +403,7 @@ export default function DeliverySignIn() {
                   fontWeight: 600,
                   borderRadius: "12px",
                   border: "none",
-                  cursor: (loading || phone.replace(/\s/g, "").length < 9) ? "not-allowed" : "pointer",
+                  cursor: (loading || !normalizedPhone()) ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -372,22 +411,22 @@ export default function DeliverySignIn() {
                   boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
                   transition: "opacity 0.15s, transform 0.15s",
                   fontFamily: "inherit",
-                  opacity: (loading || phone.replace(/\s/g, "").length < 9) ? 0.7 : 1,
+                  opacity: (loading || !normalizedPhone()) ? 0.7 : 1,
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading && phone.replace(/\s/g, "").length >= 9) e.currentTarget.style.opacity = "0.9";
+                  if (!loading && normalizedPhone()) e.currentTarget.style.opacity = "0.9";
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading && phone.replace(/\s/g, "").length >= 9) e.currentTarget.style.opacity = "1";
+                  if (!loading && normalizedPhone()) e.currentTarget.style.opacity = "1";
                 }}
                 onMouseDown={(e) => {
-                  if (!loading && phone.replace(/\s/g, "").length >= 9) e.currentTarget.style.transform = "scale(0.97)";
+                  if (!loading && normalizedPhone()) e.currentTarget.style.transform = "scale(0.97)";
                 }}
                 onMouseUp={(e) => {
-                  if (!loading && phone.replace(/\s/g, "").length >= 9) e.currentTarget.style.transform = "scale(1)";
+                  if (!loading && normalizedPhone()) e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                {loading ? "Sending..." : "Send OTP"}
+                {loading ? "Sending..." : t("send_otp")}
                 <MaterialIcon name="chevron_right" style={{ color: "#ffffff" }} />
               </button>
             </form>

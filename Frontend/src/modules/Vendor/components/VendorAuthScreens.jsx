@@ -1,21 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { dmbVendorAPI } from '../../../services/api/index';
-
-
-
-
-
-
+import { SUPPORTED_COUNTRIES } from '../../../config/countries';
+import CountrySelector from '../../../shared/components/CountrySelector';
 
 
 export function PhoneScreen({ mode, onBack, onSendOtp }) {
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+  });
   const [phone, setPhone] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (phone.trim().length >= 6) {
-      onSendOtp(phone);
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (cleanDigits.length === selectedCountry.phoneLength) {
+      const fullPhone = `${selectedCountry.code}${cleanDigits}`;
+      onSendOtp(fullPhone);
+    } else {
+      alert(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`);
     }
   };
 
@@ -49,15 +52,25 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
               Mobile Number
             </label>
             <div className="flex h-14 bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-              <div className="flex items-center justify-center px-4 border-r border-outline-variant text-on-surface-variant font-semibold text-[14px]">
-                +48
-              </div>
+              <CountrySelector
+                selectedCountry={selectedCountry}
+                onSelect={(country) => {
+                  setSelectedCountry(country);
+                  setPhone("");
+                }}
+                className="shrink-0"
+                buttonClassName="flex items-center justify-between gap-1 px-4 h-14 border-r border-outline-variant bg-white dark:bg-[#1a1a1a] text-on-surface-variant text-sm font-bold min-w-[95px] cursor-pointer"
+              />
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="000 000 000"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, selectedCountry.phoneLength);
+                  setPhone(val);
+                }}
+                placeholder={selectedCountry.placeholder}
                 className="flex-1 px-4 text-[14px] font-semibold text-on-surface focus:outline-none bg-white"
+                maxLength={selectedCountry.phoneLength}
                 autoFocus />
               
             </div>
@@ -66,7 +79,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
           <div className="mt-auto flex flex-col gap-5">
             <button
               type="submit"
-              disabled={phone.trim().length < 6}
+              disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
               className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
               
               Send OTP
@@ -136,7 +149,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
           Verify OTP
         </h1>
         <p className="text-[13px] text-outline text-center px-4 mb-8 leading-relaxed">
-          Enter the 6-digit code sent to <span className="text-primary font-semibold">+48 {phone || '000 000 000'}</span>
+          Enter the 6-digit code sent to <span className="text-primary font-semibold">{phone || '000 000 000'}</span>
         </p>
 
         <div className="flex gap-2 mb-6">
@@ -180,9 +193,9 @@ export function OtpScreen({ phone, onVerify, onBack }) {
 
 
 
-export function RegisterFormScreen({ onContinue, onBack }) {
+export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) {
   const [kitchenName, setKitchenName] = useState('Maria Kitchen');
-  const [phone, setPhone] = useState('+48 789 123 456');
+  const [phone, setPhone] = useState(initialPhone || '+48 789 123 456');
   const [city, setCity] = useState('Warsaw — Mokotow');
   const [type, setType] = useState('Home Cook');
   const [licenceFile, setLicenceFile] = useState(null);

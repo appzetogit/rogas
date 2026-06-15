@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2 } from "lucide-react";
 import { deliveryAPI } from "@food/api";
+import { useTranslation } from "../../../contexts/LanguageContext";
 
 const ProfileView = ({
   stats,
   onViewShifts,
   onLogout
 }) => {
+  const { lang, changeLanguage, t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -514,14 +516,21 @@ const ProfileView = ({
         <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">SETTINGS</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group">
+          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 group">
             <div className="flex items-center gap-3">
               <Globe className="w-4.5 h-4.5 text-[#5d5f5b]" />
-              <p className="text-xs font-bold text-gray-900">Language</p>
+              <p className="text-xs font-bold text-gray-900">{t("change_lang", "Language")}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-[#5d5f5b]">English (UK)</span>
-              <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
+              <select
+                value={lang}
+                onChange={(e) => changeLanguage(e.target.value)}
+                className="bg-transparent border border-gray-300 dark:border-gray-700 text-xs font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer text-[#5d5f5b]"
+              >
+                <option value="en">English</option>
+                <option value="pl">Polski</option>
+                <option value="hi">हिन्दी</option>
+              </select>
             </div>
           </div>
 

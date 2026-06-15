@@ -5,6 +5,7 @@
 
 import apiClient, { userClient, restaurantClient, deliveryClient, adminClient } from "./axios.js";
 import { EMAIL_REGEX } from "@/shared/utils/emailValidation";
+import { SUPPORTED_COUNTRIES } from "../../config/countries";
 
 const AUTH = {
   USER_REQUEST_OTP: "/food/auth/user/request-otp",
@@ -20,48 +21,57 @@ const AUTH = {
 };
 
 /**
- * Normalize phone to digits only (for backend 8–15 digits).
- * @param {string} phone - e.g. "+91 9876543210" or "9876543210"
+ * Normalize and validate phone to digits only based on country configuration.
+ * @param {string} phone - e.g. "+91 9876543210" or "48123456789"
  */
-function normalizePhone(phone) {
-  if (!phone) return "";
-  const digits = String(phone).replace(/\D/g, "");
-  return digits.slice(-15);
-}
+function validateAndNormalizePhone(phone) {
+  if (!phone) {
+    throw new Error("Phone number is required");
+  }
+  let digits = String(phone).replace(/\D/g, "");
 
-/** User phone: exactly 10 digits, numeric only. */
-const USER_PHONE_LENGTH = 10;
+  // If it's exactly 10 digits without code, assume India (+91)
+  if (digits.length === 10) {
+    digits = "91" + digits;
+  }
+
+  // Sort countries by code digits length descending to match longest prefix first
+  const sortedCountries = [...SUPPORTED_COUNTRIES].sort(
+    (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
+  );
+
+  // Look for a matching country code in configuration
+  for (const country of sortedCountries) {
+    const codeDigits = country.code.replace(/\D/g, "");
+    if (digits.startsWith(codeDigits)) {
+      const localPart = digits.slice(codeDigits.length);
+      if (localPart.length === country.phoneLength) {
+        return digits; // e.g. "919876543210" or "48123456789"
+      }
+    }
+  }
+
+  throw new Error("Invalid phone number format or length for country");
+}
 
 /**
  * Request OTP for user login.
- * Validation: phone required, numeric only, exactly 10 digits (last 10 if country code included).
- * @param {string} phone - Phone (with or without country code, e.g. "+91 9876543210")
+ * @param {string} phone
  * @returns {Promise<{ data }>}
  */
 export function requestUserOtp(phone) {
-  const digits = normalizePhone(phone);
-  if (!digits) {
-    return Promise.reject(new Error("Phone number is required"));
+  try {
+    const normalized = validateAndNormalizePhone(phone);
+    return userClient.post(AUTH.USER_REQUEST_OTP, { phone: normalized });
+  } catch (error) {
+    return Promise.reject(error);
   }
-  if (!/^\d+$/.test(digits)) {
-    return Promise.reject(new Error("Phone must contain only digits"));
-  }
-  const normalized =
-    digits.length > USER_PHONE_LENGTH
-      ? digits.slice(-USER_PHONE_LENGTH)
-      : digits;
-  if (normalized.length !== USER_PHONE_LENGTH) {
-    return Promise.reject(new Error("Phone number must be exactly 10 digits"));
-  }
-  return userClient.post(AUTH.USER_REQUEST_OTP, { phone: normalized });
 }
 
 /**
  * Verify OTP and login (user).
- * Validation: phone 10 digits, OTP required, exactly 6 digits numeric.
- * Backend returns { accessToken, refreshToken, user }.
- * @param {string} phone - Same format as request
- * @param {string} otp - 6-digit OTP only
+ * @param {string} phone
+ * @param {string} otp
  */
 export function verifyUserOtp(
   phone,
@@ -71,17 +81,13 @@ export function verifyUserOtp(
   fcmToken = null,
   platform = "web",
 ) {
-  const digits = normalizePhone(phone);
-  if (!digits) {
-    return Promise.reject(new Error("Phone number is required"));
+  let normalized;
+  try {
+    normalized = validateAndNormalizePhone(phone);
+  } catch (error) {
+    return Promise.reject(error);
   }
-  const normalized =
-    digits.length > USER_PHONE_LENGTH
-      ? digits.slice(-USER_PHONE_LENGTH)
-      : digits;
-  if (normalized.length !== USER_PHONE_LENGTH) {
-    return Promise.reject(new Error("Phone number must be exactly 10 digits"));
-  }
+
   const otpStr = String(otp ?? "")
     .replace(/\D/g, "")
     .slice(0, 6);
@@ -249,18 +255,24 @@ function getMeOnce(module) {
  * Restaurant OTP auth (backend: same phone format as user, 6-digit OTP e.g. 123456).
  */
 export function requestRestaurantOtp(phone) {
-  const normalized = normalizePhone(phone);
-  if (normalized.length < 8) {
-    return Promise.reject(new Error("Phone must be at least 8 digits"));
+  try {
+    const normalized = validateAndNormalizePhone(phone);
+    return restaurantClient.post(AUTH.RESTAURANT_REQUEST_OTP, { phone: normalized });
+  } catch (error) {
+    return Promise.reject(error);
   }
-  return restaurantClient.post(AUTH.RESTAURANT_REQUEST_OTP, { phone: normalized });
 }
 
 export function verifyRestaurantOtp(phone, otp, fcmToken = null, platform = "web") {
-  const normalized = normalizePhone(phone);
+  let normalized;
+  try {
+    normalized = validateAndNormalizePhone(phone);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const otpStr = String(otp).replace(/\D/g, "").slice(0, 6);
-  if (!normalized || otpStr.length < 6) {
-    return Promise.reject(new Error("Phone and 6-digit OTP are required"));
+  if (otpStr.length < 6) {
+    return Promise.reject(new Error("6-digit OTP is required"));
   }
   return restaurantClient.post(AUTH.RESTAURANT_VERIFY_OTP, {
     phone: normalized,
@@ -273,18 +285,24 @@ export function verifyRestaurantOtp(phone, otp, fcmToken = null, platform = "web
  * Delivery partner OTP auth (backend: same phone + 6-digit OTP).
  */
 export function requestDeliveryOtp(phone) {
-  const normalized = normalizePhone(phone);
-  if (normalized.length < 8) {
-    return Promise.reject(new Error("Phone must be at least 8 digits"));
+  try {
+    const normalized = validateAndNormalizePhone(phone);
+    return deliveryClient.post(AUTH.DELIVERY_REQUEST_OTP, { phone: normalized });
+  } catch (error) {
+    return Promise.reject(error);
   }
-  return deliveryClient.post(AUTH.DELIVERY_REQUEST_OTP, { phone: normalized });
 }
 
 export function verifyDeliveryOtp(phone, otp, fcmToken = null, platform = "web") {
-  const normalized = normalizePhone(phone);
+  let normalized;
+  try {
+    normalized = validateAndNormalizePhone(phone);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const otpStr = String(otp).replace(/\D/g, "").slice(0, 6);
-  if (!normalized || otpStr.length < 6) {
-    return Promise.reject(new Error("Phone and 6-digit OTP are required"));
+  if (otpStr.length < 6) {
+    return Promise.reject(new Error("6-digit OTP is required"));
   }
   return deliveryClient.post(AUTH.DELIVERY_VERIFY_OTP, {
     phone: normalized,

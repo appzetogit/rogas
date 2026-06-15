@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
+import { useTranslation } from "../../../contexts/LanguageContext";
 
 export function ProfileScreen({
   onGoBack,
@@ -17,6 +18,7 @@ export function ProfileScreen({
   onUpdateProfile,
   onUpdateProfileState
 }) {
+  const { lang, changeLanguage, t } = useTranslation();
   const [walletCredits] = useState(35.0);
   const [showDangerDialog, setShowDangerDialog] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -319,6 +321,30 @@ export function ProfileScreen({
               {/* <span>View & Edit</span> */}
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
+          </div>
+
+          {/* Language Selection Card */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+            <div className="flex items-center gap-3 w-full justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#1f7a63]/10 p-2 rounded-xl text-primary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[22px]">language</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("change_lang", "Language")}</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">Select your preferred language</p>
+                </div>
+              </div>
+              <select
+                value={lang}
+                onChange={(e) => changeLanguage(e.target.value)}
+                className="bg-transparent border border-[#bec9c3]/40 rounded-xl px-2 py-1.5 text-xs font-bold focus:outline-none cursor-pointer text-[#1b1c1c] dark:bg-[#1a1a1a] dark:text-white"
+              >
+                <option value="en">English</option>
+                <option value="pl">Polski</option>
+                <option value="hi">हिन्दी</option>
+              </select>
+            </div>
           </div>
 
           {/* Subscription setup */}

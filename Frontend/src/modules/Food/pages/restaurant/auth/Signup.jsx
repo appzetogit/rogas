@@ -15,16 +15,15 @@ import {
 } from "@food/components/ui/select"
 import loginBg from "@food/assets/loginbanner.png"
 import { useCompanyName } from "@food/hooks/useCompanyName"
-
-const countryCodes = [
-  { code: "+91", country: "IN", flag: "🇮🇳" },
-]
+import { SUPPORTED_COUNTRIES } from "@/config/countries"
+import CountrySelector from "@/shared/components/CountrySelector"
 
 export default function RestaurantSignup() {
   const navigate = useNavigate()
+  const [selectedCountry, setSelectedCountry] = useState(SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0]);
   const [formData, setFormData] = useState({
     phone: "",
-    countryCode: "+91",
+    countryCode: (SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0]).code,
     name: "",
   })
   const [errors, setErrors] = useState({
@@ -34,14 +33,13 @@ export default function RestaurantSignup() {
   const [isLoading, setIsLoading] = useState(false)
   const [apiError, setApiError] = useState("")
 
-  const validatePhone = (phone) => {
-    if (!phone.trim()) {
+  const validatePhone = (num, country) => {
+    if (!num.trim()) {
       return "Phone number is required"
     }
-    const cleanPhone = phone.replace(/[\s\-\(\)]/g, "")
-    const phoneRegex = /^\d{7,15}$/
-    if (!phoneRegex.test(cleanPhone)) {
-      return "Phone number must be 7-15 digits"
+    const cleanDigits = num.replace(/\D/g, "");
+    if (cleanDigits.length !== country.phoneLength) {
+      return `Phone number must be exactly ${country.phoneLength} digits`
     }
     return ""
   }
@@ -67,18 +65,39 @@ export default function RestaurantSignup() {
     })
 
     // Real-time validation
-    if (name === "phone") {
-      setErrors({ ...errors, phone: validatePhone(value) })
-    } else if (name === "name") {
+    if (name === "name") {
       setErrors({ ...errors, name: validateName(value) })
     }
   }
 
-  const handleCountryCodeChange = (value) => {
-    setFormData({
-      ...formData,
-      countryCode: value,
-    })
+  const handlePhoneChange = (val, country) => {
+    const cleanDigits = val.replace(/\D/g, "").slice(0, country.phoneLength);
+    
+    setFormData(prev => ({
+      ...prev,
+      phone: cleanDigits
+    }));
+
+    const phoneErr = validatePhone(cleanDigits, country);
+    setErrors(prev => ({
+      ...prev,
+      phone: phoneErr
+    }));
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const slicedDigits = formData.phone.slice(0, country.phoneLength);
+    setFormData(prev => ({
+      ...prev,
+      countryCode: country.code,
+      phone: slicedDigits
+    }));
+    const phoneErr = validatePhone(slicedDigits, country);
+    setErrors(prev => ({
+      ...prev,
+      phone: phoneErr
+    }));
   }
 
   const handleSubmit = async (e) => {
@@ -90,7 +109,7 @@ export default function RestaurantSignup() {
     let hasErrors = false
     const newErrors = { phone: "", name: "" }
 
-    const phoneError = validatePhone(formData.phone)
+    const phoneError = validatePhone(formData.phone, selectedCountry)
     newErrors.phone = phoneError
     if (phoneError) hasErrors = true
 
@@ -106,7 +125,7 @@ export default function RestaurantSignup() {
     }
 
     // Build full phone number
-    const fullPhone = `${formData.countryCode} ${formData.phone}`.trim()
+    const fullPhone = `${selectedCountry.code}${formData.phone.replace(/\D/g, "")}`
 
     try {
       // Send OTP with purpose 'register'
@@ -240,24 +259,12 @@ export default function RestaurantSignup() {
                 Phone Number
               </Label>
               <div className="flex gap-2">
-                <Select
-                  value={formData.countryCode}
-                  onValueChange={handleCountryCodeChange}
-                >
-                  <SelectTrigger className="w-20 sm:w-24 md:w-[100px] text-xs sm:text-sm">
-                    <SelectValue placeholder="Code" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countryCodes.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        <span className="flex items-center gap-2 text-xs sm:text-sm">
-                          <span>{country.flag}</span>
-                          <span>{country.code}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CountrySelector
+                  selectedCountry={selectedCountry}
+                  onSelect={handleCountryChange}
+                  className="shrink-0"
+                  buttonClassName="flex items-center justify-between gap-1 px-3 h-11 border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] text-gray-800 dark:text-gray-200 rounded-md shadow-sm hover:border-gray-400 dark:hover:border-gray-600 transition-colors shrink-0 cursor-pointer text-xs sm:text-sm min-w-[95px]"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="relative">
                     <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
@@ -267,9 +274,10 @@ export default function RestaurantSignup() {
                       id="phone"
                       name="phone"
                       type="tel"
-                      placeholder="Enter phone number"
+                      placeholder={selectedCountry.placeholder}
                       value={formData.phone}
-                      onChange={handleChange}
+                      onChange={(e) => handlePhoneChange(e.target.value, selectedCountry)}
+                      maxLength={selectedCountry.phoneLength}
                       className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-primary focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.phone ? "border-red-500" : ""}`}
                       required
                     />

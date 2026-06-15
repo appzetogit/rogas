@@ -1,18 +1,27 @@
 import React, { useState, useRef } from "react";
 import { IMAGES } from "../types";
+import { SUPPORTED_COUNTRIES } from "../../../config/countries";
+import CountrySelector from "../../../shared/components/CountrySelector";
 
 export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+  });
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (phone.trim().length >= 6) {
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (cleanDigits.length === selectedCountry.phoneLength) {
       if (!isLogin && name.trim().length < 2) {
         alert("Please enter a valid name");
         return;
       }
-      onSendOtp(phone, name.trim());
+      const fullPhone = `${selectedCountry.code}${cleanDigits}`;
+      onSendOtp(fullPhone, name.trim());
+    } else {
+      alert(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`);
     }
   };
 
@@ -64,15 +73,25 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
               Mobile Number
             </label>
             <div className="flex h-14 bg-white border border-[#bec9c3] rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-              <div className="flex items-center justify-center px-4 border-r border-[#bec9c3] text-[#3e4945] font-semibold text-[14px]">
-                +48
-              </div>
+              <CountrySelector
+                selectedCountry={selectedCountry}
+                onSelect={(country) => {
+                  setSelectedCountry(country);
+                  setPhone("");
+                }}
+                className="shrink-0"
+                buttonClassName="flex items-center justify-between gap-1 px-4 h-14 border-r border-[#bec9c3] bg-transparent text-gray-800 text-sm font-bold min-w-[95px] cursor-pointer"
+              />
               <input 
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="000 000 000"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, selectedCountry.phoneLength);
+                  setPhone(val);
+                }}
+                placeholder={selectedCountry.placeholder}
                 className="flex-1 px-4 text-[14px] font-semibold text-[#1b1c1c] focus:outline-none"
+                maxLength={selectedCountry.phoneLength}
                 autoFocus={isLogin}
               />
             </div>
@@ -81,7 +100,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
           <div className="mt-auto flex flex-col gap-5">
             <button 
               type="submit"
-              disabled={phone.trim().length < 6 || (!isLogin && name.trim().length < 2)}
+              disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength || (!isLogin && name.trim().length < 2)}
               className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]"
             >
               Send OTP
@@ -158,7 +177,7 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
           Verify OTP
         </h1>
         <p className="text-[13px] text-on-surface-variant text-center px-4 mb-8 leading-relaxed">
-          Enter the 6-digit code sent to <span className="text-[#1F7A63] font-semibold">+48 {phone || "000 000 000"}</span>
+          Enter the 6-digit code sent to <span className="text-[#1F7A63] font-semibold">{phone || "your phone number"}</span>
         </p>
 
         <div className="flex gap-2 mb-6">

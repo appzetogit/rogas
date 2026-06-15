@@ -1,38 +1,81 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { ShieldCheck, Utensils, Star, Heart, ArrowRight, Loader2, Store, ShieldQuestion } from "lucide-react"
+import { ShieldCheck, Utensils, Star, Heart, ArrowRight, Loader2, Store, ShieldQuestion, Globe } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
 import { restaurantAPI } from "@food/api"
 import logoNew from "@/assets/logo.png"
-
-const DEFAULT_COUNTRY_CODE = "+91"
+import { SUPPORTED_COUNTRIES } from "@/config/countries"
+import CountrySelector from "@/shared/components/CountrySelector"
+import { useTranslation } from "@/contexts/LanguageContext"
 
 export default function RestaurantLogin() {
   const navigate = useNavigate()
+  const { t, changeLanguage } = useTranslation()
   const phoneInputRef = useRef(null)
-  const [phone, setPhone] = useState(() => sessionStorage.getItem("restaurantLoginPhone") || "")
+  const matchCountryFromPhone = (phone) => {
+    if (!phone) return SUPPORTED_COUNTRIES[0];
+    const cleanDigits = phone.replace(/\D/g, "");
+    const sorted = [...SUPPORTED_COUNTRIES].sort(
+      (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
+    );
+    for (const c of sorted) {
+      const codeDigits = c.code.replace(/\D/g, "");
+      if (cleanDigits.startsWith(codeDigits)) {
+        return c;
+      }
+    }
+    if (cleanDigits.length === 10) return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+    return SUPPORTED_COUNTRIES[0];
+  };
+
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    const draft = sessionStorage.getItem("restaurantLoginPhone") || "";
+    return matchCountryFromPhone(draft);
+  });
+
+  const [phone, setPhone] = useState(() => {
+    const draft = sessionStorage.getItem("restaurantLoginPhone") || "";
+    const country = matchCountryFromPhone(draft);
+    const prefix = country.code;
+    if (draft.startsWith(prefix)) {
+      return draft.slice(prefix.length).replace(/\D/g, "").slice(0, country.phoneLength);
+    }
+    return draft.replace(/\D/g, "").slice(0, country.phoneLength);
+  });
+
   const [loading, setLoading] = useState(false)
   const submitting = useRef(false)
 
-  const validatePhone = (num) => {
-    const digits = num.replace(/\D/g, "")
-    if (digits.length !== 10) return false
-    return ["6", "7", "8", "9"].includes(digits[0])
+  const normalizedPhone = () => {
+    const cleanDigits = phone.replace(/\D/g, "");
+    return cleanDigits.length === selectedCountry.phoneLength ? `${selectedCountry.code}${cleanDigits}` : "";
   }
+
+  const handlePhoneChange = (val, country) => {
+    const cleanDigits = val.replace(/\D/g, "").slice(0, country.phoneLength);
+    setPhone(cleanDigits);
+    sessionStorage.setItem("restaurantLoginPhone", country.code + cleanDigits);
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const slicedDigits = phone.slice(0, country.phoneLength);
+    setPhone(slicedDigits);
+    sessionStorage.setItem("restaurantLoginPhone", country.code + slicedDigits);
+  };
 
   const handleSendOTP = async (e) => {
     if (e) e.preventDefault()
-    if (!validatePhone(phone)) {
-      toast.error("Please enter a valid 10-digit mobile number")
+    const fullPhone = normalizedPhone()
+    if (!fullPhone) {
+      toast.error(`Please enter a valid ${selectedCountry.phoneLength}-digit mobile number`)
       return
     }
     if (submitting.current) return
     submitting.current = true
     setLoading(true)
-
-    const fullPhone = `${DEFAULT_COUNTRY_CODE} ${phone}`.trim()
 
     try {
       await restaurantAPI.sendOTP(fullPhone, "login")
@@ -43,7 +86,7 @@ export default function RestaurantLogin() {
         module: "restaurant",
       }
       sessionStorage.setItem("restaurantAuthData", JSON.stringify(authData))
-      sessionStorage.setItem("restaurantLoginPhone", phone)
+      sessionStorage.setItem("restaurantLoginPhone", fullPhone)
       toast.success("Verification code sent!")
       navigate("/food/restaurant/otp")
     } catch (apiErr) {
@@ -65,11 +108,21 @@ export default function RestaurantLogin() {
       <div className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Main Content */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        <select
+          value={localStorage.getItem("app_lang") || "en"}
+          onChange={(e) => changeLanguage(e.target.value)}
+          className="bg-transparent border border-gray-300 dark:border-gray-700 text-gray-500 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer"
+        >
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+
         <Link to="/restaurant/auth/support">
           <Button variant="ghost" className="text-gray-500 hover:text-primary font-semibold flex items-center gap-2">
             <ShieldQuestion className="w-5 h-5" />
-            Support
+            {t("help", "Support")}
           </Button>
         </Link>
       </div>
@@ -118,41 +171,46 @@ export default function RestaurantLogin() {
               </h2>
               <div className="h-1 w-10 bg-primary rounded-full mb-3 hidden sm:block" />
               <p className="text-base text-gray-500 dark:text-gray-400 font-medium">
-                Enter your registered mobile number to manage your restaurant
+                {t("login_phone_subtitle", "Enter your registered mobile number to manage your restaurant")}
               </p>
             </div>
 
             <form onSubmit={handleSendOTP} className="space-y-8">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-1">Mobile Number</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                    <span className="text-sm font-bold text-primary border-r border-gray-200 dark:border-gray-800 pr-3">+91</span>
-                  </div>
+                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-1">{t("phone_label", "Mobile Number")}</label>
+                <div className="flex gap-2">
+                  <CountrySelector
+                    selectedCountry={selectedCountry}
+                    onSelect={handleCountryChange}
+                    className="shrink-0"
+                    buttonClassName="flex items-center justify-between gap-1 px-4 h-14 border-2 border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-gray-900 dark:text-white font-bold text-sm min-w-[100px]"
+                  />
                   <input
                     ref={phoneInputRef}
                     type="tel"
                     required
                     autoFocus
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    maxLength={10}
-                    className="block w-full pl-16 pr-6 py-4 bg-gray-50 dark:bg-gray-900/50 text-gray-900 dark:text-white border-2 border-transparent focus:border-primary/50 rounded-2xl outline-none transition-all placeholder:text-gray-300 font-bold text-lg shadow-sm"
-                    placeholder="00000 00000"
+                    onChange={(e) => {
+                      handlePhoneChange(e.target.value, selectedCountry);
+                    }}
+                    maxLength={selectedCountry.phoneLength}
+                    className="block flex-1 px-6 py-4 bg-gray-50 dark:bg-gray-900/50 text-gray-900 dark:text-white border-2 border-transparent focus:border-primary/50 rounded-2xl outline-none transition-all placeholder:text-gray-300 font-bold text-lg shadow-sm"
+                    placeholder={selectedCountry.placeholder}
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || phone.length < 10}
+                disabled={loading || phone.length !== selectedCountry.phoneLength}
                 className="w-full py-4.5 bg-primary hover:bg-[#6a2f56] disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group overflow-hidden relative"
               >
                 {loading ? (
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <span>Get Start</span>
+                    <span>{t("send_otp", "Get Started")}</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}

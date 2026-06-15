@@ -16,22 +16,62 @@ import { deliveryAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import loginBg from "@food/assets/deliveryloginbanner.png"
 import { useCompanyName } from "@food/hooks/useCompanyName"
+import { SUPPORTED_COUNTRIES } from "@/config/countries";
+import CountrySelector from "@/shared/components/CountrySelector";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const matchCountryFromPhone = (phoneVal) => {
+  if (!phoneVal) return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+  const cleanDigits = phoneVal.replace(/\D/g, "");
+  const sorted = [...SUPPORTED_COUNTRIES].sort(
+    (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
+  );
+  for (const c of sorted) {
+    const codeDigits = c.code.replace(/\D/g, "");
+    if (cleanDigits.startsWith(codeDigits)) {
+      return c;
+    }
+  }
+  return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+};
 
-const countryCodes = [
-  { code: "+91", country: "IN", flag: "🇮🇳" },
-]
+const getPhoneInitialValue = (draft, country) => {
+  const prefix = country.code;
+  let local = "";
+  if (draft.startsWith(prefix)) {
+    local = draft.slice(prefix.length).replace(/\D/g, "");
+  } else {
+    local = draft.replace(/\D/g, "");
+    const prefixDigits = prefix.replace(/\D/g, "");
+    if (local.startsWith(prefixDigits)) {
+      local = local.slice(prefixDigits.length);
+    }
+  }
+  const truncatedLocal = local.slice(0, country.phoneLength);
+  return prefix + (truncatedLocal ? " " + truncatedLocal : "");
+};
 
 export default function DeliverySignup() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    const stored = sessionStorage.getItem("deliveryAuthData");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        if (data.phone) return matchCountryFromPhone(data.phone);
+      } catch (err) {}
+    }
+    return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+  });
+
   const [formData, setFormData] = useState({
     phone: "",
-    countryCode: "+91",
+    countryCode: selectedCountry.code,
     name: "",
   })
   const [errors, setErrors] = useState({
@@ -56,11 +96,19 @@ export default function DeliverySignup() {
       try {
         const data = JSON.parse(stored)
         if (data.phone) {
-          // Extract digits after +91
-          const phoneDigits = data.phone.replace("+91", "").trim()
+          const country = matchCountryFromPhone(data.phone);
+          setSelectedCountry(country);
+          const prefix = country.code;
+          let local = "";
+          if (data.phone.startsWith(prefix)) {
+            local = data.phone.slice(prefix.length).replace(/\D/g, "").slice(0, country.phoneLength);
+          } else {
+            local = data.phone.replace(/\D/g, "").slice(0, country.phoneLength);
+          }
           setFormData(prev => ({
             ...prev,
-            phone: phoneDigits,
+            phone: local,
+            countryCode: country.code,
             name: data.name || prev.name
           }))
         }
@@ -70,14 +118,13 @@ export default function DeliverySignup() {
     }
   }, [])
 
-  const validatePhone = (phone) => {
-    if (!phone.trim()) {
+  const validatePhone = (num, country) => {
+    if (!num.trim()) {
       return "Phone number is required"
     }
-    const cleanPhone = phone.replace(/[\s\-\(\)]/g, "")
-    const phoneRegex = /^\d{10}$/
-    if (!phoneRegex.test(cleanPhone)) {
-      return "Phone number must be exactly 10 digits"
+    const cleanDigits = num.replace(/\D/g, "");
+    if (cleanDigits.length !== country.phoneLength) {
+      return `Phone number must be exactly ${country.phoneLength} digits`
     }
     return ""
   }
@@ -100,31 +147,46 @@ export default function DeliverySignup() {
   }
 
   const handleChange = (e) => {
-    let { name, value } = e.target
-
-    // Only allow numbers for phone field and limit to 10 digits
-    if (name === "phone") {
-      value = value.replace(/\D/g, "").slice(0, 10)
-    }
+    const { name, value } = e.target
 
     setFormData({
       ...formData,
       [name]: value,
     })
 
-    // Real-time validation
-    if (name === "phone") {
-      setErrors({ ...errors, phone: validatePhone(value) })
-    } else if (name === "name") {
+    if (name === "name") {
       setErrors({ ...errors, name: validateName(value) })
     }
   }
 
-  const handleCountryCodeChange = (value) => {
-    setFormData({
-      ...formData,
-      countryCode: value,
-    })
+  const handlePhoneChange = (val, country) => {
+    const cleanDigits = val.replace(/\D/g, "").slice(0, country.phoneLength);
+    
+    setFormData(prev => ({
+      ...prev,
+      phone: cleanDigits
+    }));
+
+    const phoneErr = validatePhone(cleanDigits, country);
+    setErrors(prev => ({
+      ...prev,
+      phone: phoneErr
+    }));
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const slicedDigits = formData.phone.slice(0, country.phoneLength);
+    setFormData(prev => ({
+      ...prev,
+      countryCode: country.code,
+      phone: slicedDigits
+    }));
+    const phoneErr = validatePhone(slicedDigits, country);
+    setErrors(prev => ({
+      ...prev,
+      phone: phoneErr
+    }));
   }
 
   const handleSubmit = async (e) => {
@@ -136,7 +198,7 @@ export default function DeliverySignup() {
     let hasErrors = false
     const newErrors = { phone: "", name: "" }
 
-    const phoneError = validatePhone(formData.phone)
+    const phoneError = validatePhone(formData.phone, selectedCountry)
     newErrors.phone = phoneError
     if (phoneError) hasErrors = true
 
@@ -154,10 +216,11 @@ export default function DeliverySignup() {
     try {
       // Backend: delivery partner must register first (details + documents), then login with OTP.
       // Save name + phone for Step1 (details) and go to registration form.
+      const rawPhone = `${selectedCountry.code}${formData.phone.replace(/\D/g, "")}`;
       const signupDetails = {
         name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        countryCode: formData.countryCode || "+91",
+        phone: rawPhone,
+        countryCode: selectedCountry.code,
         ref: String(searchParams.get("ref") || "").trim() || undefined,
       }
       sessionStorage.setItem("deliverySignupDetails", JSON.stringify(signupDetails))
@@ -287,12 +350,12 @@ export default function DeliverySignup() {
                 Phone Number
               </Label>
               <div className="flex gap-2">
-                <div className="flex items-center px-4 h-11 border border-gray-300 bg-gray-50 text-gray-700 rounded-md shrink-0">
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <span>🇮🇳</span>
-                    <span>+91</span>
-                  </span>
-                </div>
+                <CountrySelector
+                  selectedCountry={selectedCountry}
+                  onSelect={handleCountryChange}
+                  className="shrink-0"
+                  buttonClassName="flex items-center justify-between gap-1 px-3 h-11 border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] text-gray-800 dark:text-gray-200 rounded-md shadow-sm hover:border-gray-400 dark:hover:border-gray-600 transition-colors shrink-0 cursor-pointer text-xs sm:text-sm min-w-[95px]"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="relative">
                     <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
@@ -302,11 +365,10 @@ export default function DeliverySignup() {
                       id="phone"
                       name="phone"
                       type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
-                      placeholder="Enter 10-digit number"
+                      placeholder={selectedCountry.placeholder}
                       value={formData.phone}
-                      onChange={handleChange}
+                      onChange={(e) => handlePhoneChange(e.target.value, selectedCountry)}
+                      maxLength={selectedCountry.phoneLength}
                       className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-primary focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.phone ? "border-red-500" : ""}`}
                       required
                     />

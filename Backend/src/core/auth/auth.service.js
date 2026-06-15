@@ -94,10 +94,62 @@ const sanitizeDeliveryForAuthResponse = (deliveryDoc = {}) => {
   };
 };
 
-export const requestUserOtp = async (phone) => {
+const validatePhoneCountryAndLength = (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
   }
+
+  // Strip all non-digits
+  const digits = String(phone).replace(/\D/g, "");
+
+  // Comprehensive map of major country codes to expected local phone number lengths
+  const dialCodeLengthMap = {
+    "1": 10, "7": 10, "20": 10, "27": 9, "30": 10, "31": 9, "32": 9, "33": 9, "34": 9, "351": 9,
+    "352": 9, "353": 9, "354": 7, "355": 9, "356": 8, "357": 8, "358": 9, "359": 9, "36": 9,
+    "370": 8, "371": 8, "372": 7, "374": 8, "375": 9, "376": 6, "377": 8, "380": 9, "381": 9,
+    "382": 8, "385": 9, "386": 8, "387": 8, "389": 8, "39": 10, "40": 9, "41": 9, "420": 9,
+    "421": 9, "423": 7, "43": 10, "44": 10, "45": 8, "46": 9, "47": 8, "48": 9, "49": 10,
+    "51": 9, "52": 10, "53": 8, "54": 10, "55": 11, "56": 9, "57": 10, "58": 10, "60": 9,
+    "61": 9, "62": 10, "63": 10, "64": 9, "65": 8, "66": 9, "81": 10, "82": 10, "84": 9,
+    "86": 11, "90": 10, "91": 10, "92": 10, "93": 9, "94": 9, "95": 9, "98": 10, "212": 9,
+    "213": 9, "220": 7, "221": 9, "222": 8, "223": 8, "224": 8, "226": 8, "228": 8, "229": 8,
+    "230": 7, "231": 7, "233": 9, "234": 10, "240": 9, "241": 7, "242": 9, "244": 9, "250": 9,
+    "251": 9, "252": 9, "254": 9, "255": 9, "256": 9, "258": 9, "260": 9, "261": 9, "263": 9,
+    "264": 8, "265": 9, "266": 8, "267": 8, "269": 7, "291": 7, "501": 7, "502": 8, "503": 8,
+    "504": 8, "505": 8, "506": 8, "507": 8, "591": 8, "592": 7, "593": 9, "595": 9, "598": 8,
+    "880": 10, "886": 9, "960": 7, "961": 8, "962": 9, "964": 10, "965": 8, "966": 9, "967": 9,
+    "968": 8, "971": 9, "972": 9, "973": 8, "975": 8, "976": 8, "977": 10, "992": 9, "993": 8,
+    "994": 9, "995": 9, "996": 9, "998": 9
+  };
+
+  const sortedCodes = Object.keys(dialCodeLengthMap).sort((a, b) => b.length - a.length);
+
+  for (const code of sortedCodes) {
+    if (digits.startsWith(code)) {
+      const localPart = digits.slice(code.length);
+      const expectedLength = dialCodeLengthMap[code];
+      if (localPart.length === expectedLength) {
+        return; // Valid!
+      }
+      throw new ValidationError(`Invalid phone number length for country code +${code}. Expected ${expectedLength} digits, but got ${localPart.length}.`);
+    }
+  }
+
+  // For backward compatibility (if a 10-digit number without country code is passed)
+  if (digits.length === 10) {
+    return; // Valid (implied India)
+  }
+
+  // Fallback for unmapped codes
+  if (digits.length >= 8 && digits.length <= 15) {
+    return; // Valid fallback
+  }
+
+  throw new ValidationError("Invalid phone number format or unsupported country code prefix.");
+};
+
+export const requestUserOtp = async (phone) => {
+  validatePhoneCountryAndLength(phone);
 
   const otp = await createOrUpdateOtp(phone);
   // TODO: integrate SMS provider here
@@ -114,6 +166,7 @@ export const verifyUserOtpAndLogin = async (
   platform,
   name,
 ) => {
+  validatePhoneCountryAndLength(phone);
   const trimmedName = typeof name === "string" ? name.trim() : "";
   const existingUser = await FoodUser.findOne({ phone });
 
@@ -323,9 +376,7 @@ export const adminLogin = async (email, password) => {
 };
 
 export const requestRestaurantOtp = async (phone) => {
-  if (!phone) {
-    throw new ValidationError("Phone is required");
-  }
+  validatePhoneCountryAndLength(phone);
   const otp = await createOrUpdateOtp(phone);
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
@@ -334,6 +385,7 @@ export const requestRestaurantOtp = async (phone) => {
 };
 
 export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform) => {
+  validatePhoneCountryAndLength(phone);
   const result = await verifyOtp(phone, otp);
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");
@@ -422,9 +474,7 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
 };
 
 export const requestDeliveryOtp = async (phone) => {
-  if (!phone) {
-    throw new ValidationError("Phone is required");
-  }
+  validatePhoneCountryAndLength(phone);
   const otp = await createOrUpdateOtp(phone);
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
@@ -438,6 +488,7 @@ const normalizePhoneForDelivery = (phone) => {
 };
 
 export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) => {
+  validatePhoneCountryAndLength(phone);
   const result = await verifyOtp(phone, otp);
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");

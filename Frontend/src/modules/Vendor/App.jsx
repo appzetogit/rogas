@@ -554,7 +554,7 @@ export default function App() {
             }} />
           } />
           <Route path="/auth/register-details" element={
-            <RegisterFormScreen onBack={() => navigate('/vendor/auth/register-otp')} onContinue={async (p) => {
+            <RegisterFormScreen phone={authPhone} onBack={() => navigate('/vendor/auth/register-otp')} onContinue={async (p) => {
               try {
                 // Construct FormData for multipart/form-data upload
                 const formData = new FormData();

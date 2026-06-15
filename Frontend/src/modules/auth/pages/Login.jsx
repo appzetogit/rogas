@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Link, useNavigate } from "react-router-dom"
-import { Phone, ArrowRight, ShieldCheck, Loader2, Utensils, Star, Heart, ShieldQuestion, ChefHat, Smartphone, MapPin, Gauge, Pizza, Leaf, Info, User } from "lucide-react"
+import { Phone, ArrowRight, ShieldCheck, Loader2, Utensils, Star, Heart, ShieldQuestion, ChefHat, Smartphone, MapPin, Gauge, Pizza, Leaf, Info, User, Globe } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import logoNew from "@/assets/logo.png"
+import { SUPPORTED_COUNTRIES } from "@/config/countries"
+import CountrySelector from "@/shared/components/CountrySelector"
+import { useTranslation } from "@/contexts/LanguageContext"
 import {
   Dialog,
   DialogContent,
@@ -17,8 +20,39 @@ import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 
 export default function UnifiedOTPFastLogin() {
+  const { t, changeLanguage } = useTranslation()
   const RESEND_COOLDOWN_SECONDS = 60
-  const [phoneNumber, setPhoneNumber] = useState(() => sessionStorage.getItem("draft_phone_login") || "")
+  const matchCountryFromPhone = (phone) => {
+    if (!phone) return SUPPORTED_COUNTRIES[0];
+    const cleanDigits = phone.replace(/\D/g, "");
+    const sorted = [...SUPPORTED_COUNTRIES].sort(
+      (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
+    );
+    for (const c of sorted) {
+      const codeDigits = c.code.replace(/\D/g, "");
+      if (cleanDigits.startsWith(codeDigits)) {
+        return c;
+      }
+    }
+    if (cleanDigits.length === 10) return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+    return SUPPORTED_COUNTRIES[0];
+  };
+
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    const draft = sessionStorage.getItem("draft_phone_login") || "";
+    return matchCountryFromPhone(draft);
+  });
+
+  const [phoneNumber, setPhoneNumber] = useState(() => {
+    const draft = sessionStorage.getItem("draft_phone_login") || "";
+    const country = matchCountryFromPhone(draft);
+    const prefix = country.code;
+    if (draft.startsWith(prefix)) {
+      return draft.slice(prefix.length).replace(/\D/g, "").slice(0, country.phoneLength);
+    }
+    return draft.replace(/\D/g, "").slice(0, country.phoneLength);
+  });
+
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -32,22 +66,35 @@ export default function UnifiedOTPFastLogin() {
   const submitting = useRef(false)
 
   const normalizedPhone = () => {
-    const digits = String(phoneNumber).replace(/\D/g, "").slice(-15)
-    return digits.length >= 8 ? digits : ""
+    const cleanDigits = phoneNumber.replace(/\D/g, "");
+    return cleanDigits.length === selectedCountry.phoneLength ? `${selectedCountry.code}${cleanDigits}` : "";
   }
+
+  const handlePhoneChange = (val, country) => {
+    const cleanDigits = val.replace(/\D/g, "").slice(0, country.phoneLength);
+    setPhoneNumber(cleanDigits);
+    sessionStorage.setItem("draft_phone_login", country.code + cleanDigits);
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const slicedDigits = phoneNumber.slice(0, country.phoneLength);
+    setPhoneNumber(slicedDigits);
+    sessionStorage.setItem("draft_phone_login", country.code + slicedDigits);
+  };
 
   const handleSendOTP = async (e) => {
     e.preventDefault()
     const phone = normalizedPhone()
-    if (phone.length < 10) {
-      toast.error("Please enter a valid 10-digit phone number")
+    if (!phone) {
+      toast.error(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`)
       return
     }
     if (submitting.current) return
     submitting.current = true
     setLoading(true)
     try {
-      await authAPI.sendOTP(phoneNumber, "login", null)
+      await authAPI.sendOTP(phone, "login", null)
       setOtp("")
       setStep(2)
       setResendTimer(RESEND_COOLDOWN_SECONDS)
@@ -67,7 +114,7 @@ export default function UnifiedOTPFastLogin() {
 
   const handleResendOTP = async () => {
     const phone = normalizedPhone()
-    if (phone.length < 10) {
+    if (!phone) {
       toast.error("Please enter a valid phone number")
       return
     }
@@ -75,7 +122,7 @@ export default function UnifiedOTPFastLogin() {
     submitting.current = true
     setLoading(true)
     try {
-      await authAPI.sendOTP(phoneNumber, "login", null)
+      await authAPI.sendOTP(phone, "login", null)
       setOtp("")
       setResendTimer(RESEND_COOLDOWN_SECONDS)
       toast.success("OTP resent successfully.")
@@ -136,7 +183,8 @@ export default function UnifiedOTPFastLogin() {
         console.warn("Failed to get FCM token during login", e);
       }
 
-      const response = await authAPI.verifyOTP(phoneNumber, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
+      const fullPhone = normalizedPhone()
+      const response = await authAPI.verifyOTP(fullPhone, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
       const data = response?.data?.data || response?.data || {}
       const accessToken = data.accessToken
       const refreshToken = data.refreshToken || null
@@ -157,7 +205,7 @@ export default function UnifiedOTPFastLogin() {
       let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."
       const nameRequired = /name\s+is\s+required.*first[- ]?time|first[- ]?time.*name\s+is\s+required|first[- ]?time\s*sign\s*up/i.test(String(msg))
       if (nameRequired) {
-        setPendingVerify({ phone: phoneNumber, otp: otpDigits, fcmToken, platform })
+        setPendingVerify({ phone: normalizedPhone(), otp: otpDigits, fcmToken, platform })
         setShowNameModal(true)
         return
       }
@@ -273,11 +321,21 @@ export default function UnifiedOTPFastLogin() {
       </motion.div>
 
       {/* Main Content */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        <select
+          value={localStorage.getItem("app_lang") || "en"}
+          onChange={(e) => changeLanguage(e.target.value)}
+          className="bg-transparent border border-gray-300 dark:border-gray-700 text-gray-500 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer"
+        >
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+
         <Link to="/user/auth/support">
           <Button variant="ghost" className="text-gray-400 hover:text-primary font-medium flex items-center gap-1.5 text-sm">
             <Info className="w-5 h-5" />
-            <span className="hidden sm:inline">Help</span>
+            <span className="hidden sm:inline">{t("help")}</span>
           </Button>
         </Link>
       </div>
@@ -309,13 +367,13 @@ export default function UnifiedOTPFastLogin() {
               {step === 1 ? (
                 <>Delicious food<br />Delivered fast <span className="inline-block hover:scale-110 transition-transform cursor-pointer">🍕</span></>
               ) : (
-                "Verify OTP"
+                t("verify_otp")
               )}
             </h1>
             <p className="text-[#8D6E63] dark:text-gray-400 font-medium text-[15px]">
               {step === 1
-                ? "Login with your mobile number"
-                : `We've sent a code to +91 ${phoneNumber}`}
+                ? t("login_phone_subtitle")
+                : `We've sent a code to ${selectedCountry.code} ${phoneNumber}`}
             </p>
           </motion.div>
 
@@ -330,11 +388,13 @@ export default function UnifiedOTPFastLogin() {
                 className="w-full space-y-6"
               >
                 <div className="relative flex items-center bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-md rounded-full p-2 pl-4 pr-2 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60 dark:border-gray-700 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-                  {/* Country Code & Icon */}
-                  <div className="flex items-center gap-2 pr-3 border-r border-gray-200 dark:border-gray-700">
-                    <span className="text-xl leading-none">🇮🇳</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">+91</span>
-                  </div>
+                  {/* Country Code & Icon Selector */}
+                  <CountrySelector
+                    selectedCountry={selectedCountry}
+                    onSelect={handleCountryChange}
+                    buttonClassName="flex items-center gap-1.5 bg-transparent border-0 outline-none focus:outline-none cursor-pointer text-sm font-semibold text-gray-800 dark:text-gray-200"
+                    className="pr-2.5 border-r border-gray-200 dark:border-gray-700 shrink-0"
+                  />
 
                   {/* Phone Input */}
                   <div className="flex-1 flex items-center pl-3">
@@ -345,27 +405,25 @@ export default function UnifiedOTPFastLogin() {
                       autoFocus
                       value={phoneNumber}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        setPhoneNumber(val);
-                        sessionStorage.setItem("draft_phone_login", val);
+                        handlePhoneChange(e.target.value, selectedCountry);
                       }}
-                      maxLength={10}
+                      maxLength={selectedCountry.phoneLength}
                       className="w-full bg-transparent border-0 outline-none focus:border-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 dark:text-white font-semibold text-base placeholder:text-gray-400 placeholder:font-medium"
                       style={{ boxShadow: "none", border: "none", outline: "none" }}
-                      placeholder="Enter your 10-digit number"
+                      placeholder={selectedCountry.placeholder}
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading || phoneNumber.length < 10}
+                  disabled={loading || phoneNumber.length !== selectedCountry.phoneLength}
                   className="w-full h-[56px] rounded-full bg-gradient-to-r from-[#FF5252] to-[#E53935] text-white font-bold text-lg shadow-[0_10px_25px_rgba(229,57,53,0.4)] hover:shadow-[0_15px_35px_rgba(229,57,53,0.5)] hover:-translate-y-0.5 transition-all active:scale-[0.98] flex items-center justify-center disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-[0_10px_25px_rgba(229,57,53,0.4)]"
                 >
                   {loading ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
-                    "Send OTP"
+                    t("send_otp")
                   )}
                 </button>
               </motion.form>
@@ -426,7 +484,7 @@ export default function UnifiedOTPFastLogin() {
                         onClick={handleResendOTP}
                         className="text-primary hover:underline"
                       >
-                        Didn't receive code? Resend
+                        {t("resend_otp")}
                       </button>
                     )}
                   </div>
@@ -436,7 +494,7 @@ export default function UnifiedOTPFastLogin() {
                     onClick={handleEditNumber}
                     className="text-xs text-gray-400 hover:text-primary transition-colors"
                   >
-                    Edit phone number
+                    {t("edit_phone")}
                   </button>
                 </div>
 
@@ -445,7 +503,7 @@ export default function UnifiedOTPFastLogin() {
                   disabled={loading || otp.length < 6}
                   className="w-full h-[56px] mt-4 rounded-full bg-gradient-to-r from-[#FF5252] to-[#E53935] text-white font-bold text-lg shadow-[0_10px_25px_rgba(229,57,53,0.4)] hover:shadow-[0_15px_35px_rgba(229,57,53,0.5)] hover:-translate-y-0.5 transition-all active:scale-[0.98] flex items-center justify-center disabled:opacity-70 disabled:hover:translate-y-0"
                 >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Verify & Continue"}
+                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : t("verify_continue")}
                 </button>
               </motion.form>
             )}
