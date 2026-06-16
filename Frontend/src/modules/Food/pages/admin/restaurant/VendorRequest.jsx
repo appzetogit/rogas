@@ -811,19 +811,48 @@ export default function VendorRequest() {
                         <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Service Location</h4>
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
-                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
                             <div>
-                              <p className="text-xs text-slate-500">Registered City</p>
-                              <p className="text-sm font-semibold text-slate-900">{r.city || "N/A"}</p>
+                              <p className="text-xs text-slate-500">Address</p>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {[
+                                  r.addressLine1 || r.location?.addressLine1,
+                                  r.addressLine2 || r.location?.addressLine2,
+                                  r.area || r.location?.area,
+                                  r.city || r.location?.city,
+                                  r.state || r.location?.state,
+                                  r.pincode || r.location?.pincode,
+                                  r.landmark || r.location?.landmark,
+                                ].filter(Boolean).join(", ") || r.location?.formattedAddress || r.location?.address || r.address || "N/A"}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-start gap-3">
-                            <Map className="w-5 h-5 text-slate-400 mt-0.5" />
+                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs text-slate-500">Coordinates</p>
+                              <p className="text-sm font-semibold text-slate-900">
+                                Lat: {r.location?.latitude ?? r.location?.coordinates?.[1] ?? "N/A"}, 
+                                Lng: {r.location?.longitude ?? r.location?.coordinates?.[0] ?? "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <Map className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
                             <div>
                               <p className="text-xs text-slate-500">Service Zone</p>
                               <p className="text-sm font-semibold text-slate-900">{r.zone || "N/A"}</p>
                             </div>
                           </div>
+                          {r.city && (
+                            <div className="flex items-start gap-3">
+                              <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="text-xs text-slate-500">Registered City</p>
+                                <p className="text-sm font-semibold text-slate-900">{r.city}</p>
+                              </div>
+                            </div>
+                          )}
                           {r.vendorType === "home_cook" && (
                             <div className="flex items-start gap-3">
                               <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />

@@ -8,6 +8,8 @@ const restaurantCommissionUpsertSchema = z.object({
         type: z.enum(['percentage', 'amount']).default('percentage'),
         value: z.number().min(0, 'Commission value must be 0 or greater')
     }),
+    platformCommissionVatPercent: z.number().min(0).max(100).optional().default(0),
+    foodVatPercent: z.number().min(0).max(100).optional().default(0),
     notes: z.string().optional().or(z.literal(''))
 });
 
@@ -18,6 +20,8 @@ export const validateRestaurantCommissionUpsertDto = (body) => {
             type: body?.defaultCommission?.type,
             value: Number(body?.defaultCommission?.value)
         },
+        platformCommissionVatPercent: body?.platformCommissionVatPercent != null ? Number(body.platformCommissionVatPercent) : 0,
+        foodVatPercent: body?.foodVatPercent != null ? Number(body.foodVatPercent) : 0,
         notes: body?.notes != null ? String(body.notes) : ''
     };
 
@@ -34,6 +38,8 @@ export const validateRestaurantCommissionUpsertDto = (body) => {
     return {
         restaurantId: result.data.restaurantId,
         defaultCommission: result.data.defaultCommission,
+        platformCommissionVatPercent: result.data.platformCommissionVatPercent ?? 0,
+        foodVatPercent: result.data.foodVatPercent ?? 0,
         notes: result.data.notes ? result.data.notes.trim() : ''
     };
 };

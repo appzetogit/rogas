@@ -225,3 +225,130 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
 }
 
 
+/**
+ * Returns a live earnings summary for a vendor.
+ * Used by the new /earnings endpoint in the Vendor Panel.
+ * Does NOT affect or replace getRestaurantFinance.
+ */
+export async function getVendorEarningsSummary(restaurantId) {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+
+    // Fetch restaurant name for display
+    const restaurant = await FoodRestaurant.findById(rid)
+        .select('restaurantName')
+        .lean();
+
+    // Fetch active commission config for this restaurant (to display rates)
+    let commissionConfig = null;
+    try {
+        const { FoodRestaurantCommission } = await import('../../admin/models/restaurantCommission.model.js');
+        commissionConfig = await FoodRestaurantCommission.findOne({
+            restaurantId: rid,
+            status: { $ne: false }
+        }).lean();
+    } catch (_) {}
+
+    const commissionVatRate = Number(commissionConfig?.defaultCommission?.value ?? 0);
+    const commissionVatType = commissionConfig?.defaultCommission?.type || 'percentage';
+    const platformCommissionVatRate = Number(commissionConfig?.platformCommissionVatPercent ?? 0);
+    const foodVatRate = Number(commissionConfig?.foodVatPercent ?? 0);
+
+    // All captured/authorized transactions for this restaurant (lifetime)
+    const allTransactions = await FoodTransaction.find({
+        restaurantId: rid,
+        status: { $in: ['captured', 'authorized'] }
+    })
+        .populate('orderId', 'orderId order_id createdAt items pricing orderStatus deliveryState')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    // Aggregate totals
+    let totalOrders = 0;
+    let grossEarnings = 0;
+    let commissionVatDeduction = 0;
+    let platformCommissionVatDeduction = 0;
+    let foodVatDeduction = 0;
+    let netEarnings = 0;
+
+    const recentTransactions = [];
+
+    for (const tx of allTransactions) {
+        totalOrders++;
+        const gross = Number(tx.amounts?.totalCustomerPaid || 0);
+        const netShare = Number(tx.amounts?.restaurantShare || 0);
+        const commVat = Number(tx.amounts?.commissionVatAmount || tx.amounts?.restaurantCommission || 0);
+        const platVat = Number(tx.amounts?.platformCommissionVatAmount || 0);
+        const foodVat = Number(tx.amounts?.foodVatAmount || 0);
+
+        grossEarnings += gross;
+        commissionVatDeduction += commVat;
+        platformCommissionVatDeduction += platVat;
+        foodVatDeduction += foodVat;
+        netEarnings += netShare;
+
+        if (recentTransactions.length < 20) {
+            const order = tx.orderId || {};
+            const items = Array.isArray(order.items) ? order.items : [];
+            recentTransactions.push({
+                transactionId: tx._id,
+                orderId: order.order_id || order.orderId || tx._id,
+                createdAt: tx.createdAt,
+                foodNames: items.map(i => i?.name).filter(Boolean).join(', '),
+                grossAmount: gross,
+                commissionVatAmount: commVat,
+                platformCommissionVatAmount: platVat,
+                foodVatAmount: foodVat,
+                netAmount: netShare,
+                paymentMethod: tx.paymentMethod,
+                orderStatus: order.orderStatus || ''
+            });
+        }
+    }
+
+    // Available balance (net - effective withdrawals)
+    let availableBalance = netEarnings;
+    try {
+        const { FoodRestaurantWithdrawal } = await import('../models/foodRestaurantWithdrawal.model.js');
+        const withdrawalAgg = await FoodRestaurantWithdrawal.aggregate([
+            {
+                $match: {
+                    restaurantId: rid,
+                    $expr: {
+                        $in: [
+                            { $toLower: { $trim: { input: '$status' } } },
+                            ['pending', 'approved']
+                        ]
+                    }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+        const totalWithdrawals = Number(withdrawalAgg?.[0]?.total || 0);
+        availableBalance = Math.max(0, netEarnings - totalWithdrawals);
+    } catch (_) {}
+
+    return {
+        restaurant: {
+            name: restaurant?.restaurantName || '',
+            restaurantId: rid.toString()
+        },
+        commissionRates: {
+            commissionVatRate,
+            commissionVatType,
+            platformCommissionVatRate,
+            foodVatRate
+        },
+        summary: {
+            totalOrders,
+            grossEarnings: Math.round(grossEarnings * 100) / 100,
+            commissionVatDeduction: Math.round(commissionVatDeduction * 100) / 100,
+            platformCommissionVatDeduction: Math.round(platformCommissionVatDeduction * 100) / 100,
+            foodVatDeduction: Math.round(foodVatDeduction * 100) / 100,
+            totalDeductions: Math.round((commissionVatDeduction + platformCommissionVatDeduction + foodVatDeduction) * 100) / 100,
+            netEarnings: Math.round(netEarnings * 100) / 100,
+            availableBalance: Math.round(availableBalance * 100) / 100
+        },
+        recentTransactions
+    };
+}

@@ -2007,6 +2007,8 @@ export const dmbVendorAPI = {
   verifyBatchOtp: (batchId, otp) => restaurantClient.post("/dmb/vendor/daily-orders/verify-otp", { batchId, otp }),
   /** Get admin-configured meal timing windows */
   getTimingSettings: () => restaurantClient.get("/dmb/vendor/timing-settings"),
+  /** NEW: Live dynamic earnings breakdown from food restaurant module (replaces static earnings) */
+  getVendorEarningsSummary: () => restaurantClient.get("/food/restaurant/earnings"),
 };
 
 

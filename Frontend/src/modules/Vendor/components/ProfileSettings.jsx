@@ -20,6 +20,13 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   const [lng, setLng] = useState(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
   const [showMap, setShowMap] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [addressDetails, setAddressDetails] = useState({
+    city: profile?.location?.city || profile?.city || '',
+    area: profile?.location?.area || profile?.area || '',
+    state: profile?.location?.state || profile?.state || '',
+    pincode: profile?.location?.pincode || profile?.pincode || '',
+    addressLine1: profile?.location?.addressLine1 || profile?.addressLine1 || ''
+  });
   
   const hasSavedLocation = profile?.zoneId || profile?.location?.address || profile?.address;
   const [isEditing, setIsEditing] = useState(!hasSavedLocation);
@@ -42,7 +49,41 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
       const geocoder = new window.google.maps.Geocoder();
       geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
         if (status === 'OK' && results[0]) {
-          setAddress(results[0].formatted_address);
+          const formatted = results[0].formatted_address;
+          setAddress(formatted);
+
+          const components = results[0].address_components;
+          let cityVal = '';
+          let areaVal = '';
+          let stateVal = '';
+          let pincodeVal = '';
+          let streetNumber = '';
+          let route = '';
+
+          for (const component of components) {
+            const types = component.types;
+            if (types.includes('locality')) {
+              cityVal = component.long_name;
+            } else if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
+              areaVal = component.long_name;
+            } else if (types.includes('administrative_area_level_1')) {
+              stateVal = component.long_name;
+            } else if (types.includes('postal_code')) {
+              pincodeVal = component.long_name;
+            } else if (types.includes('street_number')) {
+              streetNumber = component.long_name;
+            } else if (types.includes('route')) {
+              route = component.long_name;
+            }
+          }
+
+          setAddressDetails({
+            city: cityVal,
+            area: areaVal,
+            state: stateVal,
+            pincode: pincodeVal,
+            addressLine1: `${streetNumber} ${route}`.trim()
+          });
         }
       });
     }
@@ -76,19 +117,40 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
 
   const handleSave = async () => {
     try {
+      const zoneName = zones.find(z => z._id === selectedZone)?.name || '';
       const response = await restaurantAPI.updateProfile({
         zoneId: selectedZone,
+        zoneName: zoneName,
         location: {
           latitude: lat,
           longitude: lng,
           address: address,
-          formattedAddress: address
+          formattedAddress: address,
+          city: addressDetails.city,
+          area: addressDetails.area,
+          state: addressDetails.state,
+          pincode: addressDetails.pincode,
+          addressLine1: addressDetails.addressLine1
         }
       });
       if (response?.data?.data?.restaurant) {
         onSave(response.data.data.restaurant);
       } else {
-        onSave({ zoneId: selectedZone, location: { latitude: lat, longitude: lng, address, formattedAddress: address } });
+        onSave({ 
+          zoneId: selectedZone, 
+          zoneName: zoneName,
+          location: { 
+            latitude: lat, 
+            longitude: lng, 
+            address, 
+            formattedAddress: address,
+            city: addressDetails.city,
+            area: addressDetails.area,
+            state: addressDetails.state,
+            pincode: addressDetails.pincode,
+            addressLine1: addressDetails.addressLine1
+          } 
+        });
       }
       triggerToast('Location & Zone update request submitted successfully!');
       onBack();
@@ -98,11 +160,21 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   };
 
   const handleSaveClick = () => {
-    const isZoneChanged = selectedZone && selectedZone !== (profile?.zoneId || '');
-    if (isZoneChanged) {
+    const activeZone = profile?.zoneId || '';
+    const activeAddress = profile?.location?.formattedAddress || profile?.location?.address || profile?.address || '';
+    const activeLat = Number(profile?.location?.latitude || profile?.location?.coordinates?.[1] || 52.2297);
+    const activeLng = Number(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
+
+    const isZoneChanged = selectedZone !== activeZone;
+    const isAddressChanged = address.trim() !== activeAddress.trim();
+    const isCoordsChanged = Math.abs(lat - activeLat) > 0.00001 || Math.abs(lng - activeLng) > 0.00001;
+
+    const hasChanges = isZoneChanged || isAddressChanged || isCoordsChanged;
+
+    if (hasChanges) {
       setShowConfirmModal(true);
     } else {
-      handleSave();
+      triggerToast('No changes made to Zone or Location.');
     }
   };
 
@@ -247,9 +319,9 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] px-4">
           <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full shadow-2xl space-y-4">
-            <h3 className="text-[16px] font-bold text-on-surface">Zone Update Request</h3>
+            <h3 className="text-[16px] font-bold text-on-surface">Zone & Location Update Request</h3>
             <p className="text-[13px] text-on-surface-variant leading-relaxed">
-              If you update your zone, your profile will be sent to the admin for review. The admin can either approve or reject your zone update request. Do you want to continue?
+              Updating your zone or location will send your profile to the admin for review. Your request may be approved or rejected. Do you want to continue?
             </p>
             <div className="flex gap-3 pt-2">
               <button

@@ -592,7 +592,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     }
 
     const currentRestaurant = await FoodRestaurant.findById(restaurantId)
-        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber status')
+        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber status location zoneId')
         .lean();
 
     if (!currentRestaurant) {
@@ -893,31 +893,37 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         update.fssaiImage = toUrl(body.fssaiImage) || '';
     }
 
-    if (body.zoneId !== undefined && currentRestaurant.status === 'approved') {
-        const newZoneId = String(body.zoneId || '').trim();
-        const oldZoneId = currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '';
-        if (newZoneId && newZoneId !== oldZoneId) {
+    const hasZoneChange = body.zoneId !== undefined && String(body.zoneId || '').trim() !== (currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '');
+    const hasLocationChange = update.location !== undefined;
+
+    if ((hasZoneChange || hasLocationChange) && currentRestaurant.status === 'approved') {
+        update.zoneChangeStatus = 'pending';
+        update.zoneChangeRejectionReason = '';
+
+        const newZoneId = body.zoneId !== undefined ? String(body.zoneId || '').trim() : (currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '');
+        if (newZoneId && mongoose.Types.ObjectId.isValid(newZoneId)) {
             update.pendingZoneId = new mongoose.Types.ObjectId(newZoneId);
-            update.zoneChangeStatus = 'pending';
-            update.zoneChangeRejectionReason = '';
-
-            // Redirect active location to pendingLocation if location was updated
-            if (update.location) {
-                update.pendingLocation = update.location;
-                delete update.location;
-            }
-
-            // Remove active fields from update so they don't overwrite current ones
-            delete update.zoneId;
-            delete update.zoneName;
-            delete update.addressLine1;
-            delete update.addressLine2;
-            delete update.area;
-            delete update.city;
-            delete update.state;
-            delete update.pincode;
-            delete update.landmark;
+        } else {
+            update.pendingZoneId = currentRestaurant.zoneId;
         }
+
+        if (update.location) {
+            update.pendingLocation = update.location;
+        } else if (currentRestaurant.location) {
+            update.pendingLocation = currentRestaurant.location;
+        }
+
+        // Remove active fields from update so they don't overwrite current ones in DB
+        delete update.zoneId;
+        delete update.zoneName;
+        delete update.location;
+        delete update.addressLine1;
+        delete update.addressLine2;
+        delete update.area;
+        delete update.city;
+        delete update.state;
+        delete update.pincode;
+        delete update.landmark;
     }
 
     if (!Object.keys(update).length) {

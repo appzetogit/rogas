@@ -31,6 +31,8 @@ export default function RestaurantCommission() {
       type: "percentage",
       value: "10"
     },
+    platformCommissionVatPercent: "0",
+    foodVatPercent: "0",
     notes: ""
   })
   const [formErrors, setFormErrors] = useState({})
@@ -39,6 +41,8 @@ export default function RestaurantCommission() {
     restaurant: true,
     restaurantId: true,
     defaultCommission: true,
+    platformCommissionVatPercent: true,
+    foodVatPercent: true,
     status: true,
     actions: true,
   })
@@ -182,6 +186,8 @@ export default function RestaurantCommission() {
         type: "percentage",
         value: "10"
       },
+      platformCommissionVatPercent: "0",
+      foodVatPercent: "0",
       notes: ""
     })
     setFormErrors({})
@@ -237,6 +243,8 @@ export default function RestaurantCommission() {
             type: commissionData.defaultCommission?.type || "percentage",
             value: commissionData.defaultCommission?.value?.toString() || "10"
           },
+          platformCommissionVatPercent: (commissionData.platformCommissionVatPercent ?? 0).toString(),
+          foodVatPercent: (commissionData.foodVatPercent ?? 0).toString(),
           notes: commissionData.notes || ""
         })
         setFormErrors({})
@@ -281,12 +289,20 @@ export default function RestaurantCommission() {
     }
 
     if (!formData.defaultCommission.value || parseFloat(formData.defaultCommission.value) < 0) {
-      errors.defaultCommission = "Default commission value is required"
+      errors.defaultCommission = "Commission VAT value is required"
     }
 
     if (formData.defaultCommission.type === "percentage" && 
         (parseFloat(formData.defaultCommission.value) < 0 || parseFloat(formData.defaultCommission.value) > 100)) {
       errors.defaultCommission = "Percentage must be between 0-100"
+    }
+
+    if (parseFloat(formData.platformCommissionVatPercent) < 0 || parseFloat(formData.platformCommissionVatPercent) > 100) {
+      errors.platformCommissionVatPercent = "Must be between 0-100"
+    }
+
+    if (parseFloat(formData.foodVatPercent) < 0 || parseFloat(formData.foodVatPercent) > 100) {
+      errors.foodVatPercent = "Must be between 0-100"
     }
 
     setFormErrors(errors)
@@ -308,6 +324,8 @@ export default function RestaurantCommission() {
           type: formData.defaultCommission.type,
           value: parseFloat(formData.defaultCommission.value)
         },
+        platformCommissionVatPercent: parseFloat(formData.platformCommissionVatPercent) || 0,
+        foodVatPercent: parseFloat(formData.foodVatPercent) || 0,
         notes: formData.notes
       }
 
@@ -335,7 +353,9 @@ export default function RestaurantCommission() {
     si: "Serial Number",
     restaurant: "Restaurant Name",
     restaurantId: "Restaurant ID",
-    defaultCommission: "Default Commission",
+    defaultCommission: "Commission VAT %",
+    platformCommissionVatPercent: "Platform VAT %",
+    foodVatPercent: "Food VAT %",
     status: "Status",
     actions: "Actions",
   }
@@ -405,7 +425,17 @@ export default function RestaurantCommission() {
                     )}
                     {visibleColumns.defaultCommission && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Default Commission
+                        Commission VAT %
+                      </th>
+                    )}
+                    {visibleColumns.platformCommissionVatPercent && (
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Platform VAT %
+                      </th>
+                    )}
+                    {visibleColumns.foodVatPercent && (
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Food VAT %
                       </th>
                     )}
                     {visibleColumns.status && (
@@ -451,8 +481,22 @@ export default function RestaurantCommission() {
                               {commission.defaultCommission?.type === 'percentage' ? (
                                 <>{commission.defaultCommission.value}%</>
                               ) : (
-                                <>${commission.defaultCommission.value}</>
+                                <>₹{commission.defaultCommission.value}</>
                               )}
+                            </span>
+                          </td>
+                        )}
+                        {visibleColumns.platformCommissionVatPercent && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium text-slate-900">
+                              {commission.platformCommissionVatPercent ?? 0}%
+                            </span>
+                          </td>
+                        )}
+                        {visibleColumns.foodVatPercent && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium text-slate-900">
+                              {commission.foodVatPercent ?? 0}%
                             </span>
                           </td>
                         )}
@@ -562,10 +606,10 @@ export default function RestaurantCommission() {
               </div>
             )}
 
-            {/* Default Commission */}
+            {/* Commission VAT % */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Default Commission <span className="text-red-500">*</span>
+                Commission VAT % <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -578,12 +622,14 @@ export default function RestaurantCommission() {
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="amount">Fixed Amount (\u20B9)</option>
+                    <option value="amount">Fixed Amount (₹)</option>
                   </select>
                 </div>
                 <div>
                   <input
                     type="number"
+                    min="0"
+                    max="100"
                     step={formData.defaultCommission.type === "percentage" ? "0.1" : "0.01"}
                     value={formData.defaultCommission.value}
                     onChange={(e) => setFormData(prev => ({
@@ -600,6 +646,53 @@ export default function RestaurantCommission() {
                   )}
                 </div>
               </div>
+              <p className="text-xs text-slate-500 mt-1">Platform's commission deducted from vendor's gross earnings.</p>
+            </div>
+
+            {/* Platform Commission VAT % */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Platform Commission VAT %
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={formData.platformCommissionVatPercent}
+                onChange={(e) => setFormData(prev => ({ ...prev, platformCommissionVatPercent: e.target.value }))}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  formErrors.platformCommissionVatPercent ? "border-red-500" : "border-slate-300"
+                }`}
+                placeholder="e.g., 5"
+              />
+              {formErrors.platformCommissionVatPercent && (
+                <p className="text-xs text-red-500 mt-1">{formErrors.platformCommissionVatPercent}</p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">Additional VAT applied on platform commission (0–100%).</p>
+            </div>
+
+            {/* Food VAT % Per Meal */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Food VAT % Per Meal
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={formData.foodVatPercent}
+                onChange={(e) => setFormData(prev => ({ ...prev, foodVatPercent: e.target.value }))}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  formErrors.foodVatPercent ? "border-red-500" : "border-slate-300"
+                }`}
+                placeholder="e.g., 8"
+              />
+              {formErrors.foodVatPercent && (
+                <p className="text-xs text-red-500 mt-1">{formErrors.foodVatPercent}</p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">GST/food tax percentage deducted from vendor earnings per meal (0–100%).</p>
             </div>
 
             {/* Notes */}

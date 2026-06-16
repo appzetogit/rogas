@@ -16,6 +16,7 @@ import { logger } from "../../utils/logger.js";
 import { sendAdminResetOtpEmail } from "../../utils/email.js";
 import mongoose from "mongoose";
 import { creditReferralReward } from "../../modules/food/user/services/userWallet.service.js";
+import { getCurrentRestaurantProfile } from "../../modules/food/restaurant/services/restaurant.service.js";
 
 const ROLES = {
   USER: "USER",
@@ -728,63 +729,7 @@ export const getProfile = async (userId, role) => {
       profile = await FoodAdmin.findById(id).select("-password").lean();
       break;
     case ROLES.RESTAURANT:
-      {
-        const doc = await FoodRestaurant.findById(id).lean();
-        if (!doc) break;
-
-        const location =
-          doc.addressLine1 ||
-          doc.addressLine2 ||
-          doc.area ||
-          doc.city ||
-          doc.state ||
-          doc.pincode ||
-          doc.landmark
-            ? {
-                addressLine1: doc.addressLine1 || "",
-                addressLine2: doc.addressLine2 || "",
-                area: doc.area || "",
-                city: doc.city || "",
-                state: doc.state || "",
-                pincode: doc.pincode || "",
-                landmark: doc.landmark || "",
-              }
-            : null;
-
-        const menuImages = Array.isArray(doc.menuImages)
-          ? doc.menuImages
-              .map((m) => (m && (typeof m === "string" ? m : m.url)) || null)
-              .filter(Boolean)
-              .map((url) => ({ url, publicId: null }))
-          : [];
-
-        profile = {
-          id: doc._id,
-          _id: doc._id,
-          // Frontend expects "name" and "location" for restaurant screens.
-          name: doc.restaurantName || "",
-          restaurantName: doc.restaurantName || "",
-          cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
-          location,
-          ownerName: doc.ownerName || "",
-          ownerEmail: doc.ownerEmail || "",
-          ownerPhone: doc.ownerPhone || "",
-          primaryContactNumber: doc.primaryContactNumber || "",
-          profileImage: doc.profileImage ? { url: doc.profileImage } : null,
-          menuImages,
-          coverImages: [],
-          openingTime: doc.openingTime || null,
-          closingTime: doc.closingTime || null,
-          openDays: Array.isArray(doc.openDays) ? doc.openDays : [],
-          status: doc.status || null,
-          createdAt: doc.createdAt,
-          updatedAt: doc.updatedAt,
-          // These fields may not exist yet in DB, keep stable defaults for UI.
-          rating: typeof doc.rating === "number" ? doc.rating : 0,
-          totalRatings:
-            typeof doc.totalRatings === "number" ? doc.totalRatings : 0,
-        };
-      }
+      profile = await getCurrentRestaurantProfile(id);
       break;
     case ROLES.DELIVERY_PARTNER: {
       const partner = await FoodDeliveryPartner.findById(id).lean();

@@ -62,7 +62,11 @@ const foodTransactionSchema = new mongoose.Schema({
         restaurantCommission: { type: Number, required: true },
         riderShare: { type: Number, required: true },
         platformNetProfit: { type: Number, required: true },
-        taxAmount: { type: Number, default: 0 }
+        taxAmount: { type: Number, default: 0 },
+        // Detailed VAT breakdown (populated when new commission config is active)
+        commissionVatAmount: { type: Number, default: 0 },          // Commission VAT % deduction
+        platformCommissionVatAmount: { type: Number, default: 0 },  // Platform Commission VAT % deduction
+        foodVatAmount: { type: Number, default: 0 }                 // Food VAT % deduction
     },
 
     // Gateway / Provider Metadata

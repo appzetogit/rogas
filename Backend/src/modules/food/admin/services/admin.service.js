@@ -1575,6 +1575,8 @@ export async function getRestaurantCommissions() {
         restaurantName: c.restaurantId?.restaurantName || '',
         restaurant: c.restaurantId?._id ? { _id: c.restaurantId._id, name: c.restaurantId.restaurantName } : null,
         defaultCommission: c.defaultCommission || { type: 'percentage', value: 0 },
+        platformCommissionVatPercent: c.platformCommissionVatPercent ?? 0,
+        foodVatPercent: c.foodVatPercent ?? 0,
         notes: c.notes || '',
         status: c.status !== false
     }));
@@ -1615,6 +1617,8 @@ export async function getRestaurantCommissionById(id) {
         restaurant: doc.restaurantId?._id ? { _id: doc.restaurantId._id, name: doc.restaurantId.restaurantName } : null,
         restaurantName: doc.restaurantId?.restaurantName || '',
         defaultCommission: doc.defaultCommission || { type: 'percentage', value: 0 },
+        platformCommissionVatPercent: doc.platformCommissionVatPercent ?? 0,
+        foodVatPercent: doc.foodVatPercent ?? 0,
         notes: doc.notes || '',
         status: doc.status !== false
     };
@@ -1628,6 +1632,8 @@ export async function createRestaurantCommission(body) {
     const created = await FoodRestaurantCommission.create({
         restaurantId: body.restaurantId,
         defaultCommission: body.defaultCommission,
+        platformCommissionVatPercent: Number(body.platformCommissionVatPercent ?? 0),
+        foodVatPercent: Number(body.foodVatPercent ?? 0),
         notes: body.notes || '',
         status: true
     });
@@ -1638,7 +1644,12 @@ export async function updateRestaurantCommission(id, body) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const updated = await FoodRestaurantCommission.findByIdAndUpdate(
         id,
-        { $set: { defaultCommission: body.defaultCommission, notes: body.notes || '' } },
+        { $set: {
+            defaultCommission: body.defaultCommission,
+            platformCommissionVatPercent: Number(body.platformCommissionVatPercent ?? 0),
+            foodVatPercent: Number(body.foodVatPercent ?? 0),
+            notes: body.notes || ''
+        }},
         { new: true }
     ).lean();
     return updated;

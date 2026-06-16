@@ -1,5 +1,5 @@
 import { sendResponse, sendError } from '../../../../utils/response.js';
-import { getRestaurantFinance } from '../services/restaurantFinance.service.js';
+import { getRestaurantFinance, getVendorEarningsSummary } from '../services/restaurantFinance.service.js';
 
 export const getRestaurantFinanceController = async (req, res, next) => {
     try {
@@ -14,3 +14,19 @@ export const getRestaurantFinanceController = async (req, res, next) => {
     }
 };
 
+/**
+ * GET /api/v1/food/restaurant/earnings
+ * Returns a live dynamic earnings breakdown for the Vendor Panel.
+ */
+export const getVendorEarningsSummaryController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        if (!restaurantId) return sendError(res, 401, 'Restaurant authentication required');
+
+        const data = await getVendorEarningsSummary(restaurantId);
+        if (!data) return sendError(res, 404, 'Restaurant not found');
+        return sendResponse(res, 200, 'Earnings fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};

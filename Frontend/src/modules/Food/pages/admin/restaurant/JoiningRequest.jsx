@@ -852,13 +852,25 @@ export default function JoiningRequest() {
                             r?.landmark || loc?.landmark,
                           ].filter(Boolean).join(", ") || loc?.formattedAddress || loc?.address || r?.zone || null
                           return fullAddress ? (
-                            <div className="flex items-start gap-3">
-                              <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
-                              <div>
-                                <p className="text-xs text-slate-500">Address</p>
-                                <p className="text-sm font-medium text-slate-900">{fullAddress}</p>
+                            <>
+                              <div className="flex items-start gap-3">
+                                <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs text-slate-500">Address</p>
+                                  <p className="text-sm font-medium text-slate-900">{fullAddress}</p>
+                                </div>
                               </div>
-                            </div>
+                              <div className="flex items-start gap-3">
+                                <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs text-slate-500">Coordinates</p>
+                                  <p className="text-sm font-medium text-slate-900">
+                                    Lat: {loc?.latitude ?? loc?.coordinates?.[1] ?? "N/A"}, 
+                                    Lng: {loc?.longitude ?? loc?.coordinates?.[0] ?? "N/A"}
+                                  </p>
+                                </div>
+                              </div>
+                            </>
                           ) : null
                         })()}
                         {(r?.zoneId || r?.zone) && (

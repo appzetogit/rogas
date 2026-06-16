@@ -25,26 +25,45 @@ async function getActiveRestaurantCommissionRules() {
 
 export function computeRestaurantCommissionAmount(baseAmount, rule) {
   const safeBase = Math.max(0, Number(baseAmount) || 0);
-  if (!Number.isFinite(safeBase) || safeBase < 0) return 0;
+  if (!Number.isFinite(safeBase) || safeBase < 0) return { commissionAmount: 0, commissionType: 'percentage', commissionValue: 0, baseAmount: 0, platformCommissionVatAmount: 0, foodVatAmount: 0, totalDeductions: 0, netVendorAmount: 0 };
 
   const commissionType = rule?.defaultCommission?.type || 'percentage';
-  const commissionValue = Math.max(
-    0,
-    Number(rule?.defaultCommission?.value ?? 0) || 0
-  );
+  const commissionValue = Math.max(0, Number(rule?.defaultCommission?.value ?? 0) || 0);
+  const platformVatPercent = Math.max(0, Number(rule?.platformCommissionVatPercent ?? 0) || 0);
+  const foodVatPercent = Math.max(0, Number(rule?.foodVatPercent ?? 0) || 0);
 
+  // 1. Commission VAT (existing field, now semantically "Commission VAT %")
   let commissionAmount = 0;
   if (commissionType === 'percentage') {
     commissionAmount = safeBase * (commissionValue / 100);
   } else if (commissionType === 'amount') {
     commissionAmount = commissionValue;
   }
-
-  // Round to 2 decimals and clamp to [0, base]
   commissionAmount = Math.round((commissionAmount || 0) * 100) / 100;
   commissionAmount = Math.max(0, Math.min(commissionAmount, safeBase));
 
-  return { commissionAmount, commissionType, commissionValue, baseAmount: safeBase };
+  // 2. Platform Commission VAT %
+  let platformCommissionVatAmount = Math.round((safeBase * (platformVatPercent / 100)) * 100) / 100;
+  platformCommissionVatAmount = Math.max(0, platformCommissionVatAmount);
+
+  // 3. Food VAT % Per Meal
+  let foodVatAmount = Math.round((safeBase * (foodVatPercent / 100)) * 100) / 100;
+  foodVatAmount = Math.max(0, foodVatAmount);
+
+  // Total deductions & net vendor amount
+  const totalDeductions = Math.round((commissionAmount + platformCommissionVatAmount + foodVatAmount) * 100) / 100;
+  const netVendorAmount = Math.max(0, Math.round((safeBase - totalDeductions) * 100) / 100);
+
+  return {
+    commissionAmount,
+    commissionType,
+    commissionValue,
+    platformCommissionVatAmount,
+    foodVatAmount,
+    totalDeductions,
+    netVendorAmount,
+    baseAmount: safeBase
+  };
 }
 
 export async function getRestaurantCommissionSnapshot(orderDoc) {
@@ -57,6 +76,10 @@ export async function getRestaurantCommissionSnapshot(orderDoc) {
       commissionAmount: 0,
       commissionType: 'percentage',
       commissionValue: 0,
+      platformCommissionVatAmount: 0,
+      foodVatAmount: 0,
+      totalDeductions: 0,
+      netVendorAmount: 0,
       baseAmount,
     };
   }
@@ -73,6 +96,10 @@ export async function getRestaurantCommissionSnapshot(orderDoc) {
       commissionAmount: 0,
       commissionType: 'percentage',
       commissionValue: 0,
+      platformCommissionVatAmount: 0,
+      foodVatAmount: 0,
+      totalDeductions: 0,
+      netVendorAmount: 0,
       baseAmount,
     };
   }
@@ -84,7 +111,8 @@ export async function getRestaurantCommissionSnapshot(orderDoc) {
  * Creates an initial 'pending' transaction when an order is created.
  */
 export async function createInitialTransaction(order) {
-    const { commissionAmount } = await getRestaurantCommissionSnapshot(order);
+    const commissionSnapshot = await getRestaurantCommissionSnapshot(order);
+    const { commissionAmount, platformCommissionVatAmount = 0, foodVatAmount = 0, totalDeductions = 0 } = commissionSnapshot;
     
     // Split logic
     const totalCustomerPaid = order.pricing?.total || 0;
@@ -96,7 +124,11 @@ export async function createInitialTransaction(order) {
         Number.isFinite(restaurantCommissionFromOrder) && restaurantCommissionFromOrder > 0
             ? restaurantCommissionFromOrder
             : (commissionAmount || 0);
-    const restaurantNet = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission;
+
+    // Net vendor share: subtotal + packagingFee minus all deductions (commission + platform vat + food vat)
+    const grossBase = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0);
+    const totalVatDeductions = totalDeductions > 0 ? totalDeductions : restaurantCommission;
+    const restaurantNet = Math.max(0, grossBase - totalVatDeductions);
     
     // Clamp to 0 to avoid Mongoose validation errors (min: 0) on FoodTransaction schema
     const calculatedPlatformNetProfit = (order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare;
@@ -143,11 +175,14 @@ export async function createInitialTransaction(order) {
         },
         amounts: {
             totalCustomerPaid,
-            restaurantShare: Math.max(0, restaurantNet),
+            restaurantShare: restaurantNet,
             restaurantCommission,
             riderShare,
             platformNetProfit,
-            taxAmount: order.pricing?.tax || 0
+            taxAmount: order.pricing?.tax || 0,
+            commissionVatAmount: Math.round((commissionAmount || 0) * 100) / 100,
+            platformCommissionVatAmount: Math.round((platformCommissionVatAmount || 0) * 100) / 100,
+            foodVatAmount: Math.round((foodVatAmount || 0) * 100) / 100
         },
         gateway: {
             razorpayOrderId: order.payment?.razorpay?.orderId,
