@@ -15,7 +15,8 @@ import { EarningsView } from "./EarningsView";
 import { ProfileView } from "./ProfileView";
 import { MyShiftsView } from "./MyShiftsView";
 import { DemandHeatmapView } from "./DemandHeatmapView";
-import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone } from "lucide-react";
+import { RoutesView } from "./RoutesView";
+import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History } from "lucide-react";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
 import { dmbDeliveryAPI } from "../../../services/api";
@@ -41,6 +42,7 @@ function NewDeliveryDashboard() {
   const navigate = useNavigate();
 
   const getScreenFromPath = (pathname) => {
+    if (pathname.includes('/routes') || pathname.includes('/history')) return 'routes';
     if (pathname.includes('/route')) return 'route';
     if (pathname.includes('/earn') || pathname.includes('/pocket')) return 'earnings';
     if (pathname.includes('/profile')) return 'profile';
@@ -336,6 +338,8 @@ function NewDeliveryDashboard() {
             else setCurrentScreen("route");
           }}
         />;
+      case "routes":
+        return <RoutesView />;
       case "route":
         const totalEarnings = orders.reduce((sum, o) => sum + (o.riderEarning || 0), 0);
         return <RouteView
@@ -557,6 +561,14 @@ function NewDeliveryDashboard() {
         >
           <Home className="w-4.5 h-4.5" />
           <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
+        </button>
+
+        <button
+          onClick={() => { navigate('/food/delivery/routes'); setCurrentScreen("routes"); }}
+          className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "routes" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
+        >
+          <History className="w-4.5 h-4.5" />
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Routes</span>
         </button>
 
         <button

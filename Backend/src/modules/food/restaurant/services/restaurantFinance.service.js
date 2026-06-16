@@ -274,6 +274,10 @@ export async function getVendorEarningsSummary(restaurantId) {
     const recentTransactions = [];
 
     for (const tx of allTransactions) {
+        const order = tx.orderId || {};
+        if (order.orderStatus !== 'delivered') {
+            continue;
+        }
         totalOrders++;
         const gross = Number(tx.amounts?.totalCustomerPaid || 0);
         const netShare = Number(tx.amounts?.restaurantShare || 0);

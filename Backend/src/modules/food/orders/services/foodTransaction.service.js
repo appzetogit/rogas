@@ -228,6 +228,40 @@ export async function updateTransactionStatus(orderId, kind, details = {}) {
         transaction.payment.method = details.paymentMethod;
     }
 
+    // Recalculate commission snapshot and update amounts if order status is 'delivered'
+    try {
+        const FoodOrder = mongoose.model('FoodOrder');
+        const order = await FoodOrder.findById(orderId);
+        if (order && order.orderStatus === 'delivered') {
+            const commissionSnapshot = await getRestaurantCommissionSnapshot(order);
+            const { commissionAmount, platformCommissionVatAmount = 0, foodVatAmount = 0, totalDeductions = 0 } = commissionSnapshot;
+            
+            const grossBase = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0);
+            const totalVatDeductions = totalDeductions > 0 ? totalDeductions : commissionAmount;
+            const restaurantNet = Math.max(0, grossBase - totalVatDeductions);
+            
+            transaction.amounts.restaurantCommission = commissionAmount;
+            transaction.amounts.restaurantShare = restaurantNet;
+            transaction.amounts.commissionVatAmount = Math.round((commissionAmount || 0) * 100) / 100;
+            transaction.amounts.platformCommissionVatAmount = Math.round((platformCommissionVatAmount || 0) * 100) / 100;
+            transaction.amounts.foodVatAmount = Math.round((foodVatAmount || 0) * 100) / 100;
+            
+            // Recalculate platform net profit
+            const riderShare = transaction.amounts.riderShare || 0;
+            const calculatedPlatformNetProfit = (order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + commissionAmount - riderShare;
+            transaction.amounts.platformNetProfit = Math.max(0, calculatedPlatformNetProfit);
+            
+            if (order.pricing) {
+                await FoodOrder.updateOne(
+                    { _id: orderId },
+                    { $set: { 'pricing.restaurantCommission': commissionAmount } }
+                );
+            }
+        }
+    } catch (err) {
+        console.error('Error recalculating delivered order commission:', err.message);
+    }
+
     transaction.history.push({
         kind,
         amount: transaction.amounts.totalCustomerPaid,

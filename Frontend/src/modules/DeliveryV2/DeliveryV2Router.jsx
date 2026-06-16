@@ -50,6 +50,7 @@ const DeliveryV2Router = () => {
         {/* Protected Core Routes */}
         <Route path="/" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />
+        <Route path="/routes" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />
         <Route path="/route" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />
         <Route path="/earn" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />
         <Route path="/pocket" element={<ProtectedRoute><NewDeliveryDashboard /></ProtectedRoute>} />

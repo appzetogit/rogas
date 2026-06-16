@@ -50,13 +50,32 @@ export const processPaymentJob = async (job) => {
  * Split money to all parties.
  */
 async function handleDeliveryCompleted(data) {
-    const {
+    let {
         orderMongoId, orderId,
         restaurantId, deliveryPartnerId,
         riderEarning = 0, platformProfit = 0,
         commissionAmount = 0,
         total = 0, paymentMethod
     } = data;
+
+    // Resolve from database transaction as the source of truth if fields are missing
+    try {
+        const mongoose = await import('mongoose');
+        const { FoodTransaction } = await import('../../modules/food/orders/models/foodTransaction.model.js');
+        const tx = await FoodTransaction.findOne({ orderId: new mongoose.default.Types.ObjectId(orderMongoId) }).lean();
+        
+        if (tx) {
+            restaurantId = restaurantId || tx.restaurantId?.toString();
+            deliveryPartnerId = deliveryPartnerId || tx.deliveryPartnerId?.toString();
+            commissionAmount = commissionAmount || tx.amounts?.restaurantShare || 0;
+            riderEarning = riderEarning || tx.amounts?.riderShare || 0;
+            platformProfit = platformProfit || tx.amounts?.platformNetProfit || 0;
+            total = total || tx.amounts?.totalCustomerPaid || 0;
+            paymentMethod = paymentMethod || tx.paymentMethod || data.payMethod || 'cash';
+        }
+    } catch (err) {
+        logger.error(`[PaymentProcessor] Failed to resolve transaction from DB: ${err.message}`);
+    }
 
     // 1. Credit restaurant wallet with their commission (payout)
     if (restaurantId && commissionAmount > 0) {
