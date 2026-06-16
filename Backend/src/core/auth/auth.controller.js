@@ -13,6 +13,7 @@ import {
   changeAdminPassword,
   requestAdminForgotPasswordOtp,
   resetAdminPasswordWithOtp,
+  checkPhoneAlreadyExists,
 } from "./auth.service.js";
 import { validateUserOtpRequestDto } from "../../dtos/auth/userOtpRequest.dto.js";
 import { validateUserOtpVerifyDto } from "../../dtos/auth/userOtpVerify.dto.js";
@@ -205,6 +206,22 @@ export const resetAdminPasswordWithOtpController = async (req, res, next) => {
     await resetAdminPasswordWithOtp(email, otp, newPassword);
     return sendResponse(res, 200, "Password reset successfully", {
       success: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkPhoneRegisteredController = async (req, res, next) => {
+  try {
+    const { phone, role } = req.body;
+    if (!phone || !role) {
+      return res.status(400).json({ success: false, message: "Phone and role are required" });
+    }
+    const exists = await checkPhoneAlreadyExists(phone, role);
+    return res.status(200).json({
+      success: true,
+      exists
     });
   } catch (error) {
     next(error);

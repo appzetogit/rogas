@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@food/components/ui/select"
-import { deliveryAPI } from "@food/api"
+import { deliveryAPI, authAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import loginBg from "@food/assets/deliveryloginbanner.png"
 import { useCompanyName } from "@food/hooks/useCompanyName"
@@ -217,6 +217,15 @@ export default function DeliverySignup() {
       // Backend: delivery partner must register first (details + documents), then login with OTP.
       // Save name + phone for Step1 (details) and go to registration form.
       const rawPhone = `${selectedCountry.code}${formData.phone.replace(/\D/g, "")}`;
+      
+      // Pre-validate phone existence
+      const checkRes = await authAPI.checkPhoneRegistered(rawPhone, "DELIVERY_PARTNER");
+      if (checkRes.data?.exists || checkRes.exists) {
+        setApiError("This phone number is already registered. Please log in using your existing account.");
+        setIsLoading(false);
+        return;
+      }
+
       const signupDetails = {
         name: formData.name.trim(),
         phone: rawPhone,

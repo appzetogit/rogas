@@ -278,6 +278,13 @@ export default function CustomerAppMain() {
               onSendOtp={async (phone, name) => {
                 try {
                   const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
+                  // Pre-validate phone existence
+                  const checkRes = await authAPI.checkPhoneRegistered(fullPhone, "USER");
+                  if (checkRes.data?.exists || checkRes.exists) {
+                    showToast("This phone number is already registered. Please log in using your existing account.");
+                    navigate("/user/auth/login");
+                    return;
+                  }
                   await authAPI.sendOTP(fullPhone);
                   setAuthMode("signup");
                   setPhoneNumber(fullPhone);

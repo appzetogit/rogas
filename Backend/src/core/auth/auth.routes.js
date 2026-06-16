@@ -13,12 +13,15 @@ import {
     updateAdminProfileController,
     changeAdminPasswordController,
     requestAdminForgotPasswordOtpController,
-    resetAdminPasswordWithOtpController
+    resetAdminPasswordWithOtpController,
+    checkPhoneRegisteredController
 } from './auth.controller.js';
 import { authMiddleware, requireAdmin } from './auth.middleware.js';
 import { authRateLimiter } from '../../middleware/rateLimit.js';
 
 const router = express.Router();
+
+router.post('/check-phone-registered', authRateLimiter, checkPhoneRegisteredController);
 
 // router.use(authRateLimiter); // Removed global application to avoid rate-limiting /me or /refresh-token too strictly
 

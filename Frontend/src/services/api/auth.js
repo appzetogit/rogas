@@ -310,3 +310,13 @@ export function verifyDeliveryOtp(phone, otp, fcmToken = null, platform = "web")
     ...(fcmToken ? { fcmToken, platform } : {}),
   });
 }
+
+export function checkPhoneRegistered(phone, role) {
+  try {
+    const normalized = validateAndNormalizePhone(phone);
+    return apiClient.post("/food/auth/check-phone-registered", { phone: normalized, role });
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+

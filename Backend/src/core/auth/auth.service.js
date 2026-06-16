@@ -203,6 +203,53 @@ export const checkPhoneConflict = async (phone, expectedRole) => {
   }
 };
 
+export const checkPhoneAlreadyExists = async (phone, role) => {
+  if (!phone) return false;
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return false;
+  const last10 = digits.slice(-10);
+  const candidates = [phone, digits, last10].filter(Boolean);
+
+  if (role === "USER") {
+    const userQuery = {
+      $or: [
+        { phone: { $in: candidates } },
+        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
+      ]
+    };
+    const user = await FoodUser.findOne(userQuery).lean();
+    return !!user;
+  }
+
+  if (role === "RESTAURANT") {
+    const phoneOrFields = (field) => [
+      { [field]: { $in: candidates } },
+      ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
+    ];
+    const restaurant = await FoodRestaurant.findOne({
+      $or: [
+        ...phoneOrFields("ownerPhone"),
+        ...phoneOrFields("primaryContactNumber"),
+        ...phoneOrFields("ownerPhoneDigits"),
+        ...phoneOrFields("ownerPhoneLast10"),
+      ],
+    }).lean();
+    return restaurant && restaurant.status !== 'rejected';
+  }
+
+  if (role === "DELIVERY_PARTNER") {
+    const deliveryPartner = await FoodDeliveryPartner.findOne({
+      $or: [
+        { phone: { $in: candidates } },
+        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
+      ]
+    }).lean();
+    return deliveryPartner && deliveryPartner.status !== 'rejected';
+  }
+
+  return false;
+};
+
 export const requestUserOtp = async (phone) => {
   validatePhoneCountryAndLength(phone);
   await checkPhoneConflict(phone, "USER");

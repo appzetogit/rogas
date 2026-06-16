@@ -30,7 +30,7 @@ import SubViewsOverlay from './components/SubViewsOverlay';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
-import { dmbVendorAPI } from '../../services/api/index';
+import { dmbVendorAPI, authAPI } from '../../services/api/index';
 
 export default function App() {
   const navigate = useNavigate();
@@ -498,6 +498,13 @@ export default function App() {
             <PhoneScreen mode="register" onBack={() => navigate('/vendor/welcome')} onSendOtp={async (p) => {
               try {
                 const fullPhone = p.startsWith('+') ? p : '+48' + p;
+                // Pre-validate phone existence
+                const checkRes = await authAPI.checkPhoneRegistered(fullPhone, "RESTAURANT");
+                if (checkRes.data?.exists || checkRes.exists) {
+                  triggerGlobalToast("This phone number is already registered. Please log in using your existing account.");
+                  navigate('/vendor/auth/login-phone');
+                  return;
+                }
                 await requestRestaurantOtp(fullPhone);
                 setAuthPhone(fullPhone);
                 triggerGlobalToast('OTP sent successfully!');

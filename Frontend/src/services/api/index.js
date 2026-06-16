@@ -120,6 +120,9 @@ export const authAPI = {
         : null);
     return authService.logout(token, fcmToken, platform);
   },
+  checkPhoneRegistered: (phone, role) => {
+    return authService.checkPhoneRegistered(phone, role);
+  },
 };
 
 export const supportAPI = {
