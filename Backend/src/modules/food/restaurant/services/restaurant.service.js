@@ -141,6 +141,7 @@ const toRestaurantProfile = (doc) => {
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
+        zoneName: doc.zoneName || '',
         cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
         location,
         ownerName: doc.ownerName || '',
@@ -188,7 +189,11 @@ const toRestaurantProfile = (doc) => {
         approvedAt: doc.approvedAt,
         pendingUpdateReason: doc.pendingUpdateReason,
         rating: normalizeRatingValue(doc.rating),
-        totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
+        totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
+        pendingZoneId: doc.pendingZoneId ? String(doc.pendingZoneId) : '',
+        zoneChangeStatus: doc.zoneChangeStatus || 'none',
+        zoneChangeRejectionReason: doc.zoneChangeRejectionReason || '',
+        pendingLocation: doc.pendingLocation || null
     };
 };
 
@@ -384,6 +389,14 @@ export const registerRestaurant = async (payload, files) => {
             }
         }
 
+        let zoneName = "";
+        if (zoneId && mongoose.Types.ObjectId.isValid(String(zoneId).trim())) {
+            const zoneDoc = await FoodZone.findById(String(zoneId).trim()).lean();
+            if (zoneDoc) {
+                zoneName = zoneDoc.name || zoneDoc.zoneName || "";
+            }
+        }
+
         const restaurant = await FoodRestaurant.create({
             restaurantName,
             restaurantNameNormalized,
@@ -398,6 +411,7 @@ export const registerRestaurant = async (payload, files) => {
             zoneId: zoneId && mongoose.Types.ObjectId.isValid(String(zoneId).trim())
                 ? new mongoose.Types.ObjectId(String(zoneId).trim())
                 : undefined,
+            zoneName,
             // Store unified location object (geo + address).
             location: {
                 type: 'Point',
@@ -507,7 +521,13 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'approvedAt',
                 'pendingUpdateReason',
                 'createdAt',
-                'updatedAt'
+                'updatedAt',
+                'zoneId',
+                'zoneName',
+                'pendingZoneId',
+                'pendingLocation',
+                'zoneChangeStatus',
+                'zoneChangeRejectionReason'
             ].join(' ')
         )
         .lean();
@@ -661,9 +681,14 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
 
     if (body.zoneId !== undefined) {
         const zoneId = String(body.zoneId || '').trim();
-        update.zoneId = zoneId && mongoose.Types.ObjectId.isValid(zoneId)
-            ? new mongoose.Types.ObjectId(zoneId)
-            : undefined;
+        if (zoneId && mongoose.Types.ObjectId.isValid(zoneId)) {
+            update.zoneId = new mongoose.Types.ObjectId(zoneId);
+            const zoneDoc = await FoodZone.findById(zoneId).lean();
+            update.zoneName = zoneDoc ? (zoneDoc.name || zoneDoc.zoneName || "") : "";
+        } else {
+            update.zoneId = undefined;
+            update.zoneName = "";
+        }
     }
 
     // Bank + UPI fields (Explore -> Update Bank Details page)
@@ -868,6 +893,33 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         update.fssaiImage = toUrl(body.fssaiImage) || '';
     }
 
+    if (body.zoneId !== undefined && currentRestaurant.status === 'approved') {
+        const newZoneId = String(body.zoneId || '').trim();
+        const oldZoneId = currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '';
+        if (newZoneId && newZoneId !== oldZoneId) {
+            update.pendingZoneId = new mongoose.Types.ObjectId(newZoneId);
+            update.zoneChangeStatus = 'pending';
+            update.zoneChangeRejectionReason = '';
+
+            // Redirect active location to pendingLocation if location was updated
+            if (update.location) {
+                update.pendingLocation = update.location;
+                delete update.location;
+            }
+
+            // Remove active fields from update so they don't overwrite current ones
+            delete update.zoneId;
+            delete update.zoneName;
+            delete update.addressLine1;
+            delete update.addressLine2;
+            delete update.area;
+            delete update.city;
+            delete update.state;
+            delete update.pincode;
+            delete update.landmark;
+        }
+    }
+
     if (!Object.keys(update).length) {
         return getCurrentRestaurantProfile(restaurantId);
     }
@@ -876,7 +928,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     const updatedFields = Object.keys(update);
     let reason = 'Profile Update';
 
-    if (updatedFields.includes('zoneId')) {
+    if (updatedFields.includes('pendingZoneId') || updatedFields.includes('zoneId')) {
         reason = 'Zone Update';
     } else if (updatedFields.some(f => ['accountNumber', 'ifscCode', 'accountHolderName', 'upiId'].includes(f))) {
         reason = 'Financial Details Update';
@@ -898,8 +950,18 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         reason = 'Restaurant Name Change';
     }
 
-    update.pendingUpdateReason = reason;
-    update.status = 'pending';
+    const nonZoneFields = updatedFields.filter(f => !['pendingZoneId', 'pendingLocation', 'zoneChangeStatus', 'zoneChangeRejectionReason', 'pendingUpdateReason'].includes(f));
+    const isZoneUpdateForApproved = currentRestaurant.status === 'approved' &&
+        (updatedFields.includes('pendingZoneId') || updatedFields.includes('zoneChangeStatus')) &&
+        nonZoneFields.length === 0;
+
+    if (isZoneUpdateForApproved) {
+        update.pendingUpdateReason = 'Zone Update';
+        // Keep status as approved, do NOT set update.status = 'pending'
+    } else {
+        update.pendingUpdateReason = reason;
+        update.status = 'pending';
+    }
 
     try {
         const doc = await FoodRestaurant.findByIdAndUpdate(
@@ -958,7 +1020,12 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'upiQrImage',
                     'estimatedDeliveryTime',
                     'estimatedDeliveryTimeMinutes',
-                    'zoneId'
+                    'zoneId',
+                    'zoneName',
+                    'pendingZoneId',
+                    'pendingLocation',
+                    'zoneChangeStatus',
+                    'zoneChangeRejectionReason'
                 ].join(' ')
             }
         ).lean();

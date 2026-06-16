@@ -19,6 +19,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   const [lat, setLat] = useState(profile?.location?.latitude || profile?.location?.coordinates?.[1] || 52.2297);
   const [lng, setLng] = useState(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
   const [showMap, setShowMap] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   
   const hasSavedLocation = profile?.zoneId || profile?.location?.address || profile?.address;
   const [isEditing, setIsEditing] = useState(!hasSavedLocation);
@@ -75,7 +76,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
 
   const handleSave = async () => {
     try {
-      await restaurantAPI.updateProfile({
+      const response = await restaurantAPI.updateProfile({
         zoneId: selectedZone,
         location: {
           latitude: lat,
@@ -84,11 +85,24 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
           formattedAddress: address
         }
       });
-      onSave({ zoneId: selectedZone, location: { latitude: lat, longitude: lng, address, formattedAddress: address } });
-      triggerToast('Location & Zone updated successfully!');
+      if (response?.data?.data?.restaurant) {
+        onSave(response.data.data.restaurant);
+      } else {
+        onSave({ zoneId: selectedZone, location: { latitude: lat, longitude: lng, address, formattedAddress: address } });
+      }
+      triggerToast('Location & Zone update request submitted successfully!');
       onBack();
     } catch (err) {
       triggerToast('Failed to update location');
+    }
+  };
+
+  const handleSaveClick = () => {
+    const isZoneChanged = selectedZone && selectedZone !== (profile?.zoneId || '');
+    if (isZoneChanged) {
+      setShowConfirmModal(true);
+    } else {
+      handleSave();
     }
   };
 
@@ -106,6 +120,27 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
         {!isEditing ? (
           <section className="space-y-4">
             <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Saved Location & Zone</h2>
+            
+            {/* Display Rejection Banner if rejected */}
+            {profile?.zoneChangeStatus === 'rejected' && (
+              <div className="bg-error/10 border border-error/25 rounded-xl p-3 flex items-start gap-2.5 text-error text-[12px] font-medium animate-fadeIn">
+                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">warning</span>
+                <span>
+                  Your recent zone change request was rejected. Reason: <strong>{profile.zoneChangeRejectionReason || 'Rejected by admin'}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Display Pending Banner if pending */}
+            {profile?.zoneChangeStatus === 'pending' && (
+              <div className="bg-primary/10 border border-primary/25 rounded-xl p-3 flex items-start gap-2.5 text-primary text-[12px] font-medium animate-fadeIn">
+                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">info</span>
+                <span>
+                  Your request to change zone to <strong>{zones.find(z => z._id === profile.pendingZoneId)?.name || 'New Zone'}</strong> is under review by the admin.
+                </span>
+              </div>
+            )}
+
             <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
               <div>
                 <p className="text-[10px] text-outline uppercase font-bold mb-1">Service Zone</p>
@@ -122,7 +157,12 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
             </div>
             <button
               onClick={() => setIsEditing(true)}
-              className="w-full h-12 border border-primary text-primary rounded-xl font-bold text-[14px] active:scale-95 transition-all flex items-center justify-center gap-2"
+              disabled={profile?.zoneChangeStatus === 'pending'}
+              className={`w-full h-12 border rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all ${
+                profile?.zoneChangeStatus === 'pending'
+                  ? 'border-outline-variant/30 text-outline/50 bg-surface-container/30 cursor-not-allowed'
+                  : 'border-primary text-primary active:scale-95'
+              }`}
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
               Change Location & Zone
@@ -194,7 +234,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
             </section>
 
             <button
-              onClick={handleSave}
+              onClick={handleSaveClick}
               className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             >
               Save Location & Zone
@@ -202,6 +242,35 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
           </>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] px-4">
+          <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full shadow-2xl space-y-4">
+            <h3 className="text-[16px] font-bold text-on-surface">Zone Update Request</h3>
+            <p className="text-[13px] text-on-surface-variant leading-relaxed">
+              If you update your zone, your profile will be sent to the admin for review. The admin can either approve or reject your zone update request. Do you want to continue?
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 h-11 border border-outline-variant rounded-xl font-bold text-[13px] text-outline hover:bg-surface-container active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  handleSave();
+                }}
+                className="flex-1 h-11 bg-primary text-on-primary rounded-xl font-bold text-[13px] shadow-sm hover:brightness-95 active:scale-95 transition-all"
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

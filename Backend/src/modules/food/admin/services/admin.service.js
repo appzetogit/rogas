@@ -2320,16 +2320,69 @@ export async function getPendingRestaurants() {
     } catch (e) {
         // ignore error if model is already registered
     }
-    const restaurants = await FoodRestaurant.find({ status: { $in: ['pending', 'rejected'] } })
+    const restaurants = await FoodRestaurant.find({
+        $or: [
+            { status: { $in: ['pending', 'rejected'] } },
+            { zoneChangeStatus: 'pending' },
+            { zoneChangeStatus: 'rejected' }
+        ]
+    })
         .populate('zoneId', 'name zoneName')
+        .populate('pendingZoneId', 'name zoneName')
         .populate('kitchenPartnerId', 'companyName')
         .sort({ createdAt: -1 })
         .lean();
-    return restaurants.map((r, i) => ({
-        ...r,
-        sl: i + 1,
-        zone: r.zoneId?.zoneName || r.zoneId?.name || null,
-    }));
+    return restaurants.map((r, i) => {
+        const isZoneChange = r.zoneChangeStatus === 'pending' || r.zoneChangeStatus === 'rejected';
+        
+        let zoneName = r.zoneId?.zoneName || r.zoneId?.name || null;
+        let location = r.location;
+        let addressLine1 = r.addressLine1;
+        let addressLine2 = r.addressLine2;
+        let area = r.area;
+        let city = r.city;
+        let state = r.state;
+        let pincode = r.pincode;
+        let landmark = r.landmark;
+        let status = r.status;
+        let pendingUpdateReason = r.pendingUpdateReason;
+        let rejectionReason = r.rejectionReason;
+
+        if (isZoneChange) {
+            zoneName = r.pendingZoneId?.zoneName || r.pendingZoneId?.name || zoneName;
+            status = r.zoneChangeStatus;
+            pendingUpdateReason = 'Zone Change Request';
+            rejectionReason = r.zoneChangeRejectionReason;
+
+            if (r.pendingLocation) {
+                location = r.pendingLocation;
+                addressLine1 = r.pendingLocation.addressLine1 || addressLine1;
+                addressLine2 = r.pendingLocation.addressLine2 || addressLine2;
+                area = r.pendingLocation.area || area;
+                city = r.pendingLocation.city || city;
+                state = r.pendingLocation.state || state;
+                pincode = r.pendingLocation.pincode || pincode;
+                landmark = r.pendingLocation.landmark || landmark;
+            }
+        }
+
+        return {
+            ...r,
+            sl: i + 1,
+            zone: zoneName,
+            status,
+            pendingUpdateReason,
+            rejectionReason,
+            location,
+            addressLine1,
+            addressLine2,
+            area,
+            city,
+            state,
+            pincode,
+            landmark
+        };
+    });
 }
 
 export async function updateRestaurantById(id, body = {}) {
@@ -3337,31 +3390,73 @@ export async function createRestaurantByAdmin(body) {
 
 export async function approveRestaurant(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    const restaurant = await FoodRestaurant.findById(id);
+    if (!restaurant) return null;
+
+    let update = {};
+    let isZoneChange = restaurant.zoneChangeStatus === 'pending';
+
+    if (isZoneChange) {
+        let zoneName = "";
+        if (restaurant.pendingZoneId) {
+            const zoneDoc = await FoodZone.findById(restaurant.pendingZoneId).lean();
+            if (zoneDoc) {
+                zoneName = zoneDoc.name || zoneDoc.zoneName || "";
+            }
+        }
+        update = {
+            zoneId: restaurant.pendingZoneId,
+            zoneName,
+            zoneChangeStatus: 'approved',
+            zoneChangeRejectionReason: '',
+            pendingUpdateReason: undefined,
+            pendingZoneId: null,
+            pendingLocation: undefined
+        };
+
+        if (restaurant.pendingLocation) {
+            update.location = restaurant.pendingLocation;
+            update.addressLine1 = restaurant.pendingLocation.addressLine1 || restaurant.addressLine1;
+            update.addressLine2 = restaurant.pendingLocation.addressLine2 || restaurant.addressLine2;
+            update.area = restaurant.pendingLocation.area || restaurant.area;
+            update.city = restaurant.pendingLocation.city || restaurant.city;
+            update.state = restaurant.pendingLocation.state || restaurant.state;
+            update.pincode = restaurant.pendingLocation.pincode || restaurant.pincode;
+            update.landmark = restaurant.pendingLocation.landmark || restaurant.landmark;
+        }
+    } else {
+        update = {
+            status: 'approved',
+            approvedAt: new Date(),
+            rejectedAt: undefined,
+            rejectionReason: undefined,
+            pendingUpdateReason: undefined
+        };
+    }
+
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
-        {
-            $set: {
-                status: 'approved',
-                approvedAt: new Date(),
-                rejectedAt: undefined,
-                rejectionReason: undefined,
-                pendingUpdateReason: undefined
-            }
-        },
+        { $set: update },
         { new: true, runValidators: false }
     ).lean();
 
     if (updated) {
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
+            const title = isZoneChange ? 'Zone Update Approved 🗺️' : 'Congratulations! 🎉';
+            const body = isZoneChange
+                ? `Your request to update zone for "${updated.restaurantName}" has been approved by the admin.`
+                : `Your restaurant "${updated.restaurantName}" has been approved. You can now start receiving orders!`;
+
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated._id }],
                 {
-                    title: 'Congratulations! Ã°Å¸Å½â€°',
-                    body: `Your restaurant "${updated.restaurantName}" has been approved. You can now start receiving orders!`,
+                    title,
+                    body,
                     image: updated.profileImage || 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {
-                        type: 'restaurant_approved',
+                        type: isZoneChange ? 'restaurant_zone_approved' : 'restaurant_approved',
                         restaurantId: String(updated._id)
                     }
                 }
@@ -3375,31 +3470,53 @@ export async function approveRestaurant(id) {
 
 export async function rejectRestaurant(id, reason) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    const restaurant = await FoodRestaurant.findById(id);
+    if (!restaurant) return null;
+
+    let update = {};
+    let isZoneChange = restaurant.zoneChangeStatus === 'pending';
+
+    if (isZoneChange) {
+        update = {
+            zoneChangeStatus: 'rejected',
+            zoneChangeRejectionReason: typeof reason === 'string' ? reason.trim() : 'Rejected by admin',
+            pendingUpdateReason: undefined,
+            pendingZoneId: null,
+            pendingLocation: undefined
+        };
+    } else {
+        update = {
+            status: 'rejected',
+            rejectedAt: new Date(),
+            rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
+            approvedAt: null,
+            pendingUpdateReason: undefined
+        };
+    }
+
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
-        {
-            $set: {
-                status: 'rejected',
-                rejectedAt: new Date(),
-                rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
-                approvedAt: null,
-                pendingUpdateReason: undefined
-            }
-        },
+        { $set: update },
         { new: true, runValidators: false }
     ).lean();
 
     if (updated) {
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
+            const title = isZoneChange ? 'Zone Update Rejected 🗺️' : 'Update on Registration 📝';
+            const body = isZoneChange
+                ? `Your request to update zone for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Rejected by admin'}.`
+                : `Your restaurant registration for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Incomplete documents'}.`;
+
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated._id }],
                 {
-                    title: 'Update on Registration Ã°Å¸â€œâ€¹',
-                    body: `Your restaurant registration for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Incomplete documents'}.`,
+                    title,
+                    body,
                     image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {
-                        type: 'restaurant_rejected',
+                        type: isZoneChange ? 'restaurant_zone_rejected' : 'restaurant_rejected',
                         restaurantId: String(updated._id),
                         reason: reason || ''
                     }

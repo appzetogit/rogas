@@ -569,7 +569,7 @@ export default function App() {
                 formData.append('ownerPhone', authPhone);
                 formData.append('primaryContactNumber', authPhone);
                 formData.append('pureVegRestaurant', 'false');
-                formData.append('city', p.city);
+                formData.append('city', p.city || '');
                 formData.append('openingTime', '08:00');
                 formData.append('closingTime', '22:00');
                 formData.append('cuisines', 'Polish, Healthy');
@@ -591,6 +591,32 @@ export default function App() {
                 // Append coverImage/banner file
                 if (p.coverFile) {
                   formData.append('coverImage', p.coverFile);
+                }
+
+                // Append zone and location details
+                if (p.zoneId) {
+                  formData.append('zoneId', p.zoneId);
+                }
+                if (p.latitude) {
+                  formData.append('latitude', p.latitude);
+                }
+                if (p.longitude) {
+                  formData.append('longitude', p.longitude);
+                }
+                if (p.formattedAddress) {
+                  formData.append('formattedAddress', p.formattedAddress);
+                }
+                if (p.addressLine1) {
+                  formData.append('addressLine1', p.addressLine1);
+                }
+                if (p.area) {
+                  formData.append('area', p.area);
+                }
+                if (p.state) {
+                  formData.append('state', p.state);
+                }
+                if (p.pincode) {
+                  formData.append('pincode', p.pincode);
                 }
 
                 // Call real backend registration

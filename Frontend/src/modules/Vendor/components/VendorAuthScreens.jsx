@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { dmbVendorAPI } from '../../../services/api/index';
+import { dmbVendorAPI, zoneAPI } from '../../../services/api/index';
 import { SUPPORTED_COUNTRIES } from '../../../config/countries';
 import CountrySelector from '../../../shared/components/CountrySelector';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%'
+};
+
 
 
 export function PhoneScreen({ mode, onBack, onSendOtp }) {
@@ -194,14 +201,129 @@ export function OtpScreen({ phone, onVerify, onBack }) {
 
 
 export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) {
-  const [kitchenName, setKitchenName] = useState('Maria Kitchen');
-  const [phone, setPhone] = useState(initialPhone || '+48 789 123 456');
-  const [city, setCity] = useState('Warsaw — Mokotow');
+  const [kitchenName, setKitchenName] = useState('');
+  const [phone, setPhone] = useState(initialPhone || '');
   const [type, setType] = useState('Home Cook');
   const [licenceFile, setLicenceFile] = useState(null);
   const [licenceFileName, setLicenceFileName] = useState('');
   const [bannerFile, setBannerFile] = useState(null);
   const [bannerFileName, setBannerFileName] = useState('');
+
+  // Zone & Location additions
+  const [zones, setZones] = useState([]);
+  const [selectedZoneId, setSelectedZoneId] = useState('');
+  const [selectedZoneName, setSelectedZoneName] = useState('');
+  const [zoneSearch, setZoneSearch] = useState('');
+  const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
+  const zoneDropdownRef = useRef(null);
+
+  const [address, setAddress] = useState('');
+  const [lat, setLat] = useState(52.2297); // default Warsaw
+  const [lng, setLng] = useState(21.0122); // default Warsaw
+  const [addressDetails, setAddressDetails] = useState({
+    city: '',
+    area: '',
+    state: '',
+    pincode: '',
+    addressLine1: ''
+  });
+  const [showMap, setShowMap] = useState(false);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+  });
+
+  useEffect(() => {
+    zoneAPI.getPublicZones()
+      .then(res => {
+        const fetchedZones = res.data?.data?.zones || res.data?.zones || [];
+        setZones(fetchedZones);
+      })
+      .catch(err => {
+        console.error('Failed to load zones', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (zoneDropdownRef.current && !zoneDropdownRef.current.contains(event.target)) {
+        setIsZoneDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchAddressFromCoordinates = (latitude, longitude) => {
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          const formatted = results[0].formatted_address;
+          setAddress(formatted);
+          
+          const components = results[0].address_components;
+          let cityVal = '';
+          let areaVal = '';
+          let stateVal = '';
+          let pincodeVal = '';
+          let streetNumber = '';
+          let route = '';
+          
+          for (const component of components) {
+            const types = component.types;
+            if (types.includes('locality')) {
+              cityVal = component.long_name;
+            } else if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
+              areaVal = component.long_name;
+            } else if (types.includes('administrative_area_level_1')) {
+              stateVal = component.long_name;
+            } else if (types.includes('postal_code')) {
+              pincodeVal = component.long_name;
+            } else if (types.includes('street_number')) {
+              streetNumber = component.long_name;
+            } else if (types.includes('route')) {
+              route = component.long_name;
+            }
+          }
+          
+          setAddressDetails({
+            city: cityVal,
+            area: areaVal,
+            state: stateVal,
+            pincode: pincodeVal,
+            addressLine1: `${streetNumber} ${route}`.trim()
+          });
+        }
+      });
+    }
+  };
+
+  const handleLiveLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        setLat(latitude);
+        setLng(longitude);
+        fetchAddressFromCoordinates(latitude, longitude);
+        setShowMap(true);
+      }, (error) => {
+        alert('Failed to get live location. Please allow location permissions.');
+      });
+    } else {
+      alert('Geolocation is not supported by your browser');
+    }
+  };
+
+  const onMapClick = (e) => {
+    const latitude = e.latLng.lat();
+    const longitude = e.latLng.lng();
+    setLat(latitude);
+    setLng(longitude);
+    fetchAddressFromCoordinates(latitude, longitude);
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -220,6 +342,18 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   };
 
   const handleSubmit = () => {
+    if (!kitchenName.trim()) {
+      alert("Please enter your business / kitchen name!");
+      return;
+    }
+    if (!selectedZoneId) {
+      alert("Please select a service zone!");
+      return;
+    }
+    if (!address) {
+      alert("Please specify your business location/address!");
+      return;
+    }
     if (!licenceFileName) {
       alert("Please upload your EU food licence photo or PDF!");
       return;
@@ -231,12 +365,21 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
     onContinue({
       name: kitchenName,
       phone,
-      city,
+      city: addressDetails.city || selectedZoneName,
       type,
       licenceFile,
       licenceFileName,
       coverFile: bannerFile,
-      coverFileName: bannerFileName
+      coverFileName: bannerFileName,
+      zoneId: selectedZoneId,
+      zoneName: selectedZoneName,
+      latitude: String(lat),
+      longitude: String(lng),
+      formattedAddress: address,
+      addressLine1: addressDetails.addressLine1,
+      area: addressDetails.area,
+      state: addressDetails.state,
+      pincode: addressDetails.pincode
     });
   };
 
@@ -291,31 +434,125 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">CONTACT PHONE</label>
               <div className="relative">
                 <input
-                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-surface-container/30 border-outline-variant/30 text-outline/80 cursor-not-allowed outline-none"
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)} />
+                  readOnly={true}
+                  disabled={true}
+                />
 
-                <span className="absolute right-4 top-3 text-primary">
+                <span className="absolute right-4 top-3 text-outline">
                   <span className="material-symbols-outlined text-[20px]">call</span>
                 </span>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">CITY / ZONE</label>
+            {/* Searchable Zone Dropdown */}
+            <div className="space-y-1.5 relative" ref={zoneDropdownRef}>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">SERVICE ZONE</label>
               <div className="relative">
                 <input
-                  className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                  className="w-full h-12 px-4 pr-10 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
                   type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)} />
-
+                  placeholder="Search and select service zone..."
+                  value={zoneSearch}
+                  onChange={(e) => {
+                    setZoneSearch(e.target.value);
+                    setIsZoneDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsZoneDropdownOpen(true)}
+                />
                 <span className="absolute right-4 top-3 text-primary">
-                  <span className="material-symbols-outlined text-[20px]">location_on</span>
+                  <span className="material-symbols-outlined text-[20px]">
+                    {isZoneDropdownOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
+                  </span>
                 </span>
               </div>
+              {isZoneDropdownOpen && (
+                <div className="absolute z-[60] w-full mt-1 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {zones.filter(z => z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).length > 0 ? (
+                    zones.filter(z => z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).map(z => (
+                      <button
+                        key={z._id}
+                        type="button"
+                        className="w-full text-left px-4 py-3 text-[13px] hover:bg-primary-container/10 active:bg-primary-container/20 border-b border-outline-variant/10 last:border-0 transition-colors font-medium text-on-surface"
+                        onClick={() => {
+                          setSelectedZoneId(z._id);
+                          setSelectedZoneName(z.name);
+                          setZoneSearch(z.name);
+                          setIsZoneDropdownOpen(false);
+                        }}
+                      >
+                        {z.name}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-[12px] text-outline">No active zones found</div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Location Section */}
+            <div className="space-y-2 pt-1">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BUSINESS LOCATION & ADDRESS</label>
+              <div className="bg-surface-container-lowest rounded-lg border border-outline-variant/50 p-3.5 space-y-3 shadow-xs">
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:border-primary focus:border-2 transition-all font-medium text-on-surface"
+                  placeholder="Enter or select full business address..."
+                  rows={2}
+                />
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setShowMap(!showMap)} 
+                    className="flex-1 h-9 rounded-lg text-[11px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">location_on</span>
+                    {showMap ? 'Hide Map' : 'Set Pin on Map'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleLiveLocation} 
+                    className="flex-1 h-9 rounded-lg text-[11px] font-bold bg-primary text-on-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">my_location</span>
+                    Live Location
+                  </button>
+                </div>
+                
+                {showMap && (
+                  <div className="h-[200px] w-full rounded-lg overflow-hidden border border-outline-variant relative z-0 bg-surface-container-lowest">
+                    {isLoaded ? (
+                      <GoogleMap
+                        mapContainerStyle={mapContainerStyle}
+                        center={{ lat, lng }}
+                        zoom={13}
+                        onClick={onMapClick}
+                        options={{ disableDefaultUI: true, zoomControl: true }}
+                      >
+                        <Marker 
+                          position={{ lat, lng }} 
+                          draggable={true}
+                          onDragEnd={(e) => {
+                            const newLat = e.latLng.lat();
+                            const newLng = e.latLng.lng();
+                            setLat(newLat);
+                            setLng(newLng);
+                            fetchAddressFromCoordinates(newLat, newLng);
+                          }}
+                        />
+                      </GoogleMap>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-outline text-[12px]">Loading Map...</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
 
             <div className="space-y-3 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VENDOR TYPE</label>

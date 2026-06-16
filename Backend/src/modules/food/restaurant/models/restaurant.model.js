@@ -204,6 +204,28 @@ const restaurantSchema = new mongoose.Schema(
       ref: "FoodZone",
       index: true,
     },
+    zoneName: {
+      type: String,
+      default: "",
+    },
+    pendingZoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FoodZone",
+      default: null,
+    },
+    pendingLocation: {
+      type: geoPointSchema,
+      default: undefined,
+    },
+    zoneChangeStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
+    },
+    zoneChangeRejectionReason: {
+      type: String,
+      default: "",
+    },
     businessModel: {
       type: String,
       trim: true,
