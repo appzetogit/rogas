@@ -4648,6 +4648,13 @@ export async function approveDeliveryPartner(id, zoneId) {
     await partner.save();
 
     try {
+        const { notifyVendorsOfDriverUpdate } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.service.js');
+        await notifyVendorsOfDriverUpdate(partner);
+    } catch (e) {
+        logger.error(`[REALTIME-DRIVER-ASSIGN] Failed to notify vendors of driver approval/assign: ${e.message}`);
+    }
+
+    try {
         const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
         await notifyOwnerSafely(
             { ownerType: 'DELIVERY_PARTNER', ownerId: partner._id },

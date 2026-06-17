@@ -369,16 +369,12 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             </button>
           )}
 
-          {/* Request Delivery Partner */}
+          {/* Collection Status */}
           {pendingCount === 0 && readyCount > 0 && (
-            <button
-              onClick={handleRequestDeliveryPartner}
-              disabled={isRequestingDelivery}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-[18px]">local_shipping</span>
-              {isRequestingDelivery ? "Requesting..." : `Request Delivery Partner for ${activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)}`}
-            </button>
+            <div className="w-full bg-[#1F7A63]/10 border border-[#1F7A63]/20 text-[#1F7A63] py-3.5 px-4 rounded-2xl font-bold text-[13px] flex items-center justify-center gap-2.5 shadow-sm animate-fadeIn">
+              <span className="material-symbols-outlined text-[18px] animate-pulse">local_shipping</span>
+              <span>Collection PIN Generated — Waiting for Delivery Partner</span>
+            </div>
           )}
 
           {/* Orders List */}

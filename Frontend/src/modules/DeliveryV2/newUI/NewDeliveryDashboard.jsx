@@ -195,7 +195,9 @@ function NewDeliveryDashboard() {
             riderEarning: o.riderEarning || 0,
             pickupTimeStr: o.deliverySlot,
             dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00'),
-            pickedUpAt: o.pickedUpAt
+            pickedUpAt: o.pickedUpAt,
+            vendorId: o.vendorId?._id || o.vendorId || null,
+            slot: o.deliverySlot || null
           }));
           setOrders(prev => {
             const lockedId = selectedOrderIdRef.current;

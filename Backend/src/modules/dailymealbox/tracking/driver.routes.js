@@ -212,6 +212,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 lat: vendorLat,
                 lng: vendorLng,
                 vendorId,
+                slot: targetSlot,
                 vendorStatus,  // scheduled | preparing | ready
                 collectionPin,
                 orderCount: vendorOrders.length,
@@ -242,7 +243,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         orderId: order._id,
                         deliveryPin: order.deliveryPin || '',
                         status: order.status === 'delivered' ? 'completed' : 'pending',
-                        isSlotActive
+                        isSlotActive,
+                        vendorId,
+                        slot: targetSlot
                     });
                 } else {
                     // Not yet collected — still show customer stop (greyed until pickup done)
@@ -266,7 +269,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         deliveryPin: order.deliveryPin || '',
                         status: 'pending',
                         awaitingPickup: true,  // customer stop locked until vendor pickup done
-                        isSlotActive
+                        isSlotActive,
+                        vendorId,
+                        slot: targetSlot
                     });
                 }
             }
@@ -401,7 +406,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     status: 'READY',
                     orderId: orders[0]?._id,
                     vendorLat,
-                    vendorLng
+                    vendorLng,
+                    vendorId: batch.vendorId?._id || batch.vendorId,
+                    slot: batch.deliverySlot
                 },
                 ...ordersWithPins.map((order, idx) => ({
                     id: 'delivery_' + order._id,
@@ -412,7 +419,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     orderId: order._id,
                     customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
                     customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
-                    boxNumber: idx + 1
+                    boxNumber: idx + 1,
+                    vendorId: order.vendorId?._id || order.vendorId,
+                    slot: order.deliverySlot
                 }))
             ];
         } else {
@@ -446,7 +455,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     orderId: order._id,
                     customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
                     customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
-                    boxNumber: idx + 1
+                    boxNumber: idx + 1,
+                    vendorId: order.vendorId?._id || order.vendorId,
+                    slot: order.deliverySlot
                 };
             });
         }

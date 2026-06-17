@@ -365,6 +365,14 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         partner.lastLocationAt = new Date();
     }
     await partner.save();
+
+    try {
+        const { notifyVendorsOfDriverUpdate } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.service.js');
+        await notifyVendorsOfDriverUpdate(partner);
+    } catch (e) {
+        console.error('Failed to trigger realtime driver assign:', e);
+    }
+
     return { availabilityStatus: partner.availabilityStatus };
 };
 

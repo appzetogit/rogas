@@ -969,7 +969,6 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
             const vendorCity = vendor?.city || vendor?.location?.city;
 
             const driverFilter = {
-                availabilityStatus: 'online',
                 status: 'approved',
             };
 
@@ -1000,19 +999,18 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
                 driverFilter.$or = locationConditions;
             }
 
-            let onlineDrivers = await FoodDeliveryPartner.find(driverFilter)
+            let matchedDrivers = await FoodDeliveryPartner.find(driverFilter)
                 .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
 
-            if (onlineDrivers.length === 0) {
-                // Last-resort fallback: fetch ANY online approved driver in the system
-                onlineDrivers = await FoodDeliveryPartner.find({
-                    availabilityStatus: 'online',
+            if (matchedDrivers.length > 0) {
+                // Prioritize online driver, otherwise first matched driver
+                driver = matchedDrivers.find(d => d.availabilityStatus === 'online') || matchedDrivers[0];
+            } else {
+                // Last-resort fallback: fetch ANY approved driver in the system
+                let fallbackDrivers = await FoodDeliveryPartner.find({
                     status: 'approved'
-                }).select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus').limit(1);
-            }
-
-            if (onlineDrivers.length > 0) {
-                driver = onlineDrivers[0];
+                }).select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+                driver = fallbackDrivers.find(d => d.availabilityStatus === 'online') || fallbackDrivers[0] || null;
             }
         }
 

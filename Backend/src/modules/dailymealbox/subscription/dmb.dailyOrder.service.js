@@ -1827,3 +1827,57 @@ const formatOrderCard = (order) => ({
         } : null
     } : null
 });
+
+export async function notifyVendorsOfDriverUpdate(driver) {
+    if (!driver || !driver.zoneIds || driver.zoneIds.length === 0) return;
+
+    try {
+        const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const { getIO } = await import('../../../config/socket.js');
+        const io = getIO();
+        if (!io) return;
+
+        // Find all vendors in the driver's zones
+        const vendors = await FoodRestaurant.find({
+            $or: [
+                { zoneId: { $in: driver.zoneIds } },
+                { serviceZone: { $in: driver.zoneIds } }
+            ]
+        }).select('_id');
+
+        for (const vendor of vendors) {
+            const vendorId = vendor._id.toString();
+            
+            // Check for any active/pending batch for this vendor today
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const batch = await CollectionBatch.findOne({
+                vendorId: vendor._id,
+                deliveryDate: { $gte: today, $lt: tomorrow },
+                status: { $in: ['pending', 'driver_assigned', 'driver_en_route'] }
+            });
+
+            // Emit batch_accepted event so vendor dashboard reflects the driver change in real-time
+            io.to(`vendor_${vendorId}`).emit('batch_accepted', {
+                batchId: batch ? batch.batchId : null,
+                driver: {
+                    _id: driver._id,
+                    name: driver.name,
+                    phone: driver.phone,
+                    vehicleNumber: driver.vehicleNumber,
+                    profilePhoto: driver.profilePhoto
+                },
+                otp: batch ? batch.collectionPinHash : null,
+                boxCount: batch ? batch.boxCount : 0,
+                slot: batch ? batch.deliverySlot : 'lunch'
+            });
+            logger.info(`[REALTIME-DRIVER-ASSIGN] Notified vendor_${vendorId} of driver ${driver.name} zone assignment`);
+        }
+    } catch (err) {
+        logger.error(`[REALTIME-DRIVER-ASSIGN] Error notifying vendors of driver update: ${err.message}`);
+    }
+}
