@@ -46,9 +46,10 @@ const ACTIVE_ORDER_STATUSES = [
  * Fetch and build the optimized route for a given delivery partner.
  *
  * @param {string} partnerId - MongoDB ObjectId of the delivery partner
+ * @param {object} [coords] - Optional live coordinates { lat, lng } of the partner
  * @returns {Promise<object>} - The saved FoodDeliveryRoute document
  */
-export async function buildRouteForPartner(partnerId) {
+export async function buildRouteForPartner(partnerId, coords = null) {
     if (!partnerId || !mongoose.Types.ObjectId.isValid(partnerId)) {
         throw new ValidationError('Invalid partner ID');
     }
@@ -100,6 +101,7 @@ export async function buildRouteForPartner(partnerId) {
             return {
                 _id: order._id,
                 isDmb: false,
+                status: order.orderStatus,
                 restaurantId: r?._id,
                 vendorLat: r?.location?.latitude || (r?.location?.coordinates?.[1]) || null,
                 vendorLng: r?.location?.longitude || (r?.location?.coordinates?.[0]) || null,
@@ -128,6 +130,7 @@ export async function buildRouteForPartner(partnerId) {
             return {
                 _id: order._id,
                 isDmb: true,
+                status: order.status,
                 restaurantId: v?._id,
                 vendorLat: v?.location?.latitude || (v?.location?.coordinates?.[1]) || null,
                 vendorLng: v?.location?.longitude || (v?.location?.coordinates?.[0]) || null,
@@ -165,6 +168,7 @@ export async function buildRouteForPartner(partnerId) {
             return {
                 _id: order._id,
                 isDmb: false,
+                status: order.orderStatus,
                 restaurantId: r?._id,
                 vendorLat: r?.location?.latitude || (r?.location?.coordinates?.[1]) || null,
                 vendorLng: r?.location?.longitude || (r?.location?.coordinates?.[0]) || null,
@@ -210,11 +214,33 @@ export async function buildRouteForPartner(partnerId) {
         return emptyRoute;
     }
 
+    const isAlreadyPickedUp = (ord) => {
+        const status = String(ord.status || '').toLowerCase();
+        return status === 'picked_up' || status === 'reached_drop' || status === 'out_for_delivery';
+    };
+
     // 3. Build depot + stops array, pairs, and demands for VRP
-    // Depot = first vendor's location (the starting point for the day)
-    const firstOrder = allOrders[0];
-    const depotLat = firstOrder.vendorLat || 0;
-    const depotLng = firstOrder.vendorLng || 0;
+    // Depot = rider's current coordinates, or last location in partner profile, or fallback to first vendor's location
+    let depotLat = 0;
+    let depotLng = 0;
+
+    const parsedLat = parseFloat(coords?.lat || coords?.latitude);
+    const parsedLng = parseFloat(coords?.lng || coords?.longitude);
+
+    if (Number.isFinite(parsedLat) && Number.isFinite(parsedLng)) {
+        depotLat = parsedLat;
+        depotLng = parsedLng;
+    } else if (partner.lastLat != null && partner.lastLng != null) {
+        depotLat = partner.lastLat;
+        depotLng = partner.lastLng;
+    } else if (partner.lastLocation?.coordinates?.length === 2) {
+        depotLat = partner.lastLocation.coordinates[1];
+        depotLng = partner.lastLocation.coordinates[0];
+    } else {
+        const firstOrder = allOrders[0];
+        depotLat = firstOrder.vendorLat || 0;
+        depotLng = firstOrder.vendorLng || 0;
+    }
 
     const nodes = [{ lat: depotLat, lng: depotLng, type: 'depot' }];
     const demands = [0]; // depot demand = 0
@@ -236,30 +262,35 @@ export async function buildRouteForPartner(partnerId) {
             continue;
         }
 
-        // Find or create pickup node (uniquely identified by restaurantId or location)
-        let pickupIdx = nodes.findIndex((n, idx) => 
-            n.type === 'pickup' && 
-            (order.restaurantId && orderMeta[idx]?.restaurantId 
-                ? orderMeta[idx].restaurantId.toString() === order.restaurantId.toString()
-                : n.lat === vendorLat && n.lng === vendorLng)
-        );
-        if (pickupIdx === -1) {
-            pickupIdx = nodes.length;
-            nodes.push({ lat: vendorLat, lng: vendorLng, type: 'pickup' });
-            demands.push(1); // +1 item picked up
-            orderMeta.push({
-                orderId: order._id,
-                restaurantId: order.restaurantId,
-                isDmb: order.isDmb,
-                type: 'pickup',
-                name: order.restaurantName,
-                address: order.restaurantAddress,
-                phone: order.restaurantPhone,
-                lat: vendorLat,
-                lng: vendorLng
-            });
-        } else {
-            demands[pickupIdx] += 1;
+        const isPickedUp = isAlreadyPickedUp(order);
+        let pickupIdx = 0; // if already picked up, pickup node is depot (index 0)
+
+        if (!isPickedUp) {
+            // Find or create pickup node (uniquely identified by restaurantId or location)
+            pickupIdx = nodes.findIndex((n, idx) => 
+                n.type === 'pickup' && 
+                (order.restaurantId && orderMeta[idx]?.restaurantId 
+                    ? orderMeta[idx].restaurantId.toString() === order.restaurantId.toString()
+                    : n.lat === vendorLat && n.lng === vendorLng)
+            );
+            if (pickupIdx === -1) {
+                pickupIdx = nodes.length;
+                nodes.push({ lat: vendorLat, lng: vendorLng, type: 'pickup' });
+                demands.push(1); // +1 item picked up
+                orderMeta.push({
+                    orderId: order._id,
+                    restaurantId: order.restaurantId,
+                    isDmb: order.isDmb,
+                    type: 'pickup',
+                    name: order.restaurantName,
+                    address: order.restaurantAddress,
+                    phone: order.restaurantPhone,
+                    lat: vendorLat,
+                    lng: vendorLng
+                });
+            } else {
+                demands[pickupIdx] += 1;
+            }
         }
 
         // Find or create delivery node (uniquely identified by customer coordinates + name + phone)

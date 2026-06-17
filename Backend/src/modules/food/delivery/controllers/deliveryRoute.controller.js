@@ -46,7 +46,8 @@ export const getMyRouteController = async (req, res, next) => {
 export const recalculateMyRouteController = async (req, res, next) => {
     try {
         const partnerId = req.user?.userId;
-        const route = await buildRouteForPartner(partnerId);
+        const coords = req.body; // { lat, lng }
+        const route = await buildRouteForPartner(partnerId, coords);
 
         return sendResponse(res, 200, 'Route recalculated successfully', { route });
     } catch (error) {

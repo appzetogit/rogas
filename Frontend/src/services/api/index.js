@@ -1628,8 +1628,8 @@ export const deliveryAPI = {
   getRoute: () =>
     deliveryClient.get("/food/delivery/route"),
   /** POST /food/delivery/route/recalculate — trigger fresh VRP route computation. */
-  recalculateRoute: () =>
-    deliveryClient.post("/food/delivery/route/recalculate", {}),
+  recalculateRoute: (coords) =>
+    deliveryClient.post("/food/delivery/route/recalculate", coords || {}),
 };
 
 

@@ -43,6 +43,107 @@ export const RoutesMap = ({ stops = [] }) => {
   const mapRef = useRef(null);
   const riderLocation = useDeliveryStore((state) => state.riderLocation);
 
+  const [isLiveActive, setIsLiveActive] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [currentSimStop, setCurrentSimStop] = useState(0);
+
+  const watchIdRef = useRef(null);
+  const simIntervalRef = useRef(null);
+
+  // Reset simulation when stops list changes
+  useEffect(() => {
+    setCurrentSimStop(0);
+    if (simIntervalRef.current) {
+      clearInterval(simIntervalRef.current);
+      simIntervalRef.current = null;
+    }
+    setIsSimulating(false);
+  }, [stops]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  const handleLiveClick = () => {
+    if (isLiveActive) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setIsLiveActive(false);
+    } else {
+      if (!navigator.geolocation) {
+        alert("Location services are not supported by your browser!");
+        return;
+      }
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          useDeliveryStore.getState().setRiderLocation({ lat: latitude, lng: longitude });
+          if (mapRef.current) {
+            mapRef.current.panTo({ lat: latitude, lng: longitude });
+          }
+        },
+        (err) => {
+          alert("Location services are disabled or access is denied. Please enable location access in your browser settings!");
+          setIsLiveActive(false);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+      setIsLiveActive(true);
+    }
+  };
+
+  const startSimulation = () => {
+    if (stopsData.length === 0) return;
+    if (currentSimStop >= stopsData.length) {
+      alert("All stops on the route have been completed!");
+      return;
+    }
+
+    setIsSimulating(true);
+
+    const startPos = riderLocation || (currentSimStop > 0 ? stopsData[currentSimStop - 1].position : stopsData[0].position);
+    const targetPos = stopsData[currentSimStop].position;
+
+    let progress = 0;
+    const steps = 60; // 3 seconds simulation (60 steps * 50ms)
+
+    if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+
+    simIntervalRef.current = setInterval(() => {
+      progress += 1 / steps;
+      if (progress >= 1) {
+        clearInterval(simIntervalRef.current);
+        simIntervalRef.current = null;
+        setIsSimulating(false);
+
+        const finalPos = { lat: targetPos.lat, lng: targetPos.lng };
+        useDeliveryStore.getState().setRiderLocation(finalPos);
+        if (mapRef.current) {
+          mapRef.current.panTo(finalPos);
+        }
+
+        setCurrentSimStop((prev) => prev + 1);
+      } else {
+        const lat = startPos.lat + (targetPos.lat - startPos.lat) * progress;
+        const lng = startPos.lng + (targetPos.lng - startPos.lng) * progress;
+        const nextPos = { lat, lng };
+
+        useDeliveryStore.getState().setRiderLocation(nextPos);
+        if (mapRef.current) {
+          mapRef.current.panTo(nextPos);
+        }
+      }
+    }, 50);
+  };
+
   // Default center: Indore, India
   const defaultCenter = { lat: 22.7196, lng: 75.8577 };
 
@@ -113,8 +214,8 @@ export const RoutesMap = ({ stops = [] }) => {
     if (!isLoaded || !window.google) return null;
     return {
       path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-      strokeColor: '#047857', // Dark green outline
-      fillColor: '#047857', // Dark green fill
+      strokeColor: '#1F7A63', // Deep green outline
+      fillColor: '#1F7A63', // Deep green fill
       fillOpacity: 1,
       scale: 3
     };
@@ -133,7 +234,7 @@ export const RoutesMap = ({ stops = [] }) => {
     return (
       <div className="bg-white border rounded-2xl min-h-[450px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-[#10B981] animate-spin" />
+          <Loader2 className="w-10 h-10 text-[#1F7A63] animate-spin" />
           <p className="text-xs font-semibold text-gray-500">Loading map canvas...</p>
         </div>
       </div>
@@ -142,6 +243,34 @@ export const RoutesMap = ({ stops = [] }) => {
 
   return (
     <div className="relative w-full h-[450px] rounded-2xl overflow-hidden shadow-sm">
+      {/* Side Control Overlay */}
+      <div className="absolute top-4 right-4 z-[10] flex flex-col gap-2">
+        <button
+          onClick={handleLiveClick}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md ${
+            isLiveActive
+              ? 'bg-[#1F7A63] text-white border border-[#1F7A63] animate-pulse'
+              : 'bg-white/95 backdrop-blur-md text-gray-700 border border-gray-200 hover:bg-white'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${isLiveActive ? 'bg-white' : 'bg-green-500'}`} />
+          {isLiveActive ? 'Live ON' : 'Live'}
+        </button>
+
+        <button
+          onClick={startSimulation}
+          disabled={stopsData.length === 0}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md ${
+            isSimulating
+              ? 'bg-amber-500 text-white border border-amber-500'
+              : 'bg-white/95 backdrop-blur-md text-gray-700 border border-gray-200 hover:bg-white disabled:opacity-50'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${isSimulating ? 'bg-white animate-pulse' : 'bg-amber-500'}`} />
+          {isSimulating ? 'Streaming…' : 'Stream'}
+        </button>
+      </div>
+
       <GoogleMap
         onLoad={onMapLoad}
         mapContainerStyle={mapContainerStyle}
@@ -154,7 +283,7 @@ export const RoutesMap = ({ stops = [] }) => {
           <Polyline
             path={path}
             options={{
-              strokeColor: '#10B981', // Emerald green path matching UI theme
+              strokeColor: '#1F7A63', // Deep green path matching UI theme
               strokeOpacity: 0.8,
               strokeWeight: 6,
               geodesic: true,
@@ -190,7 +319,7 @@ export const RoutesMap = ({ stops = [] }) => {
               }}
               icon={{
                 path: window.google.maps.SymbolPath.CIRCLE,
-                fillColor: isCompleted ? '#9CA3AF' : isPickup ? '#10B981' : '#3B82F6',
+                fillColor: isCompleted ? '#9CA3AF' : isPickup ? '#1F7A63' : '#3B82F6',
                 fillOpacity: 1,
                 strokeColor: '#FFFFFF',
                 strokeWeight: 3,
@@ -228,8 +357,8 @@ export const RoutesMap = ({ stops = [] }) => {
           >
             <div className="p-1 font-poppins max-w-[200px]">
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 ${activeMarker.type === 'pickup' || activeMarker.type === 'P'
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-blue-100 text-blue-800'
+                ? 'bg-[#1F7A63]/10 text-[#1F7A63]'
+                : 'bg-[#3B82F6]/10 text-[#3B82F6]'
                 }`}>
                 Stop #{activeMarker.stopIndex} — {activeMarker.type === 'pickup' || activeMarker.type === 'P' ? 'Pickup' : 'Delivery'}
               </span>

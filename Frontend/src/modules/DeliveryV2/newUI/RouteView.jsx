@@ -103,7 +103,7 @@ const RouteView = ({
                     <div>
                         <div className="flex items-center justify-between">
                             <span className="text-[#3e4945] font-extrabold text-[10px] uppercase tracking-wider font-sans">VENDOR</span>
-                            <span className="bg-[#9ef3d7] text-[#005140] px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide">
+                            <span className="bg-[#1F7A63]/10 text-[#1F7A63] px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide">
                                 {routeMetadata?.slotType || "Slot"}
                             </span>
                         </div>
@@ -111,7 +111,7 @@ const RouteView = ({
                         <p className="text-[10px] text-[#5d5f5b] mt-0.5 line-clamp-2">{routeMetadata?.vendorAddress || "—"}</p>
                     </div>
                     {routeMetadata?.vendorPhone && (
-                        <a href={`tel:${routeMetadata.vendorPhone}`} className="text-[10px] font-bold text-[#00604c] hover:underline flex items-center gap-1 mt-1">
+                        <a href={`tel:${routeMetadata.vendorPhone}`} className="text-[10px] font-bold text-[#1F7A63] hover:underline flex items-center gap-1 mt-1">
                             📞 {routeMetadata.vendorPhone}
                         </a>
                     )}
@@ -122,7 +122,7 @@ const RouteView = ({
                     {/* TOTAL LOAD */}
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
                         <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">MEAL BOXES</span>
-                        <span className="font-extrabold text-xs text-[#00604c]">{routeMetadata?.totalMealBoxCount || 0}</span>
+                        <span className="font-extrabold text-xs text-[#1F7A63]">{routeMetadata?.totalMealBoxCount || 0}</span>
                     </div>
 
                     {/* STOPS */}
@@ -134,16 +134,16 @@ const RouteView = ({
                     {/* TIME REMAINING */}
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
                         <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">TIME LEFT</span>
-                        <span className={`font-mono text-[11px] font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#00604c]'}`}>
+                        <span className={`font-mono text-[11px] font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#1F7A63]'}`}>
                             {timeRemaining || "3h 00m"}
                         </span>
                     </div>
 
                     {/* TOTAL EARNINGS */}
                     {totalEarnings !== undefined && (
-                        <div className="bg-[#f0fdf7] border border-emerald-200 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left animate-fadeIn">
-                            <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider font-sans">EARNINGS</span>
-                            <span className="font-extrabold text-xs text-emerald-700 font-sans">₹{totalEarnings.toFixed(2)}</span>
+                        <div className="bg-[#1F7A63]/10 border border-[#1F7A63]/25 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left animate-fadeIn">
+                            <span className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider font-sans">EARNINGS</span>
+                            <span className="font-extrabold text-xs text-[#1F7A63] font-sans">₹{totalEarnings.toFixed(2)}</span>
                         </div>
                     )}
                 </div>
@@ -151,15 +151,15 @@ const RouteView = ({
 
             {/* Current Stop Highlight Card */}
             <div className="bg-white border border-[#e0e3e0] rounded-2xl p-0 overflow-hidden custom-shadow text-left">
-                <div className="h-2 bg-[#00604c] w-full" />
+                <div className="h-2 bg-[#1F7A63] w-full" />
                 <div className="p-4">
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <div className="flex items-center gap-1.5 mb-1.5">
-                                <span className="bg-[#00604c]/10 text-[#00604c] px-2 py-0.5 rounded-lg text-[10px] font-bold border border-[#00604c]/20">
+                                <span className="bg-[#1F7A63]/10 text-[#1F7A63] px-2 py-0.5 rounded-lg text-[10px] font-bold border border-[#1F7A63]/20">
                                     CURRENT STOP
                                 </span>
-                                <span className="bg-[#00604c] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide">
+                                <span className="bg-[#1F7A63] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide">
                                     {isAccepted ? "ACTIVE" : "READY"}
                                 </span>
                             </div>
@@ -167,7 +167,7 @@ const RouteView = ({
                             <p className="text-xs text-[#5d5f5b] mt-0.5">{currentStop?.address || 'No Address'}</p>
                         </div>
 
-                        <div className="w-11 h-11 bg-[#1f7a63] text-white rounded-full flex items-center justify-center font-bold text-base shadow-sm">
+                        <div className="w-11 h-11 bg-[#1F7A63] text-white rounded-full flex items-center justify-center font-bold text-base shadow-sm">
                             {currentStop?.type || 'P'}
                         </div>
                     </div>
@@ -199,7 +199,7 @@ const RouteView = ({
                         >
                             {/* Green Progress Backdrop */}
                             <div
-                                className="absolute left-0 top-0 bottom-0 bg-[#00604c]/15 transition-all"
+                                className="absolute left-0 top-0 bottom-0 bg-[#1F7A63]/15 transition-all"
                                 style={{ width: `${(sliderPosition / maxDrag) * 100}%` }}
                             />
 
@@ -214,7 +214,7 @@ const RouteView = ({
                             <div
                                 onMouseDown={handleTouchStart}
                                 onTouchStart={handleTouchStart}
-                                className="absolute left-1 w-11 h-11 bg-[#00604c] text-white rounded-lg flex items-center justify-center cursor-ew-resize hover:bg-[#1f7a63] transition-transform active:scale-95 shadow-md flex-shrink-0 z-10"
+                                className="absolute left-1 w-11 h-11 bg-[#1F7A63] text-white rounded-lg flex items-center justify-center cursor-ew-resize hover:bg-[#1F7A63]/90 transition-transform active:scale-95 shadow-md flex-shrink-0 z-10"
                                 style={{ transform: `translateX(${sliderPosition}px)` }}
                             >
                                 <ChevronRight className="w-6 h-6 stroke-[3]" />
@@ -223,7 +223,7 @@ const RouteView = ({
                     ) : (
                         <button
                             onClick={onNextStep}
-                            className="w-full h-[52px] bg-[#00604c] text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#1f7a63] shadow-md shadow-[#00604c]/10"
+                            className="w-full h-[52px] bg-[#1F7A63] text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#1F7A63]/90 shadow-md shadow-[#1F7A63]/10"
                         >
                             {isAccepted && justAccepted ? (
                                 <>
@@ -250,7 +250,7 @@ const RouteView = ({
                         >
                             <div className="flex items-center gap-4">
                                 <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${stop.type === "P" ? "bg-[#9ef3d7] text-[#005140]" : "bg-[#e0e0db] text-[#5d5f5b]"
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${stop.type === "P" ? "bg-[#1F7A63]/10 text-[#1F7A63]" : "bg-[#3B82F6]/10 text-[#3B82F6]"
                                         }`}
                                 >
                                     {stop.type}
