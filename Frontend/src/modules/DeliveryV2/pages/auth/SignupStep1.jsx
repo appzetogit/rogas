@@ -52,7 +52,6 @@ export default function SignupStep1() {
       vehicleName: "",
       vehicleNumber: "",
       drivingLicenseNumber: "",
-      zoneId: "",
     };
     if (saved) {
       try {
@@ -70,24 +69,7 @@ export default function SignupStep1() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [zones, setZones] = useState([]);
-  const [isLoadingZones, setIsLoadingZones] = useState(true);
 
-  useEffect(() => {
-    const fetchZones = async () => {
-      try {
-        const res = await deliveryAPI.getPublicZones();
-        if (res.data?.success) {
-          setZones(res.data.data.zones || []);
-        }
-      } catch (error) {
-        console.error("Failed to load zones", error);
-      } finally {
-        setIsLoadingZones(false);
-      }
-    };
-    fetchZones();
-  }, []);
 
   const sanitizeLocationValue = (value) =>
     value.replace(/[^A-Za-z\s.-]/g, "").replace(/\s{2,}/g, " ");
@@ -180,9 +162,7 @@ export default function SignupStep1() {
       newErrors.address = "Address is required";
     }
 
-    if (!formData.zoneId) {
-      newErrors.zoneId = "Please select a zone";
-    }
+
 
     if (!formData.city.trim()) {
       newErrors.city = "City is required";
@@ -236,7 +216,6 @@ export default function SignupStep1() {
         vehicleName: formData.vehicleName?.trim() || "",
         vehicleNumber: formData.vehicleNumber.trim(),
         drivingLicenseNumber: formData.drivingLicenseNumber.trim().toUpperCase(),
-        zoneId: formData.zoneId,
       };
       sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
       toast.success("Details saved");
@@ -458,34 +437,7 @@ export default function SignupStep1() {
                 {errors.address && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.address}</p>}
               </div>
 
-              {/* Zone */}
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Delivery Zone <span style={{ color: "#C5221F" }}>*</span>
-                </label>
-                <select
-                  name="zoneId"
-                  value={formData.zoneId}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField("zoneId")}
-                  onBlur={() => setFocusedField(null)}
-                  style={{
-                    ...getInputStyle("zoneId"),
-                    cursor: "pointer",
-                  }}
-                  disabled={isLoadingZones}
-                >
-                  <option value="" disabled>
-                    {isLoadingZones ? "Loading zones..." : "Select a zone"}
-                  </option>
-                  {zones.map((zone) => (
-                    <option key={zone._id} value={zone._id}>
-                      {zone.name || zone.zoneName}
-                    </option>
-                  ))}
-                </select>
-                {errors.zoneId && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.zoneId}</p>}
-              </div>
+
 
               {/* City & State */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>

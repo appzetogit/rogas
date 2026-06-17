@@ -269,8 +269,8 @@ export const adminAPI = {
     adminClient.get("/food/admin/delivery/wallets", { params }),
   getDeliveryPartnerById: (id) =>
     adminClient.get(`/food/admin/delivery/${id}`),
-  approveDeliveryPartner: (id) =>
-    adminClient.patch(`/food/admin/delivery/${String(id)}/approve`, {}),
+  approveDeliveryPartner: (id, zoneId) =>
+    adminClient.patch(`/food/admin/delivery/${String(id)}/approve`, { zoneId }),
   rejectDeliveryPartner: (id, reason) =>
     adminClient.patch(`/food/admin/delivery/${String(id)}/reject`, { reason: String(reason || "").trim() }),
   deleteDeliveryPartner: (id) =>

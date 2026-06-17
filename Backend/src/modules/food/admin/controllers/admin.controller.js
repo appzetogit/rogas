@@ -1352,7 +1352,8 @@ export async function getDeliveryPartnerById(req, res, next) {
 
 export async function approveDeliveryPartner(req, res, next) {
     try {
-        const partner = await adminService.approveDeliveryPartner(req.params.id);
+        const { zoneId } = req.body || {};
+        const partner = await adminService.approveDeliveryPartner(req.params.id, zoneId);
         if (!partner) {
             return res.status(404).json({
                 success: false,

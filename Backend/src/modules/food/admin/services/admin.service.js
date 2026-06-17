@@ -4629,9 +4629,18 @@ export async function getDeliverymanReviews(query = {}) {
     return { reviews, total, page, limit };
 }
 
-export async function approveDeliveryPartner(id) {
+export async function approveDeliveryPartner(id, zoneId) {
+    if (!zoneId || !mongoose.Types.ObjectId.isValid(zoneId)) {
+        throw new ValidationError('A valid Zone ID must be assigned to approve the delivery partner');
+    }
+    const zoneExists = await FoodZone.findById(zoneId);
+    if (!zoneExists) {
+        throw new ValidationError('The assigned zone does not exist');
+    }
+
     const partner = await FoodDeliveryPartner.findById(id);
     if (!partner) return null;
+    partner.zoneIds = [new mongoose.Types.ObjectId(zoneId)];
     partner.status = 'approved';
     partner.approvedAt = new Date();
     partner.rejectedAt = undefined;

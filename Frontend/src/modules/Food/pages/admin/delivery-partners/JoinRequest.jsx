@@ -22,6 +22,9 @@ export default function JoinRequest() {
   const [viewDetails, setViewDetails] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [rejectionReason, setRejectionReason] = useState("")
+  const [availableZones, setAvailableZones] = useState([])
+  const [loadingZones, setLoadingZones] = useState(false)
+  const [selectedZoneId, setSelectedZoneId] = useState("")
   const [filters, setFilters] = useState({
     zone: "",
     jobType: "",
@@ -110,23 +113,42 @@ export default function JoinRequest() {
     return result
   }, [requests, filters])
 
-  const handleApprove = (request) => {
+  const handleApprove = async (request) => {
     setSelectedRequest(request)
+    setSelectedZoneId("")
     setIsApproveOpen(true)
+    try {
+      setLoadingZones(true)
+      const response = await adminAPI.getZones({ isActive: true })
+      if (response.data && response.data.success) {
+        setAvailableZones(response.data.data.zones || [])
+      } else {
+        toast.error("Failed to load delivery zones")
+      }
+    } catch (err) {
+      toast.error("Error fetching delivery zones")
+    } finally {
+      setLoadingZones(false)
+    }
   }
 
   const confirmApprove = async () => {
     if (!selectedRequest) return
+    if (!selectedZoneId) {
+      toast.error("Please select a delivery zone")
+      return
+    }
 
     try {
       setProcessing(true)
-      await adminAPI.approveDeliveryPartner(selectedRequest._id)
+      await adminAPI.approveDeliveryPartner(selectedRequest._id, selectedZoneId)
       
       // Refresh the list
       await fetchJoinRequests()
       
       setIsApproveOpen(false)
       setSelectedRequest(null)
+      setSelectedZoneId("")
       
       toast.success(`Successfully approved ${selectedRequest.name}'s join request!`)
     } catch (err) {
@@ -495,16 +517,46 @@ export default function JoinRequest() {
       <Dialog open={isApproveOpen} onOpenChange={setIsApproveOpen}>
         <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
           <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle>Approve Request</DialogTitle>
+            <DialogTitle>Approve Request &amp; Assign Zone</DialogTitle>
           </DialogHeader>
-          <div className="px-6 pb-6">
+          <div className="px-6 pb-6 space-y-4">
             <p className="text-sm text-slate-700">
-              Are you sure you want to approve "{selectedRequest?.name}"'s join request?
+              Assign an operational zone to approve "{selectedRequest?.name}"'s joining request.
             </p>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Select Delivery Zone <span className="text-red-500">*</span>
+              </label>
+              {loadingZones ? (
+                <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <span>Loading available zones...</span>
+                </div>
+              ) : (
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 text-sm cursor-pointer"
+                  disabled={processing}
+                >
+                  <option value="" disabled>
+                    -- Choose Zone --
+                  </option>
+                  {availableZones.map((zone) => (
+                    <option key={zone._id} value={zone._id}>
+                      {zone.name || zone.zoneName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
           <DialogFooter className="px-6 pb-6">
             <button
-              onClick={() => setIsApproveOpen(false)}
+              onClick={() => {
+                setIsApproveOpen(false)
+                setSelectedZoneId("")
+              }}
               disabled={processing}
               className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50"
             >
@@ -512,11 +564,11 @@ export default function JoinRequest() {
             </button>
             <button
               onClick={confirmApprove}
-              disabled={processing}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+              disabled={processing || !selectedZoneId || loadingZones}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {processing && <Loader2 className="w-4 h-4 animate-spin" />}
-              Approve
+              Confirm &amp; Approve
             </button>
           </DialogFooter>
         </DialogContent>
