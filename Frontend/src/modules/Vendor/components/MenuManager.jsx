@@ -85,6 +85,7 @@ export default function MenuManager({
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [photoSchedule, setPhotoSchedule] = useState('');
+  const [selectedSlotForSchedule, setSelectedSlotForSchedule] = useState('lunch');
 
   const generateUpcomingDays = () => {
     const days = [];
@@ -125,16 +126,26 @@ export default function MenuManager({
     }
   };
 
-  const getScheduledDishForMealAndDate = (mealId, date) => {
+  const getScheduledDishForMealAndDate = (mealId, date, slot = 'lunch') => {
     const dateStr = toLocalDateStr(date);
     return dailyMenus.find(dm => {
       const dmDateStr = new Date(dm.date).toISOString().split('T')[0];
       const dmMealPlanId = dm.mealPlanId?._id || dm.mealPlanId;
-      return dmMealPlanId === mealId && dmDateStr === dateStr;
+      const dmSlot = dm.slot || 'lunch';
+      return dmMealPlanId === mealId && dmDateStr === dateStr && dmSlot === slot;
     });
   };
 
-  // Get any scheduled dish for this vendor on a given date (regardless of meal plan)
+  const getScheduledDishForSlotAndDate = (slot, date) => {
+    const dateStr = toLocalDateStr(date);
+    return dailyMenus.find(dm => {
+      const dmDateStr = new Date(dm.date).toISOString().split('T')[0];
+      const dmSlot = dm.slot || 'lunch';
+      return dmSlot === slot && dmDateStr === dateStr;
+    });
+  };
+
+  // Get any scheduled dish for this vendor on a given date (regardless of meal plan or slot)
   const getAnyScheduledDishForDate = (date) => {
     const dateStr = toLocalDateStr(date);
     return dailyMenus.find(dm => {
@@ -143,12 +154,13 @@ export default function MenuManager({
     });
   };
 
-  const handleSelectMealForSchedule = async (targetPlan, selectedMeal) => {
+  const handleSelectMealForSchedule = async (targetPlan, selectedMeal, slot = 'lunch') => {
     try {
       const targetDate = selectedDateForSchedule || selectedDate;
       const payload = {
         mealPlanId: targetPlan.id,
         date: toLocalDateStr(targetDate),
+        slot: slot,
         dishName: selectedMeal.name,
         description: selectedMeal.description,
         photo: selectedMeal.imageUrl || selectedMeal.photo || '',
@@ -162,7 +174,7 @@ export default function MenuManager({
 
       const res = await dmbVendorAPI.saveDailyMenu(payload);
       if (res.data?.success) {
-        triggerToast(`Scheduled "${selectedMeal.name}" for ${targetDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}! ✓`);
+        triggerToast(`Scheduled "${selectedMeal.name}" for ${targetDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} [${slot}]! ✓`);
         await fetchDailyMenus();
         setMealSelectorOpenPlan(null);
       } else {
@@ -173,13 +185,13 @@ export default function MenuManager({
     }
   };
 
-  const handleDeleteScheduledMeal = async (mealPlanId, date) => {
+  const handleDeleteScheduledMeal = async (mealPlanId, date, slot = 'lunch') => {
     if (!window.confirm("Are you sure you want to remove this meal from today's weekly schedule?")) {
       return;
     }
     try {
       const dateStr = toLocalDateStr(date);
-      const res = await dmbVendorAPI.deleteDailyMenu({ mealPlanId, date: dateStr });
+      const res = await dmbVendorAPI.deleteDailyMenu({ mealPlanId, date: dateStr, slot });
       if (res.data?.success) {
         triggerToast('Meal removed from schedule! ✓');
         await fetchDailyMenus();
@@ -196,9 +208,10 @@ export default function MenuManager({
     fetchDailyMenus();
   }, []);
 
-  const handleOpenScheduler = (meal, date, existingDish) => {
+  const handleOpenScheduler = (meal, date, slot = 'lunch', existingDish) => {
     setSelectedMealForSchedule(meal);
     setSelectedDateForSchedule(date);
+    setSelectedSlotForSchedule(slot);
     if (existingDish) {
       setDishNameSchedule(existingDish.dishName || '');
       setDescriptionSchedule(existingDish.description || '');
@@ -231,6 +244,7 @@ export default function MenuManager({
       const payload = {
         mealPlanId: selectedMealForSchedule.id,
         date: toLocalDateStr(selectedDateForSchedule),
+        slot: selectedSlotForSchedule,
         dishName: dishNameSchedule,
         description: descriptionSchedule,
         photo: photoSchedule || selectedMealForSchedule.imageUrl || selectedMealForSchedule.photo || '',
@@ -618,158 +632,161 @@ export default function MenuManager({
                 </div>
               </section>
 
-              {/* Smart header + Add/Change button based on whether meal is already scheduled */}
               {(() => {
                 const activeDate = selectedDateForSchedule || selectedDate;
-                const existingDish = getAnyScheduledDishForDate(activeDate);
-                const existingMeal = existingDish
-                  ? meals.find(m => {
-                      const planId = existingDish.mealPlanId?._id || existingDish.mealPlanId;
-                      return String(m.id) === String(planId);
-                    })
-                  : null;
-
                 return (
-                  <>
+                  <div className="space-y-4">
                     {/* Header row */}
                     <div className="flex justify-between items-center pt-2">
                       <h2 className="text-[15px] font-extrabold text-on-surface">
                         {activeDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
                       </h2>
-                      {existingDish ? (
-                        /* Meal already scheduled — show Change button */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDateForSchedule(activeDate);
-                            setMealSelectorOpenPlan(
-                              existingMeal || {
-                                id: existingDish.mealPlanId?._id || existingDish.mealPlanId,
-                                name: existingDish.dishName,
-                                imageUrl: '',
-                                description: '',
-                                calories: '',
-                                prot: '', carb: '', fat: ''
-                              }
-                            );
-                          }}
-                          className="bg-amber-500 hover:brightness-105 text-white px-3.5 py-2 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
-                          Change Meal
-                        </button>
-                      ) : (
-                        /* No meal scheduled — show Add button */
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDateForSchedule(activeDate);
-                            setAddMealSelectorOpen(true);
-                          }}
-                          className="bg-primary hover:brightness-105 text-on-primary px-3.5 py-2 rounded-xl text-[12px] font-bold active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                          Add Meal
-                        </button>
-                      )}
                     </div>
 
-                    {/* Content: Scheduled meal card or Empty state */}
-                    {isLoadingDailyMenus ? (
-                      <div className="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/15 text-center flex flex-col items-center justify-center min-h-[180px]">
-                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-                        <p className="text-[13px] font-bold text-on-surface">Loading Schedule...</p>
-                      </div>
-                    ) : existingDish ? (
-                      /* Scheduled meal card */
-                      <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex flex-col gap-3 border-2 border-primary/20 ring-1 ring-primary/5 animate-fadeIn">
-                        {/* Meal info row */}
-                        <div className="flex gap-3 items-center">
-                          <div className="w-16 h-16 bg-surface-variant rounded-xl overflow-hidden flex-shrink-0 shadow-xs">
-                            {(existingDish?.photo || existingMeal?.imageUrl) ? (
-                              <img alt={existingDish.dishName || existingMeal?.name} className="w-full h-full object-cover" src={existingDish.photo || existingMeal.imageUrl} />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                                <span className="material-symbols-outlined text-[28px] text-primary/40">restaurant</span>
+                    {/* Slots columns: Breakfast, Lunch, Dinner */}
+                    <div className="space-y-4">
+                      {['breakfast', 'lunch', 'dinner'].map((slot) => {
+                        const existingDish = getScheduledDishForSlotAndDate(slot, activeDate);
+                        const existingMeal = existingDish
+                          ? meals.find(m => {
+                              const planId = existingDish.mealPlanId?._id || existingDish.mealPlanId;
+                              return String(m.id) === String(planId);
+                            })
+                          : null;
+
+                        const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
+                        const slotIcon = { breakfast: "☀️", lunch: "🌤️", dinner: "🌙" }[slot];
+
+                        return (
+                          <div key={slot} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/15 space-y-3">
+                            <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-base">{slotIcon}</span>
+                                <span className="font-extrabold text-[13px] text-on-surface">{slotLabel} Slot</span>
                               </div>
-                            )}
-                          </div>
-                          <div className="flex-grow min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="material-symbols-outlined text-primary text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                              <span className="text-[9px] font-extrabold text-primary uppercase tracking-wider">Scheduled for this day</span>
+                              {existingDish ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDateForSchedule(activeDate);
+                                    setSelectedSlotForSchedule(slot);
+                                    setMealSelectorOpenPlan(
+                                      existingMeal || {
+                                        id: existingDish.mealPlanId?._id || existingDish.mealPlanId,
+                                        name: existingDish.dishName,
+                                        imageUrl: '',
+                                        description: '',
+                                        calories: '',
+                                        prot: '', carb: '', fat: ''
+                                      }
+                                    );
+                                  }}
+                                  className="text-amber-600 hover:text-amber-700 font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                                  Change
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDateForSchedule(activeDate);
+                                    setSelectedSlotForSchedule(slot);
+                                    setAddMealSelectorOpen(true);
+                                  }}
+                                  className="text-primary hover:text-primary-dark font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                                  Add Meal
+                                </button>
+                              )}
                             </div>
-                            <h3 className="text-[16px] font-extrabold text-on-surface truncate">{existingDish.dishName}</h3>
-                            {existingMeal && (
-                              <p className="text-[11px] text-outline font-semibold">Plan: {existingMeal.name}</p>
-                            )}
-                            {existingDish.description && (
-                              <p className="text-[11px] text-on-surface-variant italic mt-0.5 line-clamp-1">"{existingDish.description}"</p>
-                            )}
-                          </div>
-                        </div>
 
-                        {/* Nutrition grid if available */}
-                        {(existingDish.nutrition?.calories || existingDish.nutrition?.protein) && (
-                          <div className="bg-surface-container p-2 rounded-lg grid grid-cols-4 text-center gap-1">
-                            {[
-                              { label: 'Cal', val: existingDish.nutrition.calories },
-                              { label: 'Protein', val: existingDish.nutrition.protein ? `${existingDish.nutrition.protein}g` : null },
-                              { label: 'Carbs', val: existingDish.nutrition.carbs ? `${existingDish.nutrition.carbs}g` : null },
-                              { label: 'Fat', val: existingDish.nutrition.fats ? `${existingDish.nutrition.fats}g` : null },
-                            ].map(({ label, val }) => (
-                              <div key={label}>
-                                <p className="text-[9px] text-outline font-bold uppercase tracking-wide">{label}</p>
-                                <p className="text-[12px] font-extrabold text-on-surface">{val || '—'}</p>
+                            {isLoadingDailyMenus ? (
+                              <div className="bg-surface-container-lowest rounded-xl p-4 text-center flex flex-col items-center justify-center min-h-[100px]">
+                                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+                                <p className="text-[11px] font-bold text-on-surface">Loading...</p>
                               </div>
-                            ))}
+                            ) : existingDish ? (
+                              /* Scheduled meal card details */
+                              <div className="flex flex-col gap-3">
+                                <div className="flex gap-3 items-center">
+                                  <div className="w-14 h-14 bg-surface-variant rounded-xl overflow-hidden flex-shrink-0 shadow-xs">
+                                    {(existingDish?.photo || existingMeal?.imageUrl) ? (
+                                      <img alt={existingDish.dishName || existingMeal?.name} className="w-full h-full object-cover" src={existingDish.photo || existingMeal.imageUrl} />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-primary/5">
+                                        <span className="material-symbols-outlined text-[24px] text-primary/40">restaurant</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-grow min-w-0">
+                                    <h3 className="text-[14px] font-extrabold text-on-surface truncate">{existingDish.dishName}</h3>
+                                    {existingMeal && (
+                                      <p className="text-[11px] text-outline font-semibold">Plan: {existingMeal.name}</p>
+                                    )}
+                                    {existingDish.description && (
+                                      <p className="text-[11px] text-on-surface-variant italic mt-0.5 line-clamp-1">"{existingDish.description}"</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Nutrition facts */}
+                                {(existingDish.nutrition?.calories || existingDish.nutrition?.protein) && (
+                                  <div className="bg-surface-container p-2 rounded-lg grid grid-cols-4 text-center gap-1">
+                                    {[
+                                      { label: 'Cal', val: existingDish.nutrition.calories },
+                                      { label: 'Protein', val: existingDish.nutrition.protein ? `${existingDish.nutrition.protein}g` : null },
+                                      { label: 'Carbs', val: existingDish.nutrition.carbs ? `${existingDish.nutrition.carbs}g` : null },
+                                      { label: 'Fat', val: existingDish.nutrition.fats ? `${existingDish.nutrition.fats}g` : null },
+                                    ].map(({ label, val }) => (
+                                      <div key={label}>
+                                        <p className="text-[8px] text-outline font-bold uppercase tracking-wide">{label}</p>
+                                        <p className="text-[11px] font-extrabold text-on-surface">{val || '—'}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2 justify-end pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenScheduler(
+                                      existingMeal || { id: existingDish.mealPlanId?._id || existingDish.mealPlanId, name: existingDish.dishName },
+                                      activeDate,
+                                      slot,
+                                      existingDish
+                                    )}
+                                    className="px-3 py-1.5 rounded-lg border border-primary text-primary font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteScheduledMeal(
+                                      existingDish.mealPlanId?._id || existingDish.mealPlanId,
+                                      activeDate,
+                                      slot
+                                    )}
+                                    className="px-3 py-1.5 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[11px] cursor-pointer flex items-center justify-center gap-0.5"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 bg-slate-50 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center gap-2">
+                                <span className="material-symbols-outlined text-[18px] text-outline">restaurant_menu</span>
+                                <span className="text-[12px] font-semibold text-outline">No meal scheduled</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {/* Real-time sync badge */}
-                        <div className="flex items-center gap-2 bg-[#e8f5e9] border border-[#a5d6a7] rounded-lg px-3 py-2">
-                          <span className="material-symbols-outlined text-[14px] text-green-700" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-                          <p className="text-[11px] font-semibold text-green-800">Customer dashboards updated in real-time</p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 pt-1 border-t border-outline-variant/20">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenScheduler(
-                              existingMeal || { id: existingDish.mealPlanId?._id || existingDish.mealPlanId, name: existingDish.dishName },
-                              activeDate,
-                              existingDish
-                            )}
-                            className="flex-grow py-2 rounded-lg border border-primary text-primary font-bold text-[12px] hover:bg-primary/5 active:scale-95 transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">edit</span>
-                            Edit Details
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteScheduledMeal(
-                              existingDish.mealPlanId?._id || existingDish.mealPlanId,
-                              activeDate
-                            )}
-                            className="px-4 py-2 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[12px] cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">delete</span>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Empty state */
-                      <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-dashed border-outline-variant/40 text-center flex flex-col items-center justify-center min-h-[160px] animate-fadeIn">
-                        <span className="material-symbols-outlined text-[40px] text-primary/30 mb-3">restaurant_menu</span>
-                        <p className="text-[13px] font-bold text-on-surface">No meals scheduled</p>
-                        <p className="text-[11px] text-outline mt-1 leading-relaxed max-w-[240px]">
-                          Click "Add Meal" — customer's tomorrow's order will be updated in real-time.
-                        </p>
-                      </div>
-                    )}
-                  </>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })()}
             </div>
@@ -1317,7 +1334,7 @@ export default function MenuManager({
               <div>
                 <h3 className="font-extrabold text-[16px] text-on-surface">Select Dish for Schedule</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  Plan: {mealSelectorOpenPlan.name} on {(selectedDateForSchedule || selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  Plan: {mealSelectorOpenPlan.name} on {(selectedDateForSchedule || selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })} [{selectedSlotForSchedule}]
                 </p>
               </div>
               <button
@@ -1345,7 +1362,7 @@ export default function MenuManager({
                     <button
                       key={meal.id}
                       type="button"
-                      onClick={() => handleSelectMealForSchedule(mealSelectorOpenPlan, meal)}
+                      onClick={() => handleSelectMealForSchedule(mealSelectorOpenPlan, meal, selectedSlotForSchedule)}
                       className="w-full bg-surface-container-lowest hover:bg-primary/5 active:scale-[0.99] border border-outline-variant/15 p-3 rounded-xl flex gap-3 text-left transition-all cursor-pointer"
                     >
                       <div className="w-12 h-12 bg-surface-variant rounded-lg overflow-hidden shrink-0 shadow-xs">
@@ -1375,7 +1392,7 @@ export default function MenuManager({
               <div>
                 <h3 className="font-extrabold text-[16px] text-on-surface">Select Meal</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  For {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+                  For {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} [{selectedSlotForSchedule}]
                 </p>
               </div>
               <button
@@ -1391,7 +1408,7 @@ export default function MenuManager({
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <span className="material-symbols-outlined text-amber-600 text-[15px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
               <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
-                Only one meal per day — whichever is selected will update the customer's "Tomorrow's Order" in real-time.
+                Whichever meal you select will be scheduled for this slot and will update the customer's orders in real-time.
               </p>
             </div>
 
@@ -1413,7 +1430,7 @@ export default function MenuManager({
                       type="button"
                       onClick={async () => {
                         setAddMealSelectorOpen(false);
-                        await handleSelectMealForSchedule(meal, meal);
+                        await handleSelectMealForSchedule(meal, meal, selectedSlotForSchedule);
                       }}
                       className="w-full bg-surface-container-lowest hover:bg-primary/5 active:scale-[0.99] border border-outline-variant/15 p-3 rounded-xl flex gap-3 text-left transition-all cursor-pointer"
                     >

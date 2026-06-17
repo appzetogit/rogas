@@ -28,6 +28,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
             duration,
             deliveryDays,
             deliverySlot,
+            deliverySlots,
             deliveryAddress,
             pricing,
             invoiceType,
@@ -37,9 +38,13 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
         } = req.body;
 
         const finalMeals = meals || (mealPlanId ? [{ mealPlanId, quantity: 1 }] : []);
+        const finalSlots = deliverySlots && deliverySlots.length > 0
+            ? deliverySlots
+            : (deliverySlot ? [deliverySlot] : []);
+        const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
 
-        if (!vendorId || finalMeals.length === 0 || !deliverySlot || !deliveryAddress || !pricing) {
-            return res.status(400).json({ success: false, message: 'vendorId, meals/mealPlanId, deliverySlot, deliveryAddress, and pricing are required' });
+        if (!vendorId || finalMeals.length === 0 || finalSlots.length === 0 || !deliveryAddress || !pricing) {
+            return res.status(400).json({ success: false, message: 'vendorId, meals/mealPlanId, deliverySlots, deliveryAddress, and pricing are required' });
         }
 
         const userId = req.user.userId || req.user._id;
@@ -56,7 +61,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
                 userId: String(userId),
                 vendorId,
                 mealPlanId: mealPlanId || (finalMeals[0] && String(finalMeals[0].mealPlanId)) || '',
-                deliverySlot
+                deliverySlot: finalSlot
             }
         });
 
@@ -69,7 +74,8 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
             meals: finalMeals,
             duration: duration || 'weekly',
             deliveryDays: deliveryDays || 'mon_fri',
-            deliverySlot,
+            deliverySlot: finalSlot,
+            deliverySlots: finalSlots,
             deliveryAddress,
             pricing,
             paymentMethod: 'razorpay',

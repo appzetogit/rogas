@@ -92,6 +92,11 @@ const subscriptionSchema = new mongoose.Schema(
             enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
+        deliverySlots: {
+            type: [String],
+            enum: ['breakfast', 'lunch', 'dinner'],
+            default: undefined
+        },
         deliveryAddress: { type: deliveryAddressSchema, required: true },
 
         // ─── Pricing ──────────────────────────────────────────────────────────

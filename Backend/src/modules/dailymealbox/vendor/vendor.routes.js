@@ -176,25 +176,27 @@ router.get('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (re
 router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         const vendorId = req.user.userId;
-        const { mealPlanId, date, dishName, description, photo, nutrition } = req.body;
+        const { mealPlanId, date, slot, dishName, description, photo, nutrition } = req.body;
         if (!mealPlanId || !date || !dishName) {
             return res.status(400).json({ success: false, message: 'mealPlanId, date, and dishName are required' });
         }
 
         const normalizedDate = new Date(date);
         normalizedDate.setUTCHours(0, 0, 0, 0);
+        const finalSlot = slot || 'lunch';
 
-        // ─── Enforce: ONE meal per vendor per day ───────────────────────
-        // Delete any existing daily menu for this vendor+date with a DIFFERENT mealPlanId
+        // ─── Enforce: ONE meal per vendor per day per slot ───────────────────────
+        // Delete any existing daily menu for this vendor+date+slot with a DIFFERENT mealPlanId
         await DMBDailyMenu.deleteMany({
             vendorId,
             date: normalizedDate,
+            slot: finalSlot,
             mealPlanId: { $ne: mealPlanId }
         });
 
         // Find and update or create
         const dailyMenu = await DMBDailyMenu.findOneAndUpdate(
-            { vendorId, mealPlanId, date: normalizedDate },
+            { vendorId, mealPlanId, date: normalizedDate, slot: finalSlot },
             {
                 dishName,
                 description: description || '',
@@ -222,10 +224,11 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
             const dayEnd = new Date(dayStart);
             dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-            // Find ALL scheduled orders for this vendor+date (any meal plan)
+            // Find ALL scheduled orders for this vendor+date+slot (any meal plan)
             const ordersToUpdate = await DMBDailyOrder.find({
                 vendorId,
                 deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                deliverySlot: finalSlot,
                 status: 'scheduled'
             });
 
@@ -248,12 +251,13 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
                     const payload = {
                         subscriptionId: order.subscriptionId,
                         deliveryDate: order.deliveryDate,
+                        deliverySlot: finalSlot,
                         dishName,
                         vendorId: String(vendorId)
                     };
                     io.to(subRoom).emit('daily_menu_updated', payload);
                     io.to(userRoom).emit('daily_menu_updated', payload);
-                    logger.info(`Socket emitted daily_menu_updated to ${subRoom} and ${userRoom} for: ${dishName}`);
+                    logger.info(`Socket emitted daily_menu_updated to ${subRoom} and ${userRoom} for: ${dishName} [${finalSlot}]`);
                 }
             }
         } catch (orderUpdateErr) {
@@ -269,15 +273,16 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
 router.delete('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         const vendorId = req.user.userId;
-        const { mealPlanId, date } = req.query;
+        const { mealPlanId, date, slot } = req.query;
         if (!mealPlanId || !date) {
             return res.status(400).json({ success: false, message: 'mealPlanId and date are required' });
         }
 
         const normalizedDate = new Date(date);
         normalizedDate.setUTCHours(0, 0, 0, 0);
+        const finalSlot = slot || 'lunch';
 
-        await DMBDailyMenu.deleteOne({ vendorId, mealPlanId, date: normalizedDate });
+        await DMBDailyMenu.deleteOne({ vendorId, mealPlanId, date: normalizedDate, slot: finalSlot });
 
         // Restore daily orders back to their default master plan name!
         try {
@@ -296,6 +301,7 @@ router.delete('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async 
             const ordersToUpdate = await DMBDailyOrder.find({
                 vendorId,
                 deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                deliverySlot: finalSlot,
                 status: 'scheduled',
                 'meals.mealPlanId': mealPlanId
             });
@@ -317,11 +323,16 @@ router.delete('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async 
                 // Emit socket event
                 if (io) {
                     const roomName = `sub_${order.subscriptionId}`;
-                    io.to(roomName).emit('daily_menu_updated', {
+                    const userRoom = `user:${order.userId}`;
+                    const payload = {
                         subscriptionId: order.subscriptionId,
                         deliveryDate: order.deliveryDate,
-                        dishName: defaultName
-                    });
+                        deliverySlot: finalSlot,
+                        dishName: defaultName,
+                        vendorId: String(vendorId)
+                    };
+                    io.to(roomName).emit('daily_menu_updated', payload);
+                    io.to(userRoom).emit('daily_menu_updated', payload);
                 }
             }
         } catch (orderUpdateErr) {

@@ -137,7 +137,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [selectedMeals, setSelectedMeals] = useState({}); // { [mealPlanId]: quantity }
   const [durationPlans, setDurationPlans] = useState([]);
   const [selectedDuration, setSelectedDuration] = useState(null);
-  const [selectedSlot, setSelectedSlot] = useState("lunch");
+  const [selectedSlots, setSelectedSlots] = useState(["lunch"]);
   const [selectedDays, setSelectedDays] = useState("mon_fri");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(true);
@@ -264,7 +264,19 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   };
 
   const selectedMealsList = getSelectedMealsArray();
-  const getSlot = () => DELIVERY_SLOTS.find((s) => s.id === selectedSlot);
+
+  const toggleSlotSelection = (slotId) => {
+    setSelectedSlots((prev) => {
+      if (prev.includes(slotId)) {
+        if (prev.length === 1) {
+          return prev;
+        }
+        return prev.filter((id) => id !== slotId);
+      } else {
+        return [...prev, slotId];
+      }
+    });
+  };
 
   const basePricePerDay = selectedMealsList.reduce(
     (sum, item) => sum + item.pricePerDay * item.quantity,
@@ -275,7 +287,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     ? (selectedDuration?.daysCountMonFri || 5)
     : (selectedDuration?.daysCountFullWeek || 7);
 
-  const totalPrice = basePricePerDay * daysCount;
+  const totalPrice = basePricePerDay * daysCount * selectedSlots.length;
 
   const handleProceed = () => {
     if (selectedMealsList.length === 0) {
@@ -301,7 +313,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       meals: selectedMealsList,
       duration: selectedDuration?.code || "weekly",
       durationLabel: selectedDuration?.label || "Weekly",
-      deliverySlot: selectedSlot,
+      deliverySlot: selectedSlots[0] || "lunch",
+      deliverySlots: selectedSlots,
       deliveryDays: selectedDays,
       deliveryAddress: {
         street: address,
@@ -446,28 +459,38 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 </section>
               )}
 
-              {/* Step 4: Delivery Slot (Breakfast/Lunch/Dinner) */}
+              {/* Step 4: Delivery Slots (Breakfast/Lunch/Dinner) */}
               <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Time Slot</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Time Slots</h3>
                 <div className="space-y-2">
-                  {DELIVERY_SLOTS.map((slot) => (
-                    <button
-                      key={slot.id}
-                      onClick={() => setSelectedSlot(slot.id)}
-                      className={`w-full flex items-center justify-between p-3.5 rounded-xl border-2 transition-all ${selectedSlot === slot.id ? "border-primary bg-primary/5" : "border-[#e4e2e1] bg-[#f9f9f7]"}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{slot.icon}</span>
-                        <div className="text-left">
-                          <p className="font-extrabold text-[13px] text-[#1b1c1c]">{slot.label}</p>
-                          <p className="text-[11px] text-[#6e7a74]">{slot.time}</p>
+                  {DELIVERY_SLOTS.map((slot) => {
+                    const isSlotSelected = selectedSlots.includes(slot.id);
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => toggleSlotSelection(slot.id)}
+                        className={`w-full flex items-center justify-between p-3.5 rounded-xl border-2 transition-all ${isSlotSelected ? "border-primary bg-primary/5" : "border-[#e4e2e1] bg-[#f9f9f7]"}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSlotSelected}
+                            readOnly
+                            className="w-5 h-5 rounded border-[#bec9c3] text-[#1F7A63] focus:ring-[#1F7A63] cursor-pointer mr-1"
+                          />
+                          <span className="text-xl">{slot.icon}</span>
+                          <div className="text-left">
+                            <p className="font-extrabold text-[13px] text-[#1b1c1c]">{slot.label}</p>
+                            <p className="text-[11px] text-[#6e7a74]">{slot.time}</p>
+                          </div>
                         </div>
-                      </div>
-                      {selectedSlot === slot.id && (
-                        <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>radio_button_checked</span>
-                      )}
-                    </button>
-                  ))}
+                        {isSlotSelected && (
+                          <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_box</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -547,7 +570,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       ))}
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>Total Daily Rate</span>
+                      <span>Total Daily Rate (Per Slot)</span>
                       <span className="font-bold">₹{basePricePerDay}/day</span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
@@ -555,8 +578,14 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       <span className="font-bold">× {daysCount} days</span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
-                      <span>Delivery Slot</span>
-                      <span className="font-bold">{getSlot()?.icon} {getSlot()?.label}</span>
+                      <span>Selected Slots Count</span>
+                      <span className="font-bold">× {selectedSlots.length} slot{selectedSlots.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex justify-between text-[#6e7a74]">
+                      <span>Delivery Slots</span>
+                      <span className="font-bold text-right">
+                        {selectedSlots.map(id => DELIVERY_SLOTS.find(s => s.id === id)).map(s => s ? `${s.icon} ${s.label}` : "").join(" + ")}
+                      </span>
                     </div>
                     <div className="border-t border-primary/20 pt-2 mt-2 flex justify-between">
                       <span className="font-extrabold text-[#1b1c1c]">Total Price</span>

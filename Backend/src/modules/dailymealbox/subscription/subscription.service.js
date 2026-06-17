@@ -20,6 +20,7 @@ export const createSubscription = async ({
     duration,
     deliveryDays,
     deliverySlot,
+    deliverySlots,
     deliveryAddress,
     pricing,
     paymentMethod,
@@ -79,6 +80,11 @@ export const createSubscription = async ({
         };
     }
 
+    const finalSlots = deliverySlots && deliverySlots.length > 0
+        ? deliverySlots
+        : (deliverySlot ? [deliverySlot] : []);
+    const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
+
     const subscription = await DMBSubscription.create({
         userId,
         vendorId,
@@ -89,7 +95,8 @@ export const createSubscription = async ({
         startDate,
         nextDeliveryDate: startDate,
         deliveryDays,
-        deliverySlot,
+        deliverySlot: finalSlot,
+        deliverySlots: finalSlots,
         deliveryAddress: finalAddress,
         pricing,
         paymentMethod: paymentMethod || 'razorpay',
@@ -154,7 +161,8 @@ export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason })
     await sub.save();
 
     // Credit wallet for skipped day
-    const creditAmount = sub.pricing.basePricePerDay;
+    const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
+    const creditAmount = sub.pricing.basePricePerDay * slotCount;
     await FoodUser.findByIdAndUpdate(userId, {
         $inc: { walletBalance: creditAmount }
     });

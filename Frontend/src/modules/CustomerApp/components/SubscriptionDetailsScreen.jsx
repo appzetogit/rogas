@@ -223,7 +223,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                     <div className="space-y-0.5">
                       <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Delivery Preferences</span>
                       <span className="text-[#1b1c1c] font-bold block">
-                        {sub.deliverySlot ? sub.deliverySlot.charAt(0).toUpperCase() + sub.deliverySlot.slice(1) : "Lunch"}
+                        {sub.deliverySlots && sub.deliverySlots.length > 0
+                          ? sub.deliverySlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(", ")
+                          : (sub.deliverySlot ? sub.deliverySlot.charAt(0).toUpperCase() + sub.deliverySlot.slice(1) : "Lunch")}
                       </span>
                       <span className="text-[11px] text-on-surface-variant block">
                         {sub.deliveryDays === "mon_fri" ? "Monday - Friday" : "Full Week"}

@@ -875,12 +875,14 @@ const refreshMealNameFromDailyMenu = async (order) => {
                 let dailyMenuItem = await DMBDailyMenu.findOne({
                     vendorId: order.vendorId,
                     mealPlanId: planId,
-                    date: dayStart
+                    date: dayStart,
+                    slot: order.deliverySlot
                 }).lean();
                 if (!dailyMenuItem) {
                     dailyMenuItem = await DMBDailyMenu.findOne({
                         vendorId: order.vendorId,
-                        date: dayStart
+                        date: dayStart,
+                        slot: order.deliverySlot
                     }).lean();
                 }
                 if (dailyMenuItem?.dishName && m.name !== dailyMenuItem.dishName) {
@@ -913,13 +915,15 @@ const attachDailyMenuDetails = async (orders) => {
                     dailyMenuItem = await DMBDailyMenu.findOne({
                         vendorId: order.vendorId?._id || order.vendorId,
                         mealPlanId: planId,
-                        date: dayStart
+                        date: dayStart,
+                        slot: order.deliverySlot
                     }).lean();
                 }
                 if (!dailyMenuItem) {
                     dailyMenuItem = await DMBDailyMenu.findOne({
                         vendorId: order.vendorId?._id || order.vendorId,
-                        date: dayStart
+                        date: dayStart,
+                        slot: order.deliverySlot
                     }).lean();
                 }
                 if (dailyMenuItem) {
@@ -964,66 +968,73 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                 continue;
             }
 
-            const existing = await DMBDailyOrder.findOne({
-                subscriptionId: sub._id,
-                deliveryDate: { $gte: dayStart, $lt: dayEnd }
-            });
+            const slots = sub.deliverySlots && sub.deliverySlots.length > 0
+                ? sub.deliverySlots
+                : (sub.deliverySlot ? [sub.deliverySlot] : ['lunch']);
 
-            if (existing) {
-                skipped++;
-                continue;
-            }
+            for (const slot of slots) {
+                const existing = await DMBDailyOrder.findOne({
+                    subscriptionId: sub._id,
+                    deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                    deliverySlot: slot
+                });
 
-            const mealsSnapshot = [];
-            for (const m of (sub.meals || [])) {
-                const planId = m.mealPlanId?._id || m.mealPlanId;
-                let displayName = m.mealPlanId?.name || 'Meal';
-
-                try {
-                    const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
-                    let dailyMenuItem = await DMBDailyMenu.findOne({
-                        vendorId: sub.vendorId,
-                        mealPlanId: planId,
-                        date: dayStart
-                    });
-                    if (!dailyMenuItem) {
-                        dailyMenuItem = await DMBDailyMenu.findOne({
-                            vendorId: sub.vendorId,
-                            date: dayStart
-                        });
-                    }
-                    if (dailyMenuItem && dailyMenuItem.dishName) {
-                        displayName = dailyMenuItem.dishName;
-                    }
-                } catch (e) {
-                    logger.warn(`Error resolving daily menu for daily order: ${e.message}`);
+                if (existing) {
+                    skipped++;
+                    continue;
                 }
 
-                mealsSnapshot.push({
-                    mealPlanId: planId,
-                    name: displayName,
-                    quantity: m.quantity || 1
+                const mealsSnapshot = [];
+                for (const m of (sub.meals || [])) {
+                    const planId = m.mealPlanId?._id || m.mealPlanId;
+                    let displayName = m.mealPlanId?.name || 'Meal';
+
+                    try {
+                        const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
+                        let dailyMenuItem = await DMBDailyMenu.findOne({
+                            vendorId: sub.vendorId,
+                            mealPlanId: planId,
+                            date: dayStart
+                        });
+                        if (!dailyMenuItem) {
+                            dailyMenuItem = await DMBDailyMenu.findOne({
+                                vendorId: sub.vendorId,
+                                date: dayStart
+                            });
+                        }
+                        if (dailyMenuItem && dailyMenuItem.dishName) {
+                            displayName = dailyMenuItem.dishName;
+                        }
+                    } catch (e) {
+                        logger.warn(`Error resolving daily menu for daily order: ${e.message}`);
+                    }
+
+                    mealsSnapshot.push({
+                        mealPlanId: planId,
+                        name: displayName,
+                        quantity: m.quantity || 1
+                    });
+                }
+
+                const totalPrice = (sub.meals || []).reduce((acc, m) => {
+                    const pricePerDay = m.mealPlanId?.pricePerDay || 0;
+                    return acc + (pricePerDay * (m.quantity || 1));
+                }, 0) || sub.pricing?.basePricePerDay || 0;
+
+                await DMBDailyOrder.create({
+                    subscriptionId: sub._id,
+                    userId: sub.userId,
+                    vendorId: sub.vendorId,
+                    meals: mealsSnapshot,
+                    deliveryDate: dayStart,
+                    deliverySlot: slot,
+                    status: 'scheduled',
+                    pricing: { totalPrice, currency: 'INR' },
+                    deliveryAddress: sub.deliveryAddress
                 });
+
+                created++;
             }
-
-            const totalPrice = (sub.meals || []).reduce((acc, m) => {
-                const pricePerDay = m.mealPlanId?.pricePerDay || 0;
-                return acc + (pricePerDay * (m.quantity || 1));
-            }, 0) || sub.pricing?.basePricePerDay || 0;
-
-            await DMBDailyOrder.create({
-                subscriptionId: sub._id,
-                userId: sub.userId,
-                vendorId: sub.vendorId,
-                meals: mealsSnapshot,
-                deliveryDate: dayStart,
-                deliverySlot: sub.deliverySlot,
-                status: 'scheduled',
-                pricing: { totalPrice, currency: 'INR' },
-                deliveryAddress: sub.deliveryAddress
-            });
-
-            created++;
         } catch (err) {
             logger.warn(`Failed to generate daily order for sub ${sub._id}: ${err.message}`);
         }
@@ -1076,58 +1087,65 @@ export const ensureOrdersForUser = async (userId) => {
             if (sub.deliveryDays === 'mon_fri' && !isWeekday) continue;
             if (dayOfWeek === 0 && sub.deliveryDays !== 'full_week') continue;
 
-            const existing = await DMBDailyOrder.findOne({
-                subscriptionId: sub._id,
-                deliveryDate: { $gte: dayStart, $lt: dayEnd }
-            });
+            const slots = sub.deliverySlots && sub.deliverySlots.length > 0
+                ? sub.deliverySlots
+                : (sub.deliverySlot ? [sub.deliverySlot] : ['lunch']);
 
-            if (!existing) {
-                const mealsSnapshot = [];
-                for (const m of (sub.meals || [])) {
-                    const planId = m.mealPlanId?._id || m.mealPlanId;
-                    let displayName = m.mealPlanId?.name || 'Meal';
+            for (const slot of slots) {
+                const existing = await DMBDailyOrder.findOne({
+                    subscriptionId: sub._id,
+                    deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                    deliverySlot: slot
+                });
 
-                    try {
-                        if (DMBDailyMenu) {
-                            let dailyMenuItem = await DMBDailyMenu.findOne({
-                                vendorId: sub.vendorId,
-                                mealPlanId: planId,
-                                date: dayStart
-                            }).lean();
-                            if (!dailyMenuItem) {
-                                dailyMenuItem = await DMBDailyMenu.findOne({
+                if (!existing) {
+                    const mealsSnapshot = [];
+                    for (const m of (sub.meals || [])) {
+                        const planId = m.mealPlanId?._id || m.mealPlanId;
+                        let displayName = m.mealPlanId?.name || 'Meal';
+
+                        try {
+                            if (DMBDailyMenu) {
+                                let dailyMenuItem = await DMBDailyMenu.findOne({
                                     vendorId: sub.vendorId,
+                                    mealPlanId: planId,
                                     date: dayStart
                                 }).lean();
+                                if (!dailyMenuItem) {
+                                    dailyMenuItem = await DMBDailyMenu.findOne({
+                                        vendorId: sub.vendorId,
+                                        date: dayStart
+                                    }).lean();
+                                }
+                                if (dailyMenuItem?.dishName) {
+                                    displayName = dailyMenuItem.dishName;
+                                }
                             }
-                            if (dailyMenuItem?.dishName) {
-                                displayName = dailyMenuItem.dishName;
-                            }
-                        }
-                    } catch (e) { }
+                        } catch (e) { }
 
-                    mealsSnapshot.push({
-                        mealPlanId: planId,
-                        name: displayName,
-                        quantity: m.quantity || 1
-                    });
+                        mealsSnapshot.push({
+                            mealPlanId: planId,
+                            name: displayName,
+                            quantity: m.quantity || 1
+                        });
+                    }
+
+                    const totalPrice = (sub.meals || []).reduce((acc, m) => {
+                        return acc + ((m.mealPlanId?.pricePerDay || 0) * (m.quantity || 1));
+                    }, 0) || sub.pricing?.basePricePerDay || 0;
+
+                    await DMBDailyOrder.create({
+                        subscriptionId: sub._id,
+                        userId: sub.userId,
+                        vendorId: sub.vendorId,
+                        meals: mealsSnapshot,
+                        deliveryDate: dayStart,
+                        deliverySlot: slot,
+                        status: 'scheduled',
+                        pricing: { totalPrice, currency: 'INR' },
+                        deliveryAddress: sub.deliveryAddress
+                    }).catch(e => logger.warn(`ensureOrdersForUser: ${e.message}`));
                 }
-
-                const totalPrice = (sub.meals || []).reduce((acc, m) => {
-                    return acc + ((m.mealPlanId?.pricePerDay || 0) * (m.quantity || 1));
-                }, 0) || sub.pricing?.basePricePerDay || 0;
-
-                await DMBDailyOrder.create({
-                    subscriptionId: sub._id,
-                    userId: sub.userId,
-                    vendorId: sub.vendorId,
-                    meals: mealsSnapshot,
-                    deliveryDate: dayStart,
-                    deliverySlot: sub.deliverySlot,
-                    status: 'scheduled',
-                    pricing: { totalPrice, currency: 'INR' },
-                    deliveryAddress: sub.deliveryAddress
-                }).catch(e => logger.warn(`ensureOrdersForUser: ${e.message}`));
             }
         }
     }
@@ -1169,8 +1187,17 @@ export const getTodayAndTomorrowMeals = async (userId) => {
         .populate('vendorId', 'restaurantName profileImage city location')
         .populate('dispatch.deliveryPartnerId', 'name profilePhoto vehicleType phone')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
-        .sort({ deliveryDate: 1 })
         .lean();
+
+    const slotPriority = { breakfast: 1, lunch: 2, dinner: 3 };
+    orders.sort((a, b) => {
+        const dateA = new Date(a.deliveryDate).getTime();
+        const dateB = new Date(b.deliveryDate).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        const priorityA = slotPriority[a.deliverySlot] || 99;
+        const priorityB = slotPriority[b.deliverySlot] || 99;
+        return priorityA - priorityB;
+    });
 
     await attachDailyMenuDetails(orders);
 
@@ -1182,8 +1209,8 @@ export const getTodayAndTomorrowMeals = async (userId) => {
     );
 
     return {
-        today: todayOrders.length > 0 ? formatOrderCard(todayOrders[0]) : null,
-        tomorrow: tomorrowOrders.length > 0 ? formatOrderCard(tomorrowOrders[0]) : null
+        today: todayOrders.length > 0 ? formatOrderCard(todayOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || todayOrders[todayOrders.length - 1]) : null,
+        tomorrow: tomorrowOrders.length > 0 ? formatOrderCard(tomorrowOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || tomorrowOrders[0]) : null
     };
 };
 

@@ -33,7 +33,14 @@ export function CheckoutScreen({
   const basePricePerDay = pricing.basePricePerDay || 0;
   const totalPrice = pricing.totalPrice || 0;
   const deliveryDays = plan.deliveryDays === "full_week" ? "Full Week" : "Mon – Fri";
-  const slotLabel = { breakfast: "☀️ Breakfast (7–9 AM)", lunch: "🌤️ Lunch (12–2 PM)", dinner: "🌙 Dinner (7–9 PM)" }[plan.deliverySlot] || "Lunch";
+  const slotDetails = {
+    breakfast: "☀️ Breakfast (7–9 AM)",
+    lunch: "🌤️ Lunch (12–2 PM)",
+    dinner: "🌙 Dinner (7–9 PM)"
+  };
+  const slotLabel = plan.deliverySlots && plan.deliverySlots.length > 0
+    ? plan.deliverySlots.map(s => slotDetails[s] || s).join(" + ")
+    : (slotDetails[plan.deliverySlot] || "Lunch");
 
   const handleRazorpayPayment = async () => {
     if (paying) return;
@@ -61,6 +68,7 @@ export function CheckoutScreen({
         duration: plan.duration,
         deliveryDays: plan.deliveryDays,
         deliverySlot: plan.deliverySlot,
+        deliverySlots: plan.deliverySlots,
         deliveryAddress: plan.deliveryAddress,
         pricing: plan.pricing, // containing totalPrice and basePricePerDay
         invoiceType: invoicePrefs?.receiptType || "receipt",
