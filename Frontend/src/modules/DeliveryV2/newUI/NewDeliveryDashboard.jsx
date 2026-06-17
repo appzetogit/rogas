@@ -20,8 +20,10 @@ import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, Histo
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
 import { dmbDeliveryAPI } from "../../../services/api";
+import { useDMBTracking } from "../hooks/useDMBTracking";
 
 function NewDeliveryDashboard() {
+  useDMBTracking();
   const [stats, setStats] = useState(INITIAL_DRIVER_STATS);
   const [orders, setOrders] = useState([]);
   const [stops, setStops] = useState([]);

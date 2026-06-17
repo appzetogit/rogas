@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { GoogleMap, Marker, Polyline, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useDeliveryStore } from '../store/useDeliveryStore';
 
 const LIBRARIES = ['geometry'];
 
@@ -40,6 +41,7 @@ export const RoutesMap = ({ stops = [] }) => {
 
   const [activeMarker, setActiveMarker] = useState(null);
   const mapRef = useRef(null);
+  const riderLocation = useDeliveryStore((state) => state.riderLocation);
 
   // Default center: Indore, India
   const defaultCenter = { lat: 22.7196, lng: 75.8577 };
@@ -79,11 +81,18 @@ export const RoutesMap = ({ stops = [] }) => {
     return stopsData.map((s) => s.position);
   }, [stopsData]);
 
-  // Fit bounds to show all markers
+  // Fit bounds to show all markers including rider location
   useEffect(() => {
-    if (isLoaded && mapRef.current && stopsData.length > 0 && window.google) {
+    if (isLoaded && mapRef.current && (stopsData.length > 0 || riderLocation) && window.google) {
       const bounds = new window.google.maps.LatLngBounds();
       stopsData.forEach((s) => bounds.extend(s.position));
+      if (riderLocation) {
+        const rLat = parseFloat(riderLocation.lat || riderLocation.latitude);
+        const rLng = parseFloat(riderLocation.lng || riderLocation.longitude);
+        if (Number.isFinite(rLat) && Number.isFinite(rLng)) {
+          bounds.extend({ lat: rLat, lng: rLng });
+        }
+      }
       mapRef.current.fitBounds(bounds);
       // Limit zoom level so it doesn't get too close for a single marker
       const listener = window.google.maps.event.addListener(mapRef.current, 'bounds_changed', () => {
@@ -93,7 +102,7 @@ export const RoutesMap = ({ stops = [] }) => {
         window.google.maps.event.removeListener(listener);
       });
     }
-  }, [isLoaded, stopsData]);
+  }, [isLoaded, stopsData, riderLocation]);
 
   const onMapLoad = (mapInstance) => {
     mapRef.current = mapInstance;
@@ -191,6 +200,26 @@ export const RoutesMap = ({ stops = [] }) => {
           );
         })}
 
+        {/* Rider Current Location Marker */}
+        {riderLocation && (() => {
+          const rLat = parseFloat(riderLocation.lat || riderLocation.latitude);
+          const rLng = parseFloat(riderLocation.lng || riderLocation.longitude);
+          if (Number.isFinite(rLat) && Number.isFinite(rLng)) {
+            return (
+              <Marker
+                position={{ lat: rLat, lng: rLng }}
+                title="My Current Location"
+                icon={{
+                  url: "/MapRider.png",
+                  anchor: window.google ? new window.google.maps.Point(35, 35) : null,
+                  scaledSize: window.google ? new window.google.maps.Size(70, 70) : null
+                }}
+              />
+            );
+          }
+          return null;
+        })()}
+
         {/* InfoWindow for clicked marker */}
         {activeMarker && (
           <InfoWindow
@@ -198,11 +227,10 @@ export const RoutesMap = ({ stops = [] }) => {
             onCloseClick={() => setActiveMarker(null)}
           >
             <div className="p-1 font-poppins max-w-[200px]">
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 ${
-                activeMarker.type === 'pickup' || activeMarker.type === 'P'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 ${activeMarker.type === 'pickup' || activeMarker.type === 'P'
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-blue-100 text-blue-800'
+                }`}>
                 Stop #{activeMarker.stopIndex} — {activeMarker.type === 'pickup' || activeMarker.type === 'P' ? 'Pickup' : 'Delivery'}
               </span>
               <h4 className="text-xs font-bold text-gray-900 leading-tight mb-1">
