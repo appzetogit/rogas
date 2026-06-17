@@ -651,6 +651,43 @@ router.post('/daily-orders/verify-batch-otp', authMiddleware, requireRoles('REST
 });
 
 // ─── NEW: Resend Batch Request to Drivers ──────────────────────────────
+// Helper to check if vendor has pending/undelivered orders from previous batches or slots
+async function checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate) {
+    const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+    const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+
+    // Find all batches for this vendor
+    const batches = await CollectionBatch.find({ vendorId });
+
+    for (const batch of batches) {
+        if (!batch.orderIds || batch.orderIds.length === 0) continue;
+
+        // Skip if it is the current slot's batch that hasn't been collected yet
+        const isSameSlotAndDate = batch.deliverySlot === requestedSlot && 
+            new Date(batch.deliveryDate).getTime() === new Date(targetDate).getTime();
+
+        if (isSameSlotAndDate && ['pending', 'driver_assigned'].includes(batch.status)) {
+            continue;
+        }
+
+        // Check the orders in this batch
+        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } });
+        const hasPendingOrders = orders.some(order => !['delivered', 'skipped', 'failed'].includes(order.status));
+
+        if (hasPendingOrders) {
+            return {
+                hasPending: true,
+                batchId: batch.batchId,
+                slot: batch.deliverySlot,
+                date: batch.deliveryDate
+            };
+        }
+    }
+
+    return { hasPending: false };
+}
+
+// ─── NEW: Resend Batch Request to Drivers ──────────────────────────────
 router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         const vendorId = req.user.userId || req.user._id;
@@ -696,6 +733,15 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             return res.status(400).json({
                 success: false,
                 message: `No ready orders found to request delivery for (they may already be in transit or delivered).`
+            });
+        }
+
+        // 6. Check for pending deliveries across previous/current slots before generating a new PIN / batch
+        const pendingCheck = await checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate);
+        if (pendingCheck.hasPending) {
+            return res.status(400).json({
+                success: false,
+                message: `A new collection PIN cannot be generated because there are pending deliveries for the ${pendingCheck.slot} slot (Batch: ${pendingCheck.batchId}). Please wait until the driver completes all deliveries.`
             });
         }
 
@@ -885,28 +931,94 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
         targetDate.setUTCHours(0, 0, 0, 0);
 
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
-        const batch = await CollectionBatch.findOne({
+        
+        // Let's find any batch for this vendor/date/slot
+        let batch = await CollectionBatch.findOne({
             vendorId,
             deliveryDate: targetDate,
             deliverySlot: slot || 'lunch',
-            status: 'driver_assigned'
+            status: { $in: ['pending', 'driver_assigned', 'collected', 'driver_en_route'] }
         });
 
-        if (!batch || !batch.driverId) {
-            return res.status(404).json({ success: false, message: 'No assigned driver found.' });
+        // Determine boxCount
+        let boxCount = 0;
+        if (batch) {
+            boxCount = batch.boxCount || batch.orderIds.length;
+        } else {
+            const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+            boxCount = await DMBDailyOrder.countDocuments({
+                vendorId,
+                deliveryDate: targetDate,
+                deliverySlot: slot || 'lunch',
+                status: 'ready'
+            });
         }
 
         const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-        const driver = await FoodDeliveryPartner.findById(batch.driverId)
-            .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+        let driver = null;
+
+        if (batch && batch.driverId) {
+            driver = await FoodDeliveryPartner.findById(batch.driverId)
+                .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+        }
 
         if (!driver) {
-            return res.status(404).json({ success: false, message: 'Driver not found.' });
+            // No driver assigned to a specific batch yet, look up any online and approved driver assigned to this vendor's zone
+            const vendor = await FoodRestaurant.findById(vendorId).select('zoneId serviceZone city location');
+            const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
+            const vendorCity = vendor?.city || vendor?.location?.city;
+
+            const driverFilter = {
+                availabilityStatus: 'online',
+                status: 'approved',
+            };
+
+            const locationConditions = [];
+
+            if (vendorZoneId) {
+                locationConditions.push({ zoneIds: vendorZoneId });
+                locationConditions.push({ zoneIds: vendorZoneId.toString() }); // handle ObjectId vs string mismatch
+                try {
+                    const mongoose = (await import('mongoose')).default;
+                    if (mongoose.Types.ObjectId.isValid(vendorZoneId)) {
+                        locationConditions.push({ zoneIds: new mongoose.Types.ObjectId(vendorZoneId.toString()) });
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            if (vendorCity) {
+                const trimmedCity = vendorCity.trim();
+                if (trimmedCity) {
+                    locationConditions.push({ city: { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
+                    locationConditions.push({ 'location.city': { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
+                }
+            }
+
+            if (locationConditions.length > 0) {
+                driverFilter.$or = locationConditions;
+            }
+
+            let onlineDrivers = await FoodDeliveryPartner.find(driverFilter)
+                .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+
+            if (onlineDrivers.length === 0) {
+                // Last-resort fallback: fetch ANY online approved driver in the system
+                onlineDrivers = await FoodDeliveryPartner.find({
+                    availabilityStatus: 'online',
+                    status: 'approved'
+                }).select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus').limit(1);
+            }
+
+            if (onlineDrivers.length > 0) {
+                driver = onlineDrivers[0];
+            }
         }
 
         res.json({
             success: true,
-            driver: {
+            driver: driver ? {
                 _id: driver._id,
                 name: driver.name,
                 phone: driver.phone,
@@ -916,9 +1028,12 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
                 lastLng: driver.lastLng,
                 lastLocationAt: driver.lastLocationAt,
                 isOnline: driver.availabilityStatus === 'online'
-            },
-            batchId: batch.batchId,
-            otp: batch.collectionPinHash
+            } : null,
+            batchId: batch ? batch.batchId : null,
+            otp: batch ? batch.collectionPinHash : null,
+            boxCount: boxCount,
+            batchStatus: batch ? batch.status : null,
+            slot: batch ? batch.deliverySlot : (slot || 'lunch')
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

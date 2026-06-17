@@ -44,6 +44,14 @@ export default function HomeDashboard({
     return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
   };
 
+  const getArrivalTime = (slotName) => {
+    const s = (slotName || getCurrentSlot()).toLowerCase();
+    if (s === 'breakfast') return '07:45';
+    if (s === 'dinner') return '18:15';
+    return '11:45'; // default lunch
+  };
+
+
   const getCurrentSlot = (config = timingConfig) => {
     const now = new Date();
     const curMin = now.getHours() * 60 + now.getMinutes();
@@ -73,16 +81,18 @@ export default function HomeDashboard({
       try {
         const todayStr = new Date().toISOString().split('T')[0];
         const res = await dmbVendorAPI.getAssignedDriver(todayStr, getCurrentSlot());
-        if (res.data?.success && res.data.driver) {
+        if (res.data?.success) {
           // Normalize to match what socket event expects
           setLocalBatch({
             batchId: res.data.batchId,
-            driverName: res.data.driver.name,
-            driverPhone: res.data.driver.phone,
-            driverPhoto: res.data.driver.profilePhoto,
-            driverVehicle: res.data.driver.vehicleNumber,
+            driverName: res.data.driver?.name || null,
+            driverPhone: res.data.driver?.phone || null,
+            driverPhoto: res.data.driver?.profilePhoto || null,
+            driverVehicle: res.data.driver?.vehicleNumber || null,
             totalOrders: res.data.boxCount || 0,
-            otp: res.data.otp
+            otp: res.data.otp,
+            status: res.data.batchStatus || null,
+            slot: res.data.slot || getCurrentSlot()
           });
         }
       } catch (err) {
@@ -233,14 +243,26 @@ export default function HomeDashboard({
       </div>
 
       {/* Driver status card */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3 mt-4 border border-outline-variant/30 text-left">
+      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3 mt-4 border border-outline-variant/30 text-left animate-fadeIn">
         <div className="flex items-center justify-between">
           <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider">
-            {displayBatch ? "Driver Assigned" : "Next Pickup"}
+            NEXT PICKUP
           </h3>
-          <span className="bg-primary/15 text-primary px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-            {displayBatch ? "ARRIVING SOON" : "WAITING FOR DRIVER"}
-          </span>
+          {displayBatch ? (
+            displayBatch.status === 'collected' ? (
+              <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                COMPLETED
+              </span>
+            ) : (
+              <span className="bg-[#e6f7ed] text-[#116e32] px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                INCOMING
+              </span>
+            )
+          ) : (
+            <span className="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+              WAITING FOR DRIVER
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -255,14 +277,22 @@ export default function HomeDashboard({
           </div>
           <div className="flex-1">
             <p className="font-bold text-[14px] text-on-surface">
-              {displayBatch ? `${displayBatch.driverName} is on the way` : "No driver assigned yet"}
+              {displayBatch 
+                ? (displayBatch.status === 'collected'
+                  ? `Collected by ${displayBatch.driverName || 'Driver'}`
+                  : (displayBatch.driverName 
+                    ? `Driver ${displayBatch.driverName} arrives at ~${getArrivalTime(displayBatch.slot)}`
+                    : "No driver assigned yet"))
+                : "No driver assigned yet"}
             </p>
             <p className="text-[13px] text-on-surface-variant">
               {displayBatch
-                ? `${displayBatch.totalOrders} boxes · ${displayBatch.driverVehicle || 'Vehicle N/A'}`
+                ? (displayBatch.status === 'collected'
+                  ? `${displayBatch.totalOrders} boxes successfully collected`
+                  : `${displayBatch.totalOrders} boxes ready to hand over`)
                 : "Waiting to assign batch"}
             </p>
-            {displayBatch?.driverPhone && (
+            {displayBatch?.driverPhone && displayBatch.status !== 'collected' && (
               <a
                 href={`tel:${displayBatch.driverPhone}`}
                 className="text-[12px] text-primary font-semibold flex items-center gap-1 mt-0.5"
@@ -274,38 +304,42 @@ export default function HomeDashboard({
           </div>
         </div>
 
-        {!displayBatch && (
-          <button
-            onClick={handleResendBatch}
-            disabled={isResending}
-            className="w-full mt-3 bg-secondary-container text-on-secondary-container py-2 rounded-lg font-bold text-[13px] hover:brightness-105 transition-all shadow-sm"
-          >
-            {isResending ? "Resending..." : "Resend Request to Drivers"}
-          </button>
-        )}
-
         {/* Collection PIN slot */}
-        {displayBatch && (
-          <div className="bg-primary-container/10 border border-primary-container/20 rounded-lg p-3 flex flex-col gap-2 transition-colors">
-            <div className="flex justify-between items-center">
-              <span className="text-[13px] text-primary font-semibold">Verify Driver OTP</span>
+        <div className="space-y-2 mt-2">
+          {displayBatch?.status === 'collected' ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex justify-between items-center transition-all shadow-xs">
+              <span className="text-[13px] text-blue-700 font-bold uppercase tracking-wider">OTP Confirmed</span>
+              <span className="material-symbols-outlined text-blue-600 text-[28px]">verified</span>
+            </div>
+          ) : (
+            <div className="bg-[#e6f7ed] border border-[#c2f0d5] rounded-xl p-3.5 flex justify-between items-center transition-all shadow-xs">
+              <span className="text-[13px] text-[#116e32] font-bold uppercase tracking-wider">Collection PIN</span>
+              <span className="text-2xl font-mono font-black tracking-widest text-[#116e32]">
+                {displayBatch?.otp || 'Pending'}
+              </span>
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center px-1">
+            <p className="text-[11px] text-on-surface-variant font-medium">
+              {displayBatch?.status === 'collected'
+                ? "All meal boxes have been handed over to the driver."
+                : (displayBatch?.otp 
+                    ? "Share this PIN with the driver to confirm pickup." 
+                    : "PIN will be available once orders are marked ready.")}
+            </p>
+            {displayBatch && displayBatch.status !== 'collected' && (
               <button
                 onClick={handleTrackDriver}
                 disabled={isTrackingDriver}
                 className="text-[11px] text-primary font-bold flex items-center gap-1 hover:underline"
               >
                 <span className="material-symbols-outlined text-[14px]">location_on</span>
-                {isTrackingDriver ? 'Loading...' : 'Track on Map'}
+                {isTrackingDriver ? 'Loading...' : 'Track Driver'}
               </button>
-            </div>
-            <div className="flex justify-center py-2">
-              <span className="text-3xl font-mono font-black tracking-[0.5em] text-primary">{displayBatch.otp || '****'}</span>
-            </div>
-            <p className="text-[11px] text-center text-on-surface-variant font-medium">
-              Share this 4-digit PIN with the driver when they arrive to confirm pickup.
-            </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Tomorrow forecast card */}

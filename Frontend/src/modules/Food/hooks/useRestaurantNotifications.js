@@ -814,7 +814,12 @@ export const useRestaurantNotifications = () => {
 
     socketRef.current.on('batch_collected_success', (data) => {
       debugLog('?? batch_collected_success received:', data);
-      setAcceptedBatch(null);
+      setAcceptedBatch(prev => {
+        if (prev && prev.batchId === data.batchId) {
+          return { ...prev, status: 'collected' };
+        }
+        return prev;
+      });
     });
 
     // Load notification sound

@@ -51,6 +51,55 @@ const startServer = async () => {
         // 1. Connect to Database (MongoDB)
         await connectDB();
 
+        // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
+        try {
+            const db = mongoose.connection.db;
+            const collectionBatchesCol = db.collection('dmb_collection_batches');
+            const dailyOrdersCol = db.collection('dmb_daily_orders');
+
+            // Find all batches starting with BATCH- or containing fake data
+            const fakeBatches = await collectionBatchesCol.find({
+                $or: [
+                    { batchId: /^BATCH-/ },
+                    { collectionPinHash: '4901' }
+                ]
+            }).toArray();
+
+            const fakeBatchIds = fakeBatches.map(b => b._id);
+            let fakeOrderIds = [];
+            fakeBatches.forEach(b => {
+                if (b.orderIds && Array.isArray(b.orderIds)) {
+                    fakeOrderIds.push(...b.orderIds);
+                }
+            });
+
+            // Delete fake orders
+            const deletedOrders = await dailyOrdersCol.deleteMany({
+                $or: [
+                    { _id: { $in: fakeOrderIds } },
+                    { 'pricing.currency': 'PLN' },
+                    { 'deliveryAddress.street': /^Mock Street/ },
+                    { collectionPin: '4901' },
+                    { 'meals.name': /^Healthy Meal/ }
+                ]
+            });
+
+            // Delete fake batches
+            const deletedBatches = await collectionBatchesCol.deleteMany({
+                $or: [
+                    { _id: { $in: fakeBatchIds } },
+                    { batchId: /^BATCH-/ },
+                    { collectionPinHash: '4901' }
+                ]
+            });
+
+            if (deletedOrders.deletedCount > 0 || deletedBatches.deletedCount > 0) {
+                logger.info(`[DB CLEANUP] Deleted ${deletedOrders.deletedCount} fake orders and ${deletedBatches.deletedCount} fake batches.`);
+            }
+        } catch (cleanupErr) {
+            logger.error(`Error cleaning up fake orders/batches: ${cleanupErr.message}`);
+        }
+
         // Seed DMB Duration Plans
         try {
             const { seedDurationPlans } = await import('./src/modules/dailymealbox/subscription/subscription.service.js');

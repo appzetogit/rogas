@@ -16,7 +16,7 @@ import { ProfileView } from "./ProfileView";
 import { MyShiftsView } from "./MyShiftsView";
 import { DemandHeatmapView } from "./DemandHeatmapView";
 import { RoutesView } from "./RoutesView";
-import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History } from "lucide-react";
+import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History, AlertTriangle } from "lucide-react";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
 import { dmbDeliveryAPI } from "../../../services/api";
@@ -28,6 +28,7 @@ function NewDeliveryDashboard() {
   const [orders, setOrders] = useState([]);
   const [stops, setStops] = useState([]);
   const [shifts, setShifts] = useState(INITIAL_SHIFTS);
+  const [pickupFirstModalOpen, setPickupFirstModalOpen] = useState(false);
 
   const isOnline = useDeliveryStore((state) => state.isOnline);
   const toggleOnlineAction = useDeliveryStore((state) => state.toggleOnline);
@@ -367,6 +368,32 @@ function NewDeliveryDashboard() {
     setCurrentScreen("home");
   };
 
+  const handleSelectOrder = (stopOrId) => {
+    const stop = typeof stopOrId === 'object'
+      ? stopOrId
+      : stops.find(s => s.id === stopOrId || s.orderId === stopOrId);
+
+    if (stop && (stop.type === 'delivery' || stop.type === 'D')) {
+      const hasPendingPickup = stops.some(s => (s.type === 'pickup' || s.type === 'P') && s.status !== 'COMPLETED' && s.status !== 'completed');
+      if (stop.awaitingPickup || hasPendingPickup) {
+        setPickupFirstModalOpen(true);
+        return;
+      }
+    }
+
+    const stopKey = stop ? (stop.orderId || stop.id || (stop.vendorId ? `vendor_${stop.vendorId}` : null)) : stopOrId;
+    setSelectedOrderId(stopKey);
+    if (stop) {
+      setSelectedRouteStop(stop);
+      setBackScreen("routes");
+      if (stop.type === 'pickup' || stop.type === 'P') {
+        setCurrentScreen('pickup');
+      } else {
+        setCurrentScreen('delivery');
+      }
+    }
+  };
+
   const renderActiveScreen = () => {
     switch (currentScreen) {
       case "home":
@@ -381,18 +408,7 @@ function NewDeliveryDashboard() {
         />;
       case "routes":
         return <RoutesView
-          onSelectStop={(stop) => {
-            // Build an orderId-compatible key for the stop
-            const stopKey = stop.orderId || stop.id || (stop.vendorId ? `vendor_${stop.vendorId}` : null);
-            setSelectedOrderId(stopKey);
-            setSelectedRouteStop(stop);
-            setBackScreen("routes");
-            if (stop.type === 'pickup' || stop.type === 'P') {
-              setCurrentScreen('pickup');
-            } else {
-              setCurrentScreen('delivery');
-            }
-          }}
+          onSelectStop={handleSelectOrder}
         />;
       case "route":
         const totalEarnings = orders.reduce((sum, o) => sum + (o.riderEarning || 0), 0);
@@ -417,7 +433,7 @@ function NewDeliveryDashboard() {
           order={activeOrder}
           orders={orders}
           stops={stops}
-          onSelectOrder={setSelectedOrderId}
+          onSelectOrder={handleSelectOrder}
           onGoBack={() => setCurrentScreen(backScreen)}
           onConfirmDelivered={handleConfirmDelivered}
           onOpenChat={() => setCurrentScreen("shifts")}
@@ -599,6 +615,30 @@ function NewDeliveryDashboard() {
 
         {renderActiveScreen()}
       </main>
+
+      {/* Pickup First modal alert */}
+      {pickupFirstModalOpen && (
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center flex flex-col items-center space-y-4 border border-gray-100 animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            
+            <h3 className="text-lg font-black text-gray-900">Pickup Required</h3>
+            
+            <p className="text-sm text-gray-600 font-medium leading-relaxed">
+              Please pick up the meal box from the vendor first.
+            </p>
+            
+            <button
+              onClick={() => setPickupFirstModalOpen(false)}
+              className="w-full py-3 bg-[#1F7A63] text-white rounded-2xl font-bold shadow-md hover:bg-[#1f7a63]/90 active:scale-98 transition-all"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center">

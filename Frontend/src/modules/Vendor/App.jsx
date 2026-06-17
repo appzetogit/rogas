@@ -308,7 +308,7 @@ export default function App() {
   const handleMarkAllReady = async () => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      await dmbVendorAPI.markReady(todayStr, getCurrentSlot());
+      await dmbVendorAPI.markAllDailyOrdersReady(todayStr, getCurrentSlot());
       setOrders((prev) => prev.map((o) => ({ ...o, status: 'Ready' })));
       triggerGlobalToast('All kitchen orders marked as READY ✓');
     } catch (err) {
@@ -321,7 +321,7 @@ export default function App() {
     if (orderObj && status === 'Ready') {
       try {
         const dateStr = new Date(orderObj.deliveryDate).toISOString().split('T')[0];
-        await dmbVendorAPI.markReady(dateStr, orderObj.deliverySlot || getCurrentSlot());
+        await dmbVendorAPI.markAllDailyOrdersReady(dateStr, orderObj.deliverySlot || getCurrentSlot());
         setOrders((prev) => prev.map((o) => o.id === id || (o.deliveryDate === orderObj.deliveryDate && o.deliverySlot === orderObj.deliverySlot) ? { ...o, status: 'Ready' } : o));
         triggerGlobalToast(`Orders for ${orderObj.deliverySlot} marked as Ready`);
       } catch (err) {
@@ -337,7 +337,7 @@ export default function App() {
     if (to === 'Ready') {
       try {
         const todayStr = new Date().toISOString().split('T')[0];
-        await dmbVendorAPI.markReady(todayStr, getCurrentSlot());
+        await dmbVendorAPI.markAllDailyOrdersReady(todayStr, getCurrentSlot());
         setOrders((prev) => prev.map((o) => from === 'any' || o.status === from ? { ...o, status: to } : o));
         triggerGlobalToast(`Batch update: marked items as READY ✓`);
       } catch (err) {

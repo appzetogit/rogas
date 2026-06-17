@@ -1392,6 +1392,41 @@ const buildDriverFilter = (vendor) => {
 };
 
 /**
+ * Helper to check if vendor has pending/undelivered orders from previous batches or slots
+ */
+async function checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate) {
+    // Find all batches for this vendor
+    const batches = await CollectionBatch.find({ vendorId });
+
+    for (const batch of batches) {
+        if (!batch.orderIds || batch.orderIds.length === 0) continue;
+
+        // Skip if it is the current slot's batch that hasn't been collected yet
+        const isSameSlotAndDate = batch.deliverySlot === requestedSlot && 
+            new Date(batch.deliveryDate).getTime() === new Date(targetDate).getTime();
+
+        if (isSameSlotAndDate && ['pending', 'driver_assigned'].includes(batch.status)) {
+            continue;
+        }
+
+        // Check the orders in this batch
+        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } });
+        const hasPendingOrders = orders.some(order => !['delivered', 'skipped', 'failed'].includes(order.status));
+
+        if (hasPendingOrders) {
+            return {
+                hasPending: true,
+                batchId: batch.batchId,
+                slot: batch.deliverySlot,
+                date: batch.deliveryDate
+            };
+        }
+    }
+
+    return { hasPending: false };
+}
+
+/**
  * FIX 2: triggerDriverNotificationIfAllReady — robust driver matching + detailed logs
  */
 export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) => {
@@ -1443,6 +1478,12 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         }
 
         if (!batch) {
+            const pendingCheck = await checkPendingDeliveriesForVendor(vendorId, slot, targetDate);
+            if (pendingCheck.hasPending) {
+                logger.info(`[DRIVER-NOTIFY] New collection PIN cannot be generated for vendor ${vendorId} slot ${slot} because slot ${pendingCheck.slot} still has pending deliveries.`);
+                return;
+            }
+
             const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
             batch = await CollectionBatch.create({
                 vendorId,
@@ -1462,7 +1503,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         // FIX: use the robust driver filter
         const driverFilter = buildDriverFilter(vendor);
         let onlineDrivers = await FoodDeliveryPartner.find(driverFilter)
-            .select('_id fcmTokens socketRoomId');
+            .select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
 
         logger.info(`[DRIVER-NOTIFY] Driver query matched ${onlineDrivers.length} online drivers for vendor ${vendorId}`);
 
@@ -1473,7 +1514,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
             const fallbackDrivers = await FoodDeliveryPartner.find({
                 availabilityStatus: 'online',
                 status: 'approved'
-            }).select('_id fcmTokens socketRoomId').limit(50);
+            }).select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus').limit(50);
             logger.warn(`[DRIVER-NOTIFY] Fallback: found ${fallbackDrivers.length} total online drivers in system`);
             onlineDrivers = fallbackDrivers;
         }
@@ -1483,6 +1524,24 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
             logger.error(`[DRIVER-NOTIFY] Socket.IO instance not available — cannot emit`);
             return;
         }
+
+        // Emit batch accepted/ready event directly to vendor room in real-time
+        const matchedDriver = onlineDrivers.length > 0 ? onlineDrivers[0] : null;
+        io.to(`vendor_${vendorId}`).emit('batch_accepted', {
+            batchId: batch.batchId,
+            driver: matchedDriver ? {
+                _id: matchedDriver._id,
+                name: matchedDriver.name,
+                phone: matchedDriver.phone,
+                vehicleNumber: matchedDriver.vehicleNumber,
+                profilePhoto: matchedDriver.profilePhoto
+            } : null,
+            otp: batch.collectionPinHash,
+            boxCount: batch.boxCount,
+            slot: slot
+        });
+        logger.info(`[DRIVER-NOTIFY] Emitted batch_accepted to vendor_${vendorId} with OTP/PIN ${batch.collectionPinHash}`);
+
 
         if (onlineDrivers.length > 0) {
             const ordersDetails = readyOrders.map(o => ({
@@ -1636,11 +1695,9 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
         }
     }
 
-    /*
     if (status === 'ready') {
         await triggerDriverNotificationIfAllReady(order.vendorId, order.deliveryDate, order.deliverySlot);
     }
-    */
 
     if (order.dispatch?.deliveryPartnerId) {
         notifyDriverOfRouteUpdate(order.dispatch.deliveryPartnerId);
@@ -1704,8 +1761,7 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
         }
     }
 
-    // Commented out automatic driver notification triggers to allow meal slot-based Request Delivery button flow
-    // await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
+    await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
 
     // ─── NEW: Broadcast "ready" status to all drivers in this vendor's zone ──
     if (io && count > 0) {
