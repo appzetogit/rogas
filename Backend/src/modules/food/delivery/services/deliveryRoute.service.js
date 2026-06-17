@@ -216,7 +216,6 @@ export async function buildRouteForPartner(partnerId) {
     const depotLat = firstOrder.vendorLat || 0;
     const depotLng = firstOrder.vendorLng || 0;
 
-    // nodes[0] = depot
     const nodes = [{ lat: depotLat, lng: depotLng, type: 'depot' }];
     const demands = [0]; // depot demand = 0
     const pairs = []; // [pickupIdx, deliveryIdx] per order
@@ -237,33 +236,57 @@ export async function buildRouteForPartner(partnerId) {
             continue;
         }
 
-        const pickupIdx = nodes.length;
-        nodes.push({ lat: vendorLat, lng: vendorLng, type: 'pickup' });
-        demands.push(1); // +1 item picked up
-        orderMeta.push({
-            orderId: order._id,
-            isDmb: order.isDmb,
-            type: 'pickup',
-            name: order.restaurantName,
-            address: order.restaurantAddress,
-            phone: order.restaurantPhone,
-            lat: vendorLat,
-            lng: vendorLng
-        });
+        // Find or create pickup node (uniquely identified by restaurantId or location)
+        let pickupIdx = nodes.findIndex((n, idx) => 
+            n.type === 'pickup' && 
+            (order.restaurantId && orderMeta[idx]?.restaurantId 
+                ? orderMeta[idx].restaurantId.toString() === order.restaurantId.toString()
+                : n.lat === vendorLat && n.lng === vendorLng)
+        );
+        if (pickupIdx === -1) {
+            pickupIdx = nodes.length;
+            nodes.push({ lat: vendorLat, lng: vendorLng, type: 'pickup' });
+            demands.push(1); // +1 item picked up
+            orderMeta.push({
+                orderId: order._id,
+                restaurantId: order.restaurantId,
+                isDmb: order.isDmb,
+                type: 'pickup',
+                name: order.restaurantName,
+                address: order.restaurantAddress,
+                phone: order.restaurantPhone,
+                lat: vendorLat,
+                lng: vendorLng
+            });
+        } else {
+            demands[pickupIdx] += 1;
+        }
 
-        const deliveryIdx = nodes.length;
-        nodes.push({ lat: customerLat, lng: customerLng, type: 'delivery' });
-        demands.push(-1); // -1 item delivered
-        orderMeta.push({
-            orderId: order._id,
-            isDmb: order.isDmb,
-            type: 'delivery',
-            name: order.customerName,
-            address: order.customerAddress,
-            phone: order.customerPhone,
-            lat: customerLat,
-            lng: customerLng
-        });
+        // Find or create delivery node (uniquely identified by customer coordinates + name + phone)
+        let deliveryIdx = nodes.findIndex((n, idx) => 
+            n.type === 'delivery' && 
+            n.lat === customerLat && 
+            n.lng === customerLng &&
+            orderMeta[idx]?.name === order.customerName &&
+            orderMeta[idx]?.phone === order.customerPhone
+        );
+        if (deliveryIdx === -1) {
+            deliveryIdx = nodes.length;
+            nodes.push({ lat: customerLat, lng: customerLng, type: 'delivery' });
+            demands.push(-1); // -1 item delivered
+            orderMeta.push({
+                orderId: order._id,
+                isDmb: order.isDmb,
+                type: 'delivery',
+                name: order.customerName,
+                address: order.customerAddress,
+                phone: order.customerPhone,
+                lat: customerLat,
+                lng: customerLng
+            });
+        } else {
+            demands[deliveryIdx] -= 1;
+        }
 
         pairs.push([pickupIdx, deliveryIdx]);
     }
@@ -302,20 +325,26 @@ export async function buildRouteForPartner(partnerId) {
         depotIndex: 0
     });
 
-    // 7. Map route indices (skip depot at index 0) to stop documents
-    const stops = routeIndices
-        .filter((idx) => idx !== 0) // skip depot
-        .map((idx, position) => ({
-            stopIndex: position + 1,
-            type: orderMeta[idx].type,
-            orderId: orderMeta[idx].orderId,
-            name: orderMeta[idx].name,
-            address: orderMeta[idx].address,
-            lat: orderMeta[idx].lat,
-            lng: orderMeta[idx].lng,
-            phone: orderMeta[idx].phone,
-            status: 'pending'
-        }));
+    // 7. Map unique route indices (skip depot at index 0) to stop documents
+    const seen = new Set();
+    const uniqueRouteIndices = routeIndices.filter((idx) => {
+        if (idx === 0) return false;
+        if (seen.has(idx)) return false;
+        seen.add(idx);
+        return true;
+    });
+
+    const stops = uniqueRouteIndices.map((idx, position) => ({
+        stopIndex: position + 1,
+        type: orderMeta[idx].type,
+        orderId: orderMeta[idx].orderId,
+        name: orderMeta[idx].name,
+        address: orderMeta[idx].address,
+        lat: orderMeta[idx].lat,
+        lng: orderMeta[idx].lng,
+        phone: orderMeta[idx].phone,
+        status: 'pending'
+    }));
 
     // 8. Upsert the route document
     const savedRoute = await FoodDeliveryRoute.findOneAndUpdate(
