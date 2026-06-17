@@ -1255,15 +1255,20 @@ const getDeliveryMeOnce = () => {
 /** Delivery API - OTP login + registration via new backend. */
 export const dmbDeliveryAPI = {
   acceptBatch: (batchId) => deliveryClient.post("/dmb/driver/accept-batch", { batchId }),
+  /** NEW: Get slot-based route filtered by current meal time window (no CollectionBatch needed) */
+  getSlotRoute: () => deliveryClient.get("/dmb/driver/slot-route"),
   getRoute: () => deliveryClient.get("/dmb/driver/my-route"),
   goOnline: () => deliveryClient.patch("/dmb/driver/go-online"),
   goOffline: () => deliveryClient.patch("/dmb/driver/go-offline"),
-  verifyCollectionPin: (pin, collectionGps = null) => deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps }),
+  /** Updated: accepts vendorId and slot for the new direct-to-vendor flow */
+  verifyCollectionPin: (pin, collectionGps = null, vendorId = null, slot = null) =>
+    deliveryClient.post("/dmb/driver/verify-collection-pin", { pin, collectionGps, vendorId, slot }),
   verifyDeliveryPin: (orderId, pin, deliveryGps = null) => deliveryClient.post("/dmb/driver/verify-delivery-pin", { orderId, pin, deliveryGps }),
   uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps }),
   confirmPayment: (orderId, method) => deliveryClient.post("/dmb/driver/confirm-payment", { orderId, method }),
   getDashboardStats: () => deliveryClient.get("/food/delivery/dashboard-stats")
 };
+
 
 export const deliveryAPI = {
   sendOTP: (phone, _purpose = "login") => {

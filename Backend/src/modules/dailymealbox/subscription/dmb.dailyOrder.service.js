@@ -1613,6 +1613,27 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
             updatedAt: new Date().toISOString()
         });
         logger.info(`Socket emitted order_status_updated to room ${roomName}: ${status}`);
+
+        // ─── NEW: Broadcast vendor preparation status to all drivers in zone ──
+        if (status === 'preparing' || status === 'ready') {
+            try {
+                const vendor = await FoodRestaurant.findById(order.vendorId).select('zoneId city').lean();
+                const zoneId = vendor?.zoneId ? String(vendor.zoneId) : null;
+                const city = vendor?.city || '';
+                const zoneRoom = zoneId ? `delivery_zone:${zoneId}` : (city ? `delivery_zone:${city.toLowerCase()}` : null);
+                if (zoneRoom) {
+                    io.to(zoneRoom).emit('vendor_order_status_changed', {
+                        vendorId: String(order.vendorId),
+                        slot: order.deliverySlot,
+                        vendorStatus: status,
+                        deliveryDate: order.deliveryDate
+                    });
+                    logger.info(`Socket emitted vendor_order_status_changed to ${zoneRoom}: ${status}`);
+                }
+            } catch (zoneErr) {
+                logger.warn(`Failed to emit vendor_order_status_changed: ${zoneErr.message}`);
+            }
+        }
     }
 
     /*
@@ -1628,6 +1649,7 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
     logger.info(`DMB order ${order.orderId} status → ${status} by vendor ${vendorId}`);
     return order;
 };
+
 
 /**
  * Batch: Vendor marks all orders for a slot as "ready"
@@ -1685,9 +1707,31 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
     // Commented out automatic driver notification triggers to allow meal slot-based Request Delivery button flow
     // await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
 
+    // ─── NEW: Broadcast "ready" status to all drivers in this vendor's zone ──
+    if (io && count > 0) {
+        try {
+            const vendor = await FoodRestaurant.findById(vendorId).select('zoneId city').lean();
+            const zoneId = vendor?.zoneId ? String(vendor.zoneId) : null;
+            const city = vendor?.city || '';
+            const zoneRoom = zoneId ? `delivery_zone:${zoneId}` : (city ? `delivery_zone:${city.toLowerCase()}` : null);
+            if (zoneRoom) {
+                io.to(zoneRoom).emit('vendor_order_status_changed', {
+                    vendorId: String(vendorId),
+                    slot: slot || 'unknown',
+                    vendorStatus: 'ready',
+                    deliveryDate: targetDate
+                });
+                logger.info(`markAllOrdersReady: emitted vendor_order_status_changed to ${zoneRoom}`);
+            }
+        } catch (zoneErr) {
+            logger.warn(`markAllOrdersReady zone emit failed: ${zoneErr.message}`);
+        }
+    }
+
     logger.info(`Vendor ${vendorId} marked ${count} orders as ready for ${dateStr(targetDate)} / ${slot}`);
     return { count, date: dateStr(targetDate), slot };
 };
+
 
 // ─── Internal Formatter ────────────────────────────────────────────────────
 const formatOrderCard = (order) => ({

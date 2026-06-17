@@ -212,7 +212,7 @@ export const driverGoOnline = async (driverId, io) => {
         isOnline: true
     });
 
-    const driver = await FoodDeliveryPartner.findById(driverId).select('name city');
+    const driver = await FoodDeliveryPartner.findById(driverId).select('name city zoneIds');
 
     // Notify admin room
     if (io && driver?.city) {
@@ -223,8 +223,23 @@ export const driverGoOnline = async (driverId, io) => {
         });
     }
 
+    // ─── NEW: Join delivery zone room so driver receives vendor status broadcasts ─
+    // The driver's socket must join via client-side emit, so we emit a special event
+    // asking the client to join the zone room. We store the zone room name in the response.
+    if (io && driver) {
+        const zoneId = driver.zoneIds?.[0] ? String(driver.zoneIds[0]) : null;
+        const city = driver.city || '';
+        const zoneRoom = zoneId ? `delivery_zone:${zoneId}` : (city ? `delivery_zone:${city.toLowerCase()}` : null);
+        if (zoneRoom) {
+            // Emit to the driver's personal room so client can join the zone room
+            io.to(`delivery:${driverId.toString()}`).emit('join_zone_room', { zoneRoom });
+            logger.info(`Told driver ${driverId} to join zone room: ${zoneRoom}`);
+        }
+    }
+
     logger.info(`Driver ${driverId} went online`);
 };
+
 
 export const driverGoOffline = async (driverId, io) => {
     const redis = getRedis();

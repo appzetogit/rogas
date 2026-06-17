@@ -63,26 +63,44 @@ function NewDeliveryDashboard() {
   }, [selectedOrderId]);
 
   const activeOrder = orders.find(o => o.id === selectedOrderId)
-    || (selectedRouteStop && selectedRouteStop.orderId === selectedOrderId ? {
-        id: selectedRouteStop.orderId,
-        vendorName: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? selectedRouteStop.name : (routeMetadata?.vendorName || 'Vendor'),
-        vendorAddress: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? selectedRouteStop.address : (routeMetadata?.vendorAddress || 'Vendor Address'),
-        vendorPhone: selectedRouteStop.phone || 'N/A',
-        vendorLat: selectedRouteStop.lat || null,
-        vendorLng: selectedRouteStop.lng || null,
-        customerName: selectedRouteStop.type === 'delivery' || selectedRouteStop.type === 'D' ? selectedRouteStop.name : 'Customer',
-        customerAddress: selectedRouteStop.type === 'delivery' || selectedRouteStop.type === 'D' ? selectedRouteStop.address : 'Customer Address',
-        customerPhone: selectedRouteStop.phone || 'N/A',
-        customerLat: selectedRouteStop.lat || null,
-        customerLng: selectedRouteStop.lng || null,
-        status: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? 'ready_for_pickup' : 'picked_up',
-        pin: "4901",
-        deliveryPin: "1234",
-        riderEarning: 15,
-        boxCount: 1
-       } : null)
+    || (selectedRouteStop ? (() => {
+        const stop = selectedRouteStop;
+        const isPickup = stop.type === 'pickup' || stop.type === 'P';
+        return {
+          id: stop.orderId || stop.id || (stop.vendorId ? `vendor_${stop.vendorId}` : 'route-stop'),
+          // Vendor fields (for PickupVerification)
+          vendorName: isPickup ? stop.name : (stop.vendorName || 'Vendor'),
+          vendorAddress: isPickup ? stop.address : (stop.vendorAddress || ''),
+          vendorPhone: stop.phone || 'N/A',
+          vendorLat: stop.lat || null,
+          vendorLng: stop.lng || null,
+          // New slot-based fields
+          vendorId: stop.vendorId || null,
+          slot: stop.slot || stop.deliverySlot || null,
+          vendorStatus: stop.vendorStatus || 'scheduled',
+          orderCount: stop.orderCount || 1,
+          collectionPin: stop.collectionPin || null,
+          // Customer fields (for DeliveryConfirmation)
+          customerName: !isPickup ? stop.name : 'Customer',
+          customerAddress: !isPickup ? stop.address : '',
+          customerPhone: stop.phone || 'N/A',
+          customerLat: stop.lat || null,
+          customerLng: stop.lng || null,
+          // Common fields
+          status: isPickup ? 'ready_for_pickup' : 'picked_up',
+          pin: stop.collectionPin || '----',
+          deliveryPin: stop.deliveryPin || '----',
+          riderEarning: 15,
+          boxCount: stop.orderCount || 1,
+          items: stop.orderCount
+            ? [{ id: 1, name: 'Meal Boxes', quantity: stop.orderCount, checked: false }]
+            : [{ id: 1, name: 'Meal Box', quantity: 1, checked: false }]
+        };
+      })()
+    : null)
     || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery")
     || orders[0];
+
 
   useEffect(() => {
     const screen = getScreenFromPath(location.pathname);
@@ -364,7 +382,9 @@ function NewDeliveryDashboard() {
       case "routes":
         return <RoutesView
           onSelectStop={(stop) => {
-            setSelectedOrderId(stop.orderId);
+            // Build an orderId-compatible key for the stop
+            const stopKey = stop.orderId || stop.id || (stop.vendorId ? `vendor_${stop.vendorId}` : null);
+            setSelectedOrderId(stopKey);
             setSelectedRouteStop(stop);
             setBackScreen("routes");
             if (stop.type === 'pickup' || stop.type === 'P') {

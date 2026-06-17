@@ -105,12 +105,17 @@ const PickupVerification = ({
       }
       try {
         setIsVerifying(true);
-        const res = await dmbDeliveryAPI.verifyCollectionPin(finalPin);
+        // Pass vendorId and slot for the new direct-to-vendor flow
+        const vendorId = order?.vendorId || null;
+        const slot = order?.slot || order?.deliverySlot || null;
+        const res = await dmbDeliveryAPI.verifyCollectionPin(finalPin, null, vendorId, slot);
         if (res.data?.success) {
           setSuccess(true);
           setTimeout(() => {
             onConfirmPickup();
           }, 1000);
+        } else {
+          setShowError(res.data?.message || "Invalid Collection PIN");
         }
       } catch (err) {
         setShowError(err.response?.data?.message || "Invalid Collection PIN");
@@ -121,6 +126,7 @@ const PickupVerification = ({
       setShowError("Please enter the 4-digit PIN");
     }
   };
+
   return <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
     {
       /* Header Info Banner containing back navigation button */

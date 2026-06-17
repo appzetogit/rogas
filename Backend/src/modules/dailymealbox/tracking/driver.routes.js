@@ -55,6 +55,246 @@ router.post('/location', authMiddleware, requireRoles('DELIVERY_PARTNER'), async
     }
 });
 
+// ─── NEW: Get Slot-Based Route (no CollectionBatch required) ─────────────
+router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const { checkAdminTimingWindow } = await import('../subscription/dmb.dailyOrder.service.js');
+        const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+
+        const SLOTS = ['breakfast', 'lunch', 'dinner'];
+
+        // ─── 1. Determine active slot and next upcoming slot ─────────────────
+        let activeSlot = null;
+        let nextSlot = null;
+        let slotWindow = null;
+        let nextSlotWindow = null;
+
+        const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
+        const timingSettings = await getVendorTimingSettings();
+
+        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+        const hhmmToMins = (str) => {
+            if (!str) return null;
+            const [h, m] = str.split(':').map(Number);
+            return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+        };
+        const fmtTime = (mins) => {
+            if (mins === null) return '';
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            const ampm = h < 12 ? 'AM' : 'PM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+        };
+
+        for (const slot of SLOTS) {
+            const cfg = timingSettings[slot];
+            if (!cfg || cfg.isEnabled === false) continue;
+            const start = hhmmToMins(cfg.startTime);
+            const end = hhmmToMins(cfg.endTime);
+            if (start === null || end === null) continue;
+            if (nowMins >= start && nowMins <= end) {
+                activeSlot = slot;
+                slotWindow = { start: cfg.startTime, end: cfg.endTime, startMins: start, endMins: end };
+                break;
+            }
+        }
+
+        // If no active slot, find the next upcoming slot
+        if (!activeSlot) {
+            for (const slot of SLOTS) {
+                const cfg = timingSettings[slot];
+                if (!cfg || cfg.isEnabled === false) continue;
+                const start = hhmmToMins(cfg.startTime);
+                const end = hhmmToMins(cfg.endTime);
+                if (start === null) continue;
+                if (start > nowMins) {
+                    nextSlot = slot;
+                    nextSlotWindow = { start: cfg.startTime, end: cfg.endTime, startMins: start, endMins: end };
+                    break;
+                }
+            }
+            // If past all slots for today, show dinner (last slot) as preview
+            if (!nextSlot) {
+                nextSlot = 'dinner';
+                const cfg = timingSettings['dinner'] || {};
+                const start = hhmmToMins(cfg.startTime);
+                const end = hhmmToMins(cfg.endTime);
+                nextSlotWindow = { start: cfg.startTime || '17:00', end: cfg.endTime || '21:00', startMins: start, endMins: end };
+            }
+        }
+
+        const targetSlot = activeSlot || nextSlot;
+        const isSlotActive = !!activeSlot;
+
+        // ─── 2. Build today's date range ─────────────────────────────────────
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        // ─── 3. Fetch DMBDailyOrders for the target slot ─────────────────────
+        const orders = await DMBDailyOrder.find({
+            deliveryDate: { $gte: today, $lt: tomorrow },
+            deliverySlot: targetSlot,
+            status: { $nin: ['delivered', 'skipped', 'failed'] }
+        })
+            .populate('vendorId', 'restaurantName addressLine1 location phone city zoneId')
+            .populate('userId', 'name phone')
+            .lean();
+
+        if (orders.length === 0) {
+            return res.json({
+                success: true,
+                isSlotActive,
+                activeSlot: targetSlot,
+                slotWindow: isSlotActive ? slotWindow : nextSlotWindow,
+                nextSlot: isSlotActive ? null : nextSlot,
+                nextSlotWindow: isSlotActive ? null : nextSlotWindow,
+                stops: [],
+                totalOrders: 0,
+                message: isSlotActive
+                    ? `No ${targetSlot} orders found for today.`
+                    : `Next slot: ${nextSlot} at ${fmtTime(nextSlotWindow?.startMins)}`
+            });
+        }
+
+        // ─── 4. Group orders by vendor ───────────────────────────────────────
+        const vendorMap = new Map();
+        for (const order of orders) {
+            const vendorId = String(order.vendorId?._id || order.vendorId);
+            if (!vendorMap.has(vendorId)) {
+                vendorMap.set(vendorId, { vendor: order.vendorId, orders: [] });
+            }
+            vendorMap.get(vendorId).orders.push(order);
+        }
+
+        // ─── 5. Build stops list ─────────────────────────────────────────────
+        const stops = [];
+        let stopIdx = 1;
+
+        for (const [vendorId, { vendor, orders: vendorOrders }] of vendorMap) {
+            // Determine vendor's preparation status from orders
+            const statuses = vendorOrders.map(o => o.status);
+            let vendorStatus = 'scheduled';
+            if (statuses.every(s => s === 'ready' || s === 'out_for_delivery')) {
+                vendorStatus = 'ready';
+            } else if (statuses.some(s => s === 'preparing' || s === 'ready')) {
+                vendorStatus = 'preparing';
+            }
+
+            const vendorLat = vendor?.location?.latitude
+                || (vendor?.location?.coordinates && vendor.location.coordinates[1])
+                || null;
+            const vendorLng = vendor?.location?.longitude
+                || (vendor?.location?.coordinates && vendor.location.coordinates[0])
+                || null;
+
+            // Collection PIN: only reveal when ready
+            let collectionPin = null;
+            if (vendorStatus === 'ready' || vendorStatus === 'out_for_delivery') {
+                // Use the collectionPin stored on first order, or from CollectionBatch
+                const existingBatch = await CollectionBatch.findOne({
+                    vendorId: vendor?._id || vendorId,
+                    deliveryDate: today,
+                    deliverySlot: targetSlot
+                }).lean();
+                collectionPin = existingBatch?.collectionPinHash || vendorOrders[0]?.collectionPin || null;
+            }
+
+            stops.push({
+                stopIndex: stopIdx++,
+                id: `pickup_${vendorId}_${targetSlot}`,
+                type: 'pickup',
+                name: vendor?.restaurantName || 'Vendor',
+                address: vendor?.addressLine1 || '',
+                phone: vendor?.phone || '',
+                lat: vendorLat,
+                lng: vendorLng,
+                vendorId,
+                vendorStatus,  // scheduled | preparing | ready
+                collectionPin,
+                orderCount: vendorOrders.length,
+                status: 'pending',
+                isSlotActive
+            });
+
+            // Add customer delivery stops for this vendor
+            for (const order of vendorOrders) {
+                if (order.status === 'out_for_delivery' || order.status === 'delivered') {
+                    // Already collected — show delivery stop
+                    const custLat = order.deliveryAddress?.location?.latitude
+                        || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1])
+                        || null;
+                    const custLng = order.deliveryAddress?.location?.longitude
+                        || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0])
+                        || null;
+
+                    stops.push({
+                        stopIndex: stopIdx++,
+                        id: `delivery_${order._id}`,
+                        type: 'delivery',
+                        name: order.userId?.name || 'Customer',
+                        address: order.deliveryAddress?.street || order.deliveryAddress?.city || '',
+                        phone: order.userId?.phone || '',
+                        lat: custLat,
+                        lng: custLng,
+                        orderId: order._id,
+                        deliveryPin: order.deliveryPin || '',
+                        status: order.status === 'delivered' ? 'completed' : 'pending',
+                        isSlotActive
+                    });
+                } else {
+                    // Not yet collected — still show customer stop (greyed until pickup done)
+                    const custLat = order.deliveryAddress?.location?.latitude
+                        || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1])
+                        || null;
+                    const custLng = order.deliveryAddress?.location?.longitude
+                        || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0])
+                        || null;
+
+                    stops.push({
+                        stopIndex: stopIdx++,
+                        id: `delivery_${order._id}`,
+                        type: 'delivery',
+                        name: order.userId?.name || 'Customer',
+                        address: order.deliveryAddress?.street || order.deliveryAddress?.city || '',
+                        phone: order.userId?.phone || '',
+                        lat: custLat,
+                        lng: custLng,
+                        orderId: order._id,
+                        deliveryPin: order.deliveryPin || '',
+                        status: 'pending',
+                        awaitingPickup: true,  // customer stop locked until vendor pickup done
+                        isSlotActive
+                    });
+                }
+            }
+        }
+
+        // Slot window display labels
+        const activeWindow = isSlotActive ? slotWindow : null;
+        const upcomingWindow = !isSlotActive ? nextSlotWindow : null;
+
+        return res.json({
+            success: true,
+            isSlotActive,
+            activeSlot: targetSlot,
+            slotLabel: targetSlot ? (targetSlot.charAt(0).toUpperCase() + targetSlot.slice(1)) : '',
+            slotWindow: activeWindow,
+            nextSlot: isSlotActive ? null : nextSlot,
+            nextSlotWindow: upcomingWindow,
+            nextSlotStartTime: upcomingWindow ? fmtTime(upcomingWindow.startMins) : null,
+            stops,
+            totalOrders: orders.length,
+            totalVendors: vendorMap.size
+        });
+    } catch (err) {
+        console.error('[SLOT-ROUTE]', err);
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── Get Today's Route ────────────────────────────────────────────────────
 router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
@@ -242,47 +482,143 @@ router.get('/stats', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (re
 });
 
 // ─── Verify Collection PIN (at vendor) ────────────────────────────────────
+// NEW FLOW: No longer requires CollectionBatch with driver_assigned status.
+// Driver can go directly to vendor and verify the PIN from the CollectionBatch
+// or from the vendor's slot-based batch. Orders move to out_for_delivery on success.
 router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
-        const { pin, collectionGps } = req.body;
+        const { pin, collectionGps, vendorId, slot } = req.body;
         const driverId = (req.user.userId || req.user._id);
 
-        const batch = await CollectionBatch.findOne({ driverId, status: 'driver_assigned' });
-        if (!batch) {
-            return res.status(404).json({ success: false, message: 'No active pickup batch found' });
+        if (!pin) {
+            return res.status(400).json({ success: false, message: 'PIN is required' });
         }
 
-        if (batch.collectionPinHash !== pin) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        // ─── Strategy 1: CollectionBatch lookup (old flow / if batch exists) ───
+        let batch = null;
+
+        if (vendorId && slot) {
+            // Find by vendor + slot (new flow — driver comes directly)
+            batch = await CollectionBatch.findOne({
+                vendorId,
+                deliveryDate: { $gte: today, $lt: tomorrow },
+                deliverySlot: slot,
+                status: { $nin: ['collected', 'failed'] }
+            });
+        }
+
+        if (!batch) {
+            // Fallback: find any batch assigned to this driver
+            batch = await CollectionBatch.findOne({
+                driverId,
+                status: { $in: ['driver_assigned', 'pending'] }
+            });
+        }
+
+        if (batch) {
+            // Verify PIN against batch
+            if (batch.collectionPinHash !== String(pin)) {
+                batch.pinAttempts = (batch.pinAttempts || 0) + 1;
+                await batch.save();
+                return res.status(400).json({ success: false, message: 'Invalid Collection PIN' });
+            }
+
+            // Mark batch collected
+            batch.status = 'collected';
+            batch.collectedAt = new Date();
+            batch.collectionGps = collectionGps || {};
+            if (!batch.driverId) batch.driverId = driverId;
+            await batch.save();
+
+            // Update all orders in batch to out_for_delivery
+            await DMBDailyOrder.updateMany(
+                { _id: { $in: batch.orderIds } },
+                { $set: { status: 'out_for_delivery', pickedUpAt: new Date(), 'dispatch.deliveryPartnerId': driverId } }
+            );
+
+            // Notify Vendor
+            const io = getIO();
+            if (io) {
+                io.to(`vendor_${batch.vendorId}`).emit('batch_collected_success', {
+                    batchId: batch.batchId,
+                    message: 'Driver collected the batch successfully'
+                });
+            }
+
+            notifyDriverOfRouteUpdate(driverId);
+            return res.json({ success: true, message: 'Collection verified. Orders are now out for delivery.' });
+        }
+
+        // ─── Strategy 2: No batch — verify against vendor's ready orders directly ─
+        if (!vendorId || !slot) {
+            return res.status(404).json({ success: false, message: 'No active pickup batch found. Please provide vendorId and slot.' });
+        }
+
+        // Find all ready orders for this vendor+slot
+        const readyOrders = await DMBDailyOrder.find({
+            vendorId,
+            deliveryDate: { $gte: today, $lt: tomorrow },
+            deliverySlot: slot,
+            status: { $in: ['ready', 'scheduled', 'preparing'] }
+        });
+
+        if (readyOrders.length === 0) {
+            return res.status(404).json({ success: false, message: 'No ready orders found for this vendor and slot.' });
+        }
+
+        // Verify PIN against collectionPin on the first order (or use the 4-digit auto-pin)
+        const expectedPin = readyOrders[0]?.collectionPin;
+        if (!expectedPin) {
+            return res.status(400).json({ success: false, message: 'Vendor has not set a collection PIN yet. Please wait for vendor to mark orders ready.' });
+        }
+
+        if (String(expectedPin) !== String(pin)) {
             return res.status(400).json({ success: false, message: 'Invalid Collection PIN' });
         }
 
-        batch.status = 'collected';
-        batch.collectedAt = new Date();
-        batch.collectionGps = collectionGps || {};
-        await batch.save();
+        // Create a batch record for audit trail
+        const newBatch = await CollectionBatch.create({
+            vendorId,
+            driverId,
+            deliveryDate: today,
+            deliverySlot: slot,
+            collectionPinHash: String(pin),
+            pinVerified: true,
+            status: 'collected',
+            collectedAt: new Date(),
+            collectionGps: collectionGps || {},
+            boxCount: readyOrders.length,
+            orderIds: readyOrders.map(o => o._id)
+        });
 
-        // Update Daily Orders status
+        // Update orders to out_for_delivery
         await DMBDailyOrder.updateMany(
-            { _id: { $in: batch.orderIds } },
-            { $set: { status: 'picked_up', pickedUpAt: new Date() } }
+            { _id: { $in: readyOrders.map(o => o._id) } },
+            { $set: { status: 'out_for_delivery', pickedUpAt: new Date(), 'dispatch.deliveryPartnerId': driverId } }
         );
 
         // Notify Vendor
         const io = getIO();
         if (io) {
-            io.to(`vendor_${batch.vendorId}`).emit('batch_collected_success', {
-                batchId: batch.batchId,
+            io.to(`vendor_${vendorId}`).emit('batch_collected_success', {
+                batchId: newBatch.batchId,
                 message: 'Driver collected the batch successfully'
             });
         }
 
         notifyDriverOfRouteUpdate(driverId);
+        return res.json({ success: true, message: 'Collection verified. Orders are now out for delivery.' });
 
-        res.json({ success: true, message: 'Batch collected successfully' });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
 });
+
 
 // ─── Verify Delivery PIN (at customer) ────────────────────────────────────
 router.post('/verify-delivery-pin', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
