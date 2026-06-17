@@ -11,7 +11,6 @@ export const requireAdmin = (req, res, next) => {
 
 export const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization || '';
-    console.log(`[AUTH-DEBUG] Path: ${req.originalUrl || req.url}, Auth Header Present: ${!!authHeader}`);
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
     if (!token) {

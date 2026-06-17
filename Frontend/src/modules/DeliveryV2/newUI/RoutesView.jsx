@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
+import RoutesMap from './RoutesMap';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,7 @@ export const RoutesView = () => {
    const [recalculating, setRecalculating] = useState(false);
    const [error, setError] = useState(null);
    const [lastRefresh, setLastRefresh] = useState(null);
+   const [activeTab, setActiveTab] = useState('list');
 
    // ── Fetch route ───────────────────────────────────────────────────────────
    const fetchRoute = useCallback(async (silent = false) => {
@@ -333,6 +335,22 @@ export const RoutesView = () => {
             {/* ── Route content ─────────────────────────────────────────── */}
             {!loading && !error && stops.length > 0 && (
                <AnimatePresence>
+                  {/* Tab Switcher */}
+                  <div key="tabs" className="flex bg-gray-100/80 backdrop-blur-md rounded-2xl p-1 gap-1 border border-gray-200/50">
+                     <button
+                        onClick={() => setActiveTab('list')}
+                        className={`flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === 'list' ? 'bg-white text-[#10B981] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
+                     >
+                        My Route
+                     </button>
+                     <button
+                        onClick={() => setActiveTab('map')}
+                        className={`flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === 'map' ? 'bg-white text-[#10B981] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
+                     >
+                        Map
+                     </button>
+                  </div>
+
                   {/* Summary card */}
                   <motion.div
                      key="summary"
@@ -400,42 +418,60 @@ export const RoutesView = () => {
                      </motion.div>
                   )}
 
-                  {/* Pending stops section */}
-                  {pendingStops.length > 0 && (
-                     <div key="pending">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
-                           Upcoming — {pendingStops.length} stops
-                        </p>
-                        <div className="space-y-3">
-                           {pendingStops.map((stop, idx) => (
-                              <StopCard
-                                 key={`${stop.orderId}-${stop.type}`}
-                                 stop={stop}
-                                 index={idx}
-                                 isFirst={idx === 0}
-                              />
-                           ))}
-                        </div>
-                     </div>
-                  )}
+                  {/* Tab Content */}
+                  {activeTab === 'list' ? (
+                     <>
+                        {/* Pending stops section */}
+                        {pendingStops.length > 0 && (
+                           <div key="pending">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+                                 Upcoming — {pendingStops.length} stops
+                              </p>
+                              <div className="space-y-3">
+                                 {pendingStops.map((stop, idx) => (
+                                    <StopCard
+                                       key={`${stop.orderId}-${stop.type}`}
+                                       stop={stop}
+                                       index={idx}
+                                       isFirst={idx === 0}
+                                    />
+                                 ))}
+                              </div>
+                           </div>
+                        )}
 
-                  {/* Completed stops section */}
-                  {completedStops.length > 0 && (
-                     <div key="completed">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1 mt-2">
-                           Completed — {completedStops.length} stops
+                        {/* Completed stops section */}
+                        {completedStops.length > 0 && (
+                           <div key="completed">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1 mt-2">
+                                 Completed — {completedStops.length} stops
+                              </p>
+                              <div className="space-y-3">
+                                 {completedStops.map((stop, idx) => (
+                                    <StopCard
+                                       key={`${stop.orderId}-${stop.type}-done`}
+                                       stop={stop}
+                                       index={idx}
+                                       isFirst={false}
+                                    />
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+                     </>
+                  ) : (
+                     <motion.div
+                        key="map"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-3"
+                     >
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+                           Map View — Sequence Route
                         </p>
-                        <div className="space-y-3">
-                           {completedStops.map((stop, idx) => (
-                              <StopCard
-                                 key={`${stop.orderId}-${stop.type}-done`}
-                                 stop={stop}
-                                 index={idx}
-                                 isFirst={false}
-                              />
-                           ))}
-                        </div>
-                     </div>
+                        <RoutesMap stops={stops} />
+                     </motion.div>
                   )}
                </AnimatePresence>
             )}
