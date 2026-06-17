@@ -1,323 +1,445 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-   ArrowLeft, ChevronDown, Loader2, Gift, X,
-   CheckCircle2, Clock, Search, History
+   ArrowLeft, RefreshCw, Navigation2, MapPin, Package,
+   ChevronRight, CheckCircle2, Clock, Loader2, AlertCircle,
+   Phone, Route, Bike
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatDistance(meters) {
+   if (!meters || meters === 0) return '—';
+   if (meters < 1000) return `${Math.round(meters)} m`;
+   return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function formatTimeAgo(dateStr) {
+   if (!dateStr) return '—';
+   const diff = Date.now() - new Date(dateStr).getTime();
+   const mins = Math.floor(diff / 60000);
+   if (mins < 1) return 'just now';
+   if (mins < 60) return `${mins}m ago`;
+   const hrs = Math.floor(mins / 60);
+   if (hrs < 24) return `${hrs}h ago`;
+   return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+const StopTypeChip = ({ type }) => {
+   const isPickup = type === 'pickup';
+   return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isPickup
+         ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+         : 'bg-blue-100 text-blue-700 border border-blue-200'
+         }`}>
+         {isPickup
+            ? <><Package className="w-2.5 h-2.5" /> Pickup</>
+            : <><MapPin className="w-2.5 h-2.5" /> Delivery</>
+         }
+      </span>
+   );
+};
+
+const StatusBadge = ({ status }) => {
+   const map = {
+      pending: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Pending' },
+      completed: { cls: 'bg-green-50 text-green-700 border-green-200', label: 'Done' },
+      skipped: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Skipped' }
+   };
+   const { cls, label } = map[status] || map.pending;
+   return (
+      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}`}>
+         {label}
+      </span>
+   );
+};
+
+const StopCard = ({ stop, index, isFirst }) => {
+   const isPickup = stop.type === 'pickup';
+   const isCompleted = stop.status === 'completed';
+
+   return (
+      <motion.div
+         initial={{ opacity: 0, y: 12 }}
+         animate={{ opacity: 1, y: 0 }}
+         transition={{ delay: index * 0.04, duration: 0.25 }}
+         className={`relative bg-white rounded-2xl border transition-all ${isCompleted
+            ? 'border-gray-100 opacity-60'
+            : isFirst
+               ? 'border-[#10B981] shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_4px_20px_-2px_rgba(16,185,129,0.15)]'
+               : 'border-gray-100 shadow-sm'
+            }`}
+      >
+         {/* Top accent bar for first stop */}
+         {isFirst && !isCompleted && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#10B981] to-emerald-400 rounded-t-2xl" />
+         )}
+
+         <div className="p-4">
+            {/* Header row */}
+            <div className="flex items-start justify-between mb-3">
+               <div className="flex items-center gap-2.5">
+                  {/* Stop number bubble */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 ${isCompleted
+                     ? 'bg-gray-100 text-gray-400'
+                     : isPickup
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-blue-500 text-white'
+                     }`}>
+                     {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : stop.stopIndex}
+                  </div>
+                  <div>
+                     <StopTypeChip type={stop.type} />
+                     {isFirst && !isCompleted && (
+                        <span className="ml-1.5 text-[9px] font-bold text-[#10B981] uppercase tracking-widest">
+                           ← NEXT STOP
+                        </span>
+                     )}
+                  </div>
+               </div>
+               <StatusBadge status={stop.status} />
+            </div>
+
+            {/* Name */}
+            <h4 className="text-sm font-bold text-gray-900 leading-tight mb-1">
+               {stop.name || (isPickup ? 'Vendor' : 'Customer')}
+            </h4>
+
+            {/* Address */}
+            {stop.address && (
+               <p className="text-xs text-gray-500 font-medium leading-relaxed mb-3 line-clamp-2">
+                  <MapPin className="inline w-3 h-3 mr-0.5 text-gray-400" />
+                  {stop.address}
+               </p>
+            )}
+
+            {/* Phone + navigate row */}
+            {stop.phone && (
+               <div className="flex items-center gap-2">
+                  <a
+                     href={`tel:${stop.phone}`}
+                     className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 active:scale-95 transition-all"
+                  >
+                     <Phone className="w-3 h-3 text-[#10B981]" />
+                     Call
+                  </a>
+                  {stop.lat && stop.lng && (
+                     <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl text-xs font-semibold text-[#10B981] hover:bg-[#10B981]/20 active:scale-95 transition-all"
+                     >
+                        <Navigation2 className="w-3 h-3" />
+                        Navigate
+                     </a>
+                  )}
+               </div>
+            )}
+         </div>
+      </motion.div>
+   );
+};
+
+const SkeletonCard = () => (
+   <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 animate-pulse">
+      <div className="flex items-center gap-2.5">
+         <div className="w-8 h-8 rounded-full bg-gray-100" />
+         <div className="w-16 h-4 rounded-full bg-gray-100" />
+      </div>
+      <div className="w-3/4 h-4 rounded bg-gray-100" />
+      <div className="w-full h-3 rounded bg-gray-100" />
+      <div className="w-1/2 h-3 rounded bg-gray-100" />
+   </div>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 /**
- * RoutesView - Trip History page for Delivery Partner New UI Dashboard.
- * Theme: Clean White
- * Accent: Emerald Green (#10B981)
- * Font: Poppins
+ * RouteView — VRP Optimized Delivery Route for the Delivery Partner app.
+ * Displays the computed stop sequence (Pickup → Delivery) for all active orders.
+ * Theme: Dark header (#121212) + Emerald accent (#10B981) + White cards + Poppins font.
  */
 export const RoutesView = () => {
    const goBack = useDeliveryBackNavigation();
-   const [activeTab, setActiveTab] = useState("daily");
-   const [selectedDate, setSelectedDate] = useState(new Date());
-   const [selectedTripType, setSelectedTripType] = useState("ALL TRIPS");
-   const [showDatePicker, setShowDatePicker] = useState(false);
-   const [showTripTypePicker, setShowTripTypePicker] = useState(false);
-   const [trips, setTrips] = useState([]);
-   const [loading, setLoading] = useState(false);
-   const [showBonusModal, setShowBonusModal] = useState(false);
-   const [bonusTransactions, setBonusTransactions] = useState([]);
-   const [bonusLoading, setBonusLoading] = useState(false);
 
-   const tripTypes = ["ALL TRIPS", "Completed", "Cancelled", "Pending"];
+   const [route, setRoute] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [recalculating, setRecalculating] = useState(false);
+   const [error, setError] = useState(null);
+   const [lastRefresh, setLastRefresh] = useState(null);
 
-   // Fetch Logic
+   // ── Fetch route ───────────────────────────────────────────────────────────
+   const fetchRoute = useCallback(async (silent = false) => {
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+         const res = await deliveryAPI.getRoute();
+         if (res.data?.success) {
+            setRoute(res.data.data?.route ?? null);
+            setLastRefresh(new Date());
+         } else {
+            setError('Could not load your route.');
+         }
+      } catch (err) {
+         setError('Failed to load route. Please check your connection.');
+      } finally {
+         setLoading(false);
+      }
+   }, []);
+
+   // ── Auto-recalculate on mount ─────────────────────────────────────────────
    useEffect(() => {
-      const fetchTrips = async () => {
+      // Silently recalculate first, then show result
+      const init = async () => {
          setLoading(true);
          try {
-            const year = selectedDate.getFullYear();
-            const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-            const day = String(selectedDate.getDate()).padStart(2, "0");
-            const dateStr = `${year}-${month}-${day}`;
-
-            const params = {
-               period: activeTab,
-               date: dateStr,
-               status: selectedTripType !== "ALL TRIPS" ? selectedTripType : undefined,
-               limit: 1000
-            };
-
-            const response = await deliveryAPI.getTripHistory(params);
-            if (response.data?.success) {
-               setTrips(response.data.data.trips || []);
+            const res = await deliveryAPI.recalculateRoute();
+            if (res.data?.success) {
+               setRoute(res.data.data?.route ?? null);
+               setLastRefresh(new Date());
             }
-         } catch (error) {
-            toast.error("Failed to load history");
+         } catch {
+            // Fall back to fetching the cached route
+            await fetchRoute(true);
          } finally {
             setLoading(false);
          }
       };
-      fetchTrips();
-   }, [selectedDate, activeTab, selectedTripType]);
-
-   // Bonus Logic
-   useEffect(() => {
-      if (showBonusModal) {
-         const fetchBonus = async () => {
-            setBonusLoading(true);
-            try {
-               const res = await deliveryAPI.getWalletTransactions({ type: 'bonus', limit: 50 });
-               if (res.data?.success) setBonusTransactions(res.data.data.transactions || []);
-            } catch (e) { toast.error("Failed to load bonuses"); }
-            finally { setBonusLoading(false); }
-         };
-         fetchBonus();
-      }
-   }, [showBonusModal]);
-
-   const formatDateDisplay = (date) => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const day = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-
-      if (date.toDateString() === today.toDateString()) return `Today: ${day}`;
-      if (date.toDateString() === yesterday.toDateString()) return `Yesterday: ${day}`;
-      return day;
-   };
-
-   const recentDates = useMemo(() => {
-      return [...Array(30)].map((_, i) => {
-         const d = new Date();
-         d.setDate(d.getDate() - i);
-         return d;
-      });
+      init();
    }, []);
 
-   const metrics = useMemo(() => {
-      return trips.reduce((acc, trip) => {
-         if (trip.status === 'Completed') {
-            acc.earnings += Number(trip.deliveryEarning || trip.amount || trip.earningAmount || 0);
-            const isCOD = (trip.paymentMethod || '').toLowerCase() === 'cash' || (trip.paymentMethod || '').toLowerCase() === 'cod';
-            if (isCOD) acc.cod += Number(trip.codCollectedAmount || trip.orderTotal || 0);
+   // ── Manual recalculate ────────────────────────────────────────────────────
+   const handleRecalculate = async () => {
+      setRecalculating(true);
+      try {
+         const res = await deliveryAPI.recalculateRoute();
+         if (res.data?.success) {
+            setRoute(res.data.data?.route ?? null);
+            setLastRefresh(new Date());
+            toast.success('Route updated!');
+         } else {
+            toast.error('Could not recalculate route.');
          }
-         return acc;
-      }, { earnings: 0, cod: 0 });
-   }, [trips]);
+      } catch {
+         toast.error('Recalculation failed. Please try again.');
+      } finally {
+         setRecalculating(false);
+      }
+   };
 
-   const extractItems = (trip) => {
-      const items = trip.items || trip.orderItems || [];
-      if (items.length === 0) return 'Standard Delivery';
-      const first = items[0];
-      const qty = first.quantity || first.qty || 1;
-      const name = first.name || first.itemName || 'Item';
-      return `${qty}x ${name}${items.length > 1 ? ` +${items.length - 1} more` : ''}`;
-   }
+   const stops = route?.stops || [];
+   const pendingStops = stops.filter(s => s.status !== 'completed');
+   const completedStops = stops.filter(s => s.status === 'completed');
+   const progress = stops.length > 0 ? Math.round((completedStops.length / stops.length) * 100) : 0;
 
    return (
-      <div className="min-h-screen bg-white font-poppins pb-32">
-         {/* 1. Header (Premium V2 Styled) */}
-         <div className="bg-[#121212] border-b border-white/10 px-6 py-3 flex items-center justify-between sticky top-0 z-[100] backdrop-blur-2xl">
-            <div className="flex items-center gap-4">
-               <button onClick={goBack} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all">
-                  <ArrowLeft className="w-5 h-5" />
-               </button>
-               <div>
-                  <h1 className="text-xl font-black text-white uppercase tracking-tighter">Trip History</h1>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">Your delivery milestones</p>
-               </div>
-            </div>
-            <button onClick={() => setShowBonusModal(true)} className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-[#10B981] border border-green-500/20 relative active:scale-90 transition-all">
-               <Gift className="w-5 h-5" />
-               {bonusTransactions.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#10B981] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                     {bonusTransactions.length}
-                  </span>
-               )}
-            </button>
-         </div>
+      <div className="min-h-screen bg-[#f5f7f6] font-poppins pb-32">
 
-         {/* 2. Selection Tabs */}
-         <div className="bg-white px-4 flex items-center gap-8 sticky top-[61px] z-[90] border-b border-gray-100">
-            {['daily', 'weekly', 'monthly'].map((tab) => (
+         {/* ── Header ────────────────────────────────────────────────────── */}
+         <div className="bg-[#121212] px-5 py-3 flex items-center justify-between sticky top-0 z-[100]">
+            <div className="flex items-center gap-3.5">
                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-4 text-base font-medium capitalize relative ${activeTab === tab ? 'text-[#10B981]' : 'text-gray-400'}`}
+                  onClick={goBack}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all"
                >
-                  {tab}
-                  {activeTab === tab && <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#10B981]" />}
+                  <ArrowLeft className="w-4 h-4" />
                </button>
-            ))}
-         </div>
-
-         {/* 3. Filter Controls */}
-         <div className="bg-white px-4 py-4 flex gap-3 sticky top-[118px] z-[80]">
-            <button
-               onClick={() => { setShowDatePicker(!showDatePicker); setShowTripTypePicker(false); }}
-               className="flex-1 px-4 py-3 bg-[#f8f9fa] border border-gray-100 rounded-xl flex items-center justify-between text-gray-800"
-            >
-               <span className="text-sm font-medium">{formatDateDisplay(selectedDate)}</span>
-               <ChevronDown className={`w-4 h-4 text-gray-400 transform transition-transform ${showDatePicker ? 'rotate-180' : ''}`} />
-            </button>
-            <button
-               onClick={() => { setShowTripTypePicker(!showTripTypePicker); setShowDatePicker(false); }}
-               className="w-[140px] px-4 py-3 bg-[#f8f9fa] border border-gray-100 rounded-xl flex items-center justify-between text-gray-800"
-            >
-               <span className="text-sm font-medium">{selectedTripType}</span>
-               <ChevronDown className={`w-4 h-4 text-gray-400 transform transition-transform ${showTripTypePicker ? 'rotate-180' : ''}`} />
-            </button>
-         </div>
-
-         {/* Dropdowns */}
-         <AnimatePresence>
-            {showDatePicker && (
-               <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed left-4 right-4 top-[185px] z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-[300px] overflow-y-auto p-2">
-                  {recentDates.map((date, idx) => (
-                     <button
-                        key={idx}
-                        onClick={() => { setSelectedDate(date); setShowDatePicker(false); }}
-                        className={`w-full text-left p-4 rounded-xl text-sm font-medium ${date.toDateString() === selectedDate.toDateString() ? 'bg-green-50 text-[#10B981] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                     >
-                        {formatDateDisplay(date)}
-                     </button>
-                  ))}
-               </motion.div>
-            )}
-            {showTripTypePicker && (
-               <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed right-4 top-[185px] w-48 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2">
-                  {tripTypes.map((type, idx) => (
-                     <button
-                        key={idx}
-                        onClick={() => { setSelectedTripType(type); setShowTripTypePicker(false); }}
-                        className={`w-full text-left p-4 rounded-xl text-sm font-medium ${type === selectedTripType ? 'bg-green-50 text-[#10B981] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                     >
-                        {type}
-                     </button>
-                  ))}
-               </motion.div>
-            )}
-         </AnimatePresence>
-
-         {/* 4. Page Content */}
-         <div className="px-4 py-2 space-y-5">
-            {/* Performance Summary Banner */}
-            <div className="bg-[#E9F9F4] rounded-2xl p-6 border border-[#D1F2E8] flex justify-between items-center">
                <div>
-                  <p className="text-[11px] font-bold text-[#10B981] mb-1">COD Collected</p>
-                  <h3 className="text-xl font-bold text-gray-950">₹{metrics.cod.toFixed(2)}</h3>
-               </div>
-               <div className="text-right">
-                  <p className="text-[11px] font-bold text-[#10B981] mb-1">Earnings</p>
-                  <h3 className="text-xl font-bold text-gray-950">₹{metrics.earnings.toFixed(2)}</h3>
+                  <h1 className="text-lg font-black text-white uppercase tracking-tight">My Route</h1>
+                  <p className="text-[10px] font-medium text-gray-500 mt-0.5">
+                     {route?.zoneName ? `Zone: ${route.zoneName}` : 'Optimized delivery sequence'}
+                  </p>
                </div>
             </div>
 
-            {/* Trip List */}
-            {loading ? (
-               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#10B981]" />
-                  <p className="text-gray-400 text-xs font-medium">Fetching trips...</p>
-               </div>
-            ) : trips.length > 0 ? (
-               <div className="space-y-4">
-                  {trips.map((trip, idx) => {
-                     const isCompleted = (trip.status || '').toLowerCase() === 'completed';
-                     const isCancelled = (trip.status || '').toLowerCase() === 'cancelled';
-                     const payout = Number(trip.deliveryEarning || trip.amount || trip.earningAmount || 0);
-                     const collection = Number(trip.codCollectedAmount || trip.orderTotal || 0);
-                     const isQR = (trip.paymentMethod || '').toLowerCase() === 'razorpay_qr';
-                     const isCOD = (trip.paymentMethod || '').toLowerCase() === 'cash' || (trip.paymentMethod || '').toLowerCase() === 'cod';
-
-                     return (
-                        <div key={trip.orderId || idx} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm active:scale-[0.99] transition-all">
-                           <div className="flex justify-between items-start mb-2">
-                              <div>
-                                 <h4 className="text-base font-bold text-gray-950">{trip.orderId || 'ORDER-ID'}</h4>
-                                 <p className="text-sm font-medium text-gray-500 mt-0.5">{trip.restaurant || trip.restaurantName || 'Sayaji'}</p>
-                                 <p className="text-xs text-gray-400 font-medium mt-0.5 line-clamp-1">{extractItems(trip)}</p>
-                              </div>
-                              <span className={`text-sm font-bold ${isCompleted ? 'text-[#10B981]' : isCancelled ? 'text-red-500' : 'text-orange-500'}`}>
-                                 {trip.status || 'Status'}
-                              </span>
-                           </div>
-
-                           <div className="flex gap-2 mb-4 mt-3">
-                              <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${(isCOD || isQR) ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-[#10B981]'}`}>
-                                 {isQR ? 'COD (QR)' : isCOD ? 'COD' : 'Online'}
-                              </span>
-                           </div>
-
-                           <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-50">
-                              <div>
-                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Time</p>
-                                 <p className="text-sm font-bold text-gray-950">{trip.time || '--:--'}</p>
-                              </div>
-                              <div className="text-center">
-                                 <p className="text-[11px] font-medium text-gray-400 mb-1">COD</p>
-                                 <p className="text-sm font-bold text-gray-950">₹{collection.toFixed(2)}</p>
-                              </div>
-                              <div className="text-right">
-                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Earning</p>
-                                 <p className="text-sm font-bold text-gray-950">₹{payout.toFixed(2)}</p>
-                              </div>
-                           </div>
-                        </div>
-                     );
-                  })}
-               </div>
-            ) : (
-               <div className="py-20 text-center flex flex-col items-center">
-                  <Clock className="w-12 h-12 text-gray-100 mb-4" />
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No Trips Recorded</p>
-               </div>
-            )}
+            <button
+               onClick={handleRecalculate}
+               disabled={recalculating || loading}
+               className="flex items-center gap-1.5 px-3 py-2 bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/25 rounded-xl text-xs font-bold active:scale-90 transition-all disabled:opacity-40"
+            >
+               <RefreshCw className={`w-3.5 h-3.5 ${recalculating ? 'animate-spin' : ''}`} />
+               {recalculating ? 'Updating…' : 'Refresh'}
+            </button>
          </div>
 
-         {/* Bonus Drawer (The Gift Modal) */}
-         <AnimatePresence>
-            {showBonusModal && (
-               <div className="fixed inset-0 z-[1000] flex items-end">
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowBonusModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                  <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full bg-white rounded-t-[2.5rem] p-8 max-h-[85vh] flex flex-col shadow-2xl">
-                     <div className="w-12 h-1 bg-gray-100 rounded-full mx-auto mb-8 shrink-0" />
-                     <div className="flex items-center justify-between mb-8 shrink-0">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-[#10B981] border border-green-100">
-                              <Gift className="w-6 h-6" />
-                           </div>
-                           <div>
-                              <h3 className="text-lg font-bold text-gray-950">Incentive Records</h3>
-                              <p className="text-xs text-gray-400 font-medium">Extra bonuses credited by team</p>
-                           </div>
-                        </div>
-                        <button onClick={() => setShowBonusModal(false)} className="p-2 text-gray-400"><X className="w-5 h-5" /></button>
-                     </div>
+         {/* ── Content ───────────────────────────────────────────────────── */}
+         <div className="px-4 pt-4 space-y-4">
 
-                     <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-                        {bonusLoading ? (
-                           <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#10B981]" /></div>
-                        ) : bonusTransactions.length > 0 ? bonusTransactions.map((tx, i) => (
-                           <div key={i} className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex justify-between items-center">
-                              <div>
-                                 <p className="text-lg font-bold text-gray-950 mb-0.5">₹{Number(tx.amount || 0).toFixed(2)}</p>
-                                 <p className="text-sm font-medium text-gray-600 line-clamp-1">{tx.description || 'Bonus Payout'}</p>
-                                 <p className="text-[10px] text-gray-400 font-medium mt-1">{new Date(tx.createdAt || tx.date).toLocaleDateString()}</p>
-                              </div>
-                              <span className="bg-green-100 text-[#10B981] text-[10px] font-bold px-3 py-1 rounded-full uppercase">DELIVERED</span>
-                           </div>
-                        )) : (
-                           <div className="py-20 text-center flex flex-col items-center">
-                              <Search className="w-12 h-12 text-gray-100 mb-4" />
-                              <p className="text-sm font-bold text-gray-400">Nothing to show</p>
-                           </div>
-                        )}
+            {/* ── Loading state ─────────────────────────────────────────── */}
+            {loading && (
+               <div className="space-y-3">
+                  <div className="bg-white rounded-2xl p-5 border border-gray-100 animate-pulse space-y-3">
+                     <div className="flex gap-4">
+                        {[1, 2, 3].map(i => (
+                           <div key={i} className="flex-1 h-14 rounded-xl bg-gray-100" />
+                        ))}
                      </div>
-
-                     <button onClick={() => setShowBonusModal(false)} className="w-full py-5 bg-black text-white rounded-2xl font-bold text-base mt-8 shrink-0 active:scale-95 transition-all">Okay, Got it</button>
-                  </motion.div>
+                     <div className="h-2 bg-gray-100 rounded-full" />
+                  </div>
+                  {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
                </div>
             )}
-         </AnimatePresence>
+
+            {/* ── Error state ───────────────────────────────────────────── */}
+            {!loading && error && (
+               <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 border border-red-200 rounded-2xl p-6 flex flex-col items-center gap-3 text-center"
+               >
+                  <AlertCircle className="w-10 h-10 text-red-400" />
+                  <p className="text-sm font-semibold text-red-700">{error}</p>
+                  <button
+                     onClick={() => fetchRoute()}
+                     className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl active:scale-95 transition-all"
+                  >
+                     Retry
+                  </button>
+               </motion.div>
+            )}
+
+            {/* ── Empty state ───────────────────────────────────────────── */}
+            {!loading && !error && stops.length === 0 && (
+               <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center py-20 gap-4 text-center"
+               >
+                  <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center">
+                     <Route className="w-9 h-9 text-gray-300" />
+                  </div>
+                  <div>
+                     <p className="text-sm font-bold text-gray-800">No Active Orders</p>
+                     <p className="text-xs text-gray-400 font-medium mt-1 max-w-[220px] leading-relaxed">
+                        Your route will appear here once orders are assigned to you.
+                     </p>
+                  </div>
+                  <button
+                     onClick={handleRecalculate}
+                     className="flex items-center gap-2 px-5 py-2.5 bg-[#10B981] text-white text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md shadow-emerald-200"
+                  >
+                     <RefreshCw className="w-3.5 h-3.5" />
+                     Check Again
+                  </button>
+               </motion.div>
+            )}
+
+            {/* ── Route content ─────────────────────────────────────────── */}
+            {!loading && !error && stops.length > 0 && (
+               <AnimatePresence>
+                  {/* Summary card */}
+                  <motion.div
+                     key="summary"
+                     initial={{ opacity: 0, y: 10 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
+                  >
+                     {/* Stats row */}
+                     <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="bg-[#f0fdf7] rounded-xl p-3 border border-emerald-100 text-center">
+                           <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Stops</p>
+                           <p className="text-xl font-black text-gray-900">{stops.length}</p>
+                        </div>
+                        <div className="bg-[#f0f6ff] rounded-xl p-3 border border-blue-100 text-center">
+                           <p className="text-[9px] font-bold text-blue-700 uppercase tracking-wider mb-1">Orders</p>
+                           <p className="text-xl font-black text-gray-900">{route?.totalOrders || 0}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                           <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Distance</p>
+                           <p className="text-xl font-black text-gray-900">
+                              {formatDistance(route?.totalDistanceMeters)}
+                           </p>
+                        </div>
+                     </div>
+
+                     {/* Progress bar */}
+                     {progress > 0 && (
+                        <div className="mb-3">
+                           <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Progress</span>
+                              <span className="text-[10px] font-bold text-[#10B981]">{progress}% complete</span>
+                           </div>
+                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <motion.div
+                                 className="h-full bg-[#10B981] rounded-full"
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${progress}%` }}
+                                 transition={{ duration: 0.6, ease: 'easeOut' }}
+                              />
+                           </div>
+                        </div>
+                     )}
+
+                     {/* Last updated */}
+                     <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium">
+                        <Clock className="w-3 h-3" />
+                        Route computed {formatTimeAgo(route?.generatedAt)}
+                     </div>
+                  </motion.div>
+
+                  {/* Zone chip */}
+                  {route?.zoneName && (
+                     <motion.div
+                        key="zone"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center gap-2"
+                     >
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981]/10 border border-[#10B981]/20 rounded-full">
+                           <Bike className="w-3 h-3 text-[#10B981]" />
+                           <span className="text-[10px] font-bold text-[#10B981]">
+                              Serving: {route.zoneName}
+                           </span>
+                        </div>
+                     </motion.div>
+                  )}
+
+                  {/* Pending stops section */}
+                  {pendingStops.length > 0 && (
+                     <div key="pending">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+                           Upcoming — {pendingStops.length} stops
+                        </p>
+                        <div className="space-y-3">
+                           {pendingStops.map((stop, idx) => (
+                              <StopCard
+                                 key={`${stop.orderId}-${stop.type}`}
+                                 stop={stop}
+                                 index={idx}
+                                 isFirst={idx === 0}
+                              />
+                           ))}
+                        </div>
+                     </div>
+                  )}
+
+                  {/* Completed stops section */}
+                  {completedStops.length > 0 && (
+                     <div key="completed">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1 mt-2">
+                           Completed — {completedStops.length} stops
+                        </p>
+                        <div className="space-y-3">
+                           {completedStops.map((stop, idx) => (
+                              <StopCard
+                                 key={`${stop.orderId}-${stop.type}-done`}
+                                 stop={stop}
+                                 index={idx}
+                                 isFirst={false}
+                              />
+                           ))}
+                        </div>
+                     </div>
+                  )}
+               </AnimatePresence>
+            )}
+         </div>
       </div>
    );
 };

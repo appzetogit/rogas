@@ -1622,7 +1622,16 @@ export const deliveryAPI = {
   /** DELETE /food/delivery/account - permanently delete delivery partner account */
   deleteAccount: () =>
     deliveryClient.delete("/food/delivery/account"),
+
+  // ─── VRP Route Optimization ────────────────────────────────────────────────
+  /** GET /food/delivery/route — fetch the current optimized route (last computed). */
+  getRoute: () =>
+    deliveryClient.get("/food/delivery/route"),
+  /** POST /food/delivery/route/recalculate — trigger fresh VRP route computation. */
+  recalculateRoute: () =>
+    deliveryClient.post("/food/delivery/route/recalculate", {}),
 };
+
 
 export const userAPI = {
   /** Get current user profile (Bearer USER). */

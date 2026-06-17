@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import authRoutes from '../core/auth/auth.routes.js';
 import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
+import deliveryRouteRoutes from '../modules/food/delivery/routes/deliveryRoute.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
 // Dining module removed — not part of DailyMealBox PRD
@@ -47,6 +48,7 @@ router.use('/v1/food/auth', authRoutes);
 
 // Backward-compatible auth routes
 router.use('/v1/auth', authRoutes);
+router.use('/v1/food/delivery/route', deliveryRouteRoutes);
 router.use('/v1/food/delivery', deliveryRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
 router.use('/v1/food', landingRoutes);
