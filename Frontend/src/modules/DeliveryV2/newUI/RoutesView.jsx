@@ -61,7 +61,7 @@ const StatusBadge = ({ status }) => {
    );
 };
 
-const StopCard = ({ stop, index, isFirst }) => {
+const StopCard = ({ stop, index, isFirst, onClick }) => {
    const isPickup = stop.type === 'pickup';
    const isCompleted = stop.status === 'completed';
 
@@ -70,11 +70,12 @@ const StopCard = ({ stop, index, isFirst }) => {
          initial={{ opacity: 0, y: 12 }}
          animate={{ opacity: 1, y: 0 }}
          transition={{ delay: index * 0.04, duration: 0.25 }}
-         className={`relative bg-white rounded-2xl border transition-all ${isCompleted
+         onClick={onClick}
+         className={`relative bg-white rounded-2xl border transition-all cursor-pointer ${isCompleted
             ? 'border-gray-100 opacity-60'
             : isFirst
                ? 'border-[#1F7A63] shadow-[0_0_0_1px_rgba(31,122,99,0.12),0_4px_20px_-2px_rgba(31,122,99,0.15)]'
-               : 'border-gray-100 shadow-sm'
+               : 'border-gray-100 shadow-sm hover:border-[#1F7A63]/30'
             }`}
       >
          {/* Top accent bar for first stop */}
@@ -125,6 +126,7 @@ const StopCard = ({ stop, index, isFirst }) => {
                <div className="flex items-center gap-2">
                   <a
                      href={`tel:${stop.phone}`}
+                     onClick={(e) => e.stopPropagation()}
                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 active:scale-95 transition-all"
                   >
                      <Phone className="w-3 h-3 text-[#1F7A63]" />
@@ -135,6 +137,7 @@ const StopCard = ({ stop, index, isFirst }) => {
                         href={`https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1F7A63]/10 border border-[#1F7A63]/20 rounded-xl text-xs font-semibold text-[#1F7A63] hover:bg-[#1F7A63]/20 active:scale-95 transition-all"
                      >
                         <Navigation2 className="w-3 h-3" />
@@ -167,7 +170,7 @@ const SkeletonCard = () => (
  * Displays the computed stop sequence (Pickup → Delivery) for all active orders.
  * Theme: Dark header (#121212) + Emerald accent (#10B981) + White cards + Poppins font.
  */
-export const RoutesView = () => {
+export const RoutesView = ({ onSelectStop }) => {
    const goBack = useDeliveryBackNavigation();
 
    const [route, setRoute] = useState(null);
@@ -449,6 +452,7 @@ export const RoutesView = () => {
                                        stop={stop}
                                        index={idx}
                                        isFirst={idx === 0}
+                                       onClick={() => onSelectStop && onSelectStop(stop)}
                                     />
                                  ))}
                               </div>
@@ -468,6 +472,7 @@ export const RoutesView = () => {
                                        stop={stop}
                                        index={idx}
                                        isFirst={false}
+                                       onClick={() => onSelectStop && onSelectStop(stop)}
                                     />
                                  ))}
                               </div>

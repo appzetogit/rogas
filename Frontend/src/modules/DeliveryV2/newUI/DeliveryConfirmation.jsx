@@ -327,7 +327,7 @@ const DeliveryConfirmation = ({
           </button>
           <div className="text-center">
             <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Payment Collection</p>
-            <h2 className="text-sm font-bold text-gray-900">Order #{order.id?.slice(-6) || "Payment"}</h2>
+            <h2 className="text-sm font-bold text-gray-900">Order #{order?.id?.slice(-6) || "Payment"}</h2>
           </div>
           <div className="w-8 h-8" />
         </div>
@@ -336,7 +336,7 @@ const DeliveryConfirmation = ({
         <div className="bg-white border border-[#e0e3e0] rounded-xl p-6 shadow-sm text-center space-y-2">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Amount to Collect</p>
           <p className="text-3xl font-black text-[#00604c]">
-            {order.riderEarning || 0} PLN
+            {order?.riderEarning || 0} PLN
           </p>
           <p className="text-xs text-gray-400">Please choose a payment method below to verify collection.</p>
         </div>
@@ -435,7 +435,7 @@ const DeliveryConfirmation = ({
       </button>
       <div className="text-center">
         <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Delivery Dropoff</p>
-        <h2 className="text-sm font-bold text-gray-900">Delivery - C7 Ochota</h2>
+        <h2 className="text-sm font-bold text-gray-900">Delivery - Order #{order?.id?.slice(-6) || "Payment"}</h2>
       </div>
       <div className="w-8 h-8 rounded-full overflow-hidden border border-[#e0e3e0]">
         <img
@@ -514,10 +514,10 @@ const DeliveryConfirmation = ({
     <div className="bg-white border border-[#e0e3e0] rounded-xl p-4 shadow-sm space-y-4">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-extrabold text-[#181d1b] text-lg">{order.customerName}</h3>
+          <h3 className="font-extrabold text-[#181d1b] text-lg">{order?.customerName || "Customer"}</h3>
           <p className="text-xs text-[#3e4945] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
-            {order.deliveryAddress}
+            {order?.deliveryAddress || "Customer Address"}
           </p>
           {centerLat && centerLng && (
             <p className="text-[10px] text-gray-500 font-semibold mt-0.5 ml-4.5 flex items-center gap-1">
@@ -549,7 +549,7 @@ const DeliveryConfirmation = ({
       <div className="bg-[#e5e9e5]/40 p-3.5 rounded-lg border-l-4 border-[#00604c] shadow-xs">
         <p className="text-[10px] font-extrabold text-[#00604c] tracking-wider uppercase mb-1">CUSTOMER NOTE</p>
         <blockquote className="text-xs font-semibold italic text-[#181d1b] leading-relaxed">
-          "{order.customerNote}"
+          "{order?.customerNote || "No instructions provided."}"
         </blockquote>
       </div>
     </div>
@@ -557,12 +557,12 @@ const DeliveryConfirmation = ({
     {
       /* Cash Collection Banner */
     }
-    {order.paymentMethod === "CASH" && <div className="bg-[#ffdad6] text-[#93000a] p-4 rounded-xl flex items-center justify-between border-t-4 border-[#ba1a1a] shadow-sm animate-pulse">
+    {order?.paymentMethod === "CASH" && <div className="bg-[#ffdad6] text-[#93000a] p-4 rounded-xl flex items-center justify-between border-t-4 border-[#ba1a1a] shadow-sm animate-pulse">
       <div className="flex items-center gap-3">
         <span className="text-xl">💰</span>
         <div>
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#93000a]">Payment Method</p>
-          <p className="text-base font-extrabold">Collect {order.riderEarning || 0} PLN Cash</p>
+          <p className="text-base font-extrabold">Collect {order?.riderEarning || 0} PLN Cash</p>
         </div>
       </div>
       <div className="bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
@@ -578,7 +578,7 @@ const DeliveryConfirmation = ({
         <span className="text-xl">💸</span>
         <div>
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#1b5e20]">Delivery Earning</p>
-          <p className="text-base font-extrabold">₹{order.riderEarning || 0}</p>
+          <p className="text-base font-extrabold">₹{order?.riderEarning || 0}</p>
         </div>
       </div>
       <div className="bg-[#4caf50] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">

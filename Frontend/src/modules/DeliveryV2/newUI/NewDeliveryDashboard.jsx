@@ -55,12 +55,32 @@ function NewDeliveryDashboard() {
   const [isRouteAccepted, setIsRouteAccepted] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const selectedOrderIdRef = useRef(null);
+  const [backScreen, setBackScreen] = useState("route");
+  const [selectedRouteStop, setSelectedRouteStop] = useState(null);
 
   useEffect(() => {
     selectedOrderIdRef.current = selectedOrderId;
   }, [selectedOrderId]);
 
   const activeOrder = orders.find(o => o.id === selectedOrderId)
+    || (selectedRouteStop && selectedRouteStop.orderId === selectedOrderId ? {
+        id: selectedRouteStop.orderId,
+        vendorName: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? selectedRouteStop.name : (routeMetadata?.vendorName || 'Vendor'),
+        vendorAddress: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? selectedRouteStop.address : (routeMetadata?.vendorAddress || 'Vendor Address'),
+        vendorPhone: selectedRouteStop.phone || 'N/A',
+        vendorLat: selectedRouteStop.lat || null,
+        vendorLng: selectedRouteStop.lng || null,
+        customerName: selectedRouteStop.type === 'delivery' || selectedRouteStop.type === 'D' ? selectedRouteStop.name : 'Customer',
+        customerAddress: selectedRouteStop.type === 'delivery' || selectedRouteStop.type === 'D' ? selectedRouteStop.address : 'Customer Address',
+        customerPhone: selectedRouteStop.phone || 'N/A',
+        customerLat: selectedRouteStop.lat || null,
+        customerLng: selectedRouteStop.lng || null,
+        status: selectedRouteStop.type === 'pickup' || selectedRouteStop.type === 'P' ? 'ready_for_pickup' : 'picked_up',
+        pin: "4901",
+        deliveryPin: "1234",
+        riderEarning: 15,
+        boxCount: 1
+       } : null)
     || orders.find(o => o.status === "picked_up" || o.status === "out_for_delivery")
     || orders[0];
 
@@ -264,6 +284,7 @@ function NewDeliveryDashboard() {
   };
 
   const handleNextRouteStep = () => {
+    setBackScreen("route");
     if (activeOrder?.status === "ready_for_pickup") {
       setCurrentScreen("pickup");
     } else if (activeOrder?.status === "picked_up") {
@@ -341,7 +362,18 @@ function NewDeliveryDashboard() {
           }}
         />;
       case "routes":
-        return <RoutesView />;
+        return <RoutesView
+          onSelectStop={(stop) => {
+            setSelectedOrderId(stop.orderId);
+            setSelectedRouteStop(stop);
+            setBackScreen("routes");
+            if (stop.type === 'pickup' || stop.type === 'P') {
+              setCurrentScreen('pickup');
+            } else {
+              setCurrentScreen('delivery');
+            }
+          }}
+        />;
       case "route":
         const totalEarnings = orders.reduce((sum, o) => sum + (o.riderEarning || 0), 0);
         return <RouteView
@@ -356,7 +388,7 @@ function NewDeliveryDashboard() {
       case "pickup":
         return <PickupVerification
           order={activeOrder}
-          onGoBack={() => setCurrentScreen("route")}
+          onGoBack={() => setCurrentScreen(backScreen)}
           onConfirmPickup={handleConfirmPickup}
           onReportIssue={handleReportIssue}
         />;
@@ -366,7 +398,7 @@ function NewDeliveryDashboard() {
           orders={orders}
           stops={stops}
           onSelectOrder={setSelectedOrderId}
-          onGoBack={() => setCurrentScreen("route")}
+          onGoBack={() => setCurrentScreen(backScreen)}
           onConfirmDelivered={handleConfirmDelivered}
           onOpenChat={() => setCurrentScreen("shifts")}
           onReportIssue={handleReportIssue}
