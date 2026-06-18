@@ -94,6 +94,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
 
   // Helper to calculate Expiry Date based on startDate and duration
   const getExpiryDate = (sub) => {
+    if (sub.endDate) {
+      return new Date(sub.endDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
     if (!sub.startDate) return "N/A";
     const start = new Date(sub.startDate);
     const dur = sub.duration || "weekly";
@@ -113,6 +116,27 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  // Compute how many calendar days remain in the subscription
+  const getRemainingDays = (sub) => {
+    const endRaw = sub.endDate
+      ? new Date(sub.endDate)
+      : (() => {
+          if (!sub.startDate) return null;
+          const s = new Date(sub.startDate);
+          const e = new Date(s);
+          if (sub.duration === "monthly") e.setDate(s.getDate() + 30);
+          else if (sub.duration === "one_day") e.setDate(s.getDate() + 1);
+          else e.setDate(s.getDate() + 7);
+          return e;
+        })();
+    if (!endRaw) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(endRaw);
+    end.setHours(0, 0, 0, 0);
+    return Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
   };
 
   const getStatusBadgeClass = (status) => {
@@ -260,8 +284,13 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               setPauseReason("");
                               setShowPauseModal(sub);
                             }}
-                            className="flex-1 py-2.5 rounded-xl border border-amber-200 text-amber-700 bg-amber-50/20 hover:bg-amber-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                            disabled={actionLoading}
+                            title={getRemainingDays(sub) <= 1 ? "Cannot pause: only 1 day remaining" : undefined}
+                            className={`flex-1 py-2.5 rounded-xl border text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm ${
+                              getRemainingDays(sub) <= 1
+                                ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
+                                : "border-amber-200 text-amber-700 bg-amber-50/20 hover:bg-amber-50"
+                            }`}
+                            disabled={actionLoading || getRemainingDays(sub) <= 1}
                           >
                             <span className="material-symbols-outlined text-[16px]">pause_circle</span>
                             Pause
@@ -324,11 +353,32 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               You can pause for up to 2 days, and billing will be adjusted accordingly.
             </p>
 
+            {/* Remaining days info */}
+            {(() => {
+              const rem = getRemainingDays(showPauseModal);
+              if (rem !== null && rem <= 3) {
+                return (
+                  <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-[11px] text-amber-700 font-semibold">
+                    ⚠️ Your subscription has <strong>{rem} day{rem !== 1 ? "s" : ""}</strong> remaining.
+                    {rem <= 2 ? " You can pause for up to 1 day only." : " Max 2-day pause applies."}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             <div className="space-y-3 pt-2">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase">Pause Duration</label>
                 <div className="flex gap-2">
-                  {[1, 2].map((days) => (
+                  {[1, 2]
+                    .filter((days) => {
+                      const rem = getRemainingDays(showPauseModal);
+                      // Hide options that would hit or exceed remaining days
+                      if (rem !== null && days >= rem) return false;
+                      return true;
+                    })
+                    .map((days) => (
                     <button
                       key={days}
                       type="button"

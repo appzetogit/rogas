@@ -80,6 +80,7 @@ const subscriptionSchema = new mongoose.Schema(
         },
         /** Always starts on next Monday per PRD CA-07 */
         startDate: { type: Date, required: true },
+        endDate: { type: Date, default: null },
         nextDeliveryDate: { type: Date, default: null, index: true },
         /** Mon-Fri or Full week */
         deliveryDays: {
@@ -130,6 +131,8 @@ const subscriptionSchema = new mongoose.Schema(
 
         // ─── Pause Management (PRD ACM-14) ────────────────────────────────────
         pausedUntil: { type: Date, default: null },
+        pausedAt: { type: Date, default: null },
+        requestedPauseDays: { type: Number, default: 0 },
         pauseReason: { type: String, default: '' },
         /** Max consecutive days vendor can be paused */
         maxPauseDays: { type: Number, default: 2 },

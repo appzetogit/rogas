@@ -2062,7 +2062,7 @@ export const dmbCustomerAPI = {
   /** Pause subscription for N days */
   pauseSubscription: (subscriptionId, pauseDays = 1, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/pause`, { pauseDays, reason }),
   /** Resume a paused subscription */
-  resumeSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/activate`, {}),
+  resumeSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/resume`, {}),
   /** Cancel a subscription */
   cancelSubscription: (subscriptionId, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/cancel`, { reason }),
   /** Get vendor's available meal plans (for change-meal selection) */

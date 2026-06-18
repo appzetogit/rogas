@@ -237,6 +237,17 @@ router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER'), asy
     }
 });
 
+// ─── Resume Subscription ───────────────────────────────────────────────────
+router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER'), async (req, res) => {
+    try {
+        const sub = await resumeSubscription(req.params.subscriptionId);
+        if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found or not paused' });
+        res.json({ success: true, message: 'Subscription resumed successfully', subscription: sub });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── Cancel Subscription (PRD ACM-15 — EU Law, always accessible) ─────────
 router.patch('/:subscriptionId/cancel', authMiddleware, requireRoles('USER'), async (req, res) => {
     try {
