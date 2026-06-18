@@ -384,9 +384,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
     setManageMode("change_meal");
     if (!manageOrder?.vendor?.name) return;
     try {
-      const vendorId = manageOrder.vendorId || manageOrder._id;
+      const vendorId = manageOrder.vendorId?._id || manageOrder.vendorId || manageOrder._id;
       const res = await dmbCustomerAPI.getVendorMenu(vendorId);
-      setAvailableMeals(res.data?.meals ?? res.data?.plans ?? []);
+      setAvailableMeals(res.data?.menu ?? res.data?.meals ?? res.data?.plans ?? []);
     } catch { /* show empty state */ }
   }, [manageOrder]);
 
@@ -406,9 +406,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
   }, [manageOrder, selectedMealIds, loadOrders, onShowNotificationToast, closeManage]);
 
   const toggleMealSelection = useCallback((id) => {
-    setSelectedMealIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setSelectedMealIds([id]);
   }, []);
 
   // ─── Stable date formatters ───────────────────────────────────────────────

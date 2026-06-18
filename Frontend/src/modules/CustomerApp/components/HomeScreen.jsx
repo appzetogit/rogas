@@ -230,9 +230,9 @@ export function HomeScreen({
     setSelectedMealIds(order.meals?.map((m) => m.mealPlanId || m._id) ?? []);
     setManageMode("change_meal");
     try {
-      const vendorId = order.vendorId || order._id;
+      const vendorId = order.vendorId?._id || order.vendorId || order._id;
       const res = await dmbCustomerAPI.getVendorMenu(vendorId);
-      setAvailableMeals(res.data?.meals ?? res.data?.plans ?? []);
+      setAvailableMeals(res.data?.menu ?? res.data?.meals ?? res.data?.plans ?? []);
     } catch {
       // Menu fetch failed — show empty state
     }
@@ -254,9 +254,7 @@ export function HomeScreen({
   }, [manageOrder, selectedMealIds, loadTodayMeals, onShowNotificationToast, closeManage]);
 
   const toggleMealSelection = useCallback((id) => {
-    setSelectedMealIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelectedMealIds([id]);
   }, []);
 
   // ─── Derived values ───────────────────────────────────────────────────────

@@ -1820,6 +1820,7 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
 const formatOrderCard = (order) => ({
     _id: order._id,
     orderId: order.orderId,
+    vendorId: order.vendorId?._id || order.vendorId || null,
     status: order.status,
     deliveryDate: order.deliveryDate,
     deliverySlot: order.deliverySlot,
@@ -1830,6 +1831,7 @@ const formatOrderCard = (order) => ({
         location: order.vendorId?.location || null
     },
     meals: (order.meals || []).map(m => ({
+        mealPlanId: m.mealPlanId?._id || m.mealPlanId || null,
         name: m.name || m.mealPlanId?.name || 'Meal',
         photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
         nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,

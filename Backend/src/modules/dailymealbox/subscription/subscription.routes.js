@@ -181,6 +181,26 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
         if (plans.length === 0) return res.status(400).json({ success: false, message: 'No valid meal plans found' });
         order.meals = plans.map(p => ({ mealPlanId: p._id, name: p.name, quantity: 1 }));
         await order.save();
+
+        // Broadcast order update via socket
+        const io = getIO();
+        if (io) {
+            const payload = {
+                orderId: order.orderId,
+                _id: order._id,
+                status: order.status,
+                deliveryDate: order.deliveryDate,
+                deliverySlot: order.deliverySlot,
+                meals: order.meals.map(m => ({
+                    name: m.name,
+                    quantity: m.quantity
+                })),
+                updatedAt: new Date().toISOString()
+            };
+            io.to(`sub_${order.subscriptionId}`).emit('order_status_updated', payload);
+            io.to(`vendor_${order.vendorId}`).emit('order_status_update', payload);
+        }
+
         res.json({ success: true, message: 'Meals updated successfully', order });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
