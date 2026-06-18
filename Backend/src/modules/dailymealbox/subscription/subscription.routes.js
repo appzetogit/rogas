@@ -267,8 +267,13 @@ router.patch('/:subscriptionId/activate', authMiddleware, async (req, res) => {
 router.get('/plans', async (req, res) => {
     try {
         const { VendorSubscriptionPlan } = await import('./vendorSubscriptionPlan.model.js');
+        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
         const list = await VendorSubscriptionPlan.find({ status: 'active' }).sort({ createdAt: -1 });
-        res.json({ success: true, plans: list });
+        
+        const settings = await DeliveryOrderFeeSettings.findOne({ isActive: true });
+        const feePerOrder = settings ? (settings.feePerOrder || 0) : 0;
+        
+        res.json({ success: true, plans: list, feePerOrder });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

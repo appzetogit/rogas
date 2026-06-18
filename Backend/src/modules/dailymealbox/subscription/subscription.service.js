@@ -94,6 +94,7 @@ export const createSubscription = async ({
         foodVatAmount: pricing?.foodVatAmount || 0,
         deliveryVatAmount: pricing?.deliveryVatAmount || 0,
         platformFeeAmount: pricing?.platformFeeAmount || 0,
+        applyFoodVatOnMenu: pricing?.applyFoodVatOnMenu === true || pricing?.applyFoodVatOnMenu === 'true',
         totalPerWeek: pricing?.totalPerWeek || 0,
         totalPrice: pricing?.totalPrice || 0,
         currency: pricing?.currency || 'INR'

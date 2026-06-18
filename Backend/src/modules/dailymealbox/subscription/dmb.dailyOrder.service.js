@@ -1016,17 +1016,26 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                     });
                 }
 
-                const foodCost = (sub.meals || []).reduce((acc, m) => {
-                    const pricePerDay = m.mealPlanId?.pricePerDay || 0;
-                    return acc + (pricePerDay * (m.quantity || 1));
-                }, 0) || sub.pricing?.basePricePerDay || 0;
-
+                const foodCost = sub.pricing?.basePricePerDay || 0;
                 const foodVat = sub.pricing?.foodVat || 0;
-                const foodVatAmount = Math.round((foodCost * (foodVat / 100)) * 100) / 100;
+
+                let vatBaseAmount = foodCost;
+                if (sub.pricing?.applyFoodVatOnMenu) {
+                    try {
+                        const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
+                        const activePlans = await DMBMealPlan.find({ vendorId: sub.vendorId, status: 'active' }).lean();
+                        const sumPrices = activePlans.reduce((acc, p) => acc + (p.pricePerDay || 0), 0);
+                        const avgMenuPrice = activePlans.length > 0 ? (sumPrices / activePlans.length) : 0;
+                        vatBaseAmount = avgMenuPrice || foodCost;
+                    } catch (e) {
+                        logger.warn(`Error resolving active meals for daily order VAT: ${e.message}`);
+                    }
+                }
+                const foodVatAmount = Math.round((vatBaseAmount * (foodVat / 100)) * 100) / 100;
                 const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
                 const deliveryVat = sub.pricing?.deliveryVat || 0;
                 const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
-                const platformFee = sub.pricing?.platformFee || 0;
+                const platformFee = 0; // Platform fee is charged once per subscription, not daily
                 const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
 
                 await DMBDailyOrder.create({
@@ -1148,16 +1157,24 @@ export const ensureOrdersForUser = async (userId) => {
                         });
                     }
 
-                    const foodCost = (sub.meals || []).reduce((acc, m) => {
-                        return acc + ((m.mealPlanId?.pricePerDay || 0) * (m.quantity || 1));
-                    }, 0) || sub.pricing?.basePricePerDay || 0;
-
+                    const foodCost = sub.pricing?.basePricePerDay || 0;
                     const foodVat = sub.pricing?.foodVat || 0;
-                    const foodVatAmount = Math.round((foodCost * (foodVat / 100)) * 100) / 100;
+
+                    let vatBaseAmount = foodCost;
+                    if (sub.pricing?.applyFoodVatOnMenu) {
+                        try {
+                            const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
+                            const activePlans = await DMBMealPlan.find({ vendorId: sub.vendorId, status: 'active' }).lean();
+                            const sumPrices = activePlans.reduce((acc, p) => acc + (p.pricePerDay || 0), 0);
+                            const avgMenuPrice = activePlans.length > 0 ? (sumPrices / activePlans.length) : 0;
+                            vatBaseAmount = avgMenuPrice || foodCost;
+                        } catch (e) { }
+                    }
+                    const foodVatAmount = Math.round((vatBaseAmount * (foodVat / 100)) * 100) / 100;
                     const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
                     const deliveryVat = sub.pricing?.deliveryVat || 0;
                     const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
-                    const platformFee = sub.pricing?.platformFee || 0;
+                    const platformFee = 0; // Platform fee is charged once per subscription, not daily
                     const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
 
                     await DMBDailyOrder.create({

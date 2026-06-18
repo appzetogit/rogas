@@ -51,6 +51,10 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
             enum: ['mon_fri', 'full_week'],
             default: 'full_week'
         },
+        applyFoodVatOnMenu: {
+            type: Boolean,
+            default: false
+        },
         status: {
             type: String,
             enum: ['active', 'inactive'],

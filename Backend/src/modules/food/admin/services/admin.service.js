@@ -5322,6 +5322,7 @@ export async function createVendorSubscriptionPlan(body) {
     const deliveryVat = toFiniteNumber(body.deliveryVat) !== null ? Math.max(0, toFiniteNumber(body.deliveryVat)) : 0;
     const platformFee = toFiniteNumber(body.platformFee) !== null ? Math.max(0, toFiniteNumber(body.platformFee)) : 0;
     const deliveryDays = typeof body.deliveryDays === 'string' && ['mon_fri', 'full_week'].includes(body.deliveryDays) ? body.deliveryDays : 'full_week';
+    const applyFoodVatOnMenu = body.applyFoodVatOnMenu === true || body.applyFoodVatOnMenu === 'true';
 
     const plan = new VendorSubscriptionPlan({
         name,
@@ -5333,6 +5334,7 @@ export async function createVendorSubscriptionPlan(body) {
         deliveryVat,
         platformFee,
         deliveryDays,
+        applyFoodVatOnMenu,
         status: body.status === 'inactive' ? 'inactive' : 'active'
     });
 
@@ -5405,6 +5407,10 @@ export async function updateVendorSubscriptionPlan(id, body) {
             throw new ValidationError('Delivery days must be mon_fri or full_week');
         }
         plan.deliveryDays = body.deliveryDays;
+    }
+
+    if (body.applyFoodVatOnMenu !== undefined) {
+        plan.applyFoodVatOnMenu = body.applyFoodVatOnMenu === true || body.applyFoodVatOnMenu === 'true';
     }
     
     if (body.status !== undefined) {

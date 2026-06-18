@@ -28,7 +28,8 @@ export default function SubscriptionPlans() {
     deliveryVat: "0",
     platformFee: "0",
     deliveryDays: "full_week",
-    status: "active"
+    status: "active",
+    applyFoodVatOnMenu: false
   })
 
   // Fetch plans
@@ -67,7 +68,8 @@ export default function SubscriptionPlans() {
       deliveryVat: "0",
       platformFee: "0",
       deliveryDays: "full_week",
-      status: "active"
+      status: "active",
+      applyFoodVatOnMenu: false
     })
     setShowFormModal(true)
   }
@@ -85,7 +87,8 @@ export default function SubscriptionPlans() {
       deliveryVat: plan.deliveryVat !== undefined ? String(plan.deliveryVat) : "0",
       platformFee: plan.platformFee !== undefined ? String(plan.platformFee) : "0",
       deliveryDays: plan.deliveryDays || "full_week",
-      status: plan.status || "active"
+      status: plan.status || "active",
+      applyFoodVatOnMenu: plan.applyFoodVatOnMenu === true || plan.applyFoodVatOnMenu === 'true' || false
     })
     setShowFormModal(true)
   }
@@ -147,7 +150,8 @@ export default function SubscriptionPlans() {
       deliveryVat: Number(formData.deliveryVat),
       platformFee: Number(formData.platformFee),
       deliveryDays: formData.deliveryDays,
-      status: formData.status
+      status: formData.status,
+      applyFoodVatOnMenu: !!formData.applyFoodVatOnMenu
     }
 
     try {
@@ -325,6 +329,13 @@ export default function SubscriptionPlans() {
                       <div className="font-bold text-slate-800">₹{plan.platformFee ?? 0}</div>
                     </div>
                   </div>
+
+                  {plan.applyFoodVatOnMenu && (
+                    <div className="mb-4 px-2.5 py-1.5 bg-green-50 border border-green-200 rounded-lg flex items-center gap-1.5 text-[10.5px] font-bold text-green-700">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      Apply Food VAT on Food Menu
+                    </div>
+                  )}
 
                   {/* Plan Features */}
                   <div className="space-y-3">
@@ -508,6 +519,27 @@ export default function SubscriptionPlans() {
                     className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+              </div>
+
+              {/* Apply Food VAT on Vendor Food Menu toggle */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <div className="pr-4">
+                  <label className="text-sm font-semibold text-slate-700 block">
+                    Apply Food VAT on Vendor Food Menu
+                  </label>
+                  <span className="text-[11px] text-slate-500 block leading-tight mt-0.5">
+                    Calculate Food VAT on total menu rate instead of plan base rate
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={formData.applyFoodVatOnMenu}
+                    onChange={(e) => setFormData({ ...formData, applyFoodVatOnMenu: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
 
               {/* Status */}

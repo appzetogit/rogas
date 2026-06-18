@@ -109,6 +109,7 @@ const subscriptionSchema = new mongoose.Schema(
             foodVatAmount: { type: Number, default: 0 },
             deliveryVatAmount: { type: Number, default: 0 },
             platformFeeAmount: { type: Number, default: 0 },
+            applyFoodVatOnMenu: { type: Boolean, default: false },
             totalPerWeek: { type: Number, required: false, min: 0 },
             totalPrice: { type: Number, required: true, min: 0 },
             currency: { type: String, default: 'INR' }
