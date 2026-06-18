@@ -224,16 +224,26 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
             const dayEnd = new Date(dayStart);
             dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-            // Find ALL scheduled orders for this vendor+date+slot (any meal plan)
-            const ordersToUpdate = await DMBDailyOrder.find({
+            // Find ALL scheduled orders for this vendor+date (any slot) to update meal name
+            // where the slot matches finalSlot
+            const slotOrdersToUpdate = await DMBDailyOrder.find({
                 vendorId,
                 deliveryDate: { $gte: dayStart, $lt: dayEnd },
                 deliverySlot: finalSlot,
                 status: 'scheduled'
             });
 
+            // Also find ALL orders for this vendor+date (all slots) to notify affected users
+            const allDateOrders = await DMBDailyOrder.find({
+                vendorId,
+                deliveryDate: { $gte: dayStart, $lt: dayEnd },
+                status: 'scheduled'
+            }).select('userId subscriptionId deliverySlot').lean();
+
             const io = getSocketIo();
-            for (const order of ordersToUpdate) {
+
+            // Update meal names for matching-slot orders
+            for (const order of slotOrdersToUpdate) {
                 let updated = false;
                 for (const m of order.meals) {
                     if (m.name !== dishName) {
@@ -244,27 +254,64 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
                 if (updated) {
                     await order.save();
                 }
-                // Emit to BOTH subscription room AND user room for guaranteed delivery
-                if (io) {
-                    const subRoom = `sub_${order.subscriptionId}`;
+            }
+
+            // Emit daily_menu_updated to ALL affected customer user rooms for this vendor+date
+            // This ensures customers see the update in CalendarScreen even if their specific slot
+            // wasn't the one just set (they need to refresh to see newly created orders)
+            if (io) {
+                const notifiedUsers = new Set();
+                const notifiedSubs = new Set();
+
+                for (const order of allDateOrders) {
                     const userRoom = `user:${order.userId}`;
+                    const subRoom = `sub_${order.subscriptionId}`;
                     const payload = {
                         subscriptionId: order.subscriptionId,
-                        deliveryDate: order.deliveryDate,
+                        deliveryDate: normalizedDate,
                         deliverySlot: finalSlot,
                         dishName,
                         vendorId: String(vendorId)
                     };
-                    io.to(subRoom).emit('daily_menu_updated', payload);
-                    io.to(userRoom).emit('daily_menu_updated', payload);
-                    logger.info(`Socket emitted daily_menu_updated to ${subRoom} and ${userRoom} for: ${dishName} [${finalSlot}]`);
+
+                    if (!notifiedUsers.has(String(order.userId))) {
+                        io.to(userRoom).emit('daily_menu_updated', payload);
+                        notifiedUsers.add(String(order.userId));
+                    }
+                    if (!notifiedSubs.has(String(order.subscriptionId))) {
+                        io.to(subRoom).emit('daily_menu_updated', payload);
+                        notifiedSubs.add(String(order.subscriptionId));
+                    }
                 }
+
+                // Also notify users who have active subscriptions with this vendor but
+                // may not have orders generated yet (edge case: generateDailyOrdersForDate
+                // may not have created orders if subscription startDate is in the future, etc.)
+                const activeSubs = await DMBSubscription.find({ vendorId, status: 'active' })
+                    .select('userId _id').lean();
+                for (const sub of activeSubs) {
+                    const userRoom = `user:${sub.userId}`;
+                    if (!notifiedUsers.has(String(sub.userId))) {
+                        io.to(userRoom).emit('daily_menu_updated', {
+                            subscriptionId: sub._id,
+                            deliveryDate: normalizedDate,
+                            deliverySlot: finalSlot,
+                            dishName,
+                            vendorId: String(vendorId)
+                        });
+                        notifiedUsers.add(String(sub.userId));
+                        logger.info(`Socket emitted daily_menu_updated (sub-level fallback) to user:${sub.userId} for: ${dishName} [${finalSlot}]`);
+                    }
+                }
+
+                logger.info(`Socket emitted daily_menu_updated to ${notifiedUsers.size} users and ${notifiedSubs.size} sub rooms for: ${dishName} [${finalSlot}] on ${normalizedDate.toISOString().split('T')[0]}`);
             }
         } catch (orderUpdateErr) {
             logger.warn(`Failed to update daily orders with new daily menu: ${orderUpdateErr.message}`);
         }
 
         res.json({ success: true, dailyMenu });
+
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

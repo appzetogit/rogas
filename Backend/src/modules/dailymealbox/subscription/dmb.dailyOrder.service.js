@@ -885,8 +885,9 @@ const refreshMealNameFromDailyMenu = async (order) => {
                         slot: order.deliverySlot
                     }).lean();
                 }
-                if (dailyMenuItem?.dishName && m.name !== dailyMenuItem.dishName) {
-                    m.name = dailyMenuItem.dishName;
+                const targetName = dailyMenuItem?.dishName || "No meal set";
+                if (m.name !== targetName) {
+                    m.name = targetName;
                     updated = true;
                 }
             } catch (e) { /* ignore */ }
@@ -926,11 +927,13 @@ const attachDailyMenuDetails = async (orders) => {
                         slot: order.deliverySlot
                     }).lean();
                 }
-                if (dailyMenuItem) {
-                    if (dailyMenuItem.dishName) m.name = dailyMenuItem.dishName;
+                if (dailyMenuItem && dailyMenuItem.dishName) {
+                    m.name = dailyMenuItem.dishName;
                     if (dailyMenuItem.photo) m.customPhoto = dailyMenuItem.photo;
                     if (dailyMenuItem.nutrition) m.customNutrition = dailyMenuItem.nutrition;
                     if (dailyMenuItem.description) m.customDescription = dailyMenuItem.description;
+                } else {
+                    m.name = "No meal set";
                 }
             }
         }
@@ -968,6 +971,16 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                 continue;
             }
 
+            // ── startDate guard: skip dates before the subscription's chosen start ──
+            if (sub.startDate) {
+                const subStart = toDateOnly(new Date(sub.startDate));
+                if (dayStart < subStart) {
+                    skipped++;
+                    continue;
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────────
+
             const slots = sub.deliverySlots && sub.deliverySlots.length > 0
                 ? sub.deliverySlots
                 : (sub.deliverySlot ? [sub.deliverySlot] : ['lunch']);
@@ -987,19 +1000,21 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                 const mealsSnapshot = [];
                 for (const m of (sub.meals || [])) {
                     const planId = m.mealPlanId?._id || m.mealPlanId;
-                    let displayName = m.mealPlanId?.name || 'Meal';
+                    let displayName = 'No meal set';
 
                     try {
                         const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
                         let dailyMenuItem = await DMBDailyMenu.findOne({
                             vendorId: sub.vendorId,
                             mealPlanId: planId,
-                            date: dayStart
+                            date: dayStart,
+                            slot: slot
                         });
                         if (!dailyMenuItem) {
                             dailyMenuItem = await DMBDailyMenu.findOne({
                                 vendorId: sub.vendorId,
-                                date: dayStart
+                                date: dayStart,
+                                slot: slot
                             });
                         }
                         if (dailyMenuItem && dailyMenuItem.dishName) {
@@ -1136,19 +1151,21 @@ export const ensureOrdersForUser = async (userId) => {
                     const mealsSnapshot = [];
                     for (const m of (sub.meals || [])) {
                         const planId = m.mealPlanId?._id || m.mealPlanId;
-                        let displayName = m.mealPlanId?.name || 'Meal';
+                        let displayName = 'No meal set';
 
                         try {
                             if (DMBDailyMenu) {
                                 let dailyMenuItem = await DMBDailyMenu.findOne({
                                     vendorId: sub.vendorId,
                                     mealPlanId: planId,
-                                    date: dayStart
+                                    date: dayStart,
+                                    slot: slot
                                 }).lean();
                                 if (!dailyMenuItem) {
                                     dailyMenuItem = await DMBDailyMenu.findOne({
                                         vendorId: sub.vendorId,
-                                        date: dayStart
+                                        date: dayStart,
+                                        slot: slot
                                     }).lean();
                                 }
                                 if (dailyMenuItem?.dishName) {
@@ -1368,7 +1385,7 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
             phone: o.userId?.phone || ''
         },
         meals: o.meals.map(m => ({
-            name: m.name || m.mealPlanId?.name || 'Meal',
+            name: m.name || 'No meal set',
             quantity: m.quantity,
             photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
             nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
@@ -1892,7 +1909,7 @@ const formatOrderCard = (order) => ({
     },
     meals: (order.meals || []).map(m => ({
         mealPlanId: m.mealPlanId?._id || m.mealPlanId || null,
-        name: m.name || m.mealPlanId?.name || 'Meal',
+        name: m.name || 'No meal set',
         photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
         nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
         description: m.customDescription || m.mealPlanId?.description || '',

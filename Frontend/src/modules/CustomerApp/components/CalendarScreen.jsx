@@ -23,25 +23,32 @@ const getISTToday = () => {
   return localToday;
 };
 
-const getUTCFormatDateStr = (dateInput) => {
+const getISTFormatDateStr = (dateInput) => {
   if (!dateInput) return "";
   const d = new Date(dateInput);
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(d);
 };
 
-const getLocalFormatDateStr = (d) => {
-  if (!d) return "";
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+const SLOT_INFO = {
+  breakfast: { label: "Breakfast ☀️", time: "7–9 AM", color: "bg-amber-50 text-amber-800 border-amber-200" },
+  lunch: { label: "Lunch 🌤️", time: "12–2 PM", color: "bg-[#e8f3f0] text-primary border-primary/20" },
+  dinner: { label: "Dinner 🌙", time: "7–9 PM", color: "bg-indigo-50 text-indigo-800 border-indigo-200" },
+};
+
+const SLOT_ORDER = {
+  breakfast: 1,
+  lunch: 2,
+  dinner: 3
 };
 
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
-  const [selectedDateStr, setSelectedDateStr] = useState(() => getLocalFormatDateStr(getISTToday()));
+  const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -142,8 +149,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     if (order.status !== 'scheduled') return true;
 
     // Today's or past date in IST is strictly locked (cannot skip or change today's order)
-    const orderDateStr = getUTCFormatDateStr(order.deliveryDate);
-    const todayISTStr = getLocalFormatDateStr(getISTToday());
+    const orderDateStr = getISTFormatDateStr(order.deliveryDate);
+    const todayISTStr = getISTFormatDateStr(getISTToday());
 
     return orderDateStr <= todayISTStr;
   };
@@ -192,8 +199,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     // Extra frontend validation layer
     const targetOrder = orders.find(o => o._id === orderId);
     if (targetOrder) {
-      const orderDateStr = getUTCFormatDateStr(targetOrder.deliveryDate);
-      const todayISTStr = getLocalFormatDateStr(getISTToday());
+      const orderDateStr = getISTFormatDateStr(targetOrder.deliveryDate);
+      const todayISTStr = getISTFormatDateStr(getISTToday());
       if (orderDateStr <= todayISTStr) {
         onShowToast("Cannot undo skip for today's or past orders.");
         return;
@@ -292,65 +299,59 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   // Map orders by date string key
   const orderMap = {};
   orders.forEach(o => {
-    const key = getUTCFormatDateStr(o.deliveryDate);
+    const key = getISTFormatDateStr(o.deliveryDate);
     if (!orderMap[key]) {
       orderMap[key] = [];
     }
     orderMap[key].push(o);
   });
 
-  // Build the list of visible days — returns an ARRAY of entries (one per order for that day)
-  const getMealsForDay = (date) => {
-    const dateKeyStr = getLocalFormatDateStr(date);
+  // Sort orders within each date key by slot order
+  Object.keys(orderMap).forEach(key => {
+    orderMap[key].sort((a, b) => {
+      const rankA = SLOT_ORDER[a.deliverySlot?.toLowerCase()] || 2;
+      const rankB = SLOT_ORDER[b.deliverySlot?.toLowerCase()] || 2;
+      return rankA - rankB;
+    });
+  });
 
-    const isYesterday = dateKeyStr === getLocalFormatDateStr(yesterday);
-    const isToday = dateKeyStr === getLocalFormatDateStr(today);
-
+  // Build the list of visible days
+  const getOrdersForDay = (date) => {
+    const dateKeyStr = getISTFormatDateStr(date);
+    const isYesterday = dateKeyStr === getISTFormatDateStr(yesterday);
+    const isToday = dateKeyStr === getISTFormatDateStr(today);
     const dayOrders = orderMap[dateKeyStr] || [];
-    if (dayOrders.length > 0) {
-      return dayOrders.map((order, idx) => {
-        // Determine if locked (yesterday & today are strictly non-editable)
+
+    return {
+      date,
+      dateStr: dateKeyStr,
+      dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+      dayNum: date.getDate(),
+      isYesterday,
+      isToday,
+      orders: dayOrders.map(order => {
         let isLocked = false;
         if (isYesterday || isToday) {
           isLocked = true;
         } else {
           isLocked = isOrderLocked(order);
         }
-
-        // Show individual meal name for THIS specific order
-        const mealName = order.meals?.[0]?.name || "Meal Box";
-
         return {
-          hasOrder: true,
           order,
-          dayName: idx === 0 ? date.toLocaleDateString("en-US", { weekday: "short" }) : "",
-          dayNum: idx === 0 ? date.getDate() : "",
-          dateStr: dateKeyStr,
-          name: mealName,
           isLocked,
-          originalStatus: order.status
+          mealName: order.meals?.[0]?.name || "Meal Box",
+          status: order.status
         };
-      });
-    } else {
-      const isSunday = date.getDay() === 0;
-      return [{
-        hasOrder: false,
-        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
-        dayNum: date.getDate(),
-        dateStr: dateKeyStr,
-        name: (isSunday && !hasFullWeekSub) ? "Rest Day (Sunday)" : "No delivery scheduled",
-        isLocked: true,
-        originalStatus: ""
-      }];
-    }
+      })
+    };
   };
 
-  const weekMeals = weekDays.flatMap(d => getMealsForDay(d));
+  const weekMealsGrouped = weekDays.map(d => getOrdersForDay(d));
 
   const daysOfWeekStrip = weekDays.map((date) => ({
     label: date.toLocaleDateString("en-US", { weekday: "short" })[0], // 'M', 'T', etc.
     num: date.getDate(),
-    dateStr: getLocalFormatDateStr(date)
+    dateStr: getISTFormatDateStr(date)
   }));
 
   if (loading) {
@@ -444,114 +445,150 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
         {/* Meal planner rows */}
         <section className="flex flex-col gap-4">
-          {weekMeals.map((m) => {
-            const isSelected = selectedDateStr === m.dateStr;
-            const isYesterday = m.dateStr === getLocalFormatDateStr(yesterday);
-            const isToday = m.dateStr === getLocalFormatDateStr(today);
+          {weekMealsGrouped.map((day) => {
+            const isSelected = selectedDateStr === day.dateStr;
+            const isSunday = day.date.getDay() === 0;
+            const hasOrders = day.orders.length > 0;
 
-            // Determine styling classes based on status
+            // Determine border color for the card
             let borderClass = "border-primary-container";
-            if (isYesterday) {
+            if (day.isYesterday) {
               borderClass = "border-outline/25 opacity-70";
-            } else if (m.originalStatus === "skipped") {
-              borderClass = "border-brand-red opacity-85";
-            } else if (m.originalStatus === "failed") {
-              borderClass = "border-red-500 opacity-85";
-            } else if (m.originalStatus === "delivered") {
-              borderClass = "border-green-500";
-            } else if (m.isLocked && m.hasOrder) {
-              borderClass = "border-amber-500";
+            } else if (hasOrders) {
+              const statuses = day.orders.map(o => o.status);
+              const isAnyLocked = day.orders.some(o => o.isLocked);
+              
+              if (statuses.includes("failed")) {
+                borderClass = "border-red-500 opacity-85";
+              } else if (statuses.includes("out_for_delivery")) {
+                borderClass = "border-purple-600";
+              } else if (statuses.includes("preparing")) {
+                borderClass = "border-brand-amber";
+              } else if (statuses.includes("ready")) {
+                borderClass = "border-blue-600";
+              } else if (statuses.includes("delivered")) {
+                borderClass = "border-green-500";
+              } else if (statuses.every(s => s === "skipped")) {
+                borderClass = "border-brand-red opacity-85";
+              } else if (isAnyLocked) {
+                borderClass = "border-amber-500";
+              }
             }
 
             return (
               <div
-                key={m.dateStr}
-                className={`bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border-l-4 transition-all duration-300 ${isSelected ? "scale-[1.01] shadow-md" : ""} ${borderClass}`}
+                key={day.dateStr}
+                className={`bg-white rounded-2xl p-4 shadow-sm flex border-l-4 transition-all duration-300 ${isSelected ? "scale-[1.01] shadow-md border-l-primary" : ""} ${borderClass}`}
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-center w-8 select-none">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant font-sans">
-                      {m.dayName}
-                    </span>
-                    <span className={`text-[15px] font-bold ${isSelected ? "text-primary font-extrabold" : "text-[#1b1c1c]"}`}>
-                      {m.dayNum}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className={`text-base font-bold text-on-surface leading-snug ${m.originalStatus === "skipped" ? "line-through opacity-50" : ""}`}>
-                      {m.name}
-                    </h3>
-
-                    {/* Dynamic Status Badges */}
-                    {!m.hasOrder ? (
-                      <p className="text-on-surface-variant/60 text-xs font-semibold font-sans mt-0.5">No Delivery</p>
-                    ) : m.originalStatus === "skipped" ? (
-                      <p className="text-brand-red text-xs font-bold font-sans mt-0.5">Skipped</p>
-                    ) : m.originalStatus === "preparing" ? (
-                      <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">soup_kitchen</span>
-                        <p>Preparing 🔥</p>
-                      </div>
-                    ) : m.originalStatus === "ready" ? (
-                      <div className="flex items-center gap-1 text-blue-600 text-xs font-bold font-sans mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                        <p>Ready ✓</p>
-                      </div>
-                    ) : m.originalStatus === "out_for_delivery" ? (
-                      <div className="flex items-center gap-1 text-purple-600 text-xs font-bold font-sans mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">local_shipping</span>
-                        <p>On the Way 🛵</p>
-                      </div>
-                    ) : m.originalStatus === "delivered" ? (
-                      <div className="flex items-center gap-1 text-green-600 text-xs font-bold font-sans mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">done_all</span>
-                        <p>Delivered ✅</p>
-                      </div>
-                    ) : m.originalStatus === "failed" ? (
-                      <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">error</span>
-                        <p>Failed </p>
-                      </div>
-                    ) : m.isLocked ? (
-                      <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>
-                        <span className="material-symbols-outlined text-[14px]">lock</span>
-                        <p>Locked</p>
-                      </div>
-                    ) : (
-                      <p className="text-primary text-xs font-bold font-sans mt-0.5">Scheduled</p>
-                    )}
-                  </div>
+                {/* Left Column: Date info */}
+                <div className="text-center w-12 select-none flex-shrink-0 pt-1 border-r border-[#bec9c3]/20 pr-3 mr-1 flex flex-col justify-start">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant font-sans">
+                    {day.dayName}
+                  </span>
+                  <span className={`text-[17px] font-extrabold ${isSelected ? "text-primary" : "text-[#1b1c1c]"}`}>
+                    {day.dayNum}
+                  </span>
                 </div>
 
-                {/* Action Buttons */}
-                {!m.hasOrder ? (
-                  null
-                ) : m.originalStatus === "skipped" ? (
-                  (isYesterday || isToday) ? (
-                    <span className="text-[12px] font-bold text-brand-red/60 font-sans pr-2">Skipped</span>
+                {/* Right Column: Meal contents */}
+                <div className="flex-grow flex flex-col gap-4">
+                  {!hasOrders ? (
+                    <div className="py-1">
+                      <h3 className="text-base font-bold text-on-surface leading-snug">
+                        {isSunday && !hasFullWeekSub ? "Rest Day (Sunday)" : "No delivery scheduled"}
+                      </h3>
+                      <p className="text-on-surface-variant/60 text-xs font-semibold font-sans mt-0.5">No Delivery</p>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => handleUndoSkipOrder(m.order._id, m.name)}
-                      disabled={loadingAction}
-                      className="px-4 py-1.5 rounded-full bg-brand-amber text-black hover:bg-amber-400 font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50 shadow-sm"
-                    >
-                      Undo
-                    </button>
-                  )
-                ) : (m.originalStatus !== "scheduled" || m.isLocked) ? (
-                  <button onClick={showLockedMessage} className="p-1.5 rounded-full hover:bg-amber-50 text-brand-amber transition-colors flex items-center justify-center cursor-pointer">
-                    <span className="material-symbols-outlined text-[20px]">info</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => triggerSkipOrder(m.order._id, m.name)}
-                    disabled={loadingAction}
-                    className="px-4 py-1.5 rounded-full border border-primary-container text-primary hover:bg-[#e8f3f0] font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    Skip
-                  </button>
-                )}
+                    day.orders.map((m, idx) => {
+                      const slotKey = m.order.deliverySlot?.toLowerCase() || "lunch";
+                      const slot = SLOT_INFO[slotKey] || SLOT_INFO.lunch;
+
+                      return (
+                        <div key={m.order._id || idx} className={`flex items-center justify-between ${idx > 0 ? "border-t border-[#bec9c3]/20 pt-4" : ""}`}>
+                          <div className="flex-grow pr-3">
+                            {/* Slot Badge */}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${slot.color}`}>
+                                {slot.label} · {slot.time}
+                              </span>
+                            </div>
+
+                            <h3 className={`text-base font-bold text-on-surface leading-snug ${m.status === "skipped" ? "line-through opacity-50" : ""}`}>
+                              {m.mealName}
+                            </h3>
+
+                            {/* Dynamic Status Badges */}
+                            {m.status === "skipped" ? (
+                              <p className="text-brand-red text-xs font-bold font-sans mt-0.5">Skipped</p>
+                            ) : m.status === "preparing" ? (
+                              <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5">
+                                <span className="material-symbols-outlined text-[14px]">soup_kitchen</span>
+                                <p>Preparing 🔥</p>
+                              </div>
+                            ) : m.status === "ready" ? (
+                              <div className="flex items-center gap-1 text-blue-600 text-xs font-bold font-sans mt-0.5">
+                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                <p>Ready ✓</p>
+                              </div>
+                            ) : m.status === "out_for_delivery" ? (
+                              <div className="flex items-center gap-1 text-purple-600 text-xs font-bold font-sans mt-0.5">
+                                <span className="material-symbols-outlined text-[14px]">local_shipping</span>
+                                <p>On the Way 🛵</p>
+                              </div>
+                            ) : m.status === "delivered" ? (
+                              <div className="flex items-center gap-1 text-green-600 text-xs font-bold font-sans mt-0.5">
+                                <span className="material-symbols-outlined text-[14px]">done_all</span>
+                                <p>Delivered ✅</p>
+                              </div>
+                            ) : m.status === "failed" ? (
+                              <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
+                                <span className="material-symbols-outlined text-[14px]">error</span>
+                                <p>Failed </p>
+                              </div>
+                            ) : m.isLocked ? (
+                              <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>
+                                <span className="material-symbols-outlined text-[14px]">lock</span>
+                                <p>Locked</p>
+                              </div>
+                            ) : (
+                              <p className="text-primary text-xs font-bold font-sans mt-0.5">Scheduled</p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex-shrink-0">
+                            {m.status === "skipped" ? (
+                              (day.isYesterday || day.isToday) ? (
+                                <span className="text-[12px] font-bold text-brand-red/60 font-sans pr-2">Skipped</span>
+                              ) : (
+                                <button
+                                  onClick={() => handleUndoSkipOrder(m.order._id, m.mealName)}
+                                  disabled={loadingAction}
+                                  className="px-4 py-1.5 rounded-full bg-brand-amber text-black hover:bg-amber-400 font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+                                >
+                                  Undo
+                                </button>
+                              )
+                            ) : (m.status !== "scheduled" || m.isLocked) ? (
+                              <button onClick={showLockedMessage} className="p-1.5 rounded-full hover:bg-amber-50 text-brand-amber transition-colors flex items-center justify-center cursor-pointer">
+                                <span className="material-symbols-outlined text-[20px]">info</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => triggerSkipOrder(m.order._id, m.mealName)}
+                                disabled={loadingAction}
+                                className="px-4 py-1.5 rounded-full border border-primary-container text-primary hover:bg-[#e8f3f0] font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50"
+                              >
+                                Skip
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             );
           })}
