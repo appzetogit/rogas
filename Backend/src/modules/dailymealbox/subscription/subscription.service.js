@@ -53,7 +53,8 @@ export const createSubscription = async ({
     invoiceType,
     companyNip,
     companyName,
-    billingEmail
+    billingEmail,
+    startDate: requestedStartDate
 }) => {
     // Check if customer already has an active or paused subscription
     const existingActive = await DMBSubscription.findOne({
@@ -64,10 +65,26 @@ export const createSubscription = async ({
         throw new Error('You already have an active or paused subscription plan.');
     }
 
-    // Start date = always the day after purchase date, normalized to midnight
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() + 1);
-    startDate.setHours(0, 0, 0, 0);
+    // ── Determine & validate startDate ──────────────────────────────────────
+    const todayMidnight = toDateOnly(new Date());
+
+    let startDate;
+    if (requestedStartDate) {
+        // Parse the provided date (YYYY-MM-DD string or ISO)
+        const parsed = toDateOnly(new Date(requestedStartDate));
+        if (isNaN(parsed.getTime())) {
+            throw new Error('Invalid startDate provided.');
+        }
+        if (parsed <= todayMidnight) {
+            throw new Error('Subscription start date must be a future date (not today or past).');
+        }
+        startDate = parsed;
+    } else {
+        // Default: tomorrow
+        startDate = new Date(todayMidnight);
+        startDate.setUTCDate(startDate.getUTCDate() + 1);
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // Map single mealPlanId to meals array if sent (for backward compatibility)
     let finalMeals = meals;
@@ -126,18 +143,17 @@ export const createSubscription = async ({
         currency: pricing?.currency || 'INR'
     };
 
-    // Calculate initial endDate
+    // Calculate endDate from the resolved startDate
     const endDate = new Date(startDate);
     if (duration === 'weekly') {
-        endDate.setDate(startDate.getDate() + 7);
+        endDate.setUTCDate(startDate.getUTCDate() + 7);
     } else if (duration === 'monthly') {
-        endDate.setDate(startDate.getDate() + 30);
+        endDate.setUTCDate(startDate.getUTCDate() + 30);
     } else if (duration === 'one_day') {
-        endDate.setDate(startDate.getDate() + 1);
+        endDate.setUTCDate(startDate.getUTCDate() + 1);
     } else {
-        endDate.setDate(startDate.getDate() + 7);
+        endDate.setUTCDate(startDate.getUTCDate() + 7);
     }
-    endDate.setHours(0, 0, 0, 0);
 
     const subscription = await DMBSubscription.create({
         userId,
@@ -166,7 +182,7 @@ export const createSubscription = async ({
     // Update user subscription status (denormalized)
     await FoodUser.findByIdAndUpdate(userId, { subscriptionStatus: 'active' });
 
-    logger.info(`Subscription created: ${subscription.subscriptionId} for user ${userId}`);
+    logger.info(`Subscription created: ${subscription.subscriptionId} for user ${userId}, startDate: ${startDate.toISOString()}`);
     return subscription;
 };
 

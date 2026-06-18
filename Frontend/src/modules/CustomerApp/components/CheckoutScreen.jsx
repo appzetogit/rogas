@@ -71,6 +71,7 @@ export function CheckoutScreen({
         deliverySlots: plan.deliverySlots,
         deliveryAddress: plan.deliveryAddress,
         pricing: plan.pricing, // containing totalPrice and basePricePerDay
+        startDate: plan.startDate || null,
         invoiceType: invoicePrefs?.receiptType || "receipt",
       });
 
@@ -187,6 +188,14 @@ export function CheckoutScreen({
                 <span className="text-[#6e7a74] font-medium">Time Slot</span>
                 <span className="font-bold">{slotLabel}</span>
               </div>
+              {plan.startDate && (
+                <div className="flex justify-between text-[14px]">
+                  <span className="text-[#6e7a74] font-medium">🗓️ Start Date</span>
+                  <span className="font-bold text-primary">
+                    {new Date(plan.startDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">Delivery Address</span>
                 <span className="font-bold text-right max-w-[180px] text-[12px] leading-snug">

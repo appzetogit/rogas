@@ -34,7 +34,8 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
             invoiceType,
             companyNip,
             companyName,
-            billingEmail
+            billingEmail,
+            startDate
         } = req.body;
 
         const finalMeals = meals || (mealPlanId ? [{ mealPlanId, quantity: 1 }] : []);
@@ -82,7 +83,8 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
             invoiceType: invoiceType || 'receipt',
             companyNip,
             companyName,
-            billingEmail
+            billingEmail,
+            startDate: startDate || null
         });
 
         logger.info(`DMB payment order created: razorpayOrderId=${razorpayOrder.id}, subscriptionId=${subscription.subscriptionId}`);

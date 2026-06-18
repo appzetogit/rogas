@@ -128,6 +128,16 @@ function MenuModal({ vendorId, vendorName, onClose }) {
 }
 
 // ─── Plans Selection Modal ─────────────────────────────────────────────────────
+// ─── Helper: get tomorrow's date as YYYY-MM-DD in local time ───────────────
+const getTomorrowDateStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub }) {
   const [mealPlans, setMealPlans] = useState([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -137,6 +147,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [loading, setLoading] = useState(true);
   const [showActiveSubWarning, setShowActiveSubWarning] = useState(false);
   const [feePerOrder, setFeePerOrder] = useState(0);
+  // Start date — default to tomorrow, only future dates allowed
+  const [selectedStartDate, setSelectedStartDate] = useState(getTomorrowDateStr);
 
   // Map & Zone state
   const [zones, setZones] = useState([]);
@@ -314,6 +326,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       deliverySlot: selectedSlots[0] || "lunch",
       deliverySlots: selectedSlots,
       deliveryDays: selectedPlan.deliveryDays || "full_week",
+      startDate: selectedStartDate,
       deliveryAddress: {
         street: address,
         city: "Local",
@@ -459,6 +472,29 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       </button>
                     );
                   })}
+                </div>
+              </section>
+
+              {/* Start Date Picker */}
+              <section>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Subscription Start Date</h3>
+                <div className="relative">
+                  <div className="flex items-center gap-3 bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-3 focus-within:border-primary transition-colors">
+                    <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-0.5">First Delivery Date</p>
+                      <input
+                        type="date"
+                        value={selectedStartDate}
+                        min={getTomorrowDateStr()}
+                        onChange={(e) => setSelectedStartDate(e.target.value)}
+                        className="w-full bg-transparent text-[14px] font-extrabold text-[#1b1c1c] outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#6e7a74] mt-1.5 ml-1">
+                    📅 Today &amp; past dates cannot be selected. Default is tomorrow.
+                  </p>
                 </div>
               </section>
 

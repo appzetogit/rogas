@@ -1109,6 +1109,13 @@ export const ensureOrdersForUser = async (userId) => {
             const dayEnd = new Date(dayStart);
             dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
+            // ── startDate guard: skip dates before the subscription's chosen start ──
+            if (sub.startDate) {
+                const subStart = toDateOnly(new Date(sub.startDate));
+                if (dayStart < subStart) continue;
+            }
+            // ─────────────────────────────────────────────────────────────────────
+
             const dayOfWeek = dayStart.getUTCDay();
             const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
             if (sub.deliveryDays === 'mon_fri' && !isWeekday) continue;
