@@ -193,11 +193,28 @@ export function CheckoutScreen({
                   {typeof plan.deliveryAddress === 'object' ? (plan.deliveryAddress.street || plan.deliveryAddress.address) : (plan.deliveryAddress || "—")}
                 </span>
               </div>
+
+              <div className="border-t border-[#f0eded] pt-2 flex justify-between text-[14px] text-[#6e7a74]">
+                <span>Subtotal</span>
+                <span className="font-semibold">₹{(pricing.subtotal !== undefined ? pricing.subtotal : totalPrice).toFixed(2)}</span>
+              </div>
+              {pricing.foodVatAmount > 0 && (
+                <div className="flex justify-between text-[14px] text-[#6e7a74]">
+                  <span>Food VAT ({pricing.foodVat || 0}%)</span>
+                  <span className="font-semibold">₹{pricing.foodVatAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {pricing.platformFeeAmount > 0 && (
+                <div className="flex justify-between text-[14px] text-[#6e7a74]">
+                  <span>Platform Fee</span>
+                  <span className="font-semibold">₹{pricing.platformFeeAmount.toFixed(2)}</span>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-[#f0eded] pt-3 flex justify-between items-center">
               <span className="text-[15px] font-extrabold text-[#1b1c1c]">Total Amount</span>
-              <span className="text-[20px] font-extrabold text-primary">₹{totalPrice}</span>
+              <span className="text-[20px] font-extrabold text-primary">₹{totalPrice.toFixed(2)}</span>
             </div>
           </div>
         </section>

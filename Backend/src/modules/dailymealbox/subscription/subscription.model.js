@@ -103,6 +103,12 @@ const subscriptionSchema = new mongoose.Schema(
         pricing: {
             basePricePerDay: { type: Number, required: true, min: 0 },
             deliveryFeePerDay: { type: Number, default: 0, min: 0 },
+            foodVat: { type: Number, default: 0, min: 0 },
+            deliveryVat: { type: Number, default: 0, min: 0 },
+            platformFee: { type: Number, default: 0, min: 0 },
+            foodVatAmount: { type: Number, default: 0 },
+            deliveryVatAmount: { type: Number, default: 0 },
+            platformFeeAmount: { type: Number, default: 0 },
             totalPerWeek: { type: Number, required: false, min: 0 },
             totalPrice: { type: Number, required: true, min: 0 },
             currency: { type: String, default: 'INR' }

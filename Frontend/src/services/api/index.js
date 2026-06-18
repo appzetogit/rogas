@@ -2041,6 +2041,8 @@ export const dmbCustomerAPI = {
   getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
   /** Get active duration plans (public) */
   getDurationPlans: () => userClient.get("/dmb/subscriptions/durations"),
+  /** Get active vendor subscription plans (public) */
+  getSubscriptionPlans: () => userClient.get("/dmb/subscriptions/plans"),
   /** Create dynamic duration plan (Admin) */
   createDurationPlan: (data) => adminClient.post("/dmb/subscriptions/durations", data),
   /** Update dynamic duration plan (Admin) */

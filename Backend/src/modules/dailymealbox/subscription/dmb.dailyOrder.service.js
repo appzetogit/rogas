@@ -1016,10 +1016,18 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                     });
                 }
 
-                const totalPrice = (sub.meals || []).reduce((acc, m) => {
+                const foodCost = (sub.meals || []).reduce((acc, m) => {
                     const pricePerDay = m.mealPlanId?.pricePerDay || 0;
                     return acc + (pricePerDay * (m.quantity || 1));
                 }, 0) || sub.pricing?.basePricePerDay || 0;
+
+                const foodVat = sub.pricing?.foodVat || 0;
+                const foodVatAmount = Math.round((foodCost * (foodVat / 100)) * 100) / 100;
+                const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
+                const deliveryVat = sub.pricing?.deliveryVat || 0;
+                const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
+                const platformFee = sub.pricing?.platformFee || 0;
+                const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
 
                 await DMBDailyOrder.create({
                     subscriptionId: sub._id,
@@ -1029,7 +1037,17 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                     deliveryDate: dayStart,
                     deliverySlot: slot,
                     status: 'scheduled',
-                    pricing: { totalPrice, currency: 'INR' },
+                    pricing: {
+                        foodCost,
+                        foodVat,
+                        foodVatAmount,
+                        deliveryFee,
+                        deliveryVat,
+                        deliveryVatAmount,
+                        platformFee,
+                        totalPrice: finalTotalPrice,
+                        currency: 'INR'
+                    },
                     deliveryAddress: sub.deliveryAddress
                 });
 
@@ -1130,9 +1148,17 @@ export const ensureOrdersForUser = async (userId) => {
                         });
                     }
 
-                    const totalPrice = (sub.meals || []).reduce((acc, m) => {
+                    const foodCost = (sub.meals || []).reduce((acc, m) => {
                         return acc + ((m.mealPlanId?.pricePerDay || 0) * (m.quantity || 1));
                     }, 0) || sub.pricing?.basePricePerDay || 0;
+
+                    const foodVat = sub.pricing?.foodVat || 0;
+                    const foodVatAmount = Math.round((foodCost * (foodVat / 100)) * 100) / 100;
+                    const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
+                    const deliveryVat = sub.pricing?.deliveryVat || 0;
+                    const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
+                    const platformFee = sub.pricing?.platformFee || 0;
+                    const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
 
                     await DMBDailyOrder.create({
                         subscriptionId: sub._id,
@@ -1142,7 +1168,17 @@ export const ensureOrdersForUser = async (userId) => {
                         deliveryDate: dayStart,
                         deliverySlot: slot,
                         status: 'scheduled',
-                        pricing: { totalPrice, currency: 'INR' },
+                        pricing: {
+                            foodCost,
+                            foodVat,
+                            foodVatAmount,
+                            deliveryFee,
+                            deliveryVat,
+                            deliveryVatAmount,
+                            platformFee,
+                            totalPrice: finalTotalPrice,
+                            currency: 'INR'
+                        },
                         deliveryAddress: sub.deliveryAddress
                     }).catch(e => logger.warn(`ensureOrdersForUser: ${e.message}`));
                 }

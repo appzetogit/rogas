@@ -263,6 +263,17 @@ router.patch('/:subscriptionId/activate', authMiddleware, async (req, res) => {
 
 // ─── Duration Plans CRUD (Admin & Public) ───────────────────────────────────
 
+// Public: Get all active vendor subscription plans
+router.get('/plans', async (req, res) => {
+    try {
+        const { VendorSubscriptionPlan } = await import('./vendorSubscriptionPlan.model.js');
+        const list = await VendorSubscriptionPlan.find({ status: 'active' }).sort({ createdAt: -1 });
+        res.json({ success: true, plans: list });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // Public: Get all active durations
 router.get('/durations', async (req, res) => {
     try {

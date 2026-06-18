@@ -75,6 +75,13 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         deliveryPin: { type: String, default: '' },
 
         pricing: {
+            foodCost: { type: Number, default: 0 },
+            foodVat: { type: Number, default: 0 },
+            foodVatAmount: { type: Number, default: 0 },
+            deliveryFee: { type: Number, default: 0 },
+            deliveryVat: { type: Number, default: 0 },
+            deliveryVatAmount: { type: Number, default: 0 },
+            platformFee: { type: Number, default: 0 },
             totalPrice: { type: Number, default: 0 },
             currency: { type: String, default: 'INR' }
         },

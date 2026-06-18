@@ -85,6 +85,20 @@ export const createSubscription = async ({
         : (deliverySlot ? [deliverySlot] : []);
     const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
 
+    const finalPricing = {
+        basePricePerDay: pricing?.basePricePerDay || 0,
+        deliveryFeePerDay: pricing?.deliveryFeePerDay || 0,
+        foodVat: pricing?.foodVat || 0,
+        deliveryVat: pricing?.deliveryVat || 0,
+        platformFee: pricing?.platformFee || 0,
+        foodVatAmount: pricing?.foodVatAmount || 0,
+        deliveryVatAmount: pricing?.deliveryVatAmount || 0,
+        platformFeeAmount: pricing?.platformFeeAmount || 0,
+        totalPerWeek: pricing?.totalPerWeek || 0,
+        totalPrice: pricing?.totalPrice || 0,
+        currency: pricing?.currency || 'INR'
+    };
+
     const subscription = await DMBSubscription.create({
         userId,
         vendorId,
@@ -98,7 +112,7 @@ export const createSubscription = async ({
         deliverySlot: finalSlot,
         deliverySlots: finalSlots,
         deliveryAddress: finalAddress,
-        pricing,
+        pricing: finalPricing,
         paymentMethod: paymentMethod || 'razorpay',
         invoiceType: invoiceType === 'vat' ? 'b2b_vat' : (invoiceType === 'simple' ? 'receipt' : (invoiceType || 'receipt')),
         companyNip,

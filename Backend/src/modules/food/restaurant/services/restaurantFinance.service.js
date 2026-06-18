@@ -263,6 +263,19 @@ export async function getVendorEarningsSummary(restaurantId) {
         .sort({ createdAt: -1 })
         .lean();
 
+    // Fetch DMB daily orders
+    let dmbOrders = [];
+    try {
+        const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+        dmbOrders = await DMBDailyOrder.find({
+            vendorId: rid,
+            status: 'delivered'
+        })
+            .populate('meals.mealPlanId', 'name pricePerDay')
+            .sort({ deliveredAt: -1 })
+            .lean();
+    } catch (_) {}
+
     // Aggregate totals
     let totalOrders = 0;
     let grossEarnings = 0;
@@ -271,8 +284,9 @@ export async function getVendorEarningsSummary(restaurantId) {
     let foodVatDeduction = 0;
     let netEarnings = 0;
 
-    const recentTransactions = [];
+    const mergedTxList = [];
 
+    // Map legacy transactions
     for (const tx of allTransactions) {
         const order = tx.orderId || {};
         if (order.orderStatus !== 'delivered') {
@@ -291,27 +305,70 @@ export async function getVendorEarningsSummary(restaurantId) {
         foodVatDeduction += foodVat;
         netEarnings += netShare;
 
-        if (recentTransactions.length < 20) {
-            const order = tx.orderId || {};
-            const items = Array.isArray(order.items) ? order.items : [];
-            recentTransactions.push({
-                transactionId: tx._id,
-                orderId: order.order_id || order.orderId || tx._id,
-                createdAt: tx.createdAt,
-                foodNames: items.map(i => i?.name).filter(Boolean).join(', '),
-                grossAmount: gross,
-                commissionVatAmount: commVat,
-                platformCommissionVatAmount: platVat,
-                foodVatAmount: foodVat,
-                netAmount: netShare,
-                paymentMethod: tx.paymentMethod,
-                orderStatus: order.orderStatus || ''
-            });
-        }
+        const items = Array.isArray(order.items) ? order.items : [];
+        mergedTxList.push({
+            transactionId: tx._id,
+            orderId: order.order_id || order.orderId || tx._id,
+            createdAt: tx.createdAt,
+            foodNames: items.map(i => i?.name).filter(Boolean).join(', '),
+            grossAmount: gross,
+            commissionVatAmount: commVat,
+            platformCommissionVatAmount: platVat,
+            foodVatAmount: foodVat,
+            netAmount: netShare,
+            paymentMethod: tx.paymentMethod,
+            orderStatus: order.orderStatus || ''
+        });
     }
 
+    // Map DMB transactions
+    for (const order of dmbOrders) {
+        totalOrders++;
+        const foodCost = order.pricing?.foodCost || order.pricing?.totalPrice || 0;
+        const foodVat = order.pricing?.foodVat || 0;
+        const foodVatAmount = order.pricing?.foodVatAmount || 0;
+        const deliveryFee = order.pricing?.deliveryFee || 0;
+        const deliveryVatAmount = order.pricing?.deliveryVatAmount || 0;
+        const platformFeeAmount = order.pricing?.platformFee || 0;
+
+        const gross = order.pricing?.totalPrice || (foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFeeAmount);
+
+        let commissionAmount = 0;
+        if (commissionVatRate > 0) {
+            commissionAmount = Math.round((foodCost * (commissionVatRate / 100)) * 100) / 100;
+        }
+        
+        const restaurantShare = Math.max(0, Math.round((foodCost - commissionAmount) * 100) / 100);
+
+        grossEarnings += gross;
+        commissionVatDeduction += commissionAmount;
+        platformCommissionVatDeduction += platformFeeAmount;
+        foodVatDeduction += foodVatAmount;
+        netEarnings += restaurantShare;
+
+        const foodNames = (order.meals || []).map(m => m.name || m.mealPlanId?.name).filter(Boolean).join(', ') || 'Subscription Meal';
+        mergedTxList.push({
+            transactionId: order._id,
+            orderId: order.orderId || order._id.toString(),
+            createdAt: order.deliveredAt || order.updatedAt,
+            foodNames,
+            grossAmount: Math.round(gross * 100) / 100,
+            commissionVatAmount: commissionAmount,
+            platformCommissionVatAmount: platformFeeAmount,
+            foodVatAmount: foodVatAmount,
+            netAmount: restaurantShare,
+            paymentMethod: 'ONLINE',
+            orderStatus: 'delivered'
+        });
+    }
+
+    // Sort by date desc and slice top 20
+    const recentTransactions = mergedTxList
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 20);
+
     // Available balance (net - effective withdrawals)
-    let availableBalance = netEarnings;
+    let totalWithdrawals = 0;
     try {
         const { FoodRestaurantWithdrawal } = await import('../models/foodRestaurantWithdrawal.model.js');
         const withdrawalAgg = await FoodRestaurantWithdrawal.aggregate([
@@ -328,9 +385,10 @@ export async function getVendorEarningsSummary(restaurantId) {
             },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
-        const totalWithdrawals = Number(withdrawalAgg?.[0]?.total || 0);
-        availableBalance = Math.max(0, netEarnings - totalWithdrawals);
+        totalWithdrawals = Number(withdrawalAgg?.[0]?.total || 0);
     } catch (_) {}
+
+    const availableBalance = Math.max(0, netEarnings - totalWithdrawals);
 
     return {
         restaurant: {

@@ -136,6 +136,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [mealPlans, setMealPlans] = useState([]);
   const [selectedMeals, setSelectedMeals] = useState({}); // { [mealPlanId]: quantity }
   const [durationPlans, setDurationPlans] = useState([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [selectedDuration, setSelectedDuration] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState(["lunch"]);
   const [selectedDays, setSelectedDays] = useState("mon_fri");
@@ -195,10 +196,11 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     const fetchPlansAndDurations = async () => {
       try {
         setLoading(true);
-        const [plansRes, durationsRes, zonesRes] = await Promise.all([
+        const [plansRes, durationsRes, zonesRes, subPlansRes] = await Promise.all([
           dmbCustomerAPI.getVendorPlans(vendorId),
           dmbCustomerAPI.getDurationPlans(),
-          dmbCustomerAPI.getPublicZones()
+          dmbCustomerAPI.getPublicZones(),
+          dmbCustomerAPI.getSubscriptionPlans()
         ]);
 
         const plans = plansRes.data?.mealPlans || [];
@@ -209,6 +211,9 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
         const activeZones = zonesRes.data?.data?.zones || zonesRes.data?.zones || [];
         setZones(activeZones);
+
+        const subPlans = subPlansRes.data?.plans || [];
+        setSubscriptionPlans(subPlans);
 
         // Auto-select "weekly" plan if it exists, or fallback to first duration plan
         const defaultDur = durations.find(d => d.code === "weekly") || durations[0] || null;
@@ -287,7 +292,26 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     ? (selectedDuration?.daysCountMonFri || 5)
     : (selectedDuration?.daysCountFullWeek || 7);
 
-  const totalPrice = basePricePerDay * daysCount * selectedSlots.length;
+  const durationMap = {
+    one_day: "day",
+    weekly: "week",
+    monthly: "month"
+  };
+
+  const matchedPlan = subscriptionPlans.find(p => 
+    p.duration === durationMap[selectedDuration?.code] && 
+    p.deliveryDays === selectedDays
+  );
+
+  const foodVat = matchedPlan ? (matchedPlan.foodVat || 0) : 0;
+  const deliveryVat = matchedPlan ? (matchedPlan.deliveryVat || 0) : 0;
+  const platformFee = matchedPlan ? (matchedPlan.platformFee || 0) : 0;
+
+  const multiplier = daysCount * selectedSlots.length;
+  const subtotal = basePricePerDay * multiplier;
+  const foodVatAmount = Math.round((subtotal * (foodVat / 100)) * 100) / 100;
+  const platformFeeAmount = Math.round((platformFee * multiplier) * 100) / 100;
+  const totalPrice = Math.round((subtotal + foodVatAmount + platformFeeAmount) * 100) / 100;
 
   const handleProceed = () => {
     if (selectedMealsList.length === 0) {
@@ -329,6 +353,13 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       pricing: {
         basePricePerDay,
         deliveryFeePerDay: 0,
+        subtotal,
+        foodVat,
+        deliveryVat,
+        platformFee,
+        foodVatAmount,
+        deliveryVatAmount: 0,
+        platformFeeAmount,
         totalPrice
       },
       vendorImage
@@ -587,9 +618,25 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                         {selectedSlots.map(id => DELIVERY_SLOTS.find(s => s.id === id)).map(s => s ? `${s.icon} ${s.label}` : "").join(" + ")}
                       </span>
                     </div>
+                    <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
+                      <span>Subtotal</span>
+                      <span className="font-bold">₹{subtotal.toFixed(2)}</span>
+                    </div>
+                    {foodVat > 0 && (
+                      <div className="flex justify-between text-[#6e7a74]">
+                        <span>Food VAT ({foodVat}%)</span>
+                        <span className="font-bold">₹{foodVatAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {platformFee > 0 && (
+                      <div className="flex justify-between text-[#6e7a74]">
+                        <span>Platform Fee (₹{platformFee}/slot/day)</span>
+                        <span className="font-bold">₹{platformFeeAmount.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="border-t border-primary/20 pt-2 mt-2 flex justify-between">
                       <span className="font-extrabold text-[#1b1c1c]">Total Price</span>
-                      <span className="font-extrabold text-[17px] text-primary">₹{totalPrice}</span>
+                      <span className="font-extrabold text-[17px] text-primary">₹{totalPrice.toFixed(2)}</span>
                     </div>
                   </div>
                 </section>

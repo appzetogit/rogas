@@ -5318,12 +5318,21 @@ export async function createVendorSubscriptionPlan(body) {
         throw new ValidationError('Duration must be day, week, or month');
     }
 
+    const foodVat = toFiniteNumber(body.foodVat) !== null ? Math.max(0, toFiniteNumber(body.foodVat)) : 0;
+    const deliveryVat = toFiniteNumber(body.deliveryVat) !== null ? Math.max(0, toFiniteNumber(body.deliveryVat)) : 0;
+    const platformFee = toFiniteNumber(body.platformFee) !== null ? Math.max(0, toFiniteNumber(body.platformFee)) : 0;
+    const deliveryDays = typeof body.deliveryDays === 'string' && ['mon_fri', 'full_week'].includes(body.deliveryDays) ? body.deliveryDays : 'full_week';
+
     const plan = new VendorSubscriptionPlan({
         name,
         price,
         duration,
         description: typeof body.description === 'string' ? body.description.trim() : '',
         features: Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [],
+        foodVat,
+        deliveryVat,
+        platformFee,
+        deliveryDays,
         status: body.status === 'inactive' ? 'inactive' : 'active'
     });
 
@@ -5365,6 +5374,37 @@ export async function updateVendorSubscriptionPlan(id, body) {
     
     if (body.features !== undefined) {
         plan.features = Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [];
+    }
+
+    if (body.foodVat !== undefined) {
+        const foodVat = toFiniteNumber(body.foodVat);
+        if (foodVat === null || foodVat < 0) {
+            throw new ValidationError('Food VAT must be a non-negative number');
+        }
+        plan.foodVat = foodVat;
+    }
+
+    if (body.deliveryVat !== undefined) {
+        const deliveryVat = toFiniteNumber(body.deliveryVat);
+        if (deliveryVat === null || deliveryVat < 0) {
+            throw new ValidationError('Delivery VAT must be a non-negative number');
+        }
+        plan.deliveryVat = deliveryVat;
+    }
+
+    if (body.platformFee !== undefined) {
+        const platformFee = toFiniteNumber(body.platformFee);
+        if (platformFee === null || platformFee < 0) {
+            throw new ValidationError('Platform Fee must be a non-negative number');
+        }
+        plan.platformFee = platformFee;
+    }
+
+    if (body.deliveryDays !== undefined) {
+        if (!['mon_fri', 'full_week'].includes(body.deliveryDays)) {
+            throw new ValidationError('Delivery days must be mon_fri or full_week');
+        }
+        plan.deliveryDays = body.deliveryDays;
     }
     
     if (body.status !== undefined) {

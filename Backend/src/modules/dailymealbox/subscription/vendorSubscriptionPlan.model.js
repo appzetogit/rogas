@@ -31,6 +31,26 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
             type: [String],
             default: []
         },
+        foodVat: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        deliveryVat: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        platformFee: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        deliveryDays: {
+            type: String,
+            enum: ['mon_fri', 'full_week'],
+            default: 'full_week'
+        },
         status: {
             type: String,
             enum: ['active', 'inactive'],

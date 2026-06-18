@@ -24,6 +24,10 @@ export default function SubscriptionPlans() {
     duration: "month",
     description: "",
     features: [""],
+    foodVat: "0",
+    deliveryVat: "0",
+    platformFee: "0",
+    deliveryDays: "full_week",
     status: "active"
   })
 
@@ -59,6 +63,10 @@ export default function SubscriptionPlans() {
       duration: "month",
       description: "",
       features: [""],
+      foodVat: "0",
+      deliveryVat: "0",
+      platformFee: "0",
+      deliveryDays: "full_week",
       status: "active"
     })
     setShowFormModal(true)
@@ -73,6 +81,10 @@ export default function SubscriptionPlans() {
       duration: plan.duration || "month",
       description: plan.description || "",
       features: plan.features && plan.features.length > 0 ? [...plan.features] : [""],
+      foodVat: plan.foodVat !== undefined ? String(plan.foodVat) : "0",
+      deliveryVat: plan.deliveryVat !== undefined ? String(plan.deliveryVat) : "0",
+      platformFee: plan.platformFee !== undefined ? String(plan.platformFee) : "0",
+      deliveryDays: plan.deliveryDays || "full_week",
       status: plan.status || "active"
     })
     setShowFormModal(true)
@@ -112,6 +124,18 @@ export default function SubscriptionPlans() {
       alert("Please enter a valid non-negative price")
       return
     }
+    if (isNaN(Number(formData.foodVat)) || Number(formData.foodVat) < 0) {
+      alert("Food VAT must be a non-negative number")
+      return
+    }
+    if (isNaN(Number(formData.deliveryVat)) || Number(formData.deliveryVat) < 0) {
+      alert("Delivery VAT must be a non-negative number")
+      return
+    }
+    if (isNaN(Number(formData.platformFee)) || Number(formData.platformFee) < 0) {
+      alert("Platform Fee must be a non-negative number")
+      return
+    }
 
     const payload = {
       name: formData.name.trim(),
@@ -119,6 +143,10 @@ export default function SubscriptionPlans() {
       duration: formData.duration,
       description: formData.description.trim(),
       features: formData.features.map(f => f.trim()).filter(Boolean),
+      foodVat: Number(formData.foodVat),
+      deliveryVat: Number(formData.deliveryVat),
+      platformFee: Number(formData.platformFee),
+      deliveryDays: formData.deliveryDays,
       status: formData.status
     }
 
@@ -259,10 +287,14 @@ export default function SubscriptionPlans() {
 
                 <div className="p-6">
                   {/* Plan Meta */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
                     <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
                       {getDurationLabel(plan.duration)}
+                    </span>
+                    <span className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5" />
+                      {plan.deliveryDays === 'mon_fri' ? "Mon–Fri" : "Full Week"}
                     </span>
                   </div>
 
@@ -270,12 +302,28 @@ export default function SubscriptionPlans() {
                   <h3 className="text-xl font-bold text-slate-900 mb-1">{plan.name}</h3>
                   <p className="text-xs text-slate-400 mb-4 truncate" title={plan.description}>{plan.description || "No description provided."}</p>
 
-                  <div className="flex items-baseline gap-1 mb-6 border-b border-slate-100 pb-4">
+                  <div className="flex items-baseline gap-1 mb-4 border-b border-slate-100 pb-4">
                     <span className="text-3xl font-extrabold text-slate-950 flex items-center">
                       <IndianRupee className="w-5 h-5 shrink-0" />
                       {plan.price}
                     </span>
                     <span className="text-slate-500 text-sm">/ {plan.duration}</span>
+                  </div>
+
+                  {/* Config settings */}
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-lg p-2.5 mb-4 border border-slate-100 text-center text-[10px] font-medium text-slate-650">
+                    <div>
+                      <div className="text-slate-400 font-semibold mb-0.5">Food VAT</div>
+                      <div className="font-bold text-slate-800">{plan.foodVat ?? 0}%</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 font-semibold mb-0.5">Del. VAT</div>
+                      <div className="font-bold text-slate-800">{plan.deliveryVat ?? 0}%</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 font-semibold mb-0.5">Plat. Fee</div>
+                      <div className="font-bold text-slate-800">₹{plan.platformFee ?? 0}</div>
+                    </div>
                   </div>
 
                   {/* Plan Features */}
@@ -397,6 +445,68 @@ export default function SubscriptionPlans() {
                     <option value="week">One Week</option>
                     <option value="month">One Month</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Delivery Days & Platform Fee */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Delivery Schedule <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.deliveryDays}
+                    onChange={(e) => setFormData({ ...formData, deliveryDays: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="full_week">Full Week</option>
+                    <option value="mon_fri">Monday–Friday</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Platform Fee (INR)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 10"
+                    value={formData.platformFee}
+                    onChange={(e) => setFormData({ ...formData, platformFee: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* VAT Settings */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Food VAT (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 8"
+                    value={formData.foodVat}
+                    onChange={(e) => setFormData({ ...formData, foodVat: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Delivery VAT (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 5"
+                    value={formData.deliveryVat}
+                    onChange={(e) => setFormData({ ...formData, deliveryVat: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
               </div>
 
