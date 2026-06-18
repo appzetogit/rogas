@@ -320,7 +320,10 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     const dateKeyStr = getISTFormatDateStr(date);
     const isYesterday = dateKeyStr === getISTFormatDateStr(yesterday);
     const isToday = dateKeyStr === getISTFormatDateStr(today);
-    const dayOrders = orderMap[dateKeyStr] || [];
+    const dayOrders = (orderMap[dateKeyStr] || []).filter(order => {
+      const firstMealName = order.meals?.[0]?.name;
+      return firstMealName !== "No meal set";
+    });
 
     return {
       date,

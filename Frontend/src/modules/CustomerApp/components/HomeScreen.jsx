@@ -264,6 +264,9 @@ export function HomeScreen({
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const pointsPercent = Math.min((points / 300) * 100, 100);
 
+  const filteredTodayMeal = todayMeal?.meals?.[0]?.name === "No meal set" ? null : todayMeal;
+  const filteredTomorrowMealData = tomorrowMealData?.meals?.[0]?.name === "No meal set" ? null : tomorrowMealData;
+
   // ─── Render helpers ───────────────────────────────────────────────────────
   const renderTomorrowMealPreviewCard = (meal) => {
     if (!meal) return null;
@@ -398,8 +401,8 @@ export function HomeScreen({
               {greeting}, {userName} 👋
             </h1>
             <p className="text-[14px] opacity-90 font-medium">
-              {tomorrowMealData
-                ? `Next delivery: ${SLOT_LABELS[tomorrowMealData.deliverySlot] || "Lunch"} · ${new Date(tomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
+              {filteredTomorrowMealData
+                ? `Next delivery: ${SLOT_LABELS[filteredTomorrowMealData.deliverySlot] || "Lunch"} · ${new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
                 : "No upcoming deliveries"}
             </p>
           </div>
@@ -443,9 +446,9 @@ export function HomeScreen({
           </div>
         ) : (
           <>
-            {tomorrowMealData && renderMealCard(tomorrowMealData, "Tomorrow's Delivery")}
+            {filteredTomorrowMealData && renderMealCard(filteredTomorrowMealData, "Tomorrow's Delivery")}
 
-            {!todayMeal && !tomorrowMealData && (
+            {!filteredTodayMeal && !filteredTomorrowMealData && (
               <section
                 onClick={onGoToPlans}
                 className="bg-white rounded-2xl p-5 border-l-4 border-primary-container shadow-md cursor-pointer hover:shadow-lg transition-all"
@@ -503,7 +506,7 @@ export function HomeScreen({
         </section>
 
         {/* Tomorrow's Meal Preview */}
-        {!loading && tomorrowMealData && renderTomorrowMealPreviewCard(tomorrowMealData)}
+        {!loading && filteredTomorrowMealData && renderTomorrowMealPreviewCard(filteredTomorrowMealData)}
 
         <div className="h-8" />
       </main>

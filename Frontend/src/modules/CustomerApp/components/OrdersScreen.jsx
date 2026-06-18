@@ -565,6 +565,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
   // ─── Derived state ────────────────────────────────────────────────────────
   const isPast = activeTab === "Past";
   const ratedOrderSet = useMemo(() => new Set(ratedOrders), [ratedOrders]);
+  const filteredOrders = useMemo(() => {
+    if (isPast) return orders;
+    return orders.filter(o => o.meals?.[0]?.name !== "No meal set");
+  }, [orders, isPast]);
 
   // Manage sheet derived values
   const manageDeliveryInfo = useMemo(() => {
@@ -611,7 +615,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
           <section className="space-y-4">
             {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
           </section>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-on-surface-variant">
             <span className="material-symbols-outlined text-[56px] text-[#bec9c3]">receipt_long</span>
             <p className="text-[15px] font-semibold text-center">
@@ -625,7 +629,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
           </div>
         ) : (
           <section className="space-y-4">
-            {orders.map(order => (
+            {filteredOrders.map(order => (
               <OrderCard
                 key={order._id || order.orderId}
                 order={order}
