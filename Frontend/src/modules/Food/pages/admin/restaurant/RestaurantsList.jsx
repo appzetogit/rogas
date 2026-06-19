@@ -866,10 +866,10 @@ export default function RestaurantsList() {
 
       setIsEditingDetails(false)
       setProfileImageFile(null)
-      alert("Restaurant details updated successfully")
+      alert("Vendor details updated successfully")
     } catch (err) {
       debugError("Error updating restaurant details:", err)
-      alert(err?.response?.data?.message || "Failed to update restaurant details")
+      alert(err?.response?.data?.message || "Failed to update vendor details")
     } finally {
       setSavingDetails(false)
     }
@@ -1094,7 +1094,7 @@ export default function RestaurantsList() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">Restaurants List</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Vendors List</h1>
             </div>
 
           </div>
@@ -1106,7 +1106,7 @@ export default function RestaurantsList() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total restaurants</p>
+                <p className="text-sm font-medium text-slate-600 mb-1">Total vendors</p>
                 <p className="text-2xl font-bold text-slate-900">{totalRestaurants}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -1119,7 +1119,7 @@ export default function RestaurantsList() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Active restaurants</p>
+                <p className="text-sm font-medium text-slate-600 mb-1">Active vendors</p>
                 <p className="text-2xl font-bold text-slate-900">{activeRestaurants}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
@@ -1132,7 +1132,7 @@ export default function RestaurantsList() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Inactive restaurants</p>
+                <p className="text-sm font-medium text-slate-600 mb-1">Inactive vendors</p>
                 <p className="text-2xl font-bold text-slate-900">{inactiveRestaurants}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
@@ -1145,7 +1145,7 @@ export default function RestaurantsList() {
         {/* Restaurants List Section */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Restaurants List</h2>
+            <h2 className="text-xl font-bold text-slate-900">Vendors List</h2>
 
             <div className="flex items-center gap-3">
               <button
@@ -1153,12 +1153,12 @@ export default function RestaurantsList() {
                 className="px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Restaurant</span>
+                <span>Add Vendor</span>
               </button>
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
                   type="text"
-                  placeholder="Ex: search by Restaurant n"
+                  placeholder="Ex: search by Vendor name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1191,7 +1191,7 @@ export default function RestaurantsList() {
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                <span className="ml-3 text-slate-600">Loading restaurants...</span>
+                <span className="ml-3 text-slate-600">Loading vendors...</span>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-20">
@@ -1223,7 +1223,7 @@ export default function RestaurantsList() {
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-1">
-                        <span>Restaurant Info</span>
+                        <span>Vendor Info</span>
                         <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'name' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
@@ -1272,7 +1272,7 @@ export default function RestaurantsList() {
                       <td colSpan={7} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
-                          <p className="text-sm text-slate-500">No restaurants match your search</p>
+                          <p className="text-sm text-slate-500">No vendors match your search</p>
                         </div>
                       </td>
                     </tr>
@@ -1312,7 +1312,8 @@ export default function RestaurantsList() {
                                 {restaurant.name}
                               </span>
                               <span className="text-xs text-slate-500">ID #{formatRestaurantId(restaurant.originalData?.restaurantId || restaurant.originalData?._id || restaurant._id || restaurant.id)}</span>
-                              <span className="text-xs text-slate-500">{renderStars(restaurant.rating)}</span>
+                              <span className="text-[10px] font-semibold tracking-wide uppercase text-indigo-500 mt-0.5">{restaurant.originalData?.vendorType || 'Restaurant'}</span>
+                              <span className="text-xs text-slate-500 mt-1">{renderStars(restaurant.rating)}</span>
                             </div>
                           </div>
                         </td>
@@ -1369,14 +1370,14 @@ export default function RestaurantsList() {
                                 ? "text-green-600 hover:bg-green-50"
                                 : "text-red-600 hover:bg-red-50"
                                 }`}
-                              title={!restaurant.isActive ? "Unban Restaurant" : "Ban Restaurant"}
+                              title={!restaurant.isActive ? "Unban Vendor" : "Ban Vendor"}
                             >
                               <ShieldX className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteRestaurant(restaurant)}
                               className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                              title="Delete Restaurant"
+                              title="Delete Vendor"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1405,7 +1406,7 @@ export default function RestaurantsList() {
             {/* Modal Header */}
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Restaurant Details</h2>
+                <h2 className="text-2xl font-bold text-slate-900">Vendor Details</h2>
                 <p className="text-sm text-slate-500 mt-1">Detailed overview and information</p>
               </div>
               <div className="flex items-center gap-2">
@@ -1452,7 +1453,7 @@ export default function RestaurantsList() {
                     <div className="w-12 h-12 rounded-full border-4 border-slate-100"></div>
                     <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
                   </div>
-                  <span className="mt-4 text-slate-500 font-medium tracking-wide">Fetching restaurant data...</span>
+                  <span className="mt-4 text-slate-500 font-medium tracking-wide">Fetching vendor data...</span>
                 </div>
               )}
               {!loadingDetails && isEditingDetails && (
@@ -1487,7 +1488,7 @@ export default function RestaurantsList() {
                     </div>
 
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Restaurant Name</label>
+                      <label className="block text-xs text-slate-500 mb-1">Vendor Name</label>
                       <input type="text" value={detailsForm.name} onChange={(e) => setDetailsForm((prev) => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                     </div>
                     <div>
@@ -1518,7 +1519,7 @@ export default function RestaurantsList() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Restaurant Email</label>
+                      <label className="block text-xs text-slate-500 mb-1">Vendor Email</label>
                       <input type="email" value={detailsForm.email} onChange={(e) => setDetailsForm((prev) => ({ ...prev, email: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                     </div>
                     <div>
@@ -1558,7 +1559,7 @@ export default function RestaurantsList() {
                         className="h-4 w-4 rounded border-slate-300 text-blue-600"
                       />
                       <label htmlFor="restaurant-status-active" className="text-sm text-slate-700">
-                        Restaurant is active
+                        Vendor is active
                       </label>
                     </div>
                   </div>
@@ -1659,6 +1660,9 @@ export default function RestaurantsList() {
                         <div className="flex items-center gap-2 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
                           <Building2 className="w-4 h-4" />
                           <span className="text-xs font-bold tracking-wider">{formatRestaurantId(r?.restaurantId || r?._id)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                          <span className="text-xs font-bold tracking-wider uppercase">{r?.vendorType || 'Restaurant'}</span>
                         </div>
                       </div>
                     </div>
@@ -1773,35 +1777,9 @@ export default function RestaurantsList() {
                   <div className="grid grid-cols-1 gap-6">
 
                     <div>
-                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
+                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Status</h4>
                       <div className="space-y-3">
-                        {(openingTimeVal || closingTimeVal) && (
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-slate-400" />
-                            <div>
-                              <p className="text-xs text-slate-500">Opening / Closing</p>
-                              <p className="text-sm font-medium text-slate-900">
-                                {formatTime12Hour(openingTimeVal)} – {formatTime12Hour(closingTimeVal)}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {estimatedDeliveryTimeVal && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
-                            <p className="text-sm font-medium text-slate-900">{estimatedDeliveryTimeVal}</p>
-                          </div>
-                        )}
-                        {openDaysVal && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">Open Days</p>
-                            <div className="flex flex-wrap gap-2">
-                              {openDaysVal.map((day, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">{day}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        {/* Removed Opening / Closing & Open Days as they are not taken during onboarding */}
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Status</p>
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${approvalStatusBadgeClass(detailsApprovalStatus)}`}>
@@ -2211,30 +2189,7 @@ export default function RestaurantsList() {
                             </div>
                           </div>
                         )}
-                        {r.onboarding.step2.deliveryTimings && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-xs text-slate-500 mb-1">Opening Time (at registration)</p>
-                              <p className="font-medium text-slate-900">{formatTime12Hour(r.onboarding.step2.deliveryTimings.openingTime)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-500 mb-1">Closing Time (at registration)</p>
-                              <p className="font-medium text-slate-900">{formatTime12Hour(r.onboarding.step2.deliveryTimings.closingTime)}</p>
-                            </div>
-                          </div>
-                        )}
-                        {r.onboarding.step2.openDays && Array.isArray(r.onboarding.step2.openDays) && r.onboarding.step2.openDays.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-2">Open Days (at registration)</p>
-                            <div className="flex flex-wrap gap-2">
-                              {r.onboarding.step2.openDays.map((day, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium capitalize">
-                                  {day}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        {/* Removed Registration Step 2 Opening/Closing and Open Days display */}
                         {r.onboarding.step2.profileImageUrl?.url && (
                           <div>
                             <p className="text-xs text-slate-500 mb-2">Profile Image (at registration)</p>

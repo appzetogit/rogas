@@ -315,6 +315,16 @@ const restaurantSchema = new mongoose.Schema(
     },
     /** VAT registration number (NIP for Poland) */
     vatNumber: { type: String, default: '' },
+    /** Bank Account Number */
+    accountNumber: { type: String, default: '' },
+    /** Owner ID Upload Image URL */
+    ownerIdImage: { type: String, default: '' },
+    /** Offered meal slots */
+    mealSlots: {
+      type: [String],
+      enum: ['breakfast', 'lunch', 'dinner'],
+      default: ['breakfast', 'lunch', 'dinner'],
+    },
     /** Platform commission rate (default 15%) */
     commissionRate: { type: Number, default: 0.15, min: 0, max: 1 },
     /** VAT rate for food (per city: Poland=0.08, Germany=0.07, France=0.10) */

@@ -208,6 +208,13 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   const [licenceFileName, setLicenceFileName] = useState('');
   const [bannerFile, setBannerFile] = useState(null);
   const [bannerFileName, setBannerFileName] = useState('');
+  
+  const [vatNumber, setVatNumber] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ownerIdFile, setOwnerIdFile] = useState(null);
+  const [ownerIdFileName, setOwnerIdFileName] = useState('');
+  const [mealSlots, setMealSlots] = useState(['breakfast', 'lunch', 'dinner']);
+  const [vendorTimings, setVendorTimings] = useState(null);
 
   // Zone & Location additions
   const [zones, setZones] = useState([]);
@@ -243,6 +250,13 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       .catch(err => {
         console.error('Failed to load zones', err);
       });
+      
+    // Fetch vendor timings
+    import('../../../services/api/axios').then(({ restaurantClient }) => {
+       restaurantClient.get("/food/restaurant/vendor-timing-settings/public")
+        .then(res => setVendorTimings(res?.data?.data))
+        .catch(err => console.error("Failed to fetch timings", err));
+    });
   }, []);
 
   useEffect(() => {
@@ -362,6 +376,22 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       alert("Please upload your banner/cover photo!");
       return;
     }
+    if (!vatNumber.trim()) {
+      alert("Please enter VAT Number!");
+      return;
+    }
+    if (!accountNumber.trim()) {
+      alert("Please enter Bank Account Number!");
+      return;
+    }
+    if (!ownerIdFileName) {
+      alert("Please upload Owner ID (Aadhaar/Passport)!");
+      return;
+    }
+    if (mealSlots.length === 0) {
+      alert("Please select at least one meal slot!");
+      return;
+    }
     onContinue({
       name: kitchenName,
       phone,
@@ -371,6 +401,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       licenceFileName,
       coverFile: bannerFile,
       coverFileName: bannerFileName,
+      vatNumber,
+      accountNumber,
+      ownerIdFile,
+      ownerIdFileName,
+      mealSlots,
       zoneId: selectedZoneId,
       zoneName: selectedZoneName,
       latitude: String(lat),
@@ -627,7 +662,13 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 id="banner-upload"
                 accept="image/*"
                 style={{ display: 'none' }}
-                onChange={handleBannerChange}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setBannerFile(file);
+                    setBannerFileName(file.name);
+                  }
+                }}
               />
               <label
                 htmlFor="banner-upload"
@@ -662,6 +703,125 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   </>
                 )}
               </label>
+            </div>
+
+            {/* Financial Details */}
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VAT NUMBER</label>
+              <input
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                type="text"
+                placeholder="e.g. PL1234567890"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value.toUpperCase())} />
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BANK ACCOUNT NUMBER</label>
+              <input
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                type="text"
+                placeholder="Bank Account IBAN/Account Number"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
+                OWNER ID UPLOAD (AADHAAR/PASSPORT/DRIVING LICENSE)
+              </label>
+              <input
+                type="file"
+                id="ownerId-upload"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setOwnerIdFile(file);
+                    setOwnerIdFileName(file.name);
+                  }
+                }}
+              />
+              <label
+                htmlFor="ownerId-upload"
+                className="flex items-center justify-between p-3 bg-primary-container/5 border border-dashed border-primary/50 rounded-lg cursor-pointer hover:bg-primary-container/10 transition-colors"
+              >
+                {ownerIdFileName ? (
+                  <>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-primary">badge</span>
+                      <span className="text-[13px] text-primary font-semibold truncate max-w-[180px]">
+                        {ownerIdFileName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        check_circle
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <span className="text-[13px] text-outline font-semibold">
+                        Choose photo
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                      Browse
+                    </span>
+                  </>
+                )}
+              </label>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">schedule</span>
+                WHICH MEAL SLOTS WILL YOU OFFER?
+              </label>
+              <p className="text-[11px] text-outline">
+                Select one or more meal slots. (Timings are set by admin)
+              </p>
+              <div className="mt-2 flex flex-col gap-3">
+                {['breakfast', 'lunch', 'dinner'].map((slot) => {
+                   const active = mealSlots.includes(slot)
+                   const t = vendorTimings?.[slot]
+                   const labelStr = slot.charAt(0).toUpperCase() + slot.slice(1)
+                   
+                   const formatTime = (time24) => {
+                      if (!time24) return '';
+                      const [h, m] = time24.split(':');
+                      let hours = parseInt(h, 10);
+                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                      hours = hours % 12 || 12;
+                      return `${hours.toString().padStart(2, '0')}:${m} ${ampm}`;
+                   };
+
+                   const timeRange = (t && t.startTime && t.endTime) ? `${formatTime(t.startTime)} - ${formatTime(t.endTime)}` : ''
+                   return (
+                     <label key={slot} className="flex items-center gap-3 cursor-pointer">
+                       <input
+                         type="checkbox"
+                         checked={active}
+                         onChange={() => {
+                           if (active) {
+                             setMealSlots(mealSlots.filter((s) => s !== slot));
+                           } else {
+                             setMealSlots([...mealSlots, slot]);
+                           }
+                         }}
+                         className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
+                       />
+                       <span className="font-semibold text-[13px] text-on-surface">{labelStr}</span>
+                       {timeRange && <span className="text-outline text-[11px]">({timeRange})</span>}
+                     </label>
+                   )
+                })}
+              </div>
             </div>
 
             <div className="space-y-1.5">

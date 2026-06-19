@@ -27,6 +27,136 @@ export const adminSidebarMenu = [
     roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER"],
   },
 
+  // ─── VENDOR MANAGEMENT ──────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "VENDOR MANAGEMENT",
+    roles: ["SUPER_ADMIN", "CITY_MANAGER"],
+    items: [
+      {
+        type: "link",
+        label: "All Vendors",
+        path: "/admin/food/restaurants",
+        icon: "Users",
+      },
+      {
+        type: "link",
+        label: "Vendor Request",
+        path: "/admin/food/vendor-request",
+        icon: "UserCog",
+      },
+      {
+        type: "link",
+        label: "Vendor Timing",
+        path: "/admin/food/vendor-timing",
+        icon: "Clock",
+      },
+      {
+        type: "link",
+        label: "Subscription Plans",
+        path: "/admin/food/subscription-plans",
+        icon: "Award",
+      },
+      // {
+      //   type: "link",
+      //   label: "Restaurant Commission",
+      //   path: "/admin/food/restaurants/commission",
+      //   icon: "DollarSign",
+      // },
+    ],
+  },
+
+
+  // ─── DRIVER MANAGEMENT ──────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "DRIVER MANAGEMENT",
+    roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER"],
+    items: [
+      {
+        type: "expandable",
+        label: "Deliveryman",
+        icon: "Package",
+        subItems: [
+          { label: "New Join Request", path: "/admin/food/delivery-partners/join-request" },
+          { label: "Deliveryman List", path: "/admin/food/delivery-partners" },
+          { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews" },
+          { label: "Bonus", path: "/admin/food/delivery-partners/bonus" },
+          { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
+          { label: "Earning Addon History", path: "/admin/food/delivery-partners/earning-addon-history" },
+          { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
+        ],
+      },
+      { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
+      { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
+      { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
+      { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
+      { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare" },
+      { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone" },
+    ],
+  },
+
+  // ─── CUSTOMER MANAGEMENT ────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "CUSTOMER MANAGEMENT",
+    roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
+    items: [
+      {
+        type: "link",
+        label: "Customers",
+        path: "/admin/food/customers",
+        icon: "Users",
+      },
+      // {
+      //   type: "link",
+      //   label: "Support Tickets",
+      //   path: "/admin/food/support-tickets",
+      //   icon: "MessageSquare",
+      // },
+      {
+        type: "link",
+        label: "User Feedback",
+        path: "/admin/food/contact-messages",
+        icon: "Mail",
+      },
+      {
+        type: "link",
+        label: "Safety Emergency Reports",
+        path: "/admin/food/safety-emergency-reports",
+        icon: "AlertTriangle",
+      },
+    ],
+  },
+
+  // ─── ROLES & EMPLOYEES (AP-09) ───────────────────────────────────────────
+  {
+    type: "section",
+    label: "ROLES & EMPLOYEES",
+    roles: ["SUPER_ADMIN"],
+    items: [
+      { type: "link", label: "Roles & Permissions", path: "/admin/food/employee-role", icon: "Lock" },
+      { type: "link", label: "Employees", path: "/admin/food/employees", icon: "UserCog" },
+    ],
+  },
+
+  // ─── COMPLAINT & REFUNDS (AP-04) ─────────────────────────────────────────
+  {
+    type: "section",
+    label: "COMPLAINTS & REFUNDS",
+    roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
+    items: [
+      {
+        type: "link",
+        label: "Complaint Inbox",
+        path: "/admin/food/complaints",
+        icon: "MessageSquare",
+      },
+    ],
+  },
+
+
+
   // ─── ORDER MANAGEMENT ───────────────────────────────────────────────────
   {
     type: "section",
@@ -58,59 +188,21 @@ export const adminSidebarMenu = [
     ],
   },
 
-  // ─── COMPLAINT & REFUNDS (AP-04) ─────────────────────────────────────────
-  {
-    type: "section",
-    label: "COMPLAINTS & REFUNDS",
-    roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
-    items: [
-      {
-        type: "link",
-        label: "Complaint Inbox",
-        path: "/admin/food/complaints",
-        icon: "MessageSquare",
-      },
-    ],
-  },
+  // // ─── COMPLAINT & REFUNDS (AP-04) ─────────────────────────────────────────
+  // {
+  //   type: "section",
+  //   label: "COMPLAINTS & REFUNDS",
+  //   roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
+  //   items: [
+  //     {
+  //       type: "link",
+  //       label: "Complaint Inbox",
+  //       path: "/admin/food/complaints",
+  //       icon: "MessageSquare",
+  //     },
+  //   ],
+  // },
 
-  // ─── VENDOR MANAGEMENT ──────────────────────────────────────────────────
-  {
-    type: "section",
-    label: "VENDOR MANAGEMENT",
-    roles: ["SUPER_ADMIN", "CITY_MANAGER"],
-    items: [
-      {
-        type: "link",
-        label: "All Vendors",
-        path: "/admin/food/restaurants",
-        icon: "Users",
-      },
-      {
-        type: "link",
-        label: "Vendor Request",
-        path: "/admin/food/vendor-request",
-        icon: "UserCog",
-      },
-      {
-        type: "link",
-        label: "Vendor Timing",
-        path: "/admin/food/vendor-timing",
-        icon: "Clock",
-      },
-      {
-        type: "link",
-        label: "Subscription Plans",
-        path: "/admin/food/subscription-plans",
-        icon: "Award",
-      },
-      {
-        type: "link",
-        label: "Restaurant Commission",
-        path: "/admin/food/restaurants/commission",
-        icon: "DollarSign",
-      },
-    ],
-  },
 
   // ─── FOOD MANAGEMENT ────────────────────────────────────────────────────
   {
@@ -138,67 +230,67 @@ export const adminSidebarMenu = [
     ],
   },
 
-  // ─── CUSTOMER MANAGEMENT ────────────────────────────────────────────────
-  {
-    type: "section",
-    label: "CUSTOMER MANAGEMENT",
-    roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
-    items: [
-      {
-        type: "link",
-        label: "Customers",
-        path: "/admin/food/customers",
-        icon: "Users",
-      },
-      {
-        type: "link",
-        label: "Support Tickets",
-        path: "/admin/food/support-tickets",
-        icon: "MessageSquare",
-      },
-      {
-        type: "link",
-        label: "User Feedback",
-        path: "/admin/food/contact-messages",
-        icon: "Mail",
-      },
-      {
-        type: "link",
-        label: "Safety Emergency Reports",
-        path: "/admin/food/safety-emergency-reports",
-        icon: "AlertTriangle",
-      },
-    ],
-  },
+  // // ─── CUSTOMER MANAGEMENT ────────────────────────────────────────────────
+  // {
+  //   type: "section",
+  //   label: "CUSTOMER MANAGEMENT",
+  //   roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
+  //   items: [
+  //     {
+  //       type: "link",
+  //       label: "Customers",
+  //       path: "/admin/food/customers",
+  //       icon: "Users",
+  //     },
+  //     {
+  //       type: "link",
+  //       label: "Support Tickets",
+  //       path: "/admin/food/support-tickets",
+  //       icon: "MessageSquare",
+  //     },
+  //     {
+  //       type: "link",
+  //       label: "User Feedback",
+  //       path: "/admin/food/contact-messages",
+  //       icon: "Mail",
+  //     },
+  //     {
+  //       type: "link",
+  //       label: "Safety Emergency Reports",
+  //       path: "/admin/food/safety-emergency-reports",
+  //       icon: "AlertTriangle",
+  //     },
+  //   ],
+  // },
 
-  // ─── DRIVER MANAGEMENT ──────────────────────────────────────────────────
-  {
-    type: "section",
-    label: "DRIVER MANAGEMENT",
-    roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER"],
-    items: [
-      {
-        type: "expandable",
-        label: "Deliveryman",
-        icon: "Package",
-        subItems: [
-          { label: "New Join Request", path: "/admin/food/delivery-partners/join-request" },
-          { label: "Deliveryman List", path: "/admin/food/delivery-partners" },
-          { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews" },
-          { label: "Bonus", path: "/admin/food/delivery-partners/bonus" },
-          { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
-          { label: "Earning Addon History", path: "/admin/food/delivery-partners/earning-addon-history" },
-          { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
-        ],
-      },
-      { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
-      { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
-      { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
-      { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
-      { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare" },
-      { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone" },
-    ],
-  },
+  // // ─── DRIVER MANAGEMENT ──────────────────────────────────────────────────
+  // {
+  //   type: "section",
+  //   label: "DRIVER MANAGEMENT",
+  //   roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER"],
+  //   items: [
+  //     {
+  //       type: "expandable",
+  //       label: "Deliveryman",
+  //       icon: "Package",
+  //       subItems: [
+  //         { label: "New Join Request", path: "/admin/food/delivery-partners/join-request" },
+  //         { label: "Deliveryman List", path: "/admin/food/delivery-partners" },
+  //         { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews" },
+  //         { label: "Bonus", path: "/admin/food/delivery-partners/bonus" },
+  //         { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
+  //         { label: "Earning Addon History", path: "/admin/food/delivery-partners/earning-addon-history" },
+  //         { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
+  //       ],
+  //     },
+  //     { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
+  //     { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
+  //     { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
+  //     { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
+  //     { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare" },
+  //     { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone" },
+  //   ],
+  // },
 
   // ─── FLEET MANAGEMENT (AP-06 FM) ─────────────────────────────────────────
   {
@@ -302,15 +394,15 @@ export const adminSidebarMenu = [
   },
 
   // ─── ROLES & EMPLOYEES (AP-09) ───────────────────────────────────────────
-  {
-    type: "section",
-    label: "ROLES & EMPLOYEES",
-    roles: ["SUPER_ADMIN"],
-    items: [
-      { type: "link", label: "Roles & Permissions", path: "/admin/food/employee-role", icon: "Lock" },
-      { type: "link", label: "Employees", path: "/admin/food/employees", icon: "UserCog" },
-    ],
-  },
+  // {
+  //   type: "section",
+  //   label: "ROLES & EMPLOYEES",
+  //   roles: ["SUPER_ADMIN"],
+  //   items: [
+  //     { type: "link", label: "Roles & Permissions", path: "/admin/food/employee-role", icon: "Lock" },
+  //     { type: "link", label: "Employees", path: "/admin/food/employees", icon: "UserCog" },
+  //   ],
+  // },
 
   // ─── SYSTEM SETTINGS ─────────────────────────────────────────────────────
   {

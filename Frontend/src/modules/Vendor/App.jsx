@@ -626,6 +626,20 @@ export default function App() {
                   formData.append('pincode', p.pincode);
                 }
 
+                // Append onboarding fields
+                if (p.vatNumber) {
+                  formData.append('vatNumber', p.vatNumber);
+                }
+                if (p.accountNumber) {
+                  formData.append('accountNumber', p.accountNumber);
+                }
+                if (p.ownerIdFile) {
+                  formData.append('ownerIdImage', p.ownerIdFile);
+                }
+                if (p.mealSlots && p.mealSlots.length > 0) {
+                  formData.append('mealSlots', p.mealSlots.join(','));
+                }
+
                 // Call real backend registration
                 const res = await restaurantClient.post("/food/restaurant/register", formData);
                 const registeredUser = res.data?.data || res.data;

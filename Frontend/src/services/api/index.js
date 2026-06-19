@@ -641,6 +641,8 @@ export const restaurantAPI = {
   getMe: () => authService.getMe("restaurant"),
   /** Restaurant dashboard: fetch active zones */
   getZones: (params = {}) => restaurantClient.get("/food/restaurant/zones", { params }),
+  /** Public Vendor Timing Settings */
+  getVendorTimingSettingsPublic: () => userClient.get("/food/restaurant/vendor-timing-settings/public"),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
   /** Finance dashboard for `hub-finance`. */

@@ -801,6 +801,9 @@ export default function JoiningRequest() {
                         }`}>
                           {approvalStatus === "approved" ? "Approved" : approvalStatus === "rejected" ? "Rejected" : (r.pendingUpdateReason ? `Pending: ${r.pendingUpdateReason}` : "Pending Approval")}
                         </span>
+                        <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                          <span className="text-xs font-bold tracking-wider uppercase">{r?.vendorType || 'Restaurant'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -904,37 +907,14 @@ export default function JoiningRequest() {
                     </div>
                   </div>
 
-                  {/* Timings */}
+                  {/* Status */}
                   <div>
-                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
+                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Status</h4>
                       <div className="space-y-3">
-                        {(openingTime || closingTime) && (
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-slate-400" />
-                            <div>
-                              <p className="text-xs text-slate-500">Opening / Closing</p>
-                              <p className="text-sm font-medium text-slate-900">
-                                {formatTime12Hour(openingTime)} – {formatTime12Hour(closingTime)}
-                              </p>
-                            </div>
-                          </div>
-                        )}
                         {r?.estimatedDeliveryTime && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
                             <p className="text-sm font-medium text-slate-900">{r.estimatedDeliveryTime}</p>
-                          </div>
-                        )}
-                        {r?.openDays && Array.isArray(r.openDays) && r.openDays.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">Open Days</p>
-                            <div className="flex flex-wrap gap-2">
-                              {r.openDays.map((day, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">
-                                  {day}
-                                </span>
-                              ))}
-                            </div>
                           </div>
                         )}
                         <div>

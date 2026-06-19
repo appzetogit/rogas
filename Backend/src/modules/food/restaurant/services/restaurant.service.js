@@ -279,7 +279,9 @@ export const registerRestaurant = async (payload, files) => {
         accountHolderName,
         accountType,
         vendorType,
-        kitchenPartnerId
+        kitchenPartnerId,
+        vatNumber,
+        mealSlots
     } = payload;
 
     if (!ownerPhone) {
@@ -311,6 +313,9 @@ export const registerRestaurant = async (payload, files) => {
     }
     if (files?.fssaiImage?.[0]) {
         images.fssaiImage = await uploadImageBuffer(files.fssaiImage[0].buffer, 'food/restaurants/fssai');
+    }
+    if (files?.ownerIdImage?.[0]) {
+        images.ownerIdImage = await uploadImageBuffer(files.ownerIdImage[0].buffer, 'food/restaurants/ownerId');
     }
     if (files?.coverImage?.[0]) {
         images.coverImages = [await uploadImageBuffer(files.coverImage[0].buffer, 'food/restaurants/cover')];
@@ -450,6 +455,8 @@ export const registerRestaurant = async (payload, files) => {
             menuPdf,
             vendorType: vendorType || 'restaurant',
             kitchenPartnerId: kitchenPartnerId || null,
+            vatNumber: vatNumber || '',
+            mealSlots: Array.isArray(mealSlots) ? mealSlots : (typeof mealSlots === 'string' ? mealSlots.split(',').map(s=>s.trim()) : ['breakfast', 'lunch', 'dinner']),
             foodLicenceUrl: foodLicenceUrl || '',
             foodLicenceStatus: foodLicenceUrl ? 'valid' : 'not_uploaded',
             pendingUpdateReason: 'New Registration',

@@ -56,6 +56,7 @@ import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
 import { getRestaurantFinanceController, getVendorEarningsSummaryController } from '../controllers/restaurantFinance.controller.js';
 import { deleteRestaurantAccountController } from '../controllers/deleteAccount.controller.js';
+import { getVendorTimingSettingsController } from '../../admin/controllers/admin.controller.js';
 
 import { cacheResponse, invalidateCache } from '../../../../middleware/cache.js';
 
@@ -76,7 +77,8 @@ const uploadFields = upload.fields([
     { name: 'menuImages', maxCount: 10 },
     { name: 'menuPdf', maxCount: 1 },
     { name: 'foodLicence', maxCount: 1 },
-    { name: 'coverImage', maxCount: 1 }
+    { name: 'coverImage', maxCount: 1 },
+    { name: 'ownerIdImage', maxCount: 1 }
 ]);
 
 router.post('/register', uploadFields, registerRestaurantController);
@@ -93,6 +95,9 @@ router.get('/categories/public', cacheResponse(600, 'categories'), listCategorie
 
 // Public: active zones for customer app
 router.get('/zones/public', listZonesController);
+
+// Public: vendor timing settings (used in onboarding and public display)
+router.get('/vendor-timing-settings/public', cacheResponse(600, 'vendor_timings'), getVendorTimingSettingsController);
 
 // Active Zones for restaurant
 router.get('/zones', authMiddleware, requireRestaurant, listZonesController);

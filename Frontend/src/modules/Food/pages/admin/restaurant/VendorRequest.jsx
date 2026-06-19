@@ -925,6 +925,26 @@ export default function VendorRequest() {
                       </div>
                     </div>
 
+                    {/* Offered Meal Slots */}
+                    <div className="pb-6 border-b border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Offered Meal Slots</h4>
+                      {r.mealSlots && r.mealSlots.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {r.mealSlots.map((slot, idx) => (
+                            <span 
+                              key={idx} 
+                              className="px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                              {slot}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-medium text-slate-500">No meal slots selected / N/A</p>
+                      )}
+                    </div>
+
                     {/* EU Food Licence Document preview */}
                     <div>
                       <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">EU Food Licence Document</h4>
@@ -973,6 +993,49 @@ export default function VendorRequest() {
                         <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg">
                           <ShieldAlert className="w-5 h-5 shrink-0" />
                           <p className="text-sm font-semibold">No EU Food Licence Document has been uploaded yet for this vendor request.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Owner ID Document preview */}
+                    <div className="pt-6 border-t border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Owner ID Document (Aadhaar / Passport / Driving License)</h4>
+                      {r.ownerIdImage ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <ImageIcon className="w-6 h-6 text-blue-500" />
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">Owner_ID_Document_{r.restaurantName?.replace(/\s+/g, "_")}</p>
+                                <p className="text-xs text-slate-500">Image File</p>
+                              </div>
+                            </div>
+                            <a 
+                              href={r.ownerIdImage}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Open in New Tab
+                            </a>
+                          </div>
+
+                          <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center p-4">
+                            <img 
+                              src={r.ownerIdImage} 
+                              alt="Owner ID Document"
+                              className="max-w-full h-auto max-h-[350px] object-contain rounded-lg shadow-sm"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg">
+                          <ShieldAlert className="w-5 h-5 shrink-0" />
+                          <p className="text-sm font-semibold">No Owner ID Document has been uploaded yet for this vendor request.</p>
                         </div>
                       )}
                     </div>
