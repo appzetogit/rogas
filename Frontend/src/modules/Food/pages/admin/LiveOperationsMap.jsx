@@ -596,17 +596,17 @@ export default function LiveOperationsMap() {
   const stats = snapshot?.stats || {};
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-[#F5F5F0] text-[#2B2B2B]">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+      <div className="bg-[#1F7A63] border-b border-[#135444] px-6 py-4 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-blue-400" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Live Operations Map</h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-emerald-100">
                 {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Loading…"}
               </p>
             </div>
@@ -616,21 +616,21 @@ export default function LiveOperationsMap() {
               placeholder="Filter by city…"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/25 text-white placeholder-emerald-100/60 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
             />
             <button
               onClick={fetchSnapshot}
-              className="p-2 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700 transition"
+              className="p-2 rounded-lg bg-white/10 border border-white/25 hover:bg-white/20 text-white transition"
               title="Refresh now"
             >
-              <RefreshCw className="w-4 h-4 text-gray-400" />
+              <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsDarkMap((prev) => !prev)}
-              className="p-2 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700 transition"
+              className="p-2 rounded-lg bg-white/10 border border-white/25 hover:bg-white/20 text-white transition"
               title="Toggle Dark Map"
             >
-              {isDarkMap ? <Moon className="w-4 h-4 text-gray-400" /> : <Sun className="w-4 h-4 text-yellow-400" />}
+              {isDarkMap ? <Moon className="w-4 h-4 text-white" /> : <Sun className="w-4 h-4 text-yellow-300" />}
             </button>
           </div>
         </div>
@@ -639,13 +639,13 @@ export default function LiveOperationsMap() {
       {/* Stat Cards */}
       <div className="px-6 py-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS.map(({ key, label, icon: Icon, color }) => (
-          <div key={key} className="bg-gray-900 rounded-xl p-4 border border-gray-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${color}22` }}>
+          <div key={key} className="bg-white rounded-xl p-4 border border-gray-200 flex items-center gap-3 shadow-xs">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
               <Icon className="w-5 h-5" style={{ color }} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats[key] ?? "-"}</p>
-              <p className="text-xs text-gray-400">{label}</p>
+              <p className="text-2xl font-bold text-[#2B2B2B]">{stats[key] ?? "-"}</p>
+              <p className="text-xs text-gray-500 font-medium">{label}</p>
             </div>
           </div>
         ))}
@@ -653,33 +653,37 @@ export default function LiveOperationsMap() {
 
       <div className="px-6 pb-6 flex gap-6">
         {/* Google Map Container */}
-        <div className="flex-1 bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden min-h-[550px] relative flex flex-col p-6">
+        <div className="flex-1 bg-white rounded-2xl border border-gray-200 overflow-hidden min-h-[550px] relative flex flex-col p-6 shadow-xs">
           <div className="mb-4 flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
+            <Filter className="w-4 h-4 text-gray-500" />
             {["all", "online", "delivering"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${filter === f ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
+                  filter === f
+                    ? "bg-[#1F7A63] text-white border-[#1F7A63]"
+                    : "bg-[#F5F5F0] text-gray-600 border-gray-200 hover:bg-gray-200"
+                }`}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
             {selectedDriver && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-sky-500/15 text-sky-300 text-xs">
-                <Route className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1F7A63]/10 text-[#1F7A63] text-xs font-bold border border-[#1F7A63]/25">
+                <Route className="w-3.5 h-3.5" />
                 Route: {selectedDriver.name || "Driver"}
               </span>
             )}
-            <span className="ml-auto text-sm text-gray-400">{filteredDrivers.length} drivers</span>
+            <span className="ml-auto text-sm text-gray-500 font-semibold">{filteredDrivers.length} drivers</span>
           </div>
 
           {/* Google Map Ref Wrapper */}
-          <div className="relative flex-1 bg-gray-800 rounded-xl overflow-hidden border border-gray-700 min-h-[420px]">
+          <div className="relative flex-1 bg-[#F5F5F0] rounded-xl overflow-hidden border border-gray-200 min-h-[420px]">
             <div ref={mapRef} className="w-full h-full" style={{ minHeight: "420px" }} />
 
             {/* Map Legend */}
-            <div className="absolute bottom-3 right-3 bg-gray-900/90 rounded-lg p-2.5 text-xs space-y-1.5 border border-gray-800 shadow-lg z-10 font-sans">
+            <div className="absolute bottom-3 right-3 bg-white/95 rounded-lg p-2.5 text-xs space-y-1.5 border border-gray-200 shadow-md z-10 font-sans text-gray-700">
               {[
                 { color: "#22c55e", label: "Online (idle)" },
                 { color: "#f59e0b", label: "Delivering" },
@@ -690,17 +694,17 @@ export default function LiveOperationsMap() {
               ].map(({ color, label }) => (
                 <div key={label} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ background: color }} />
-                  <span className="text-gray-300">{label}</span>
+                  <span className="text-[#2B2B2B] font-medium">{label}</span>
                 </div>
               ))}
             </div>
 
             {/* Loading Overlay */}
             {(loading || mapLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 z-20">
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20">
                 <div className="text-center">
-                  <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-                  <p className="text-sm text-gray-400">Loading Operations Map...</p>
+                  <div className="animate-spin w-8 h-8 border-2 border-[#1F7A63] border-t-transparent rounded-full mx-auto mb-4" />
+                  <p className="text-sm text-gray-600 font-bold">Loading Operations Map...</p>
                 </div>
               </div>
             )}
@@ -708,58 +712,60 @@ export default function LiveOperationsMap() {
         </div>
 
         {/* Sidebar Driver Panel */}
-        <div className="w-85 bg-gray-900 rounded-2xl border border-gray-800 flex flex-col max-h-[620px]">
-          <div className="p-4 border-b border-gray-800">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <Truck className="w-4 h-4 text-blue-400" />
+        <div className="w-85 bg-white rounded-2xl border border-gray-200 flex flex-col max-h-[620px] shadow-xs">
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="font-bold text-[#2B2B2B] flex items-center gap-2 text-sm uppercase tracking-wider">
+              <Truck className="w-4 h-4 text-[#1F7A63]" />
               Active Drivers
-              <span className="ml-auto text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-xs font-bold text-gray-600 bg-[#F5F5F0] border border-gray-200 px-2 py-0.5 rounded-full">
                 {filteredDrivers.length}
               </span>
             </h3>
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredDrivers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                 <Package className="w-8 h-8 mb-2" />
-                <p className="text-sm">No drivers found</p>
+                <p className="text-sm font-medium">No drivers found</p>
               </div>
             ) : (
               filteredDrivers.map((d) => (
                 <button
                   key={d._id}
                   onClick={() => handleSelectDriver(d)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-800 hover:bg-gray-800/50 transition ${selectedDriver?._id === d._id ? "bg-blue-900/20 border-l-2 border-l-blue-500" : ""}`}
+                  className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-[#F5F5F0]/65 transition ${
+                    selectedDriver?._id === d._id ? "bg-[#1F7A63]/8 border-l-4 border-l-[#1F7A63]" : ""
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: driverStatusColor(d) }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm" style={{ background: driverStatusColor(d) }}>
                       {(d.name || "D").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{d.name || "Unknown"}</p>
-                      <p className="text-xs text-gray-400">{d.city} · {d.vehicleType || "bike"}</p>
+                      <p className="text-sm font-semibold text-[#2B2B2B] truncate">{d.name || "Unknown"}</p>
+                      <p className="text-xs text-gray-500 font-medium">{d.city} · {d.vehicleType || "bike"}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-white text-right">{d.deliveredOrdersCount ?? d.deliveriesToday ?? 0}</p>
-                      <p className="text-xs text-gray-500">delivered</p>
+                      <p className="text-xs font-black text-[#2B2B2B] text-right">{d.deliveredOrdersCount ?? d.deliveriesToday ?? 0}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase">delivered</p>
                     </div>
                   </div>
                   {selectedDriver?._id === d._id && (
-                    <div className="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-300 space-y-1">
-                      <p>📞 {d.phone || "-"}</p>
-                      <p>⭐ Rating: {d.rating?.toFixed(1) || "N/A"}</p>
-                      <p>💰 Earned today: PLN {(d.earningsToday || 0).toFixed(2)}</p>
-                      <p>📦 Status: <span className="font-semibold" style={{ color: driverStatusColor(d) }}>{d.availabilityStatus || "offline"}</span></p>
-                      <p>Total delivered: {d.deliveredOrdersCount ?? d.deliveriesToday ?? 0}</p>
-                      <p>Assigned deliveries: {(d.assignedDeliveries || []).length}</p>
+                    <div className="mt-2.5 pt-2.5 border-t border-gray-100 text-xs text-gray-600 space-y-1.5 font-medium animate-fadeIn">
+                      <p className="flex items-center gap-1.5">📞 <span className="text-[#2B2B2B] font-semibold">{d.phone || "-"}</span></p>
+                      <p className="flex items-center gap-1.5">⭐ Rating: <span className="text-[#2B2B2B] font-semibold">{d.rating?.toFixed(1) || "N/A"}</span></p>
+                      <p className="flex items-center gap-1.5">💰 Earned today: <span className="text-[#2B2B2B] font-semibold">PLN {(d.earningsToday || 0).toFixed(2)}</span></p>
+                      <p className="flex items-center gap-1.5">📦 Status: <span className="font-semibold" style={{ color: driverStatusColor(d) }}>{d.availabilityStatus || "offline"}</span></p>
+                      <p className="flex items-center gap-1.5">Total delivered: <span className="text-[#2B2B2B] font-semibold">{d.deliveredOrdersCount ?? d.deliveriesToday ?? 0}</span></p>
+                      <p className="flex items-center gap-1.5">Assigned deliveries: <span className="text-[#2B2B2B] font-semibold">{(d.assignedDeliveries || []).length}</span></p>
                       {(d.assignedDeliveries || []).slice(0, 4).map((delivery, idx) => (
-                        <div key={delivery._id || delivery.orderId || idx} className="mt-1 rounded-md bg-gray-800/70 p-2">
-                          <p className="font-semibold text-gray-100">{delivery.orderId || `Order ${idx + 1}`} <span className="text-gray-500">- {delivery.status}</span></p>
-                          <p className="text-gray-400 truncate">{delivery.vendor?.name || "Vendor"} to {delivery.address || "destination"}</p>
+                        <div key={delivery._id || delivery.orderId || idx} className="mt-1.5 rounded-xl bg-[#F5F5F0] border border-gray-100 p-2.5">
+                          <p className="font-bold text-[#2B2B2B]">{delivery.orderId || `Order ${idx + 1}`} <span className="text-[#1F7A63] text-[10px] uppercase font-extrabold ml-1.5">- {delivery.status}</span></p>
+                          <p className="text-gray-500 text-[11px] mt-0.5 truncate">{delivery.vendor?.name || "Vendor"} to {delivery.address || "destination"}</p>
                         </div>
                       ))}
                       {d.lastLocationAt && (
-                        <p className="text-[10px] text-gray-500">Last Loc: {new Date(d.lastLocationAt).toLocaleTimeString()}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 font-sans">Last Loc: {new Date(d.lastLocationAt).toLocaleTimeString()}</p>
                       )}
                     </div>
                   )}
@@ -770,15 +776,15 @@ export default function LiveOperationsMap() {
 
           {/* Pending Pickups Summary */}
           {(snapshot?.pendingPickups || []).length > 0 && (
-            <div className="p-4 border-t border-gray-800">
-              <p className="text-xs font-semibold text-orange-400 mb-2 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {snapshot.pendingPickups.length} pending pickups
+            <div className="p-4 border-t border-gray-100 bg-[#F5F5F0]/30 rounded-b-2xl">
+              <p className="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {snapshot.pendingPickups.length} PENDING PICKUPS
               </p>
               {snapshot.pendingPickups.slice(0, 3).map((o) => (
-                <div key={o._id} className="text-xs text-gray-400 py-1 border-b border-gray-800/50">
-                  <span className="text-gray-300">{o.restaurantId?.restaurantName || "Restaurant"}</span>
-                  <span className="ml-2 text-orange-400">{o.orderStatus}</span>
+                <div key={o._id} className="text-xs text-gray-500 py-1 border-b border-gray-100/50 last:border-0">
+                  <span className="text-[#2B2B2B] font-semibold">{o.restaurantId?.restaurantName || "Restaurant"}</span>
+                  <span className="ml-2 text-orange-600 font-medium">({o.orderStatus})</span>
                 </div>
               ))}
             </div>

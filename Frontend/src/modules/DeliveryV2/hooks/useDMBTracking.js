@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useDeliveryStore } from '../store/useDeliveryStore';
 import { writeDeliveryLocation } from '@food/realtimeTracking';
 import { dmbDeliveryAPI } from '@food/api';
+import { toast } from 'sonner';
 
 const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL.replace(/\/v1$/, '')
@@ -41,6 +42,7 @@ export const useDMBTracking = () => {
     const { isOnline } = useDeliveryStore();
     console.log("🛠️ [DMBTracking Hook] Initialized. isOnline:", isOnline);
     const intervalRef = useRef(null);
+    const lastAlertTimeRef = useRef(0);
 
     // ─── Get Auth Token ────────────────────────────────────────────────────────
     const getAuthHeaders = () => {
@@ -195,6 +197,19 @@ export const useDMBTracking = () => {
                     },
                     (err) => {
                         console.warn('[DMBTracking] GPS Watch failed or denied:', err);
+                        
+                        // Show warning alert/toast to the user (throttled to once every 30s)
+                        const now = Date.now();
+                        if (now - lastAlertTimeRef.current > 30000) {
+                            lastAlertTimeRef.current = now;
+                            alert("Location Access Required: Please enable your device's GPS / Location services and allow location permission to continue tracking your deliveries.");
+                        }
+                        
+                        toast.error(
+                            "Location Access Required: Please enable your device's GPS / Location services and allow location permission.",
+                            { id: "gps-location-denied", duration: 8000 }
+                        );
+
                         // Fallback to Indore (for development/testing) so coordinates are not null
                         const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0, speed: 0 };
                         const { riderLocation } = useDeliveryStore.getState();
@@ -208,6 +223,7 @@ export const useDMBTracking = () => {
                 console.log("[DMBTracking] GPS Watch Id", watchId)
             } else {
                 console.warn('[DMBTracking] Geolocation not supported');
+                alert("Geolocation is not supported by your device/browser.");
                 // Fallback to Indore (for development/testing)
                 const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0, speed: 0 };
                 useDeliveryStore.getState().setRiderLocation(fallbackPos);
