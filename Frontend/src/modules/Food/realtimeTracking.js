@@ -119,6 +119,7 @@ export async function writeDeliveryLocation({
     activeOrderId: activeOrderId ? String(activeOrderId) : null,
   };
   await set(ref(firebaseRealtimeDb, getDeliveryLocationPath(deliveryId)), payload);
+  console.log("🔥 [Firebase Realtime] Location written successfully for driver:", deliveryId, payload);
   return true;
 }
 

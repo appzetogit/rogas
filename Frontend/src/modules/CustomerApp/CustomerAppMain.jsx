@@ -14,6 +14,7 @@ import { CheckoutScreen } from "./components/CheckoutScreen";
 import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
+import { SupportScreen } from "./components/SupportScreen";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
@@ -445,6 +446,9 @@ export default function CustomerAppMain() {
                 setTrackedOrder(order);
                 navigate("/user/tracker");
               }}
+              onRaiseComplaint={(order) => {
+                navigate(`/user/support?orderId=${order._id || order.orderId}&type=order`);
+              }}
               onGoToProfile={() => navigate("/user/profile")}
               onShowNotificationToast={showToast}
               tomorrowMeal={tomorrowMeal}
@@ -459,6 +463,7 @@ export default function CustomerAppMain() {
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
               onGoToCheckout={() => navigate("/user/checkout")}
               onGoToSubscription={() => navigate("/user/subscription")}
+              onGoToSupport={() => navigate("/user/support")}
               onShowNotificationToast={showToast}
               dietaryPrefs={dietaryPrefs}
               invoicePrefs={invoicePrefs}
@@ -505,6 +510,13 @@ export default function CustomerAppMain() {
               onGoBack={() => navigate("/user/orders")}
               onShowNotificationToast={showToast}
               socket={socket}
+            />
+          } />
+
+          <Route path="support" element={
+            <SupportScreen
+              onGoBack={() => navigate(-1)}
+              onShowNotificationToast={showToast}
             />
           } />
 

@@ -7,6 +7,7 @@ import {
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useDeliveryNotificationContext } from '../../../Food/context/DeliveryNotificationContext';
 
 /**
  * SupportTicketsV2 - Restored Old UI for Support Ticket Hub.
@@ -16,6 +17,7 @@ export const SupportTicketsV2 = () => {
   const goBack = useDeliveryBackNavigation();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { socket } = useDeliveryNotificationContext();
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -33,6 +35,21 @@ export const SupportTicketsV2 = () => {
     };
     fetchTickets();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = (updated) => {
+      setTickets(prev => prev.map(t => 
+        t._id === updated.complaintId 
+          ? { ...t, status: updated.status, adminResponse: updated.adminResponse, updatedAt: updated.updatedAt } 
+          : t
+      ));
+    };
+    socket.on('complaint_status_updated', handleUpdate);
+    return () => {
+      socket.off('complaint_status_updated', handleUpdate);
+    };
+  }, [socket]);
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { FoodDeliveryPartner } from '../models/deliveryPartner.model.js';
 import { DeliverySupportTicket } from '../models/supportTicket.model.js';
+import { AdminComplaint } from '../../admin/models/complaint.model.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { FoodEarningAddon } from '../../admin/models/earningAddon.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
@@ -289,44 +290,117 @@ function generateTicketId() {
 }
 
 export const listSupportTicketsByPartner = async (deliveryPartnerId) => {
-    const list = await DeliverySupportTicket.find({ deliveryPartnerId })
-        .sort({ createdAt: -1 })
-        .lean();
-    return list;
+    const list = await AdminComplaint.find({ 
+        driverId: deliveryPartnerId, 
+        complainantType: 'delivery_partner' 
+    })
+    .sort({ createdAt: -1 })
+    .lean();
+
+    return list.map(c => ({
+        _id: c._id,
+        ticketId: c.complaintRef,
+        subject: c.subject,
+        description: c.message,
+        category: c.category,
+        priority: c.priority || 'medium',
+        status: c.status === 'in_review' || c.status === 'escalated' ? 'in_progress' : c.status,
+        adminResponse: c.customerResponseMessage || '',
+        respondedAt: c.customerResponseAt || null,
+        proofPhotos: c.proofPhotos || [],
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt
+    }));
 };
 
 export const createSupportTicket = async (deliveryPartnerId, payload) => {
-    const { subject, description, category = 'other', priority = 'medium' } = payload;
+    const { subject, description, category = 'other', priority = 'medium', proofPhotos = [], image = '' } = payload;
     if (!subject || !description || subject.trim().length < 3) {
         throw new ValidationError('Subject is required (min 3 characters)');
     }
     if (description.trim().length < 10) {
         throw new ValidationError('Description must be at least 10 characters');
     }
-    let ticketId = generateTicketId();
-    let exists = await DeliverySupportTicket.findOne({ ticketId }).lean();
-    while (exists) {
-        ticketId = generateTicketId();
-        exists = await DeliverySupportTicket.findOne({ ticketId }).lean();
-    }
-    const ticket = await DeliverySupportTicket.create({
-        deliveryPartnerId,
-        ticketId,
+
+    const autoEscalateAt = new Date(Date.now() + 4 * 60 * 60 * 1000);
+    const photos = Array.isArray(proofPhotos) ? proofPhotos : (image ? [image] : []);
+
+    const ticket = await AdminComplaint.create({
+        driverId: deliveryPartnerId,
+        customerId: null,
+        complainantType: 'delivery_partner',
         subject: subject.trim(),
-        description: description.trim(),
-        category: ['payment', 'account', 'technical', 'order', 'other'].includes(category) ? category : 'other',
-        priority: ['low', 'medium', 'high', 'urgent'].includes(priority) ? priority : 'medium',
-        status: 'open'
+        message: description.trim(),
+        proofPhotos: photos,
+        category,
+        priority,
+        status: 'open',
+        autoEscalateAt,
+        statusTrail: [{
+            status: 'open',
+            changedByName: 'Delivery Partner',
+            note: 'Complaint created via Delivery Partner Panel',
+            at: new Date()
+        }]
     });
-    return ticket.toObject();
+
+    let populated = null;
+    try {
+        populated = await AdminComplaint.findById(ticket._id)
+            .populate('driverId', 'name phone')
+            .lean();
+    } catch (popErr) {
+        console.error('Failed to populate delivery complaint details:', popErr);
+    }
+
+    // Emit Socket event to admin room for real-time updates
+    try {
+        const { getIO } = await import('../../../../config/socket.js');
+        const io = getIO();
+        if (io && populated) {
+            io.to('admin').emit('new_complaint', populated);
+            io.to('admin').emit('play_notification_sound', { type: 'complaint' });
+        }
+    } catch (socketErr) {
+        console.error('Failed to emit delivery complaint socket event:', socketErr);
+    }
+
+    return {
+        _id: ticket._id,
+        ticketId: ticket.complaintRef,
+        subject: ticket.subject,
+        description: ticket.message,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        proofPhotos: ticket.proofPhotos || [],
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt
+    };
 };
 
 export const getSupportTicketByIdAndPartner = async (ticketId, deliveryPartnerId) => {
-    const ticket = await DeliverySupportTicket.findOne({
+    const c = await AdminComplaint.findOne({
         _id: ticketId,
-        deliveryPartnerId
+        driverId: deliveryPartnerId,
+        complainantType: 'delivery_partner'
     }).lean();
-    return ticket;
+    if (!c) return null;
+
+    return {
+        _id: c._id,
+        ticketId: c.complaintRef,
+        subject: c.subject,
+        description: c.message,
+        category: c.category,
+        priority: c.priority || 'medium',
+        status: c.status === 'in_review' || c.status === 'escalated' ? 'in_progress' : c.status,
+        adminResponse: c.customerResponseMessage || '',
+        respondedAt: c.customerResponseAt || null,
+        proofPhotos: c.proofPhotos || [],
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt
+    };
 };
 
 export const updateDeliveryAvailability = async (userId, payload) => {

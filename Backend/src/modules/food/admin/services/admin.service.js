@@ -1398,8 +1398,8 @@ export async function getSupportTickets(query = {}) {
     if (userSearchOr.length) userFilter.$or = userSearchOr;
     if (restaurantSearchOr.length) restaurantFilter.$or = restaurantSearchOr;
 
-    const shouldFetchUser = source === 'all' || source === 'user';
-    const shouldFetchRestaurant = source === 'all' || source === 'restaurant';
+    const shouldFetchUser = false; // User complaints are now routed to AdminComplaint/ComplaintInbox
+    const shouldFetchRestaurant = true; // SupportTickets is only for restaurant partner tickets
 
     const [userList, userTotal, restaurantList, restaurantTotal] = await Promise.all([
         shouldFetchUser
@@ -1487,7 +1487,8 @@ export async function getSupportTickets(query = {}) {
             updatedAt: t.updatedAt,
             user,
             restaurant,
-            restaurantName
+            restaurantName,
+            image: t.image || ''
         };
     });
 

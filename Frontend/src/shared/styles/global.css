@@ -491,6 +491,15 @@
   color: var(--ad-text-primary) !important;
 }
 
+/* Custom overrides to force white text on custom colored themed elements and buttons */
+.admin-theme-container .text-white-force,
+.admin-theme-container button.bg-\[\#1F7A63\],
+.admin-theme-container button.bg-\[\#1F7A63\] *,
+.admin-theme-container .bg-\[\#1F7A63\] * {
+  color: #ffffff !important;
+}
+
+
 /* Keep white text white for primary elements: action buttons, sidebar, badges, and status labels */
 .admin-theme-container .admin-sidebar-container *,
 .admin-theme-container button.bg-primary *,

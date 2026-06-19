@@ -9,6 +9,7 @@ export function ProfileScreen({
   onGoToInvoiceSettings,
   onGoToCheckout,
   onGoToSubscription,
+  onGoToSupport,
   onShowNotificationToast,
   dietaryPrefs,
   invoicePrefs,
@@ -360,6 +361,22 @@ export function ProfileScreen({
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Manage</span> */}
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+
+          {/* Help & Support / Complaints */}
+          <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
+                <span className="material-symbols-outlined text-[22px]">help_center</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Raise complaints or view tickets</p>
+              </div>
+            </div>
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
           </div>

@@ -19,8 +19,10 @@ import { RoutesView } from "./RoutesView";
 import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History, AlertTriangle } from "lucide-react";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
-import { dmbDeliveryAPI } from "../../../services/api";
+import { dmbDeliveryAPI, deliveryAPI } from "../../../services/api";
 import { useDMBTracking } from "../hooks/useDMBTracking";
+import { clearModuleAuth } from "@food/utils/auth";
+import { toast } from "sonner";
 
 function NewDeliveryDashboard() {
   useDMBTracking();
@@ -32,6 +34,7 @@ function NewDeliveryDashboard() {
 
   const isOnline = useDeliveryStore((state) => state.isOnline);
   const toggleOnlineAction = useDeliveryStore((state) => state.toggleOnline);
+  const setOnlineAction = useDeliveryStore((state) => state.setOnline);
   const driverId = useDeliveryStore((state) => state.driverId); // FIX: get driverId from store
   const currentStats = { ...stats, online: isOnline };
 
@@ -370,6 +373,58 @@ function NewDeliveryDashboard() {
     setCurrentScreen("home");
   };
 
+  const handleLogout = async () => {
+    try {
+      // 1. Sync offline state on backend & store
+      setOnlineAction(false);
+      try {
+        await dmbDeliveryAPI.goOffline();
+      } catch (err) {
+        console.warn("Failed to set offline in backend during logout:", err?.response?.data?.message || err.message);
+      }
+
+      // 2. Call backend logout API to clean up JWT and FCM token
+      let fcmToken = null;
+      let platform = "web";
+      try {
+        if (typeof window !== "undefined" && window.flutter_inappwebview) {
+          platform = "mobile";
+          const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
+          for (const handlerName of handlerNames) {
+            try {
+              const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "delivery" });
+              if (t && typeof t === "string" && t.length > 20) {
+                fcmToken = t.trim();
+                break;
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+
+      try {
+        await deliveryAPI.logout(null, fcmToken, platform);
+      } catch (err) {
+        console.warn("Backend logout API failed:", err?.response?.data?.message || err.message);
+      }
+    } catch (e) {
+      console.error("Error in logout cleanup:", e);
+    } finally {
+      // 3. Clear auth module state, token from localStorage
+      clearModuleAuth("delivery");
+      localStorage.removeItem("app:isOnline");
+
+      // 4. Disconnect socket
+      if (socket && driverId) {
+        socket.emit("leave_driver_room", driverId);
+      }
+
+      // 5. Toast and Redirect
+      toast.success("Logged out successfully");
+      navigate("/food/delivery/login", { replace: true });
+    }
+  };
+
   const handleSelectOrder = (stopOrId) => {
     const stop = typeof stopOrId === 'object'
       ? stopOrId
@@ -456,7 +511,7 @@ function NewDeliveryDashboard() {
         return <ProfileView
           stats={currentStats}
           onViewShifts={() => setCurrentScreen("shifts")}
-          onLogout={handleResetSimulator}
+          onLogout={handleLogout}
         />;
       case "shifts":
         return <MyShiftsView

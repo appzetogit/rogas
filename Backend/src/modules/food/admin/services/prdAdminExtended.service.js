@@ -17,6 +17,72 @@ const objectIdOrNull = (v) =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function listComplaints(query = {}) {
+    // Migrate legacy support tickets to complaints once
+    try {
+        const { FoodSupportTicket } = await import('../../user/models/supportTicket.model.js');
+        const legacyTickets = await FoodSupportTicket.find({}).lean();
+        for (const ticket of legacyTickets) {
+            const exists = await AdminComplaint.findOne({
+                $or: [
+                    { legacyTicketId: ticket._id },
+                    { customerId: ticket.userId, createdAt: ticket.createdAt }
+                ]
+            });
+            if (!exists) {
+                const categoryMap = {
+                    'Delivery Delay': 'late_delivery',
+                    'Missing / Wrong Items': 'missing_item',
+                    'Food Quality Issue': 'quality',
+                    'Payment / Billing Issue': 'payment',
+                    'App Bug / Tech Support': 'other',
+                    'Other': 'other'
+                };
+                let vendorId = ticket.restaurantId || null;
+                let driverId = null;
+                let city = '';
+                if (ticket.orderId) {
+                    const { FoodOrder } = await import('../../orders/models/order.model.js');
+                    const order = await FoodOrder.findById(ticket.orderId).lean();
+                    if (order) {
+                        vendorId = order.restaurantId || vendorId;
+                        driverId = order.dispatch?.deliveryPartnerId || null;
+                        city = order.deliveryAddress?.city || '';
+                    }
+                }
+                let status = 'open';
+                if (['in-review', 'in-progress', 'escalated'].includes(ticket.status)) status = 'in_review';
+                if (ticket.status === 'resolved') status = 'resolved';
+
+                await AdminComplaint.create({
+                    customerId: ticket.userId,
+                    orderId: ticket.orderId || null,
+                    vendorId,
+                    driverId,
+                    subject: ticket.issueType || 'Other',
+                    message: ticket.description || '',
+                    proofPhotos: ticket.image ? [ticket.image] : [],
+                    category: categoryMap[ticket.issueType] || 'other',
+                    status,
+                    city,
+                    customerResponseSent: !!ticket.adminResponse,
+                    customerResponseMessage: ticket.adminResponse || '',
+                    customerResponseAt: ticket.adminResponse ? ticket.updatedAt : null,
+                    createdAt: ticket.createdAt,
+                    updatedAt: ticket.updatedAt,
+                    statusTrail: [{
+                        status: 'open',
+                        changedByName: 'Customer',
+                        note: 'Complaint imported from legacy support ticket',
+                        at: ticket.createdAt
+                    }],
+                    legacyTicketId: ticket._id
+                });
+            }
+        }
+    } catch (migErr) {
+        console.error('Error migrating support tickets to complaints:', migErr);
+    }
+
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 200);
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
@@ -131,6 +197,24 @@ export async function updateComplaintStatus(id, body = {}, req) {
         at: new Date()
     });
     await complaint.save();
+    try {
+        const { getIO } = await import('../../../../config/socket.js');
+        const io = getIO();
+        if (io) {
+            const driverIdStr = complaint.driverId?.toString();
+            if (complaint.complainantType === 'delivery_partner' && driverIdStr) {
+                io.to(`delivery:${driverIdStr}`).emit('complaint_status_updated', {
+                    complaintId: complaint._id,
+                    status: complaint.status === 'in_review' || complaint.status === 'escalated' ? 'in_progress' : complaint.status,
+                    adminResponse: complaint.customerResponseMessage || '',
+                    respondedAt: complaint.customerResponseAt || null,
+                    updatedAt: complaint.updatedAt
+                });
+            }
+        }
+    } catch (socketErr) {
+        console.error('Failed to emit complaint status update socket event:', socketErr);
+    }
     await writeAudit(req, `complaint.status.${newStatus}`, 'AdminComplaint', complaint._id, before, complaint.toObject(), body.note);
     return complaint.toObject();
 }
@@ -212,6 +296,24 @@ export async function sendComplaintResponse(id, body = {}, req) {
     complaint.customerResponseMessage = message;
     complaint.customerResponseAt = new Date();
     await complaint.save();
+    try {
+        const { getIO } = await import('../../../../config/socket.js');
+        const io = getIO();
+        if (io) {
+            const driverIdStr = complaint.driverId?.toString();
+            if (complaint.complainantType === 'delivery_partner' && driverIdStr) {
+                io.to(`delivery:${driverIdStr}`).emit('complaint_status_updated', {
+                    complaintId: complaint._id,
+                    status: complaint.status === 'in_review' || complaint.status === 'escalated' ? 'in_progress' : complaint.status,
+                    adminResponse: complaint.customerResponseMessage,
+                    respondedAt: complaint.customerResponseAt,
+                    updatedAt: complaint.updatedAt
+                });
+            }
+        }
+    } catch (socketErr) {
+        console.error('Failed to emit complaint response socket event:', socketErr);
+    }
     await writeAudit(req, 'complaint.response.send', 'AdminComplaint', complaint._id, before, complaint.toObject(), 'Customer response sent');
     return complaint.toObject();
 }

@@ -39,6 +39,7 @@ const getDriverId = () => {
  */
 export const useDMBTracking = () => {
     const { isOnline } = useDeliveryStore();
+    console.log("🛠️ [DMBTracking Hook] Initialized. isOnline:", isOnline);
     const intervalRef = useRef(null);
 
     // ─── Get Auth Token ────────────────────────────────────────────────────────
@@ -52,7 +53,9 @@ export const useDMBTracking = () => {
     const publishLocation = useCallback(async (lat, lng, heading = 0, speed = 0) => {
         const { isOnline: currentOnlineState } = useDeliveryStore.getState();
         const deliveryId = getDriverId();
+        console.log("🛠️ [DMBTracking] publishLocation starting:", { lat, lng, heading, speed, currentOnlineState, deliveryId });
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            console.warn("🛠️ [DMBTracking] lat/lng not finite:", lat, lng);
             return;
         }
 
@@ -88,9 +91,11 @@ export const useDMBTracking = () => {
     // Reads from Zustand store (SAME source as LiveMap) — coordinates always match
     const startTracking = useCallback(() => {
         if (intervalRef.current) return; // guard: don't double-start
+        console.log("🛠️ [DMBTracking] startTracking starting 5s interval loop...");
         intervalRef.current = setInterval(() => {
             // Double-check online state inside interval (race condition safety)
             const { isOnline: stillOnline, riderLocation } = useDeliveryStore.getState();
+            console.log("🛠️ [DMBTracking] 5s Interval Tick:", { stillOnline, riderLocation });
             if (!stillOnline) return; // driver went offline — skip silently
 
             if (riderLocation && Number.isFinite(riderLocation.lat) && Number.isFinite(riderLocation.lng)) {
@@ -100,6 +105,8 @@ export const useDMBTracking = () => {
                     riderLocation.heading || 0,
                     riderLocation.speed || 0
                 );
+            } else {
+                console.warn("🛠️ [DMBTracking] riderLocation not set or invalid in store:", riderLocation);
             }
         }, GPS_UPDATE_INTERVAL);
     }, [publishLocation]);
@@ -184,6 +191,7 @@ export const useDMBTracking = () => {
                             heading: heading || 0,
                             speed: speed || 0
                         });
+                        console.log("[DMBTracking] GPS Watch Id", watchId, lat, lng)
                     },
                     (err) => {
                         console.warn('[DMBTracking] GPS Watch failed or denied:', err);
@@ -192,10 +200,12 @@ export const useDMBTracking = () => {
                         const { riderLocation } = useDeliveryStore.getState();
                         if (!riderLocation) {
                             useDeliveryStore.getState().setRiderLocation(fallbackPos);
+                            console.log("[DMBTracking] Geolocation failed/denied, falling back to Indore:", fallbackPos);
                         }
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
                 );
+                console.log("[DMBTracking] GPS Watch Id", watchId)
             } else {
                 console.warn('[DMBTracking] Geolocation not supported');
                 // Fallback to Indore (for development/testing)

@@ -1659,6 +1659,12 @@ export const userAPI = {
     userClient.get(`/food/promocodes/restaurant/${restaurantId}`),
   validatePromocode: (data) =>
     userClient.post("/food/promocodes/validate", data),
+
+  // Support Tickets
+  createSupportTicket: (data) =>
+    userClient.post("/food/user/support/ticket", data),
+  listMySupportTickets: (params = {}) =>
+    userClient.get("/food/user/support/my-tickets", { params }),
     
   /** Upload and set user profile image (multipart). Field name: file */
   uploadProfileImage: (file) => {

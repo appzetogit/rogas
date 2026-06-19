@@ -1109,6 +1109,7 @@ export const useDeliveryNotifications = () => {
   }, []);
 
   return {
+    socket: socketRef.current,
     newOrder,
     clearNewOrder,
     orderReady,

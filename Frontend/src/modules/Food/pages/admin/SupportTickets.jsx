@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { supportAPI } from "@food/api"
 import { toast } from "sonner"
+import io from "socket.io-client"
 
 export default function SupportTickets() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ status: "", type: "", source: "all" })
+  const [filters, setFilters] = useState({ status: "", type: "", source: "restaurant" })
   const [editing, setEditing] = useState({})
 
   const stats = useMemo(() => {
@@ -55,6 +56,28 @@ export default function SupportTickets() {
     return () => clearTimeout(t)
   }, [filters.status, filters.type, filters.source])
 
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"
+    const socket = io(backendUrl, {
+      transports: ["websocket", "polling"],
+      auth: { token: localStorage.getItem("admin_accessToken") || localStorage.getItem("token") }
+    })
+
+    socket.on("connect", () => {
+      console.log("Admin SupportTickets socket connected")
+    })
+
+    socket.on("new_support_ticket", (ticket) => {
+      // Prepend to tickets list
+      setTickets((prev) => [ticket, ...prev])
+      toast.success("New support ticket received!")
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [])
+
   const update = async (id, patch) => {
     const ticket = tickets.find((t) => String(t._id) === String(id))
     try {
@@ -73,38 +96,18 @@ export default function SupportTickets() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Support Tickets</h1>
-              <p className="text-sm text-slate-500 mt-1">Review and respond to user and restaurant support tickets.</p>
+              <p className="text-sm text-slate-500 mt-1">Review and respond to restaurant support tickets.</p>
             </div>
             <div className="flex gap-2">
               <select
-                value={filters.source}
-                onChange={(e) => setFilters((p) => ({ ...p, source: e.target.value }))}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="all">All Sources</option>
-                <option value="user">User</option>
-                <option value="restaurant">Restaurant</option>
-              </select>
-              <select
                 value={filters.status}
                 onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
               >
                 <option value="">All Status</option>
                 <option value="open">Open</option>
                 <option value="in-progress">In Progress</option>
                 <option value="resolved">Resolved</option>
-              </select>
-              <select
-                value={filters.type}
-                onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                disabled={filters.source === "restaurant"}
-              >
-                <option value="">All Types</option>
-                <option value="order">Order</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="other">Other</option>
               </select>
             </div>
           </div>
@@ -165,9 +168,26 @@ export default function SupportTickets() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm">{t.issueType}</div>
+                      <div className="text-sm font-semibold">{t.issueType}</div>
+                      {t.description ? <div className="text-xs text-slate-600 mt-1 max-w-xs">{t.description}</div> : null}
                       {t.subject ? <div className="text-xs text-slate-500 mt-0.5">Subject: {t.subject}</div> : null}
                       {t.orderRef ? <div className="text-xs text-slate-500 mt-0.5">Order: {t.orderRef}</div> : null}
+                      {t.orderId ? (
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Order ID: <span className="font-mono text-blue-600">#{String(t.orderId).slice(-6)}</span>
+                        </div>
+                      ) : null}
+                      {t.image ? (
+                        <div className="mt-2">
+                          <a href={t.image} target="_blank" rel="noreferrer" className="inline-block">
+                            <img
+                              src={t.image}
+                              alt="Proof"
+                              className="w-12 h-12 rounded object-cover border border-slate-200 hover:scale-105 transition-transform"
+                            />
+                          </a>
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       <select

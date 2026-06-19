@@ -9,7 +9,8 @@ const supportTicketSchema = new mongoose.Schema(
         issueType: { type: String, required: true, trim: true },
         description: { type: String, default: '', trim: true },
         status: { type: String, enum: ['open', 'in-progress', 'resolved'], default: 'open', index: true },
-        adminResponse: { type: String, default: '' }
+        adminResponse: { type: String, default: '' },
+        image: { type: String, default: '' }
     },
     { collection: 'food_support_tickets', timestamps: true }
 );

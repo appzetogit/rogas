@@ -39,11 +39,15 @@ export const handleDriverLocationUpdate = async ({ driverId, lat, lng, timestamp
 
     // 2. Update driver's last location in DB (every 10s — throttle DB writes)
     await FoodDeliveryPartner.findByIdAndUpdate(driverId, {
-        'lastLocation.coordinates': [lng, lat],
+        lastLocation: {
+            type: 'Point',
+            coordinates: [lng, lat]
+        },
         lastLat: lat,
         lastLng: lng,
         lastLocationAt: new Date(timestamp)
     });
+    console.log("driverId", driverId, "lat", lat, "lng", lng, "timestamp", timestamp)
     // 3. Get driver's active orders to broadcast to customer rooms
     const activeOrders = await FoodOrder.find({
         'dispatch.deliveryPartnerId': driverId,

@@ -98,6 +98,7 @@ const OrderCard = memo(function OrderCard({
   onTrackLive,
   onRate,
   onTip,
+  onRaiseComplaint,
 }) {
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
   const mealName = order.meals?.[0]?.name || "Meal";
@@ -136,9 +137,20 @@ const OrderCard = memo(function OrderCard({
         <p className="text-[12px] font-bold text-[#5c6e68] tracking-wider uppercase font-sans">
           {dateStr} · {slotStr}
         </p>
-        <span className={`font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans text-white ${badgeColor}`}>
-          {badgeLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          {isPast && onRaiseComplaint && (
+            <button
+              onClick={() => onRaiseComplaint(order)}
+              className="text-red-500 hover:text-red-700 active:scale-90 transition-transform flex items-center p-0.5 rounded-full hover:bg-red-50"
+              title="Raise Complaint"
+            >
+              <span className="material-symbols-outlined text-[18px]">report</span>
+            </button>
+          )}
+          <span className={`font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans text-white ${badgeColor}`}>
+            {badgeLabel}
+          </span>
+        </div>
       </div>
 
       {/* Meal Name */}
@@ -223,7 +235,7 @@ const OrderCard = memo(function OrderCard({
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotificationToast, socket }) {
+export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToProfile, onShowNotificationToast, socket }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [orders, setOrders] = useState(() => getCached("upcoming") ?? []);
   const [loading, setLoading] = useState(() => !getCached("upcoming"));
@@ -639,6 +651,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onGoToProfile, onShowNotif
                 onTrackLive={onTrackLive}
                 onRate={openRatingModal}
                 onTip={openTipModal}
+                onRaiseComplaint={onRaiseComplaint}
               />
             ))}
           </section>

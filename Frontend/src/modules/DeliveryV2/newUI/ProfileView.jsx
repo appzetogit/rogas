@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2 } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 import { useTranslation } from "../../../contexts/LanguageContext";
@@ -8,6 +9,7 @@ const ProfileView = ({
   onViewShifts,
   onLogout
 }) => {
+  const navigate = useNavigate();
   const { lang, changeLanguage, t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -317,9 +319,12 @@ const ProfileView = ({
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           
           {
-    /* License */
-  }
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group">
+            /* License */
+          }
+          <div 
+            onClick={() => navigate("/food/delivery/profile/documents")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
                 <FileText className="w-5 h-5" />
@@ -338,9 +343,12 @@ const ProfileView = ({
           </div>
 
           {
-    /* National ID */
-  }
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group">
+            /* National ID */
+          }
+          <div 
+            onClick={() => navigate("/food/delivery/profile/documents")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-[#00604c]">
                 <CheckCircle2 className="w-5 h-5" />
@@ -359,9 +367,12 @@ const ProfileView = ({
           </div>
 
           {
-    /* Registration */
-  }
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group">
+            /* Registration */
+          }
+          <div 
+            onClick={() => navigate("/food/delivery/profile/documents")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
                 <ShieldAlert className="w-5 h-5" />
@@ -496,7 +507,10 @@ const ProfileView = ({
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
 
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group">
+          <div 
+            onClick={() => navigate("/food/delivery/profile/bank")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <span className="text-sm">🏦</span>
               <div>
@@ -510,8 +524,8 @@ const ProfileView = ({
       </section>
 
       {
-    /* General Settings */
-  }
+        /* General Settings */
+      }
       <section className="space-y-2">
         <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">SETTINGS</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
@@ -534,7 +548,10 @@ const ProfileView = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group">
+          <div 
+            onClick={() => navigate("/food/delivery/notifications")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <BellRing className="w-4.5 h-4.5 text-[#5d5f5b]" />
               <p className="text-xs font-bold text-gray-900">Notifications</p>
@@ -542,7 +559,10 @@ const ProfileView = ({
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
 
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group">
+          <div 
+            onClick={() => navigate("/food/delivery/help/tickets")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <HelpCircle className="w-4.5 h-4.5 text-[#5d5f5b]" />
               <p className="text-xs font-bold text-gray-900">Help &amp; Support</p>

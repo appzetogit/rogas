@@ -20,8 +20,9 @@ const refundSplitSchema = new mongoose.Schema({
 
 const complaintSchema = new mongoose.Schema({
     complaintRef: { type: String, unique: true, index: true },
-    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodOrder', required: true, index: true },
-    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodUser', required: true, index: true },
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodOrder', default: null, index: true },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodUser', default: null, index: true },
+    complainantType: { type: String, enum: ['customer', 'delivery_partner'], default: 'customer', index: true },
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant', default: null },
     driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
     subject: { type: String, trim: true, default: '' },
@@ -60,6 +61,7 @@ const complaintSchema = new mongoose.Schema({
     // Internal note
     internalNote: { type: String, default: '' },
     city: { type: String, default: '' },
+    legacyTicketId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
     resolvedAt: { type: Date, default: null }
 }, {
     collection: 'admin_complaints',
