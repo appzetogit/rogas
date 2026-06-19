@@ -439,128 +439,75 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     deliveryAPI.updateOnlineStatus(isOnline).catch(() => {});
   }, [isOnline]);
 
-  // 3. Location logic (Smart Frequency Tracking)
+  // 3. Location logic — geofencing, ETA, rolling speed
+  // NOTE: GPS watchPosition is owned exclusively by useDMBTracking to prevent
+  // dual-listener race conditions that caused alternating correct/wrong location
+  // on the admin map. This effect reads riderLocation from Zustand (the single source of truth).
   useEffect(() => {
-    if (!isOnline) {
-      return;
-    }
-    
-    const watchId = navigator.geolocation.watchPosition((pos) => {
-      // CRITICAL: In Simulation Mode, we disable actual GPS to prevent overwriting our test position
-      if (isSimMode) return;
-      
-      const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
-      const now = Date.now();
-      
-      const currentRiderPos = { lat, lng, heading: heading || 0 };
-      setRiderLocation(currentRiderPos);
-      
-      // Calculate Rolling Average Speed for Smart ETA
-      if (speed && speed > 0) {
-        rollingSpeedRef.current = [...rollingSpeedRef.current.slice(-4), speed]; // keep last 5 points
-      }
+    if (!isOnline || isSimMode) return;
 
-      const avgSpeed = rollingSpeedRef.current.length > 0 
-        ? rollingSpeedRef.current.reduce((a, b) => a + b, 0) / rollingSpeedRef.current.length 
-        : speed || 0;
+    // Subscribe to Zustand store changes
+    const unsub = useDeliveryStore.subscribe(
+      (state) => state.riderLocation,
+      (riderLoc) => {
+        if (!riderLoc || !Number.isFinite(riderLoc.lat) || !Number.isFinite(riderLoc.lng)) return;
 
-      // Phase 11: Geo-fencing Auto-arrival (within 100m) - Disabled in DEV so UI steps can be tested manually
-      if (!isSimMode && !import.meta.env.DEV && distanceToTarget && distanceToTarget <= 100 && !lastAutoArrivalRef.current[tripStatus]) {
-        if (tripStatus === 'PICKING_UP') {
-          lastAutoArrivalRef.current[tripStatus] = true;
-          reachPickup().catch(() => { lastAutoArrivalRef.current[tripStatus] = false; });
-        } else if (tripStatus === 'PICKED_UP') {
-          lastAutoArrivalRef.current[tripStatus] = true;
-          reachDrop().catch(() => { lastAutoArrivalRef.current[tripStatus] = false; });
+        const { lat, lng, heading = 0, speed = 0 } = riderLoc;
+        const now = Date.now();
+
+        // Rolling average speed for ETA
+        if (speed > 0) {
+          rollingSpeedRef.current = [...rollingSpeedRef.current.slice(-4), speed];
         }
-      }
 
-      if (distanceToTarget > 200) {
-        lastAutoArrivalRef.current[tripStatus] = false;
-      }
-
-      // Check threshold for Sync (distance-based or 7s time-based)
-      const distMoved = lastCoordRef.current 
-        ? getHaversineDistance(lat, lng, lastCoordRef.current.lat, lastCoordRef.current.lng) 
-        : 1000;
-
-      if (distMoved >= 25 || (now - lastLocationSentAt.current >= 7000)) {
-        lastLocationSentAt.current = now;
+        // Track last known coordinates for heartbeat
         lastCoordRef.current = { lat, lng };
-        
-        const payload = { 
-          lat, 
-          lng, 
-          heading: heading || 0,
-          speed: speed || 0,
-          accuracy: pos.coords.accuracy,
-          orderId: activeOrder?.orderId || activeOrder?._id,
-          status: 'on_the_way',
-          polyline: activePolyline
-        };
+        lastLocationSentAt.current = now;
 
-        deliveryAPI.updateLocation(lat, lng, true, { 
-          heading: heading || 0,
-          speed: speed || 0,
-          accuracy: pos.coords.accuracy 
-        }).catch(() => {});
-
-        // Write to Firebase Realtime DB delivery_boys/<deliveryId>
-        // useDMBTracking also does this every 5s from the same riderLocation store.
-        // This write fires on movement (more responsive), useDMBTracking covers idle periods.
-        if (deliveryId) {
-          writeDeliveryLocation({
-            deliveryId,
-            lat,
-            lng,
-            heading: heading || 0,
-            speed: speed || 0,
-            isOnline: true,
-            activeOrderId: payload.orderId || null,
-            timestamp: now
-          }).catch(() => {});
+        // Geofencing auto-arrival (within 100m) — disabled in DEV for manual UI testing
+        if (!import.meta.env.DEV && distanceToTarget && distanceToTarget <= 100 && !lastAutoArrivalRef.current[tripStatus]) {
+          if (tripStatus === 'PICKING_UP') {
+            lastAutoArrivalRef.current[tripStatus] = true;
+            reachPickup().catch(() => { lastAutoArrivalRef.current[tripStatus] = false; });
+          } else if (tripStatus === 'PICKED_UP') {
+            lastAutoArrivalRef.current[tripStatus] = true;
+            reachDrop().catch(() => { lastAutoArrivalRef.current[tripStatus] = false; });
+          }
         }
 
-        if (payload.orderId) emitLocation(payload);
+        if (distanceToTarget > 200) {
+          lastAutoArrivalRef.current[tripStatus] = false;
+        }
 
-        if (payload.orderId) {
-          writeOrderTracking(payload.orderId, {
-            lat,
-            lng,
-            heading: heading || 0,
+        // Emit socket location update (for order tracking / customer map)
+        const orderId = activeOrder?.orderId || activeOrder?._id;
+        const payload = { lat, lng, heading, speed, orderId, status: 'on_the_way', polyline: activePolyline };
+        if (orderId) {
+          emitLocation(payload);
+          writeOrderTracking(orderId, {
+            lat, lng, heading,
             polyline: activePolyline,
             status: tripStatus,
             eta: eta
           }).catch(() => {});
         }
       }
-    }, () => {
-      // IF GPS FAILS/DENIED: Use Indore as a fallback for testing
-      console.warn('GPS Denied - Falling back to Indore for testing');
-      const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0 };
-      if (!riderLocation) {
-        setRiderLocation(fallbackPos);
-      }
-      toast.error('GPS Blocked!', { description: 'Showing test location in Indore.' });
-    }, { 
-      enableHighAccuracy: true,
-      maximumAge: 3000,
-      timeout: 10000
-    });
-    
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [isOnline, setRiderLocation, isSimMode]);
+    );
 
-  // 3.5. Background Ping / Heartbeat
-  // If watchPosition stops firing (e.g. app in background or device stationary),
-  // this ensures we ping the backend periodically. This keeps the token fresh (via 401 interceptor)
-  // and keeps the Delivery Partner "online" in the backend.
+    return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, isSimMode, distanceToTarget, tripStatus, activeOrder, activePolyline, eta]);
+
+  // 3.5. Background Ping / Heartbeat — HTTP only
+  // If the 5s DMBTracking interval misses a cycle (app backgrounded, device idle),
+  // this ensures the backend stays updated. Firebase is handled exclusively by useDMBTracking
+  // to prevent racing writes from multiple sources.
   useEffect(() => {
     if (!isOnline) return;
     
     const pingInterval = setInterval(() => {
       const now = Date.now();
-      // If no natural GPS update happened in the last 15 seconds, force a ping
+      // If no GPS update happened in the last 15 seconds, force an HTTP ping
       if (now - lastLocationSentAt.current >= 15000 && lastCoordRef.current) {
         lastLocationSentAt.current = now;
         deliveryAPI.updateLocation(
@@ -569,22 +516,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           true, 
           { heading: 0, speed: 0, accuracy: null }
         ).catch(() => {});
-
-        // Also write to Firebase so admin map stays updated
-        if (deliveryId) {
-          writeDeliveryLocation({
-            deliveryId,
-            lat: lastCoordRef.current.lat,
-            lng: lastCoordRef.current.lng,
-            heading: 0,
-            speed: 0,
-            isOnline: true,
-            activeOrderId: activeOrder?.orderId || activeOrder?._id || null,
-            timestamp: now
-          }).catch(() => {});
-        }
+        // NOTE: Firebase write is NOT done here — useDMBTracking's 5s interval handles it.
+        // Duplicate Firebase writes from this heartbeat were causing the admin map
+        // to alternate between current and stale location.
       }
-    }, 10000); // Check every 10 seconds
+    }, 10000);
     
     return () => clearInterval(pingInterval);
   }, [isOnline]);
