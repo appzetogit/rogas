@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { restaurantAPI } from '../../../services/api/index';
+import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 const mapContainerStyle = {
@@ -359,6 +360,157 @@ export default function ProfileSettings({
 }) {
   const [subView, setSubView] = useState('profile');
 
+  // ── Help & Support state ──────────────────────────────────────────────────
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketLoading, setTicketLoading] = useState(false);
+  // Create-ticket form
+  const [newCategory, setNewCategory] = useState('orders');
+  const [newSubject, setNewSubject] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [attachPreviews, setAttachPreviews] = useState([]);
+  const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef(null);
+  // Real-time socket for complaint updates
+  const { socket } = useRestaurantNotifications();
+
+  const SUPPORT_CATEGORIES = [
+    { value: 'orders',     label: '🛒 Orders' },
+    { value: 'payments',   label: '💳 Payments' },
+    { value: 'menu',       label: '🍽️ Menu' },
+    { value: 'restaurant', label: '🏪 Restaurant Profile' },
+    { value: 'technical',  label: '⚙️ Technical Issue' },
+    { value: 'other',      label: '💬 Other' },
+  ];
+
+  const STATUS_CFG = {
+    open:       { label: 'Open',       color: '#dc2626', bg: '#fef2f2' },
+    in_review:  { label: 'In Review',  color: '#d97706', bg: '#fffbeb' },
+    escalated:  { label: 'Escalated',  color: '#9333ea', bg: '#faf5ff' },
+    resolved:   { label: 'Resolved',   color: '#16a34a', bg: '#f0fdf4' },
+    closed:     { label: 'Closed',     color: '#6b7280', bg: '#f3f4f6' },
+  };
+
+  const loadSupportTickets = useCallback(async () => {
+    setSupportLoading(true);
+    try {
+      const res = await restaurantAPI.getSupportTickets();
+      const list = res?.data?.data?.tickets || res?.data?.data || [];
+      setSupportTickets(Array.isArray(list) ? list : []);
+    } catch (e) {
+      triggerToast('Failed to load support tickets.');
+    } finally {
+      setSupportLoading(false);
+    }
+  }, []);
+
+  const loadTicketDetail = useCallback(async (id) => {
+    setTicketLoading(true);
+    try {
+      const res = await restaurantAPI.getSupportTicketById(id);
+      setSelectedTicket(res?.data?.data?.complaint || res?.data?.data || null);
+    } catch (e) {
+      triggerToast('Failed to load ticket detail.');
+    } finally {
+      setTicketLoading(false);
+    }
+  }, []);
+
+  // Real-time ticket updates via socket
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (payload) => {
+      // Update selectedTicket if it's the one being updated
+      setSelectedTicket(prev => {
+        if (prev && (String(prev._id) === String(payload._id || payload.complaintId))) {
+          return { ...prev, ...payload };
+        }
+        return prev;
+      });
+      // Also refresh list badge
+      setSupportTickets(prev => prev.map(t =>
+        String(t._id) === String(payload._id || payload.complaintId)
+          ? { ...t, ...(payload.status ? { status: payload.status } : {}) }
+          : t
+      ));
+    };
+    socket.on('complaint_status_updated', handler);
+    return () => socket.off('complaint_status_updated', handler);
+  }, [socket]);
+
+  const handleAttachFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const newFiles = [...attachments, ...files].slice(0, 5);
+    setAttachments(newFiles);
+    Promise.all(newFiles.map(f => new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = ev => res(ev.target.result);
+      reader.readAsDataURL(f);
+    }))).then(setAttachPreviews);
+  };
+
+  const removeAttachment = (idx) => {
+    const newFiles = attachments.filter((_, i) => i !== idx);
+    setAttachments(newFiles);
+    Promise.all(newFiles.map(f => new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = ev => res(ev.target.result);
+      reader.readAsDataURL(f);
+    }))).then(setAttachPreviews);
+  };
+
+  const handleCreateTicket = async () => {
+    if (!newSubject.trim()) { triggerToast('Please enter a subject.'); return; }
+    if (!newDesc.trim()) { triggerToast('Please enter a description.'); return; }
+    setCreating(true);
+    try {
+      // Upload attachments first if any
+      let proofPhotos = [];
+      if (attachments.length > 0) {
+        for (const file of attachments) {
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            const upRes = await restaurantAPI.uploadProfileImage(file);
+            const url = upRes?.data?.data?.url || upRes?.data?.url;
+            if (url) proofPhotos.push(url);
+          } catch {}
+        }
+      }
+
+      const body = new FormData();
+      body.append('category', newCategory);
+      body.append('subject', newSubject.trim());
+      body.append('message', newDesc.trim());
+      if (proofPhotos.length > 0) {
+        body.append('proofPhotos', JSON.stringify(proofPhotos));
+      }
+
+      const res = await restaurantAPI.createSupportTicket({ 
+        category: newCategory, 
+        subject: newSubject.trim(), 
+        message: newDesc.trim(), 
+        proofPhotos 
+      });
+
+      triggerToast('✅ Ticket submitted successfully!');
+      setNewSubject('');
+      setNewDesc('');
+      setNewCategory('orders');
+      setAttachments([]);
+      setAttachPreviews([]);
+      await loadSupportTickets();
+      setSubView('support');
+    } catch (e) {
+      triggerToast(e?.response?.data?.message || 'Failed to submit ticket.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   // Vacation form states
   const [vacStart, setVacStart] = useState('2026-06-15');
   const [vacEnd, setVacEnd] = useState('2026-06-22');
@@ -551,6 +703,26 @@ export default function ProfileSettings({
                   </span>
                 </button>
             )}
+            </div>
+          </div>
+
+          {/* Help & Support section */}
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Help & Support</h3>
+            <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
+              <button
+                onClick={() => { loadSupportTickets(); setSubView('support'); }}
+                className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-primary">support_agent</span>
+                  <div className="text-left">
+                    <span className="font-bold text-[13px] text-primary block">Help & Support</span>
+                    <span className="text-[11px] text-outline">Submit tickets & track status</span>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-primary group-active:translate-x-0.5 transition-transform text-[18px]">chevron_right</span>
+              </button>
             </div>
           </div>
 
@@ -864,6 +1036,326 @@ export default function ProfileSettings({
           </div>
         </div>
       }
+
+      {/* ── Help & Support: Ticket List ───────────────────────────────────── */}
+      {subView === 'support' && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+            <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2 className="text-[16px] font-semibold">Help & Support</h2>
+            <button
+              onClick={() => setSubView('support-create')}
+              className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-[12px] font-bold active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              New
+            </button>
+          </div>
+
+          <div className="pt-6 space-y-3">
+            {/* Quick-action card */}
+            <button
+              onClick={() => setSubView('support-create')}
+              className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-2xl shadow-md active:scale-95 transition-all"
+            >
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[22px]">add_circle</span>
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-[14px]">Raise New Ticket</p>
+                <p className="text-[12px] opacity-80">Get help from our support team</p>
+              </div>
+              <span className="material-symbols-outlined ml-auto">arrow_forward</span>
+            </button>
+
+            {/* Ticket list */}
+            {supportLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : supportTickets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <span className="material-symbols-outlined text-[48px] text-outline/40 mb-3">inbox</span>
+                <p className="font-bold text-[14px] text-on-surface-variant">No tickets yet</p>
+                <p className="text-[12px] text-outline mt-1">Raise a ticket to get support from our team</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Your Tickets ({supportTickets.length})</p>
+                {supportTickets.map((ticket) => {
+                  const scfg = STATUS_CFG[ticket.status] || STATUS_CFG.open;
+                  const catLabel = {
+                    orders: 'Orders', payments: 'Payments', menu: 'Menu',
+                    restaurant: 'Restaurant Profile', technical: 'Technical', other: 'Other'
+                  }[ticket.category] || ticket.category;
+                  return (
+                    <button
+                      key={ticket._id}
+                      onClick={() => { setSelectedTicket(null); loadTicketDetail(ticket._id); setSubView('support-detail'); }}
+                      className="w-full bg-white rounded-xl border border-outline-variant/20 shadow-xs p-4 text-left flex items-start gap-3 active:scale-[0.98] transition-all"
+                    >
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: scfg.bg }}>
+                        <span className="material-symbols-outlined text-[18px]" style={{ color: scfg.color }}>confirmation_number</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-[13px] text-on-surface truncate">{ticket.subject || 'Support Ticket'}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0" style={{ background: scfg.bg, color: scfg.color }}>{scfg.label}</span>
+                        </div>
+                        <p className="text-[11px] text-outline mt-0.5">{catLabel} · {ticket.complaintRef || `#${String(ticket._id).slice(-6).toUpperCase()}`}</p>
+                        <p className="text-[11px] text-outline/70 mt-0.5">{new Date(ticket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                      </div>
+                      <span className="material-symbols-outlined text-outline text-[18px] shrink-0 mt-1">chevron_right</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Help & Support: Create Ticket ─────────────────────────────────── */}
+      {subView === 'support-create' && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+            <button onClick={() => setSubView('support')} className="flex items-center active:scale-95 transition-transform">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2 className="text-[16px] font-semibold">Raise New Ticket</h2>
+            <div className="w-8" />
+          </div>
+
+          <div className="pt-6 space-y-4">
+            {/* Category */}
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Issue Category</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {SUPPORT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setNewCategory(cat.value)}
+                    className={`p-3 rounded-xl border text-left text-[12px] font-bold transition-all active:scale-95 ${
+                      newCategory === cat.value
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-outline-variant/30 bg-white text-on-surface-variant'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Subject */}
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Subject</h2>
+              <div className="bg-white rounded-xl border border-outline-variant/25 overflow-hidden">
+                <input
+                  type="text"
+                  value={newSubject}
+                  onChange={e => setNewSubject(e.target.value)}
+                  placeholder="Brief description of the issue"
+                  maxLength={120}
+                  className="w-full px-4 py-3 text-[13px] text-on-surface bg-transparent focus:outline-none"
+                />
+              </div>
+            </section>
+
+            {/* Description */}
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Detailed Description</h2>
+              <div className="bg-white rounded-xl border border-outline-variant/25 overflow-hidden">
+                <textarea
+                  value={newDesc}
+                  onChange={e => setNewDesc(e.target.value)}
+                  placeholder="Describe the issue in detail so we can help you faster..."
+                  rows={5}
+                  className="w-full px-4 py-3 text-[13px] text-on-surface bg-transparent focus:outline-none resize-none"
+                />
+              </div>
+            </section>
+
+            {/* Attachments */}
+            <section className="space-y-2">
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Screenshots / Attachments (optional)</h2>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-outline-variant/40 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer active:bg-surface-container/10 transition-colors bg-white"
+              >
+                <span className="material-symbols-outlined text-[32px] text-outline">add_photo_alternate</span>
+                <p className="text-[12px] text-outline font-medium">Tap to add screenshots (max 5)</p>
+                <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleAttachFiles} />
+              </div>
+              {attachPreviews.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-1">
+                  {attachPreviews.map((src, i) => (
+                    <div key={i} className="relative w-16 h-16">
+                      <img src={src} className="w-16 h-16 rounded-xl object-cover border border-outline-variant/20" alt="attach" />
+                      <button
+                        onClick={() => removeAttachment(i)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center shadow"
+                      >
+                        <span className="material-symbols-outlined text-[12px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Submit */}
+            <button
+              onClick={handleCreateTicket}
+              disabled={creating || !newSubject.trim() || !newDesc.trim()}
+              className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {creating ? (
+                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
+              ) : (
+                <><span className="material-symbols-outlined">send</span> Submit Ticket</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Help & Support: Ticket Detail ─────────────────────────────────── */}
+      {subView === 'support-detail' && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+            <button onClick={() => { setSelectedTicket(null); loadSupportTickets(); setSubView('support'); }} className="flex items-center active:scale-95 transition-transform">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2 className="text-[16px] font-semibold">Ticket Detail</h2>
+            <div className="w-8" />
+          </div>
+
+          <div className="pt-6">
+            {ticketLoading && !selectedTicket ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : !selectedTicket ? (
+              <div className="flex flex-col items-center py-16 text-center">
+                <span className="material-symbols-outlined text-[40px] text-outline/40 mb-3">error_outline</span>
+                <p className="font-bold text-on-surface-variant">Ticket not found</p>
+              </div>
+            ) : (() => {
+              const t = selectedTicket;
+              const scfg = STATUS_CFG[t.status] || STATUS_CFG.open;
+              const catLabel = {
+                orders: 'Orders', payments: 'Payments', menu: 'Menu',
+                restaurant: 'Restaurant Profile', technical: 'Technical', other: 'Other'
+              }[t.category] || t.category;
+              return (
+                <div className="space-y-4">
+                  {/* Ticket header card */}
+                  <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: scfg.bg }}>
+                        <span className="material-symbols-outlined text-[20px]" style={{ color: scfg.color }}>confirmation_number</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold" style={{ background: scfg.bg, color: scfg.color }}>{scfg.label}</span>
+                          <span className="text-[11px] text-outline font-mono">{t.complaintRef || `#${String(t._id).slice(-6).toUpperCase()}`}</span>
+                        </div>
+                        <h3 className="font-bold text-[14px] text-on-surface mt-1">{t.subject}</h3>
+                        <p className="text-[11px] text-outline mt-0.5">{catLabel} · {new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Your message */}
+                  <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4 space-y-2">
+                    <p className="text-[11px] font-bold text-outline uppercase tracking-wider">Your Message</p>
+                    <p className="text-[13px] text-on-surface leading-relaxed">{t.message}</p>
+                    {t.proofPhotos?.length > 0 && (
+                      <div className="pt-2">
+                        <p className="text-[10px] font-bold text-outline mb-2">Attachments ({t.proofPhotos.length})</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {t.proofPhotos.map((url, i) => (
+                            <a key={i} href={url} target="_blank" rel="noreferrer"
+                              className="w-16 h-16 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container shrink-0 hover:opacity-85 transition"
+                            >
+                              <img src={url} alt={`attach-${i}`} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin response history */}
+                  {(t.responses?.length > 0 || t.customerResponseSent || t.customerResponseMessage) ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Admin Responses</p>
+                      {/* Legacy single response */}
+                      {t.customerResponseSent && t.customerResponseMessage && (
+                        <div className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary text-[16px]">support_agent</span>
+                            <span className="text-[11px] font-bold text-primary">Support Team</span>
+                            <span className="text-[10px] text-outline ml-auto">{t.customerResponseAt ? new Date(t.customerResponseAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
+                          </div>
+                          <p className="text-[13px] text-on-surface leading-relaxed">{t.customerResponseMessage}</p>
+                        </div>
+                      )}
+                      {/* Array of responses */}
+                      {(t.responses || []).map((r, i) => (
+                        <div key={i} className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary text-[16px]">support_agent</span>
+                            <span className="text-[11px] font-bold text-primary">{r.responderName || 'Support Team'}</span>
+                            <span className="text-[10px] text-outline ml-auto">{r.at ? new Date(r.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
+                          </div>
+                          <p className="text-[13px] text-on-surface leading-relaxed">{r.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-surface-container/50 rounded-2xl border border-outline-variant/15 p-4 flex items-center gap-3">
+                      <span className="material-symbols-outlined text-outline text-[22px]">schedule</span>
+                      <div>
+                        <p className="font-bold text-[13px] text-on-surface-variant">Awaiting Response</p>
+                        <p className="text-[11px] text-outline mt-0.5">Our team will respond within 24 hours</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status trail */}
+                  {t.statusTrail?.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4 space-y-3">
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider">Activity Trail</p>
+                      {t.statusTrail.map((trail, i) => {
+                        const tcfg = STATUS_CFG[trail.status] || STATUS_CFG.open;
+                        return (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: tcfg.bg }}>
+                              <div className="w-2 h-2 rounded-full" style={{ background: tcfg.color }} />
+                            </div>
+                            <div>
+                              <span className="text-[11px] font-bold" style={{ color: tcfg.color }}>{tcfg.label}</span>
+                              {trail.note && <p className="text-[11px] text-outline mt-0.5">{trail.note}</p>}
+                              <p className="text-[10px] text-outline/60">{trail.at ? new Date(trail.at).toLocaleString('en-IN') : ''}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Persistent success message toast overlay */}
       <div

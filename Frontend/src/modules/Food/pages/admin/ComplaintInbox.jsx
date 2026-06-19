@@ -15,7 +15,11 @@ const STATUS_CONFIG = {
 const CATEGORY_LABELS = {
   wrong_item: "Wrong Item", missing_item: "Missing Item", late_delivery: "Late Delivery",
   delivery_failed: "Failed Delivery", quality: "Quality Issue", payment: "Payment Issue",
-  driver_behaviour: "Driver Behaviour", other: "Other",
+  driver_behaviour: "Driver Behaviour",
+  // Vendor categories
+  orders: "Orders", payments: "Payments", menu: "Menu",
+  restaurant: "Restaurant Profile", technical: "Technical Issue",
+  other: "Other",
 };
 
 function StatusBadge({ status }) {
@@ -36,6 +40,7 @@ export default function ComplaintInbox() {
   const [activeTab, setActiveTab] = useState("open");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState(""); // '' = all, 'customer', 'vendor', 'delivery_partner'
   const limit = 20;
 
   const load = useCallback(async () => {
@@ -43,6 +48,7 @@ export default function ComplaintInbox() {
     try {
       const params = { status: activeTab !== "all" ? activeTab : undefined, page, limit };
       if (search.trim()) params.search = search.trim();
+      if (sourceFilter) params.complainantType = sourceFilter;
       const res = await adminClient.get("/food/admin/complaints", { params });
       if (res?.data?.success) setData(res.data.data);
     } catch (e) {
@@ -50,7 +56,7 @@ export default function ComplaintInbox() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, search, page]);
+  }, [activeTab, search, page, sourceFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -129,14 +135,29 @@ export default function ComplaintInbox() {
               <p className="text-sm text-gray-500">Customer & vendor complaint management</p>
             </div>
           </div>
-          <div className="relative min-w-[280px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              placeholder="Search ref, subject..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#F5F5F0] border border-gray-300 text-sm text-[#2B2B2B] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F7A63]"
-            />
+          <div className="flex gap-3 flex-wrap items-center">
+            {/* Source Filter */}
+            <select
+              value={sourceFilter}
+              onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+              className="pl-3 pr-8 py-2 rounded-xl bg-[#F5F5F0] border border-gray-300 text-sm text-[#2B2B2B] focus:outline-none focus:ring-2 focus:ring-[#1F7A63] appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'6\'%3E%3Cpath d=\'M0 0l5 6 5-6z\' fill=\'%236b7280\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            >
+              <option value="">All Sources</option>
+              <option value="customer">Customer</option>
+              <option value="vendor">Vendor</option>
+              <option value="delivery_partner">Rider</option>
+            </select>
+            {/* Search */}
+            <div className="relative min-w-[240px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                placeholder="Search ref, subject..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#F5F5F0] border border-gray-300 text-sm text-[#2B2B2B] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F7A63]"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -209,6 +230,11 @@ export default function ComplaintInbox() {
                             <span className="font-semibold text-gray-800">{c.driverId?.name || "Unknown"}</span>
                             <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider w-max mt-0.5">Rider</span>
                           </div>
+                        ) : c.complainantType === "vendor" ? (
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-gray-800">{c.vendorId?.restaurantName || c.vendorId?.ownerName || "Unknown Vendor"}</span>
+                            <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider w-max mt-0.5">Vendor</span>
+                          </div>
                         ) : (
                           <div className="flex flex-col">
                             <span className="font-semibold text-gray-800">{c.customerId?.name || "Unknown"}</span>
@@ -221,6 +247,11 @@ export default function ComplaintInbox() {
                           <div className="flex flex-col">
                             <span>{c.driverId?.phone || "-"}</span>
                             {c.driverId?._id && <span className="text-[10px] text-gray-400 font-mono">ID: {String(c.driverId._id).slice(-6).toUpperCase()}</span>}
+                          </div>
+                        ) : c.complainantType === "vendor" ? (
+                          <div className="flex flex-col">
+                            <span>{c.vendorId?.primaryContactNumber || c.vendorId?.ownerPhone || "-"}</span>
+                            {c.vendorId?._id && <span className="text-[10px] text-gray-400 font-mono">ID: {String(c.vendorId._id).slice(-6).toUpperCase()}</span>}
                           </div>
                         ) : (
                           c.customerId?.phone || "-"

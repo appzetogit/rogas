@@ -89,6 +89,7 @@ export async function listComplaints(query = {}) {
     const filter = {};
     if (query.status) filter.status = String(query.status).trim();
     if (query.city) filter.city = String(query.city).trim();
+    if (query.complainantType) filter.complainantType = String(query.complainantType).trim();
     if (query.vendorId && objectIdOrNull(query.vendorId)) filter.vendorId = objectIdOrNull(query.vendorId);
     if (query.driverId && objectIdOrNull(query.driverId)) filter.driverId = objectIdOrNull(query.driverId);
     if (query.customerId && objectIdOrNull(query.customerId)) filter.customerId = objectIdOrNull(query.customerId);
@@ -107,7 +108,7 @@ export async function listComplaints(query = {}) {
     const [complaints, total] = await Promise.all([
         AdminComplaint.find(filter)
             .populate('customerId', 'name phone email')
-            .populate('vendorId', 'restaurantName')
+            .populate('vendorId', 'restaurantName ownerName ownerPhone primaryContactNumber')
             .populate('driverId', 'name phone')
             .populate('assignedAgentId', 'name email adminRole')
             .sort({ createdAt: -1 })
@@ -127,7 +128,7 @@ export async function getComplaintById(id) {
     if (!objectIdOrNull(id)) throw new ValidationError('Invalid complaint id');
     const complaint = await AdminComplaint.findById(id)
         .populate('customerId', 'name phone email walletBalance subscriptionStatus')
-        .populate('vendorId', 'restaurantName logo city')
+        .populate('vendorId', 'restaurantName ownerName ownerPhone primaryContactNumber logo city')
         .populate('driverId', 'name phone vehicleType')
         .populate('orderId', 'orderId orderStatus totalAmount createdAt deliveryAddress meals')
         .populate('assignedAgentId', 'name email adminRole')
@@ -206,6 +207,16 @@ export async function updateComplaintStatus(id, body = {}, req) {
                 io.to(`delivery:${driverIdStr}`).emit('complaint_status_updated', {
                     complaintId: complaint._id,
                     status: complaint.status === 'in_review' || complaint.status === 'escalated' ? 'in_progress' : complaint.status,
+                    adminResponse: complaint.customerResponseMessage || '',
+                    respondedAt: complaint.customerResponseAt || null,
+                    updatedAt: complaint.updatedAt
+                });
+            }
+            const vendorIdStr = complaint.vendorId?.toString();
+            if (complaint.complainantType === 'vendor' && vendorIdStr) {
+                io.to(`restaurant:${vendorIdStr}`).emit('complaint_status_updated', {
+                    complaintId: complaint._id,
+                    status: complaint.status,
                     adminResponse: complaint.customerResponseMessage || '',
                     respondedAt: complaint.customerResponseAt || null,
                     updatedAt: complaint.updatedAt
@@ -305,6 +316,16 @@ export async function sendComplaintResponse(id, body = {}, req) {
                 io.to(`delivery:${driverIdStr}`).emit('complaint_status_updated', {
                     complaintId: complaint._id,
                     status: complaint.status === 'in_review' || complaint.status === 'escalated' ? 'in_progress' : complaint.status,
+                    adminResponse: complaint.customerResponseMessage,
+                    respondedAt: complaint.customerResponseAt,
+                    updatedAt: complaint.updatedAt
+                });
+            }
+            const vendorIdStr = complaint.vendorId?.toString();
+            if (complaint.complainantType === 'vendor' && vendorIdStr) {
+                io.to(`restaurant:${vendorIdStr}`).emit('complaint_status_updated', {
+                    complaintId: complaint._id,
+                    status: complaint.status,
                     adminResponse: complaint.customerResponseMessage,
                     respondedAt: complaint.customerResponseAt,
                     updatedAt: complaint.updatedAt

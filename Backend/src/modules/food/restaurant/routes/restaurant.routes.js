@@ -18,7 +18,8 @@ import {
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
-    listRestaurantSupportTicketsController
+    listRestaurantSupportTicketsController,
+    getRestaurantSupportTicketByIdController
 } from '../controllers/supportTicket.controller.js';
 import {
     createWithdrawalRequestController,
@@ -212,6 +213,7 @@ router.post('/orders/:orderId/resend-notification', authMiddleware, requireResta
 router.get('/complaints', authMiddleware, requireRestaurant, getRestaurantComplaintsController);
 router.post('/support/tickets', authMiddleware, requireRestaurant, createRestaurantSupportTicketController);
 router.get('/support/tickets', authMiddleware, requireRestaurant, listRestaurantSupportTicketsController);
+router.get('/support/tickets/:id', authMiddleware, requireRestaurant, getRestaurantSupportTicketByIdController);
 
 // Download menu PDF (restaurant can download their own, admin can download any)
 router.get('/download-menu-pdf/:id', authMiddleware, (req, res, next) => {

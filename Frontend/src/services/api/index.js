@@ -1048,6 +1048,8 @@ export const restaurantAPI = {
     restaurantClient.post("/food/restaurant/support/tickets", body ?? {}),
   getSupportTickets: (params = {}) =>
     restaurantClient.get("/food/restaurant/support/tickets", { params }),
+  getSupportTicketById: (id) =>
+    restaurantClient.get(`/food/restaurant/support/tickets/${String(id)}`),
   /** DELETE /food/restaurant/account - permanently delete restaurant account */
   deleteAccount: () =>
     restaurantClient.delete("/food/restaurant/account"),

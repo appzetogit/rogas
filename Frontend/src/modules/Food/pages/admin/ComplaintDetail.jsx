@@ -80,10 +80,12 @@ function RespondDialog({ complaint, onClose, onSend }) {
     try { await onSend(message); onClose(); } finally { setSubmitting(false); }
   };
   const isDriver = complaint?.complainantType === "delivery_partner";
+  const isVendor = complaint?.complainantType === "vendor";
+  const label = isDriver ? "Delivery Partner" : isVendor ? "Vendor" : "Customer";
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl border border-gray-200 p-6 w-full max-w-md shadow-2xl text-[#2B2B2B]">
-        <h3 className="font-bold text-lg mb-4">Send Response to {isDriver ? "Delivery Partner" : "Customer"}</h3>
+        <h3 className="font-bold text-lg mb-4">Send Response to {label}</h3>
         <textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)}
           className="w-full px-4 py-3 rounded-xl bg-white border border-gray-300 text-[#2B2B2B] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1F7A63] resize-none mb-4"
           placeholder="Type your response..." />
@@ -174,6 +176,10 @@ export default function ComplaintDetail() {
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                   Rider
                 </span>
+              ) : c.complainantType === "vendor" ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800">
+                  Vendor
+                </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                   Customer
@@ -193,7 +199,7 @@ export default function ComplaintDetail() {
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <h3 className="font-semibold text-[#2B2B2B] mb-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" /> 
-              {c.complainantType === "delivery_partner" ? "Delivery Partner Message" : "Customer Message"}
+              {c.complainantType === "delivery_partner" ? "Delivery Partner Message" : c.complainantType === "vendor" ? "Vendor Message" : "Customer Message"}
             </h3>
             <p className="text-gray-700 leading-relaxed font-medium">{c.message}</p>
             {c.proofPhotos?.length > 0 && (
@@ -238,8 +244,15 @@ export default function ComplaintDetail() {
               {c.vendorId && (
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                   <div className="flex items-center gap-2 mb-1.5"><ShoppingBag className="w-3.5 h-3.5 text-orange-500" /><span className="text-xs text-gray-500 font-bold">Vendor</span></div>
-                  <p className="font-semibold text-[#2B2B2B] text-sm">{c.vendorId.restaurantName}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{c.vendorId.city}</p>
+                  <p className="font-semibold text-[#2B2B2B] text-sm">{c.vendorId.restaurantName || c.vendorId.ownerName}</p>
+                  {c.vendorId.ownerName && c.vendorId.restaurantName && (
+                    <p className="text-xs text-gray-500 mt-0.5">Owner: {c.vendorId.ownerName}</p>
+                  )}
+                  {(c.vendorId.primaryContactNumber || c.vendorId.ownerPhone) && (
+                    <p className="text-xs text-gray-500 mt-0.5">{c.vendorId.primaryContactNumber || c.vendorId.ownerPhone}</p>
+                  )}
+                  {c.vendorId.city && <p className="text-xs text-gray-400 mt-0.5">{c.vendorId.city}</p>}
+                  {c.vendorId._id && <p className="text-xs text-gray-400 font-mono mt-1">ID: {String(c.vendorId._id).slice(-6).toUpperCase()}</p>}
                 </div>
               )}
               {c.driverId && (
@@ -343,7 +356,9 @@ export default function ComplaintDetail() {
 
           {/* Respond */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-[#2B2B2B] mb-3">{c.complainantType === "delivery_partner" ? "Delivery Partner Response" : "Customer Response"}</h3>
+            <h3 className="font-semibold text-[#2B2B2B] mb-3">
+              {c.complainantType === "delivery_partner" ? "Delivery Partner Response" : c.complainantType === "vendor" ? "Vendor Response" : "Customer Response"}
+            </h3>
             {c.customerResponseSent && (
               <div className="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-200 text-[#2B2B2B]">
                 <p className="text-xs text-blue-700 font-bold mb-1">✓ Response sent {c.customerResponseAt ? new Date(c.customerResponseAt).toLocaleDateString() : ""}</p>

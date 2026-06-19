@@ -947,7 +947,9 @@ export const useRestaurantNotifications = () => {
     acceptedBatch,
     clearAcceptedBatch: () => setAcceptedBatch(null),
     isConnected,
-    playNotificationSound
+    playNotificationSound,
+    /** Exposed socket instance so child components can attach listeners (e.g. complaint_status_updated) */
+    socket: socketRef.current
   };
 };
 

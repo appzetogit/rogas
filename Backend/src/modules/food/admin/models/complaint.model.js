@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const statusTrailSchema = new mongoose.Schema({
-    status: { type: String, enum: ['open', 'in_review', 'resolved', 'escalated'], required: true },
+    status: { type: String, enum: ['open', 'in_review', 'resolved', 'escalated', 'closed'], required: true },
     changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin' },
     changedByName: { type: String, default: '' },
     note: { type: String, default: '' },
@@ -22,7 +22,7 @@ const complaintSchema = new mongoose.Schema({
     complaintRef: { type: String, unique: true, index: true },
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodOrder', default: null, index: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodUser', default: null, index: true },
-    complainantType: { type: String, enum: ['customer', 'delivery_partner'], default: 'customer', index: true },
+    complainantType: { type: String, enum: ['customer', 'delivery_partner', 'vendor'], default: 'customer', index: true },
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant', default: null },
     driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
     subject: { type: String, trim: true, default: '' },
@@ -32,12 +32,12 @@ const complaintSchema = new mongoose.Schema({
     deliveryGpsLng: { type: Number, default: null },
     category: {
         type: String,
-        enum: ['wrong_item', 'missing_item', 'late_delivery', 'delivery_failed', 'quality', 'payment', 'driver_behaviour', 'other'],
+        enum: ['wrong_item', 'missing_item', 'late_delivery', 'delivery_failed', 'quality', 'payment', 'driver_behaviour', 'orders', 'payments', 'menu', 'restaurant', 'technical', 'other'],
         default: 'other'
     },
     status: {
         type: String,
-        enum: ['open', 'in_review', 'resolved', 'escalated'],
+        enum: ['open', 'in_review', 'resolved', 'escalated', 'closed'],
         default: 'open',
         index: true
     },
