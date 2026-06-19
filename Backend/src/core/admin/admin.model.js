@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { config } from '../../config/env.js';
+import { ADMIN_PRD_ROLES } from '../../modules/food/admin/constants/adminPrd.js';
 
 const adminSchema = new mongoose.Schema(
     {
@@ -30,6 +31,20 @@ const adminSchema = new mongoose.Schema(
             type: String,
             default: 'ADMIN'
         },
+        adminRole: {
+            type: String,
+            enum: ADMIN_PRD_ROLES,
+            default: 'SUPER_ADMIN',
+            index: true
+        },
+        assignedCityIds: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'AdminCity'
+        }],
+        permissions: {
+            type: [String],
+            default: []
+        },
         isActive: {
             type: Boolean,
             default: true
@@ -47,6 +62,7 @@ const adminSchema = new mongoose.Schema(
 );
 
 adminSchema.index({ servicesAccess: 1 });
+adminSchema.index({ adminRole: 1, isActive: 1 });
 
 adminSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {

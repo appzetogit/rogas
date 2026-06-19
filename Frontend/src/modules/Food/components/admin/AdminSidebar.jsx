@@ -102,10 +102,40 @@ const iconMap = {
   X,
 }
 
+// Helper: get current admin role from localStorage
+function getAdminRole() {
+  try {
+    const userStr = localStorage.getItem('admin_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return user.adminRole || 'SUPER_ADMIN';
+    }
+  } catch (e) {}
+  return 'SUPER_ADMIN';
+}
+
+// Filter menu items by role
+function filterMenuByRole(menu, adminRole) {
+  return menu
+    .filter(item => !item.roles || item.roles.includes(adminRole))
+    .map(item => {
+      if (item.type === 'section') {
+        const filteredItems = (item.items || []).filter(
+          sub => !sub.roles || sub.roles.includes(adminRole)
+        );
+        if (filteredItems.length === 0) return null;
+        return { ...item, items: filteredItems };
+      }
+      return item;
+    })
+    .filter(Boolean);
+}
+
 export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange }) {
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState("")
   const [badges, setBadges] = useState({})
+  const [adminRole] = useState(() => getAdminRole())
 
   useEffect(() => {
     const fetchBadges = async () => {
@@ -280,16 +310,19 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   // expandedSections state is initialized above in getInitialStates consolidation
 
 
-  // Filter menu items based on search query
+  // Filter menu items based on search query AND role
   const filteredMenuData = useMemo(() => {
+    // First apply role-based filter
+    const roleFiltered = filterMenuByRole(adminSidebarMenu, adminRole);
+
     if (!searchQuery.trim()) {
-      return adminSidebarMenu
+      return roleFiltered;
     }
 
     const query = searchQuery.toLowerCase().trim()
     const filtered = []
 
-    adminSidebarMenu.forEach((item) => {
+    roleFiltered.forEach((item) => {
       if (item.type === "link") {
         if (item.label.toLowerCase().includes(query)) {
           filtered.push(item)
@@ -327,7 +360,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     })
 
     return filtered
-  }, [searchQuery])
+  }, [searchQuery, adminRole])
 
   // Auto-expand sections with matches when searching
   useEffect(() => {
@@ -634,14 +667,14 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
           isCollapsed ? "w-20" : "w-80",
-          "bg-[#576574]"
+          "bg-[#1F7A63]"
         )}
-        style={{ backgroundColor: 'var(--ad-primary, #576574)' }}
+        style={{ backgroundColor: 'var(--ad-primary, #1F7A63)' }}
       >
         {/* Header with Logo and Brand */}
         <div 
-          className="shrink-0 px-3 py-3 border-b border-neutral-700/30 animate-[fadeIn_0.4s_ease-out] bg-[#4a5664]"
-          style={{ backgroundColor: 'var(--ad-primary-strong, #4a5664)' }}
+          className="shrink-0 px-3 py-3 border-b border-neutral-700/30 animate-[fadeIn_0.4s_ease-out] bg-[#165A49]"
+          style={{ backgroundColor: 'var(--ad-primary-strong, #165A49)' }}
         >
           <div className="flex items-center justify-between mb-3">
             {!isCollapsed && (
@@ -730,7 +763,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
-                  "w-full pl-9 py-2.5 bg-[#404c59] border border-[#394450] rounded-lg text-base font-bold text-white placeholder:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition-all duration-200 text-left",
+                  "w-full pl-9 py-2.5 bg-[#134e3f] border border-[#0f3f33] rounded-lg text-base font-bold text-white placeholder:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition-all duration-200 text-left",
                   searchQuery ? "pr-9" : "pr-3"
                 )}
               />

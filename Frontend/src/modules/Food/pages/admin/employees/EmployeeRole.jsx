@@ -1,548 +1,301 @@
-import { useState, useMemo } from "react"
-import { UserCog, ChevronDown, ArrowUpDown, Trash2, Search, Download, Edit, Settings, FileText, FileSpreadsheet, Code, Check, Columns } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+﻿import { useState, useEffect, useCallback } from "react";
+import { UserPlus, Shield, Eye, EyeOff, X, Check } from "lucide-react";
+import { adminClient } from "@food/api/axios";
 
+const PRD_ROLES = [
+  { value: "SUPER_ADMIN",       label: "Super Admin",       color: "#ef4444", description: "Full system access - all permissions" },
+  { value: "ACCOUNTANT",        label: "Accountant",        color: "#22c55e", description: "Finance, payouts, VAT reports (PLN)" },
+  { value: "CUSTOMER_SERVICE",  label: "Customer Service",  color: "#3b82f6", description: "Support, complaints, refunds (max PLN 150)" },
+  { value: "CITY_MANAGER",      label: "City Manager",      color: "#f59e0b", description: "Operations in assigned city" },
+  { value: "MARKETING_MANAGER", label: "Marketing Manager", color: "#a855f7", description: "Campaigns, banners, coupons" },
+  { value: "WEB_MANAGER",       label: "Web Manager",       color: "#06b6d4", description: "Content, legal pages, OTA config" },
+  { value: "FLEET_MANAGER",     label: "Fleet Manager",     color: "#f97316", description: "Fleet partners, driver docs, invoices" },
+];
 
-const modulePermissions = [
-  // Column 1
-  { id: "collectCash", label: "Collect cash" },
-  { id: "category", label: "Category" },
-  { id: "deliveryman", label: "Deliveryman" },
-  { id: "pushNotification", label: "Push notification" },
-  { id: "businessSettings", label: "Business settings" },
-  { id: "contactMessages", label: "Contact messages" },
-  { id: "chat", label: "Chat" },
-  // Column 2
-  { id: "addon", label: "Addon" },
-  { id: "coupon", label: "Coupon" },
-  { id: "deliverymenEarning", label: "Deliverymen earning provide" },
-  { id: "order", label: "Order" },
-  { id: "restaurantWithdraws", label: "Restaurant withdraws" },
-  { id: "disbursement", label: "Disbursement" },
-  // Column 3
-  { id: "banner", label: "Banner" },
-  { id: "customersSection", label: "Customers section" },
-  { id: "employee", label: "Employee" },
-  { id: "restaurants", label: "Restaurants" },
-  { id: "posSystem", label: "Pos system" },
-  { id: "advertisement", label: "Advertisement" },
-  // Column 4
-  { id: "campaign", label: "Campaign" },
-  { id: "customerWallet", label: "Customer Wallet" },
-  { id: "food", label: "Food" },
-  { id: "report", label: "Report" },
-  { id: "zone", label: "Zone" },
-  { id: "cashback", label: "Cashback" },
-]
-
-const initialEmployeeRoles = [
-  {
-    id: 1,
-    roleName: "Manager",
-    modules: ["Addon", "Banner", "Campaign", "Category", "Coupon", "Custom Role", "CustomerList", "Deliveryman", "Employee", "Food", "Notification", "Order", "Report", "Settings", "Pos", "Contact Message"],
-    createdAt: "07 Feb 2023",
-  },
-  {
-    id: 2,
-    roleName: "Customer Care Executive",
-    modules: ["CustomerList", "Deliveryman", "Order", "Restaurant"],
-    createdAt: "22 Aug 2021",
-  },
-]
+const ROLE_PERMISSIONS = {
+  SUPER_ADMIN:       ["*"],
+  ACCOUNTANT:        ["finance.read", "finance.payouts.manage", "fleet.invoices.manage", "reports.finance.export"],
+  CUSTOMER_SERVICE:  ["customers.read", "orders.read", "complaints.manage", "refunds.issue_limited"],
+  CITY_MANAGER:      ["operations.map.read", "vendors.city.manage", "drivers.city.manage", "zones.manage"],
+  MARKETING_MANAGER: ["campaigns.manage", "banners.manage", "coupons.manage", "loyalty.manage"],
+  WEB_MANAGER:       ["content.faq.manage", "content.legal.manage", "content.emailTemplates.manage"],
+  FLEET_MANAGER:     ["fleet.partners.manage", "fleet.documents.review", "fleet.invoices.review"],
+};
 
 export default function EmployeeRole() {
-  const [activeLanguage, setActiveLanguage] = useState("default")
-  const [roleName, setRoleName] = useState("")
-  const [permissions, setPermissions] = useState({})
-  const [searchQuery, setSearchQuery] = useState("")
-  const [roles, setRoles] = useState(initialEmployeeRoles)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [visibleColumns, setVisibleColumns] = useState({
-    si: true,
-    roleName: true,
-    modules: true,
-    createdAt: true,
-    actions: true,
-  })
+  const [activeTab, setActiveTab] = useState("roles");
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [cities, setCities] = useState([]);
+  const [form, setForm] = useState({
+    name: "", email: "", phone: "", password: "", confirmPassword: "",
+    adminRole: "CUSTOMER_SERVICE", assignedCityIds: []
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const setF = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const languageTabs = [
-    { key: "default", label: "Default" },
-    { key: "en", label: "English(EN)" },
-    { key: "bn", label: "Bengali - বাংলা(BN)" },
-    { key: "ar", label: "Arabic - العربية(AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
-  ]
+  const loadAdmins = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminClient.get("/food/admin/roles/users");
+      if (res?.data?.success) setAdmins(res.data.data.admins || []);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, []);
 
-  const handlePermissionChange = (permissionId, checked) => {
-    setPermissions(prev => ({
-      ...prev,
-      [permissionId]: checked
-    }))
-  }
+  const loadCities = useCallback(async () => {
+    try {
+      const res = await adminClient.get("/food/admin/cities");
+      if (res?.data?.success) setCities(res.data.data.cities || []);
+    } catch (e) {}
+  }, []);
 
-  const handleSelectAll = (checked) => {
-    const allPermissions = {}
-    modulePermissions.forEach(permission => {
-      allPermissions[permission.id] = checked
-    })
-    setPermissions(allPermissions)
-  }
+  useEffect(() => {
+    if (activeTab === "employees") { loadAdmins(); loadCities(); }
+  }, [activeTab, loadAdmins, loadCities]);
 
-  const allSelected = useMemo(() => {
-    return modulePermissions.every(permission => permissions[permission.id])
-  }, [permissions])
+  const handleCreate = async () => {
+    setError(""); setSuccess("");
+    if (!form.name || !form.email || !form.password) { setError("Name, email and password are required"); return; }
+    if (form.password !== form.confirmPassword) { setError("Passwords do not match"); return; }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    setSaving(true);
+    try {
+      const res = await adminClient.post("/food/admin/employees", {
+        name: form.name, email: form.email, phone: form.phone,
+        password: form.password, adminRole: form.adminRole,
+        assignedCityIds: form.assignedCityIds,
+      });
+      if (res?.data?.success) {
+        setSuccess("Employee created with role " + form.adminRole);
+        setAdmins(prev => [res.data.data.admin, ...prev]);
+        setShowCreateForm(false);
+        setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "", adminRole: "CUSTOMER_SERVICE", assignedCityIds: [] });
+      }
+    } catch (e) {
+      setError(e?.response?.data?.message || "Failed to create employee");
+    } finally { setSaving(false); }
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    debugLog("Form submitted:", { roleName, permissions })
-    alert("Employee role created successfully!")
-  }
-
-  const handleReset = () => {
-    setRoleName("")
-    setPermissions({})
-  }
-
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this role?")) {
-      setRoles(roles.filter(role => role.id !== id))
-    }
-  }
-
-  const filteredRoles = useMemo(() => {
-    if (!searchQuery.trim()) return roles
-    const query = searchQuery.toLowerCase().trim()
-    return roles.filter(role =>
-      role.roleName.toLowerCase().includes(query)
-    )
-  }, [roles, searchQuery])
-
-  const handleExport = (format) => {
-    if (filteredRoles.length === 0) {
-      alert("No data to export")
-      return
-    }
-    debugLog(`Exporting as ${format}`, filteredRoles)
-  }
-
-  const toggleColumn = (columnKey) => {
-    setVisibleColumns(prev => ({ ...prev, [columnKey]: !prev[columnKey] }))
-  }
-
-  const resetColumns = () => {
-    setVisibleColumns({
-      si: true,
-      roleName: true,
-      modules: true,
-      createdAt: true,
-      actions: true,
-    })
-  }
-
-  const columnsConfig = {
-    si: "Serial Number",
-    roleName: "Role Name",
-    modules: "Modules",
-    createdAt: "Created At",
-    actions: "Actions",
-  }
-
-  // Split permissions into 4 columns
-  const column1 = modulePermissions.slice(0, 7)
-  const column2 = modulePermissions.slice(7, 13)
-  const column3 = modulePermissions.slice(13, 19)
-  const column4 = modulePermissions.slice(19, 26)
+  const toggleActive = async (admin) => {
+    try {
+      if (admin.isActive) {
+        await adminClient.delete("/food/admin/employees/" + admin._id);
+        setAdmins(prev => prev.map(a => a._id === admin._id ? { ...a, isActive: false } : a));
+      } else {
+        const res = await adminClient.patch("/food/admin/employees/" + admin._id, { isActive: true });
+        if (res?.data?.success) setAdmins(prev => prev.map(a => a._id === admin._id ? res.data.data.admin : a));
+      }
+    } catch (e) { console.error(e); }
+  };
 
   return (
-    <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-              <UserCog className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-indigo-400" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Employee Role</h1>
-          </div>
-
-          {/* Language Tabs */}
-          <div className="flex items-center gap-2 border-b border-slate-200">
-            {languageTabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveLanguage(tab.key)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeLanguage === tab.key
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {/* Role Name Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Role Name ({activeLanguage === "default" ? "Default" : languageTabs.find(t => t.key === activeLanguage)?.label})
-              </label>
-              <input
-                type="text"
-                value={roleName}
-                onChange={(e) => setRoleName(e.target.value)}
-                placeholder="Role name example"
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
+              <h1 className="text-xl font-bold text-white">Roles and Employees</h1>
+              <p className="text-sm text-gray-400">7 PRD-defined roles with RBAC</p>
             </div>
           </div>
-
-          {/* Module Permission Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-4">
-                Module Permission :
-              </label>
-              <div className="flex items-center mb-6">
-                <input
-                  type="checkbox"
-                  id="selectAll"
-                  checked={allSelected}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="selectAll" className="ml-2 text-sm font-semibold text-slate-700">
-                  Select All
-                </label>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Column 1 */}
-              <div className="space-y-3">
-                {column1.map((permission) => (
-                  <div key={permission.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={permission.id}
-                      checked={permissions[permission.id] || false}
-                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor={permission.id} className="ml-2 text-sm text-slate-700">
-                      {permission.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              {/* Column 2 */}
-              <div className="space-y-3">
-                {column2.map((permission) => (
-                  <div key={permission.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={permission.id}
-                      checked={permissions[permission.id] || false}
-                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor={permission.id} className="ml-2 text-sm text-slate-700">
-                      {permission.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              {/* Column 3 */}
-              <div className="space-y-3">
-                {column3.map((permission) => (
-                  <div key={permission.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={permission.id}
-                      checked={permissions[permission.id] || false}
-                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor={permission.id} className="ml-2 text-sm text-slate-700">
-                      {permission.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              {/* Column 4 */}
-              <div className="space-y-3">
-                {column4.map((permission) => (
-                  <div key={permission.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={permission.id}
-                      checked={permissions[permission.id] || false}
-                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor={permission.id} className="ml-2 text-sm text-slate-700">
-                      {permission.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-4 mb-6">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-            >
-              Reset
+          {activeTab === "employees" && (
+            <button onClick={() => { setShowCreateForm(true); setError(""); setSuccess(""); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 text-sm">
+              <UserPlus className="w-4 h-4" /> Create Employee
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-            >
-              Submit
-            </button>
-          </div>
-        </form>
-
-        {/* Employee Role Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-slate-900">Employee Role Table</h2>
-              <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-                {filteredRoles.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 sm:flex-initial min-w-[250px]">
-                <input
-                  type="text"
-                  placeholder="Search by Name"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-all">
-                    <Download className="w-4 h-4" />
-                    <span className="text-black font-bold">Export</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-                  <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("excel")} className="cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("pdf")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("json")} className="cursor-pointer">
-                    <Code className="w-4 h-4 mr-2" />
-                    Export as JSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  {visibleColumns.si && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <span>SI</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                      </div>
-                    </th>
-                  )}
-                  {visibleColumns.roleName && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <span>Role Name</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                      </div>
-                    </th>
-                  )}
-                  {visibleColumns.modules && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <span>Modules</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                      </div>
-                    </th>
-                  )}
-                  {visibleColumns.createdAt && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <span>Created At</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                      </div>
-                    </th>
-                  )}
-                  {visibleColumns.actions && (
-                    <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-100">
-                {filteredRoles.length === 0 ? (
-                  <tr>
-                    <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-8 text-center text-slate-500">
-                      No roles found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRoles.map((role, index) => (
-                    <tr
-                      key={role.id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      {visibleColumns.si && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{index + 1}</span>
-                        </td>
-                      )}
-                      {visibleColumns.roleName && (
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-slate-900">{role.roleName}</span>
-                        </td>
-                      )}
-                      {visibleColumns.modules && (
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {role.modules.map((module, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-block px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded"
-                              >
-                                {module}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                      )}
-                      {visibleColumns.createdAt && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-slate-700">{role.createdAt}</span>
-                        </td>
-                      )}
-                      {visibleColumns.actions && (
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(role.id)}
-                              className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Settings Dialog */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Table Settings
-            </DialogTitle>
-          </DialogHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <Columns className="w-4 h-4" />
-                Visible Columns
-              </h3>
-              <div className="space-y-2">
-                {Object.entries(columnsConfig).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns[key]}
-                      onChange={() => toggleColumn(key)}
-                      className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                    />
-                    <span className="text-sm text-slate-700">{label}</span>
-                    {visibleColumns[key] && (
-                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+      <div className="px-6 pt-4 flex gap-1 border-b border-gray-800">
+        {[{ key: "roles", label: "Roles and Permissions" }, { key: "employees", label: "Employees" }].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={"px-5 py-2.5 text-sm font-semibold border-b-2 transition " +
+              (activeTab === tab.key ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-400 hover:text-gray-200")}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="px-6 py-6">
+        {activeTab === "roles" && (
+          <div>
+            <p className="text-sm text-gray-400 mb-5">
+              These 7 roles are fixed per the PRD. Permissions are enforced by the backend middleware.
+              Super Admin assigns a role when creating each employee account.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {PRD_ROLES.map(role => {
+                const isSelected = selectedRole === role.value;
+                return (
+                  <button key={role.value} onClick={() => setSelectedRole(isSelected ? null : role.value)}
+                    className={"w-full text-left p-4 rounded-2xl border-2 transition-all " +
+                      (isSelected ? "border-blue-500 bg-blue-900/20" : "border-gray-700 bg-gray-800/50 hover:border-gray-600")}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: role.color + "22" }}>
+                        <Shield className="w-4 h-4" style={{ color: role.color }} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-white text-sm">{role.label}</p>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
+                    </div>
+                    <p className="text-xs text-gray-400 leading-relaxed">{role.description}</p>
+                    {isSelected && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {(ROLE_PERMISSIONS[role.value] || []).map(p => (
+                          <span key={p} className="px-1.5 py-0.5 rounded text-xs bg-blue-900/40 text-blue-300 font-mono">{p}</span>
+                        ))}
+                      </div>
                     )}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-              <button
-                onClick={resetColumns}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
-                Reset
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-              >
-                Apply
-              </button>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+        )}
 
+        {activeTab === "employees" && (
+          <div>
+            {showCreateForm && (
+              <div className="bg-gray-900 rounded-2xl border border-gray-700 p-5 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-indigo-400" /> Create New Employee
+                  </h3>
+                  <button onClick={() => setShowCreateForm(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                {error && <div className="mb-3 p-3 rounded-xl bg-red-900/40 border border-red-700/50 text-sm text-red-300">{error}</div>}
+                {success && <div className="mb-3 p-3 rounded-xl bg-green-900/40 border border-green-700/50 text-sm text-green-300">{success}</div>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: "name",  label: "Full Name",        type: "text",  ph: "John Smith" },
+                    { key: "email", label: "Email Address",    type: "email", ph: "john@example.com" },
+                    { key: "phone", label: "Phone (optional)", type: "text",  ph: "+48 500 000 000" },
+                  ].map(({ key, label, type, ph }) => (
+                    <div key={key}>
+                      <label className="block text-xs text-gray-400 mb-1">{label}</label>
+                      <input type={type} value={form[key]} onChange={e => setF(key, e.target.value)} placeholder={ph}
+                        className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600" />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Password</label>
+                    <div className="relative">
+                      <input type={showPassword ? "text" : "password"} value={form.password}
+                        onChange={e => setF("password", e.target.value)} placeholder="Min 8 characters"
+                        className="w-full px-3 py-2.5 pr-10 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600" />
+                      <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Confirm Password</label>
+                    <input type="password" value={form.confirmPassword} onChange={e => setF("confirmPassword", e.target.value)}
+                      placeholder="Repeat password"
+                      className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-400 mb-2">Assign Role</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {PRD_ROLES.map(role => (
+                        <button key={role.value} type="button" onClick={() => setF("adminRole", role.value)}
+                          className={"p-2.5 rounded-xl border text-xs font-bold text-left transition " +
+                            (form.adminRole === role.value ? "border-indigo-500 text-white" : "border-gray-700 text-gray-400 hover:border-gray-600")}
+                          style={form.adminRole === role.value ? { background: role.color + "22", borderColor: role.color } : {}}>
+                          <div className="w-2 h-2 rounded-full mb-1.5" style={{ background: role.color }} />
+                          {role.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {["CITY_MANAGER", "FLEET_MANAGER"].includes(form.adminRole) && cities.length > 0 && (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs text-gray-400 mb-2">Assigned Cities (optional)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {cities.map(city => {
+                          const sel = form.assignedCityIds.includes(city._id);
+                          return (
+                            <button key={city._id} type="button"
+                              onClick={() => setF("assignedCityIds", sel ? form.assignedCityIds.filter(id => id !== city._id) : [...form.assignedCityIds, city._id])}
+                              className={"px-3 py-1.5 rounded-xl text-xs font-semibold transition " + (sel ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700")}>
+                              {city.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button onClick={() => setShowCreateForm(false)} className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 font-semibold">Cancel</button>
+                  <button onClick={handleCreate} disabled={saving}
+                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 font-bold disabled:opacity-50">
+                    {saving ? "Creating..." : "Create Employee"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+              </div>
+            ) : admins.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                <UserPlus className="w-12 h-12 mb-3" />
+                <p className="font-semibold">No employees yet</p>
+                <button onClick={() => setShowCreateForm(true)} className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Create First Employee</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {admins.map(admin => {
+                  const roleObj = PRD_ROLES.find(r => r.value === admin.adminRole);
+                  return (
+                    <div key={admin._id} className="bg-gray-900 rounded-2xl border border-gray-800 p-4 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                        style={{ background: (roleObj?.color || "#374151") + "33", color: roleObj?.color || "#9ca3af" }}>
+                        {(admin.name || admin.email || "A").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="font-bold text-white truncate">{admin.name || "Unnamed"}</p>
+                          {roleObj && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: roleObj.color + "22", color: roleObj.color }}>
+                              {roleObj.label}
+                            </span>
+                          )}
+                          {!admin.isActive && <span className="px-2 py-0.5 rounded-full text-xs bg-gray-800 text-gray-500">Inactive</span>}
+                        </div>
+                        <p className="text-sm text-gray-400 truncate">{admin.email}</p>
+                        {admin.phone && <p className="text-xs text-gray-500">{admin.phone}</p>}
+                        {(admin.assignedCityIds || []).length > 0 && (
+                          <p className="text-xs text-indigo-400 mt-0.5">Cities: {admin.assignedCityIds.map(c => c?.name || c).join(", ")}</p>
+                        )}
+                      </div>
+                      <button onClick={() => toggleActive(admin)}
+                        className={"px-3 py-1.5 rounded-xl text-xs font-bold transition " +
+                          (admin.isActive ? "bg-red-900/50 text-red-300 hover:bg-red-900" : "bg-green-900/50 text-green-300 hover:bg-green-900")}>
+                        {admin.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

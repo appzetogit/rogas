@@ -132,6 +132,20 @@ const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"));
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"));
 const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"));
 
+// ─── PRD New Pages ────────────────────────────────────────────────────────
+const LiveOperationsMap   = lazy(() => import("@food/pages/admin/LiveOperationsMap"));
+const FeatureTogglesPage  = lazy(() => import("@food/pages/admin/FeatureTogglesPage"));
+const ComplaintInbox      = lazy(() => import("@food/pages/admin/ComplaintInbox"));
+const ComplaintDetail     = lazy(() => import("@food/pages/admin/ComplaintDetail"));
+const FinancialManagement = lazy(() => import("@food/pages/admin/FinancialManagement"));
+const CityManagement      = lazy(() => import("@food/pages/admin/CityManagement"));
+const ManualOrderEntry    = lazy(() => import("@food/pages/admin/ManualOrderEntry"));
+const EnvironmentManagement = lazy(() => import("@food/pages/admin/EnvironmentManagement"));
+const OTAConfigPage       = lazy(() => import("@food/pages/admin/OTAConfigPage"));
+const FleetManagerDashboard = lazy(() => import("@food/pages/admin/FleetManagerDashboard"));
+const AuditLogs             = lazy(() => import("@food/pages/admin/AuditLogs"));
+const IntegrationSettings   = lazy(() => import("@food/pages/admin/IntegrationSettings"));
+
 export default function AdminRouter() {
   return (
     <Suspense fallback={<Loader />}>
@@ -303,6 +317,34 @@ export default function AdminRouter() {
             <Route path="addon-activation" element={<AddonActivation />} />
             <Route path="hero-banner-management" element={<LandingPageManagement />} />
             <Route path="app-intro-ads" element={<AppIntroAds />} />
+            {/* PRD NEW ROUTES */}
+            {/* AP-02 Live Operations Map */}
+            <Route path="live-map" element={<LiveOperationsMap />} />
+            {/* AP-03 Feature Toggles */}
+            <Route path="feature-toggles" element={<FeatureTogglesPage />} />
+            {/* AP-04 Complaints */}
+            <Route path="complaints" element={<ComplaintInbox />} />
+            <Route path="complaints/:id" element={<ComplaintDetail />} />
+            {/* AP-07 Financial (fleet invoices + VAT) */}
+            <Route path="financial" element={<FinancialManagement />} />
+            <Route path="vat-report" element={<FinancialManagement />} />
+            {/* AP-08 City Management */}
+            <Route path="cities" element={<CityManagement />} />
+            {/* AP-10 Manual Order */}
+            <Route path="manual-order" element={<ManualOrderEntry />} />
+            {/* AP-12 Environment */}
+            <Route path="environments" element={<EnvironmentManagement />} />
+            {/* AP-13 OTA Config */}
+            <Route path="ota-config" element={<OTAConfigPage />} />
+            {/* Fleet Manager (FM-01/02/03) */}
+            <Route path="fleet/dashboard" element={<FleetManagerDashboard />} />
+            <Route path="fleet/partners" element={<FleetManagerDashboard />} />
+            <Route path="fleet/invoices" element={<FinancialManagement />} />
+            <Route path="fleet/driver-documents" element={<FleetManagerDashboard />} />
+            {/* AP-05 Audit Logs */}
+            <Route path="audit-logs" element={<AuditLogs />} />
+            {/* AP-09 Integration Settings */}
+            <Route path="integrations" element={<IntegrationSettings />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}

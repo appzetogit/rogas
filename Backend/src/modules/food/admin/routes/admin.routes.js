@@ -6,6 +6,8 @@ import * as addonsApprovalController from '../controllers/addonsApproval.control
 import * as businessSettingsController from '../controllers/businessSettings.controller.js';
 import * as feedbackExperienceController from '../controllers/feedbackExperience.controller.js';
 import * as notificationBroadcastController from '../controllers/notificationBroadcast.controller.js';
+import * as prdAdminController from '../controllers/prdAdmin.controller.js';
+import * as prdAdminExtController from '../controllers/prdAdminExtended.controller.js';
 // Dining admin controller removed — not part of DailyMealBox PRD
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
@@ -30,6 +32,70 @@ const requireAdmin = (req, _res, next) => {
 };
 
 router.use(requireAdmin);
+
+// ----- Admin PRD Core Controls -----
+router.get('/roles/matrix', prdAdminController.getRoleMatrix);
+router.get('/roles/users', prdAdminController.listAdminUsers);
+router.patch('/roles/users/:id', prdAdminController.updateAdminRole);
+router.get('/audit-logs', prdAdminController.listAuditLogs);
+router.get('/fraud-alerts', prdAdminController.getFraudAlerts);
+
+// ----- AP-09 Employee Management -----
+router.post('/employees', prdAdminExtController.createAdminEmployee);
+router.patch('/employees/:id', prdAdminExtController.updateAdminEmployee);
+router.delete('/employees/:id', prdAdminExtController.deleteAdminEmployee);
+
+// ----- AP-02 Live Operations Map -----
+router.get('/operations/snapshot', prdAdminController.getOperationsSnapshot);
+
+// ----- AP-03 Feature Toggles -----
+router.get('/feature-toggles', prdAdminController.listFeatureToggles);
+router.put('/feature-toggles', prdAdminController.upsertFeatureToggle);
+router.post('/feature-toggles/:id/rollback', prdAdminController.rollbackFeatureToggle);
+
+// ----- AP-04 Complaint & Refund Management -----
+router.get('/complaints', prdAdminExtController.listComplaints);
+router.post('/complaints', prdAdminExtController.createComplaint);
+router.get('/complaints/:id', prdAdminExtController.getComplaintById);
+router.patch('/complaints/:id/status', prdAdminExtController.updateComplaintStatus);
+router.post('/complaints/:id/refund', prdAdminExtController.issueComplaintRefund);
+router.post('/complaints/:id/escalate', prdAdminExtController.escalateComplaint);
+router.post('/complaints/:id/respond', prdAdminExtController.sendComplaintResponse);
+
+// ----- AP-07 Fleet Invoice & Financial -----
+router.get('/fleet/invoices', prdAdminExtController.listFleetInvoices);
+router.patch('/fleet/invoices/:id/approve', prdAdminExtController.approveFleetInvoice);
+router.patch('/fleet/invoices/:id/reject', prdAdminExtController.rejectFleetInvoice);
+router.patch('/fleet/invoices/:id/paid', prdAdminExtController.markFleetInvoicePaid);
+router.get('/reports/vat', prdAdminExtController.getVatReport);
+
+// ----- AP-08 City Management -----
+router.get('/cities', prdAdminController.listCities);
+router.post('/cities', prdAdminController.createCity);
+router.patch('/cities/:id', prdAdminController.updateCity);
+router.get('/cities/:id/activation-checklist', prdAdminController.getCityChecklist);
+
+// ----- AP-09 API & Integration Settings -----
+router.get('/integrations', prdAdminController.listIntegrations);
+router.put('/integrations', prdAdminController.upsertIntegration);
+
+// ----- AP-12 Environment Management -----
+router.get('/environments', prdAdminController.listEnvironments);
+router.put('/environments', prdAdminController.upsertEnvironment);
+
+// ----- AP-13 OTA Config -----
+router.get('/ota-configs', prdAdminController.listOtaConfigs);
+router.post('/ota-configs', prdAdminController.createOtaConfig);
+router.post('/ota-configs/:id/publish', prdAdminController.publishOtaConfig);
+
+// ----- FM-01/FM-02/FM-03 Fleet Manager -----
+router.get('/fleet/dashboard', prdAdminController.getFleetDashboard);
+router.get('/fleet/partners', prdAdminController.listFleetPartners);
+router.post('/fleet/partners', prdAdminController.createFleetPartner);
+router.patch('/fleet/partners/:id/status', prdAdminController.updateFleetPartnerStatus);
+router.get('/fleet/driver-documents', prdAdminController.listDriverDocuments);
+router.put('/fleet/driver-documents', prdAdminController.upsertDriverDocument);
+router.patch('/fleet/driver-documents/:id/review', prdAdminController.reviewDriverDocument);
 
 // ----- Broadcast Notifications -----
 router.post('/notifications/broadcast', notificationBroadcastController.createBroadcastNotificationController);
@@ -69,7 +135,6 @@ router.get('/restaurants/:id/download-menu-pdf', adminController.downloadRestaur
 router.get('/restaurants/:id', adminController.getRestaurantById);
 router.get('/restaurants/:id/analytics', adminController.getRestaurantAnalytics);
 router.get('/restaurants/:id/menu', adminController.getRestaurantMenuById);
-router.get('/restaurants/:id/menu-pdf', adminController.getRestaurantMenuPdfDownloadUrl);
 router.post('/restaurants', adminController.createRestaurant);
 router.patch('/restaurants/:id', adminController.updateRestaurantById);
 router.patch('/restaurants/:id/status', adminController.updateRestaurantStatus);
@@ -136,7 +201,6 @@ router.get('/referral-settings', adminController.getReferralSettings);
 router.put('/referral-settings', adminController.createOrUpdateReferralSettings);
 
 // ----- Business Settings -----
-router.get('/business-settings/public', businessSettingsController.getBusinessSettings); // Public endpoint
 router.get('/business-settings', businessSettingsController.getBusinessSettings);
 router.patch('/business-settings', upload.fields([
     { name: 'logo', maxCount: 1 },
@@ -205,6 +269,7 @@ router.delete('/zones/:id', adminController.deleteZone);
 // Dining routes removed — not part of DailyMealBox PRD
 
 // ----- Orders -----
+router.post('/orders/manual', prdAdminController.createManualOrder);
 router.get('/orders', orderController.listOrdersAdminController);
 router.get('/orders/:orderId', orderController.getOrderByIdAdminController);
 router.delete('/orders/:orderId', orderController.deleteOrderAdminController);
@@ -239,5 +304,3 @@ router.get('/vendor-timing-settings', adminController.getVendorTimingSettingsCon
 router.put('/vendor-timing-settings', adminController.updateVendorTimingSettingsController);
 
 export default router;
-
-

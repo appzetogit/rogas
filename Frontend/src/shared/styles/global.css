@@ -449,4 +449,123 @@
 
 .admin-theme-container .admin-sidebar-container input::placeholder {
   color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Custom Tailwind dark overrides for admin panel dynamic theme mapping (Deep Green, Soft Beige, Dark Gray) */
+.admin-theme-container .bg-gray-950,
+.admin-theme-container .bg-slate-950,
+.admin-theme-container .bg-zinc-950,
+.admin-theme-container .bg-neutral-950,
+.admin-theme-container .bg-gray-900,
+.admin-theme-container .bg-slate-900,
+.admin-theme-container .bg-zinc-900,
+.admin-theme-container .bg-neutral-900 {
+  background-color: var(--ad-card-bg) !important;
+  color: var(--ad-text-primary) !important;
+}
+
+.admin-theme-container .min-h-screen.bg-gray-950,
+.admin-theme-container .min-h-screen.bg-slate-950,
+.admin-theme-container .min-h-screen.bg-zinc-950,
+.admin-theme-container .min-h-screen.bg-neutral-950 {
+  background-color: var(--ad-background) !important;
+}
+
+/* Override borders */
+.admin-theme-container .border-gray-800,
+.admin-theme-container .border-gray-700,
+.admin-theme-container .border-slate-800,
+.admin-theme-container .border-slate-700,
+.admin-theme-container .border-zinc-800,
+.admin-theme-container .border-zinc-700,
+.admin-theme-container .border-neutral-800,
+.admin-theme-container .border-neutral-700 {
+  border-color: var(--ad-card-border) !important;
+}
+
+/* Text overrides: make hardcoded white text adapt to the theme text-primary */
+.admin-theme-container .text-white,
+.admin-theme-container .text-gray-100,
+.admin-theme-container .text-slate-100,
+.admin-theme-container .text-neutral-100 {
+  color: var(--ad-text-primary) !important;
+}
+
+/* Keep white text white for primary elements: action buttons, sidebar, badges, and status labels */
+.admin-theme-container .admin-sidebar-container *,
+.admin-theme-container button.bg-primary *,
+.admin-theme-container button.bg-blue-600 *,
+.admin-theme-container button.bg-purple-600 *,
+.admin-theme-container .bg-primary *,
+.admin-theme-container .bg-purple-600 *,
+.admin-theme-container .bg-blue-600 *,
+.admin-theme-container .bg-indigo-600 *,
+.admin-theme-container .bg-emerald-600 *,
+.admin-theme-container .badge *,
+.admin-theme-container [role="alert"] *,
+.admin-theme-container .alert * {
+  color: inherit !important;
+}
+
+.admin-theme-container button.bg-primary,
+.admin-theme-container button.bg-blue-600,
+.admin-theme-container button.bg-blue-500,
+.admin-theme-container button.bg-purple-600,
+.admin-theme-container button.bg-purple-500,
+.admin-theme-container button.bg-pink-600,
+.admin-theme-container button.bg-pink-500,
+.admin-theme-container button.bg-indigo-600,
+.admin-theme-container button.bg-indigo-500,
+.admin-theme-container button.bg-emerald-600,
+.admin-theme-container button.bg-emerald-500,
+.admin-theme-container button.bg-slate-900,
+.admin-theme-container button.bg-slate-800,
+.admin-theme-container button.bg-gray-900,
+.admin-theme-container button.bg-black,
+.admin-theme-container .bg-primary,
+.admin-theme-container .bg-purple-600,
+.admin-theme-container .bg-pink-600,
+.admin-theme-container .bg-blue-600,
+.admin-theme-container .bg-indigo-600,
+.admin-theme-container .bg-emerald-600 {
+  background-color: var(--ad-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--ad-primary-strong) !important;
+}
+
+/* Hover on buttons */
+.admin-theme-container button.bg-primary:hover,
+.admin-theme-container button.bg-blue-600:hover,
+.admin-theme-container button.bg-blue-500:hover,
+.admin-theme-container button.bg-purple-600:hover,
+.admin-theme-container button.bg-purple-500:hover,
+.admin-theme-container button.bg-pink-600:hover,
+.admin-theme-container button.bg-pink-500:hover,
+.admin-theme-container button.bg-indigo-600:hover,
+.admin-theme-container button.bg-indigo-500:hover,
+.admin-theme-container button.bg-emerald-600:hover,
+.admin-theme-container button.bg-emerald-500:hover,
+.admin-theme-container button.bg-slate-900:hover,
+.admin-theme-container button.bg-slate-800:hover,
+.admin-theme-container button.bg-gray-900:hover,
+.admin-theme-container button.bg-black:hover,
+.admin-theme-container .bg-primary:hover,
+.admin-theme-container .bg-purple-600:hover,
+.admin-theme-container .bg-pink-600:hover,
+.admin-theme-container .bg-blue-600:hover,
+.admin-theme-container .bg-indigo-600:hover,
+.admin-theme-container .bg-emerald-600:hover {
+  background-color: var(--ad-primary-strong) !important;
+}
+
+/* Gray subtext/muted text */
+.admin-theme-container .text-gray-400,
+.admin-theme-container .text-slate-400,
+.admin-theme-container .text-zinc-400,
+.admin-theme-container .text-neutral-400,
+.admin-theme-container .text-gray-500,
+.admin-theme-container .text-slate-500,
+.admin-theme-container .text-zinc-500,
+.admin-theme-container .text-neutral-500 {
+  color: var(--ad-card-text-muted) !important;
 }

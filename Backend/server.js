@@ -1,4 +1,5 @@
 import http from 'http';
+import mongoose from 'mongoose';
 import app from './src/app.js';
 import { config } from './src/config/env.js';
 import { validateConfig } from './src/config/validateEnv.js';
