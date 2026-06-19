@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats, getDeliveryPartnerRatings, getDeliveryPartnerTips } from '../services/delivery.service.js';
+import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, updateDeliveryLocation, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats, getDeliveryPartnerRatings, getDeliveryPartnerTips } from '../services/delivery.service.js';
 import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
@@ -108,6 +108,16 @@ export const updateAvailabilityController = async (req, res, next) => {
         const userId = req.user?.userId;
         const data = await updateDeliveryAvailability(userId, req.body || {});
         return sendResponse(res, 200, 'Availability updated successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateLocationController = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        const data = await updateDeliveryLocation(userId, req.body || {});
+        return sendResponse(res, 200, 'Location updated successfully', data);
     } catch (error) {
         next(error);
     }

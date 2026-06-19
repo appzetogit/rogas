@@ -577,35 +577,164 @@ export async function reviewDriverDocument(id, body = {}, req) {
     return after;
 }
 
+const getGeoPoint = (value = {}) => {
+    const lat = Number(value.latitude ?? value.lat ?? value.coordinates?.[1]);
+    const lng = Number(value.longitude ?? value.lng ?? value.coordinates?.[0]);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+};
+
+const getRestaurantPoint = (restaurant = {}) => getGeoPoint(restaurant.location || {});
+
+const getDeliveryPoint = (address = {}) => getGeoPoint(address.location || {});
+
+const formatAddress = (address = {}) =>
+    [address.street, address.additionalDetails, address.city, address.state, address.zipCode]
+        .filter(Boolean)
+        .join(', ');
+
+// Returns true if lastLocationAt is within `seconds` seconds of now
+const isLocationFresh = (at, seconds = 600) => {
+    if (!at) return false;
+    return Date.now() - new Date(at).getTime() <= seconds * 1000;
+};
+
 export async function getOperationsSnapshot(query = {}) {
     const city = query.city ? String(query.city).trim() : null;
     const driverFilter = city ? { city } : {};
+    const vendorFilter = city ? { city } : {};
+    const orderCityFilter = city ? { 'deliveryAddress.city': city } : {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [drivers, pendingPickups, completedToday, zones] = await Promise.all([
+
+    const [driversRaw, pendingPickups, completedToday, zones, vendors, assignedOrders, deliveredTotals] = await Promise.all([
         FoodDeliveryPartner.find(driverFilter)
             .select('name phone status availabilityStatus isOnline lastLat lastLng lastLocationAt vehicleType deliveriesToday earningsToday rating zoneIds city')
             .populate('zoneIds', 'name zoneName')
             .lean(),
-        FoodOrder.find({ orderStatus: { $in: ['confirmed', 'preparing', 'ready_for_pickup'] } })
-            .select('orderId restaurantId deliveryPartnerId orderStatus createdAt')
-            .populate('restaurantId', 'restaurantName location city area')
+        FoodOrder.find({ ...orderCityFilter, orderStatus: { $in: ['confirmed', 'preparing', 'ready_for_pickup'] } })
+            .select('orderId order_id restaurantId dispatch deliveryPartnerId orderStatus createdAt deliveryAddress')
+            .populate('restaurantId', 'restaurantName location city area ownerPhone')
             .lean(),
-        FoodOrder.find({ orderStatus: 'delivered', updatedAt: { $gte: today } })
-            .select('orderId deliveryAddress deliveryPartnerId updatedAt')
+        FoodOrder.find({ ...orderCityFilter, orderStatus: 'delivered', updatedAt: { $gte: today } })
+            .select('orderId order_id deliveryAddress dispatch deliveryPartnerId updatedAt')
             .lean(),
-        FoodZone.find({ isActive: true }).select('name zoneName coordinates').lean()
+        FoodZone.find({ isActive: true }).select('name zoneName coordinates').lean(),
+        FoodRestaurant.find(vendorFilter)
+            .select('restaurantName location city area status ownerPhone zoneId')
+            .lean(),
+        FoodOrder.find({
+            ...orderCityFilter,
+            orderStatus: { $in: ['confirmed', 'preparing', 'ready_for_pickup', 'reached_pickup', 'picked_up', 'reached_drop'] },
+            'dispatch.deliveryPartnerId': { $ne: null }
+        })
+            .select('orderId order_id restaurantId dispatch deliveryPartnerId orderStatus deliveryState deliveryAddress customerName customerPhone createdAt updatedAt')
+            .populate('restaurantId', 'restaurantName location city area ownerPhone')
+            .sort({ updatedAt: -1 })
+            .limit(500)
+            .lean(),
+        FoodOrder.aggregate([
+            { $match: { orderStatus: 'delivered', 'dispatch.deliveryPartnerId': { $ne: null } } },
+            { $group: { _id: '$dispatch.deliveryPartnerId', deliveredOrdersCount: { $sum: 1 } } }
+        ])
     ]);
+
+    const deliveredCountByDriver = new Map(
+        deliveredTotals.map((item) => [String(item._id), Number(item.deliveredOrdersCount) || 0])
+    );
+    const assignedByDriver = new Map();
+
+    assignedOrders.forEach((order) => {
+        const driverId = String(order.dispatch?.deliveryPartnerId || order.deliveryPartnerId || '');
+        if (!driverId) return;
+
+        const vendorPoint = getRestaurantPoint(order.restaurantId);
+        const destinationPoint = getDeliveryPoint(order.deliveryAddress);
+        const assignedDelivery = {
+            _id: order._id,
+            orderId: order.orderId || order.order_id || String(order._id),
+            status: order.orderStatus,
+            phase: order.deliveryState?.currentPhase || '',
+            customerName: order.customerName || order.deliveryAddress?.fullName || order.deliveryAddress?.name || '',
+            customerPhone: order.customerPhone || order.deliveryAddress?.phone || '',
+            address: formatAddress(order.deliveryAddress),
+            vendor: order.restaurantId ? {
+                _id: order.restaurantId._id,
+                name: order.restaurantId.restaurantName,
+                area: order.restaurantId.area,
+                location: vendorPoint
+            } : null,
+            destination: destinationPoint,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt
+        };
+
+        const list = assignedByDriver.get(driverId) || [];
+        list.push(assignedDelivery);
+        assignedByDriver.set(driverId, list);
+    });
+
+    const drivers = driversRaw.map((driver) => {
+        const driverId = String(driver._id);
+        const assignedDeliveries = assignedByDriver.get(driverId) || [];
+        const currentLocation = getGeoPoint({ lat: driver.lastLat, lng: driver.lastLng });
+        const routePoints = [];
+
+        if (currentLocation) {
+            routePoints.push({ type: 'driver', label: driver.name || 'Delivery partner', ...currentLocation });
+        }
+
+        assignedDeliveries.forEach((delivery) => {
+            if (delivery.vendor?.location && !['picked_up', 'reached_drop'].includes(delivery.status)) {
+                routePoints.push({
+                    type: 'pickup',
+                    orderId: delivery.orderId,
+                    label: delivery.vendor.name || 'Vendor',
+                    ...delivery.vendor.location
+                });
+            }
+            if (delivery.destination) {
+                routePoints.push({
+                    type: 'dropoff',
+                    orderId: delivery.orderId,
+                    label: delivery.customerName || delivery.address || 'Delivery destination',
+                    ...delivery.destination
+                });
+            }
+        });
+
+        // Driver is online if:
+        // 1. DB flag isOnline=true OR availabilityStatus='online'
+        // 2. We do NOT require location freshness as a hard gate - the driver
+        //    may simply be standing still or have slow connectivity.
+        const isDbOnline = driver.isOnline === true || driver.availabilityStatus === 'online';
+        // Only mark offline if we have NEVER received a location AND they are not flagged online
+        const isOnline = isDbOnline;
+
+        return {
+            ...driver,
+            isOnline,
+            availabilityStatus: isOnline ? 'online' : 'offline',
+            deliveredOrdersCount: deliveredCountByDriver.get(driverId) || driver.deliveriesToday || 0,
+            assignedDeliveries,
+            pendingDestinations: assignedDeliveries.map((delivery) => delivery.destination).filter(Boolean),
+            routePoints,
+            activeOrderId: assignedDeliveries[0]?.orderId || null
+        };
+    });
+
     return {
         drivers,
         pendingPickups,
         completedToday,
         zones,
+        vendors,
         stats: {
-            online: drivers.filter((d) => d.isOnline || d.availabilityStatus === 'online').length,
+            online: drivers.filter((d) => d.isOnline).length,
             active: drivers.filter((d) => d.status === 'approved').length,
             delivered: completedToday.length,
-            pendingPickups: pendingPickups.length
+            pendingPickups: pendingPickups.length,
+            assignedDeliveries: assignedOrders.length,
+            vendors: vendors.length
         }
     };
 }

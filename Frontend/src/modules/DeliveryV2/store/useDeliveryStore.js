@@ -26,11 +26,11 @@ export const useDeliveryStore = create(
       // --- Rider Status ---
       isOnline: false,
       riderLocation: null, // { lat, lng }
-      
+
       // --- Trip State ---
       activeOrder: null, // ActiveOrder | null
       tripStatus: 'IDLE', // 'IDLE' | 'PICKING_UP' | 'REACHED_PICKUP' | 'PICKED_UP' | 'DELIVERING' | 'REACHED_DROP' | 'COMPLETED'
-      
+
       // --- Admin / Business Settings ---
       settings: {
         pickupRangeLimit: 500, // meters, fallback default
@@ -39,27 +39,28 @@ export const useDeliveryStore = create(
 
       // --- Actions ---
       toggleOnline: () => set((state) => ({ isOnline: !state.isOnline })),
-      
+
       setOnline: (online) => set({ isOnline: online }),
-      
-      setRiderLocation: (location) => set({ riderLocation: location }),
-      
+
+      setRiderLocation: (location) => { console.log('📍 Rider Location Updated:', location); set({ riderLocation: location }) },
+
+
       setSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings }
       })),
 
-      setActiveOrder: (order) => set((state) => ({ 
-        activeOrder: order, 
-        tripStatus: order 
-          ? (state.tripStatus === 'IDLE' ? 'PICKING_UP' : state.tripStatus) 
-          : 'IDLE' 
+      setActiveOrder: (order) => set((state) => ({
+        activeOrder: order,
+        tripStatus: order
+          ? (state.tripStatus === 'IDLE' ? 'PICKING_UP' : state.tripStatus)
+          : 'IDLE'
       })),
 
       updateTripStatus: (status) => set({ tripStatus: status }),
 
-      clearActiveOrder: () => set({ 
-        activeOrder: null, 
-        tripStatus: 'IDLE' 
+      clearActiveOrder: () => set({
+        activeOrder: null,
+        tripStatus: 'IDLE'
       }),
 
       // --- Selectors / Computed Helper ---

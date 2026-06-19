@@ -1436,6 +1436,8 @@ export async function updateDeliveryPartnerAvailabilityAdmin(req, res, next) {
             partner.shiftStartPic = undefined;
             partner.shiftStartTime = undefined;
             partner.shiftStartAddress = undefined;
+        } else if (status === 'online') {
+            partner.lastLocationAt = new Date();
         }
         await partner.save();
         res.status(200).json({ success: true, message: 'Delivery partner availability updated', data: partner });

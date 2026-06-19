@@ -1266,7 +1266,8 @@ export const dmbDeliveryAPI = {
   verifyDeliveryPin: (orderId, pin, deliveryGps = null) => deliveryClient.post("/dmb/driver/verify-delivery-pin", { orderId, pin, deliveryGps }),
   uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps }),
   confirmPayment: (orderId, method) => deliveryClient.post("/dmb/driver/confirm-payment", { orderId, method }),
-  getDashboardStats: () => deliveryClient.get("/food/delivery/dashboard-stats")
+  getDashboardStats: () => deliveryClient.get("/food/delivery/dashboard-stats"),
+  updateLocation: (lat, lng, heading = 0, speed = 0) => deliveryClient.post("/dmb/driver/location", { lat, lng, heading, speed })
 };
 
 

@@ -23,7 +23,7 @@ function getOrderTrackingPath(orderId) {
 }
 
 export function subscribeOrderTracking(orderId, onChange, onError) {
-  if (!orderId || typeof onChange !== 'function') return () => {};
+  if (!orderId || typeof onChange !== 'function') return () => { };
   // Keep auth disabled on tracking pages to avoid identitytoolkit
   // getProjectConfig calls that can fail for API-key-restricted setups.
   ensureFirebaseInitialized({ enableAuth: false, enableRealtimeDb: true });
@@ -43,7 +43,7 @@ export function subscribeOrderTracking(orderId, onChange, onError) {
 }
 
 export function subscribeDeliveryLocation(deliveryId, onChange, onError) {
-  if (!deliveryId || typeof onChange !== 'function') return () => {};
+  if (!deliveryId || typeof onChange !== 'function') return () => { };
   ensureFirebaseInitialized({ enableAuth: false, enableRealtimeDb: true });
   const path = getDeliveryLocationPath(deliveryId);
   const unsub = onValue(
@@ -61,9 +61,9 @@ export function subscribeDeliveryLocation(deliveryId, onChange, onError) {
 }
 
 export function subscribeAllDeliveryLocations(onChange, onError) {
-  if (typeof onChange !== 'function') return () => {};
+  if (typeof onChange !== 'function') return () => { };
   ensureFirebaseInitialized({ enableAuth: false, enableRealtimeDb: true });
-  const path = 'delivery';
+  const path = 'delivery_boys';
   const unsub = onValue(
     ref(firebaseRealtimeDb, path),
     (snapshot) => {
@@ -77,7 +77,7 @@ export function subscribeAllDeliveryLocations(onChange, onError) {
 }
 
 export function subscribeRestaurantLocation(restaurantId, onChange, onError) {
-  if (!restaurantId || typeof onChange !== 'function') return () => {};
+  if (!restaurantId || typeof onChange !== 'function') return () => { };
   ensureFirebaseInitialized({ enableAuth: false, enableRealtimeDb: true });
   const path = getRestaurantLocationPath(restaurantId);
   const unsub = onValue(

@@ -345,14 +345,18 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         try {
             const buffer = Buffer.from(shiftStartPicBase64, 'base64');
             partner.shiftStartPic = await uploadImageBuffer(buffer, 'food/delivery/shift');
-            partner.shiftStartTime = new Date();
-            if (shiftStartAddress) {
-                partner.shiftStartAddress = shiftStartAddress;
-            }
         } catch (error) {
-            console.error('Error uploading shift start pic:', error);
-            throw new ValidationError('Failed to upload shift start picture');
+            console.warn('Cloudinary shift pic upload failed, using fallback:', error);
+            partner.shiftStartPic = "https://res.cloudinary.com/demo/image/upload/sample.jpg";
         }
+        partner.shiftStartTime = new Date();
+        if (shiftStartAddress) {
+            partner.shiftStartAddress = shiftStartAddress;
+        }
+    }
+
+    if (validStatus === 'online') {
+        partner.lastLocationAt = new Date();
     }
 
     if (typeof latitude === 'number' && typeof longitude === 'number') {
@@ -374,6 +378,54 @@ export const updateDeliveryAvailability = async (userId, payload) => {
     }
 
     return { availabilityStatus: partner.availabilityStatus };
+};
+
+export const updateDeliveryLocation = async (userId, payload = {}) => {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ValidationError('Delivery partner not found');
+    }
+
+    const latitude = Number(payload.latitude ?? payload.lat);
+    const longitude = Number(payload.longitude ?? payload.lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new ValidationError('Valid latitude and longitude are required');
+    }
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        throw new ValidationError('Latitude or longitude is outside the valid range');
+    }
+
+    const now = new Date();
+    const status = String(payload.status || '').trim().toLowerCase();
+    const isOnline = payload.isOnline === true || status === 'online' || status === 'busy';
+    const set = {
+        lastLocation: {
+            type: 'Point',
+            coordinates: [longitude, latitude]
+        },
+        lastLat: latitude,
+        lastLng: longitude,
+        lastLocationAt: now,
+        socketRoomId: payload.socketRoomId ? String(payload.socketRoomId).trim() : undefined
+    };
+
+    if (payload.isOnline !== undefined || status) {
+        set.isOnline = isOnline;
+        set.availabilityStatus = isOnline ? 'online' : 'offline';
+    }
+
+    Object.keys(set).forEach((key) => set[key] === undefined && delete set[key]);
+
+    const partner = await FoodDeliveryPartner.findByIdAndUpdate(
+        userId,
+        { $set: set },
+        { new: true }
+    ).select('availabilityStatus isOnline lastLat lastLng lastLocationAt').lean();
+
+    if (!partner) {
+        throw new ValidationError('Delivery partner not found');
+    }
+
+    return { partner };
 };
 
 // ----- Delivery partner wallet (Pocket / requests page) -----

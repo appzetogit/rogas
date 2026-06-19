@@ -5,9 +5,22 @@ import { useProximityCheck } from '@/modules/DeliveryV2/hooks/useProximityCheck'
 import { useOrderManager } from '@/modules/DeliveryV2/hooks/useOrderManager';
 import { useDMBTracking } from '@/modules/DeliveryV2/hooks/useDMBTracking';
 import { useDeliveryNotificationContext } from '@food/context/DeliveryNotificationContext';
-import { writeOrderTracking } from '@food/realtimeTracking';
+import { writeOrderTracking, writeDeliveryLocation } from '@food/realtimeTracking';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
+
+const getDriverId = () => {
+  try {
+    const token = localStorage.getItem('delivery_accessToken');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.userId || payload._id || '';
+    }
+  } catch (e) {
+    console.error('Failed to parse driver ID from token:', e);
+  }
+  return localStorage.getItem('deliveryPartnerId') || localStorage.getItem('deliveryBoyId') || '';
+};
 
 // Components
 import LiveMap from '@/modules/DeliveryV2/components/map/LiveMap';
@@ -105,6 +118,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const rollingSpeedRef = useRef([]);
   const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
 
+  // ─── Delivery ID (MongoDB _id of driver) ─────────────────────────────────
+  // This is the KEY used in Firebase: delivery_boys/<deliveryId>
+  // getDriverId() parses JWT userId — must match DB _id exactly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const deliveryId = getDriverId();
+
   const [zoom, setZoom] = useState(14);
   const [isSimMode, setIsSimMode] = useState(false);
   const [simPath, setSimPath] = useState([]);
@@ -192,6 +211,20 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               };
               // A. HTTP Backup
               deliveryAPI.updateLocation(lat, lng, true, { heading }).catch(() => {});
+              
+              // Write to Firebase Realtime DB delivery_boys node
+              const driverId = getDriverId();
+              if (driverId) {
+                writeDeliveryLocation({
+                  deliveryId,
+                  lat,
+                  lng,
+                  heading,
+                  isOnline: true,
+                  activeOrderId: payload.orderId || null,
+                  timestamp: now
+                }).catch(() => {});
+              }
               
               // B. SOCKET LIVE (SILKY SMOOTH)
               if (payload.orderId) emitLocation(payload);
@@ -472,6 +505,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           accuracy: pos.coords.accuracy 
         }).catch(() => {});
 
+        // Write to Firebase Realtime DB delivery_boys/<deliveryId>
+        // useDMBTracking also does this every 5s from the same riderLocation store.
+        // This write fires on movement (more responsive), useDMBTracking covers idle periods.
+        if (deliveryId) {
+          writeDeliveryLocation({
+            deliveryId,
+            lat,
+            lng,
+            heading: heading || 0,
+            speed: speed || 0,
+            isOnline: true,
+            activeOrderId: payload.orderId || null,
+            timestamp: now
+          }).catch(() => {});
+        }
+
         if (payload.orderId) emitLocation(payload);
 
         if (payload.orderId) {
@@ -520,6 +569,20 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           true, 
           { heading: 0, speed: 0, accuracy: null }
         ).catch(() => {});
+
+        // Also write to Firebase so admin map stays updated
+        if (deliveryId) {
+          writeDeliveryLocation({
+            deliveryId,
+            lat: lastCoordRef.current.lat,
+            lng: lastCoordRef.current.lng,
+            heading: 0,
+            speed: 0,
+            isOnline: true,
+            activeOrderId: activeOrder?.orderId || activeOrder?._id || null,
+            timestamp: now
+          }).catch(() => {});
+        }
       }
     }, 10000); // Check every 10 seconds
     
@@ -755,6 +818,20 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                       await goOffline();
                       toggleOnline(); // Store action
                       deliveryAPI.updateOnlineStatus(false).catch(() => {});
+
+                      // goOffline() in useDMBTracking already writes isOnline:false to Firebase
+                      // But also update here for immediate admin map feedback
+                      const riderLocation = useDeliveryStore.getState().riderLocation;
+                      if (deliveryId) {
+                        writeDeliveryLocation({
+                          deliveryId,
+                          lat: riderLocation?.lat || 0,
+                          lng: riderLocation?.lng || 0,
+                          heading: riderLocation?.heading || 0,
+                          isOnline: false,
+                          timestamp: Date.now()
+                        }).catch(() => {});
+                      }
                   }
                 }}
                 className={`delivery-online-toggle relative w-[92px] h-8 rounded-full p-1 transition-all duration-500 flex items-center ${isOnline ? 'is-online bg-green-500 shadow-lg shadow-green-500/20' : 'is-offline bg-green-400 shadow-lg shadow-green-400/20'}`}
@@ -889,7 +966,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
             
             // Sync location immediately
             navigator.geolocation.getCurrentPosition((pos) => {
-               deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => {});
+               const lat = pos.coords.latitude;
+               const lng = pos.coords.longitude;
+               deliveryAPI.updateLocation(lat, lng, true).catch(() => {});
+
+               // Immediately publish location to Firebase on shift start
+               if (deliveryId) {
+                 writeDeliveryLocation({
+                   deliveryId,
+                   lat,
+                   lng,
+                   heading: pos.coords.heading || 0,
+                   isOnline: true,
+                   activeOrderId: activeOrder?.orderId || activeOrder?._id || null,
+                   timestamp: Date.now()
+                 }).catch(() => {});
+               }
             }, () => {}, { enableHighAccuracy: true });
             
             toast.success("Shift started successfully!");
