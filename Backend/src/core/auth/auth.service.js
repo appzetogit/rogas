@@ -68,6 +68,7 @@ const sanitizeRestaurantForAuthResponse = (restaurantDoc = {}) => {
     phone: restaurantDoc?.ownerPhone || restaurantDoc?.primaryContactNumber || "",
     email: restaurantDoc?.ownerEmail || "",
     status: restaurantDoc?.status || "",
+    vendorType: restaurantDoc?.vendorType || "restaurant",
     profileImage: toSafeImageUrl(restaurantDoc?.profileImage),
     createdAt: restaurantDoc?.createdAt,
   };

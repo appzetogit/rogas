@@ -592,7 +592,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             <div className="space-y-3 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VENDOR TYPE</label>
               <div className="grid grid-cols-2 gap-3">
-                {['Home Cook', 'Cloud Kitchen', 'Restaurant', 'Catering'].map((t) =>
+                {['Home Cook', 'Cloud Kitchen', 'Restaurant', 'Catering', 'Pantry Shop'].map((t) =>
                   <button
                     key={t}
                     onClick={() => setType(t)}

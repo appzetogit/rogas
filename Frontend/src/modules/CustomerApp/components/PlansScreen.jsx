@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { IMAGES } from "../types";
+import { PantryItemsList } from "./PantryItemsList";
 
 const mapContainerStyle = {
   width: '100%',
@@ -682,6 +683,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
   const [openMenuFor, setOpenMenuFor] = useState(null);
   const [openPlansFor, setOpenPlansFor] = useState(null);
   const [hasActiveSub, setHasActiveSub] = useState(false);
+  const [activeTab, setActiveTab] = useState("vendor_plans");
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -769,8 +771,26 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
         </header>
 
         <main className="pt-20 px-4">
-          {/* Search */}
-          <div className="relative mb-4">
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
+            <button 
+              onClick={() => setActiveTab('vendor_plans')}
+              className={`flex-1 py-2.5 rounded-[12px] text-[14px] transition-all ${activeTab === 'vendor_plans' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c] hover:bg-[#eef0ec]'}`}
+            >
+              Vendor Plans
+            </button>
+            <button 
+              onClick={() => setActiveTab('pantry_items')}
+              className={`flex-1 py-2.5 rounded-[12px] text-[14px] transition-all ${activeTab === 'pantry_items' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c] hover:bg-[#eef0ec]'}`}
+            >
+              Pantry Items
+            </button>
+          </div>
+
+          {activeTab === 'vendor_plans' && (
+            <>
+              {/* Search */}
+              <div className="relative mb-4">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]">search</span>
             <input
               type="text"
@@ -911,6 +931,12 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
               ))
             )}
           </section>
+          </>
+          )}
+
+          {activeTab === 'pantry_items' && (
+            <PantryItemsList />
+          )}
 
           <div className="h-20" />
         </main>

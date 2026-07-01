@@ -22,7 +22,9 @@ import { VendorWelcomeScreen } from './components/VendorWelcomeScreen';
 import { PhoneScreen, OtpScreen, RegisterFormScreen, UnderReviewScreen } from './components/VendorAuthScreens';
 import HomeDashboard from './components/HomeDashboard';
 import OrdersManager from './components/OrdersManager';
+import PantryOrdersManager from './components/PantryOrdersManager';
 import MenuManager from './components/MenuManager';
+import PantryMenuManager from './components/PantryMenuManager';
 import EarningsManager from './components/EarningsManager';
 import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
@@ -48,6 +50,7 @@ export default function App() {
     return { ...INITIAL_PROFILE, isRegistered: false };
   });
   const [meals, setMeals] = useState([]);
+  const [pantryItems, setPantryItems] = useState([]);
   const [orders, setOrders] = useState([...INITIAL_ORDERS]);
   const [transactions, setTransactions] = useState([...INITIAL_TRANSACTIONS]);
   const [vacation, setVacation] = useState({ ...INITIAL_VACATION });
@@ -158,12 +161,17 @@ export default function App() {
 
     const loadData = async () => {
       try {
-        const [ordersRes, plansRes, earningsRes, subscriberRes] = await Promise.all([
+        const [ordersRes, plansRes, earningsRes, subscriberRes, pantryRes] = await Promise.all([
           dmbVendorAPI.getOrders(),
           dmbVendorAPI.getMealPlans(),
           dmbVendorAPI.getEarnings(),
-          dmbVendorAPI.getSubscriberStats().catch(() => ({ data: { stats: { active: 0 } } }))
+          dmbVendorAPI.getSubscriberStats().catch(() => ({ data: { stats: { active: 0 } } })),
+          profile.vendorType === 'pantry_shop' ? dmbVendorAPI.getPantryItems().catch(() => ({ data: { items: [] } })) : Promise.resolve({ data: { items: [] } })
         ]);
+
+        if (pantryRes.data?.items) {
+          setPantryItems(pantryRes.data.items);
+        }
 
         if (ordersRes.data?.orders) {
           const mappedOrders = ordersRes.data.orders.map(o => ({
@@ -588,6 +596,7 @@ export default function App() {
                 else if (p.type === 'Cloud Kitchen') backendVendorType = 'cloud_kitchen';
                 else if (p.type === 'Restaurant') backendVendorType = 'restaurant';
                 else if (p.type === 'Catering') backendVendorType = 'catering';
+                else if (p.type === 'Pantry Shop') backendVendorType = 'pantry_shop';
                 formData.append('vendorType', backendVendorType);
 
                 // Append foodLicence file
@@ -696,8 +705,16 @@ export default function App() {
         <main className="flex-grow pb-[83px] bg-slate-50/50 flex flex-col">
           <Routes>
             <Route path="/dashboard" element={<HomeDashboard profile={profile} orders={orders} meals={meals} transactions={transactions} onMarkAllReady={handleMarkAllReady} onNavigateToTab={(t) => navigate(`/vendor/${t.toLowerCase()}`)} onOpenSubView={setShowSubView} subscriberCount={subscriberCount} />} />
-            <Route path="/orders" element={<OrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onBatchUpdateStatus={handleBatchUpdateStatus} />} />
-            <Route path="/menu" element={<MenuManager meals={meals} surpriseBoxes={surpriseBoxes} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onAddSurpriseBox={handleAddSurpriseBox} onEndSurpriseBox={handleEndSurpriseBox} onToggleMealStatus={handleToggleMealStatus} />} />
+            {profile.vendorType === 'pantry_shop' ? (
+              <Route path="/orders" element={<PantryOrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} />} />
+            ) : (
+              <Route path="/orders" element={<OrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onBatchUpdateStatus={handleBatchUpdateStatus} />} />
+            )}
+            {profile.vendorType === 'pantry_shop' ? (
+              <Route path="/menu" element={<PantryMenuManager items={pantryItems} setItems={setPantryItems} />} />
+            ) : (
+              <Route path="/menu" element={<MenuManager vendorType={profile.vendorType} meals={meals} surpriseBoxes={surpriseBoxes} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onAddSurpriseBox={handleAddSurpriseBox} onEndSurpriseBox={handleEndSurpriseBox} onToggleMealStatus={handleToggleMealStatus} />} />
+            )}
             <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
             <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
             <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />

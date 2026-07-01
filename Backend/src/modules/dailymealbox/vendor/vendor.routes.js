@@ -16,6 +16,9 @@ import {
     updateDailyOrderStatus,
     markAllOrdersReady
 } from '../subscription/dmb.dailyOrder.service.js';
+import { PantryItem } from '../../food/restaurant/models/pantryItem.model.js';
+import { uploadImageBuffer } from '../../../services/cloudinary.service.js';
+import { upload } from '../../../middleware/upload.js';
 
 const router = express.Router();
 
@@ -495,6 +498,35 @@ router.get('/:vendorId/menu', async (req, res) => {
     }
 });
 
+// ─── PUBLIC: Get All Pantry Items ──────────────────────────────────────────
+router.get('/pantry-items/all', async (req, res) => {
+    try {
+        const items = await PantryItem.find({ isAvailable: true })
+            .populate('vendorId', 'restaurantName city')
+            .sort({ createdAt: -1 });
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── PUBLIC: Get Vendor's Pantry Items ─────────────────────────────────────
+router.get('/:vendorId/pantry-items', async (req, res) => {
+    try {
+        const vendor = await FoodRestaurant.findById(req.params.vendorId).select('restaurantName');
+        if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+        const items = await PantryItem.find({
+            vendorId: req.params.vendorId,
+            isAvailable: true
+        }).sort({ createdAt: -1 });
+
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── PUBLIC: Get Vendor's Subscription Plans ─────────────────────────────
 // Returns structured subscription plan options for a vendor
 router.get('/:vendorId/plans', async (req, res) => {
@@ -611,6 +643,82 @@ router.get('/subscriber-stats', authMiddleware, requireRoles('RESTAURANT'), asyn
             DMBSubscription.countDocuments({ vendorId: req.user.userId, status: 'paused' }),
         ]);
         res.json({ success: true, stats: { total, active, paused } });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Get Vendor's Daily Orders (today/tomorrow) ────────────────────────
+router.get('/settings', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendor = await FoodRestaurant.findById(req.user.userId)
+            .select('restaurantName cuisines openingTime closingTime isAcceptingOrders profileImage');
+        res.json({ success: true, settings: vendor });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Pantry Shop Routes ───────────────────────────────────────────────────
+
+router.post('/pantry-items', authMiddleware, requireRoles('RESTAURANT'), upload.single('image'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { title, price, isAvailable } = req.body;
+        
+        let imageUrl = '';
+        if (req.file) {
+            imageUrl = await uploadImageBuffer(req.file.buffer, 'pantry_items');
+        } else {
+            return res.status(400).json({ success: false, message: 'Image is required' });
+        }
+        
+        const item = await PantryItem.create({
+            vendorId,
+            title,
+            price: Number(price),
+            image: imageUrl,
+            isAvailable: isAvailable === 'true' || isAvailable === true
+        });
+        
+        res.status(201).json({ success: true, item });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/pantry-items', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const items = await PantryItem.find({ vendorId }).sort({ createdAt: -1 });
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.patch('/pantry-items/:id', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const item = await PantryItem.findOneAndUpdate(
+            { _id: req.params.id, vendorId },
+            { $set: req.body },
+            { new: true }
+        );
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+        res.json({ success: true, item });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── NEW: Delete Vendor's Pantry Item ───────────────────────────────────────
+router.delete('/pantry-items/:id', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const item = await PantryItem.findOneAndDelete({ _id: req.params.id, vendorId });
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+        res.json({ success: true, message: 'Item deleted successfully' });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

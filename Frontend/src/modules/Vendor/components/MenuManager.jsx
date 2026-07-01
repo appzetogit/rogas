@@ -27,6 +27,7 @@ const toLocalDateStr = (d) => {
 
 
 export default function MenuManager({
+  vendorType,
   meals,
   surpriseBoxes,
   onAddMeal,
@@ -451,6 +452,7 @@ export default function MenuManager({
       {subView === 'list' && (
       <div className="space-y-4 animate-fadeIn">
           {/* Tab Switcher */}
+          {vendorType !== 'pantry_shop' && (
           <div className="flex bg-surface-container-low rounded-xl p-1 border border-outline-variant/10 mb-4 mt-2">
             <button
               type="button"
@@ -475,6 +477,7 @@ export default function MenuManager({
               Week Menu
             </button>
           </div>
+          )}
 
           {tab === 'menu' ? (
             <>

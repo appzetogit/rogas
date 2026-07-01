@@ -2034,6 +2034,18 @@ export const dmbVendorAPI = {
   getTimingSettings: () => restaurantClient.get("/dmb/vendor/timing-settings"),
   /** NEW: Live dynamic earnings breakdown from food restaurant module (replaces static earnings) */
   getVendorEarningsSummary: () => restaurantClient.get("/food/restaurant/earnings"),
+  // Pantry Items Endpoints
+  getPantryItems: () => restaurantClient.get("/dmb/vendor/pantry-items"),
+  createPantryItem: (data) => restaurantClient.post("/dmb/vendor/pantry-items", data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  updatePantryItem: (itemId, data) => {
+    const isFormData = data instanceof FormData;
+    return restaurantClient.patch(`/dmb/vendor/pantry-items/${itemId}`, data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    });
+  },
+  deletePantryItem: (itemId) => restaurantClient.delete(`/dmb/vendor/pantry-items/${itemId}`),
 };
 
 
@@ -2044,6 +2056,9 @@ export const dmbCustomerAPI = {
   getPublicZones: (params = {}) => userClient.get("/food/restaurant/zones/public", { params }),
   /** Get vendor's subscription plan options (public, no auth) */
   getVendorPlans: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/plans`),
+  /** Get all available pantry items globally (public) */
+  getAllPantryItems: () => userClient.get(`/dmb/vendor/pantry-items/all`),
+  getVendorPantryItems: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pantry-items`),
   /** Create Razorpay order + pending subscription (auth: USER) */
   createSubscriptionOrder: (data) => userClient.post("/dmb/payments/create-order", data),
   /** Verify Razorpay payment + activate subscription (auth: USER) */

@@ -294,7 +294,7 @@ const restaurantSchema = new mongoose.Schema(
     /** Vendor type for DailyMealBox subscription platform */
     vendorType: {
       type: String,
-      enum: ['home_cook', 'cloud_kitchen', 'restaurant', 'catering'],
+      enum: ['home_cook', 'cloud_kitchen', 'restaurant', 'catering', 'pantry_shop'],
       default: 'restaurant',
       index: true,
     },
