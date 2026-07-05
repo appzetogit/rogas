@@ -1,0 +1,1640 @@
+Table FoodAdmin {
+  email String
+  password String
+  name String
+  phone String
+  profileImage String
+  fcmTokens Array_String
+  fcmTokenMobile Array_String
+  role String
+  adminRole String
+  assignedCityIds Array_ObjectId
+  permissions Array_String
+  isActive Boolean
+  servicesAccess Array_String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminResetOtp {
+  email String
+  otp String
+  expiresAt Date
+  attempts Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AppConfig {
+  appName String
+  primaryColor String
+  secondaryColor String
+  logoUrl String
+  fontFamily String
+  backgroundColor String
+  textColor String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodNotification {
+  ownerType String
+  ownerId ObjectId
+  title String
+  message String
+  link String
+  category String
+  source String
+  broadcastId ObjectId
+  metadata Mixed
+  isRead Boolean
+  readAt Date
+  dismissedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table BroadcastNotification {
+  title String
+  message String
+  targetType String
+  targetIds Array_ObjectId
+  targets Array_undefined
+  link String
+  createdBy ObjectId
+  targetCount Number
+  _id ObjectId
+  createdAt Date
+}
+
+Table FoodOtp {
+  phone String
+  otp String
+  expiresAt Date
+  attempts Number
+  requestCount Number
+  lastRequestAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table Payment {
+  orderId ObjectId
+  userId ObjectId
+  amount Number
+  currency String
+  method String
+  gateway String
+  gatewayOrderId String
+  gatewayPaymentId String
+  status String
+  module String
+  rawResponse Mixed
+  metadata Mixed
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table Refund {
+  paymentId ObjectId
+  orderId ObjectId
+  userId ObjectId
+  amount Number
+  currency String
+  reason String
+  status String
+  refundTo String
+  gatewayRefundId String
+  processedAt Date
+  processedBy ObjectId
+  metadata Mixed
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table Settlement {
+  entityType String
+  entityId ObjectId
+  amount Number
+  currency String
+  transactionIds Array_ObjectId
+  status String
+  payoutRef String
+  processedAt Date
+  processedBy ObjectId
+  periodStart Date
+  periodEnd Date
+  notes String
+  metadata Mixed
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table Transaction {
+  paymentId ObjectId
+  orderId ObjectId
+  entityType String
+  entityId ObjectId
+  type String
+  amount Number
+  balanceAfter Number
+  currency String
+  status String
+  description String
+  category String
+  module String
+  metadata Mixed
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRefreshToken {
+  userId ObjectId
+  token String
+  device String
+  ipAddress String
+  expiresAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodUser {
+  phone String
+  countryCode String
+  name String
+  email String
+  profileImage String
+  fcmTokens Array_String
+  fcmTokenMobile Array_String
+  dateOfBirth Date
+  anniversary Date
+  gender String
+  referralCode String
+  referredBy ObjectId
+  referralCount Number
+  isVerified Boolean
+  isActive Boolean
+  role String
+  addresses Array_undefined
+  onboardingGoal String
+  dietType String
+  allergens Array_String
+  budgetMin Number
+  budgetMax Number
+  deliveryDays String
+  deliverySlot String
+  invoiceType String
+  companyNip String
+  companyName String
+  billingEmail String
+  loyaltyPoints Number
+  walletBalance Number
+  city String
+  subscriptionStatus String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table CollectionBatch {
+  batchId String
+  vendorId ObjectId
+  driverId ObjectId
+  fleetPartnerId ObjectId
+  deliveryDate Date
+  deliverySlot String
+  collectionPinHash String
+  pinExpiry Date
+  pinVerified Boolean
+  pinAttempts Number
+  pinAlertSent Boolean
+  boxCount Number
+  orderIds Array_ObjectId
+  status String
+  assignedAt Date
+  collectedAt Date
+  collectionGps_lat Number
+  collectionGps_lng Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DMBDailyMenu {
+  vendorId ObjectId
+  mealPlanId ObjectId
+  date Date
+  dishName String
+  description String
+  photo String
+  slot String
+  nutrition_calories Number
+  nutrition_protein Number
+  nutrition_carbs Number
+  nutrition_fats Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DMBMealPlan {
+  vendorId ObjectId
+  name String
+  description String
+  photos Array_String
+  pricePerDay Number
+  currency String
+  city String
+  zoneIds Array_ObjectId
+  availableSlots Array_String
+  availableDays Array_String
+  capacity Number
+  bookedToday Number
+  nutrition Embedded
+  allergens Array_String
+  dietTags Array_String
+  vatCategory String
+  vatRate Number
+  status String
+  isFeatured Boolean
+  featuredUntil Date
+  isFlashDeal Boolean
+  flashDealDiscount Number
+  flashDealEndsAt Date
+  isSurpriseBox Boolean
+  surpriseBoxDiscount Number
+  surpriseBoxEndsAt Date
+  kitchenPartnerId ObjectId
+  matchScore Number
+  rating Number
+  totalRatings Number
+  activeSubscriberCount Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DMBDailyOrder {
+  orderId String
+  subscriptionId ObjectId
+  userId ObjectId
+  vendorId ObjectId
+  meals Array_undefined
+  deliveryDate Date
+  deliverySlot String
+  status String
+  collectionPin String
+  deliveryPin String
+  pricing_foodCost Number
+  pricing_foodVat Number
+  pricing_foodVatAmount Number
+  pricing_deliveryFee Number
+  pricing_deliveryVat Number
+  pricing_deliveryVatAmount Number
+  pricing_platformFee Number
+  pricing_totalPrice Number
+  pricing_currency String
+  deliveryAddress_street String
+  deliveryAddress_city String
+  deliveryAddress_state String
+  deliveryAddress_label String
+  deliveryAddress_location_type String
+  deliveryAddress_location_coordinates Array_Number
+  dispatch_deliveryPartnerId ObjectId
+  preparingAt Date
+  readyAt Date
+  pickedUpAt Date
+  deliveredAt Date
+  deliveryRating Number
+  ratingFeedback String
+  driverTip Number
+  isRated Boolean
+  riderEarning Number
+  paymentMethod String
+  paymentConfirmed Boolean
+  notes String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryTipTransaction {
+  deliveryPartnerId ObjectId
+  orderId ObjectId
+  orderType String
+  amount Number
+  razorpayOrderId String
+  razorpayPaymentId String
+  razorpaySignature String
+  status String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DMBDurationPlan {
+  label String
+  code String
+  daysCountMonFri Number
+  daysCountFullWeek Number
+  description String
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DMBSubscription {
+  subscriptionId String
+  userId ObjectId
+  vendorId ObjectId
+  zoneId ObjectId
+  mealPlanId ObjectId
+  meals Array_undefined
+  duration String
+  status String
+  startDate Date
+  endDate Date
+  nextDeliveryDate Date
+  deliveryDays String
+  deliverySlot String
+  deliverySlots Array_String
+  deliveryAddress Embedded
+  pricing_basePricePerDay Number
+  pricing_deliveryFeePerDay Number
+  pricing_foodVat Number
+  pricing_deliveryVat Number
+  pricing_platformFee Number
+  pricing_foodVatAmount Number
+  pricing_deliveryVatAmount Number
+  pricing_platformFeeAmount Number
+  pricing_applyFoodVatOnMenu Boolean
+  pricing_totalPerWeek Number
+  pricing_totalPrice Number
+  pricing_currency String
+  paymentMethod String
+  skipsUsedThisMonth Number
+  maxSkipsPerMonth Number
+  skipsMonthKey String
+  pausedUntil Date
+  pausedAt Date
+  requestedPauseDays Number
+  pauseReason String
+  maxPauseDays Number
+  cancelledAt Date
+  cancellationReason String
+  invoiceType String
+  companyNip String
+  companyName String
+  billingEmail String
+  autoRenew Boolean
+  billingCycleStart Date
+  lastDeliveryDate Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table VendorSubscriptionPlan {
+  name String
+  price Number
+  duration String
+  description String
+  features Array_String
+  foodVat Number
+  deliveryVat Number
+  platformFee Number
+  deliveryDays String
+  applyFoodVatOnMenu Boolean
+  status String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FleetPartner {
+  companyName String
+  nip String
+  bankIban String
+  contactName String
+  contactPhone String
+  contactEmail String
+  city String
+  status String
+  deliveryVatRate Number
+  drivers Array_ObjectId
+  invoices Array_undefined
+  approvedByAdminId ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table KitchenPartner {
+  companyName String
+  nip String
+  krs String
+  bankIban String
+  status String
+  city String
+  zoneIds Array_String
+  homeCooks Array_undefined
+  managementFeePct Number
+  foodLicenceUrl String
+  foodLicenceExpiry Date
+  insuranceUrl String
+  approvedByAdminId ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AccountDeletion {
+  accountType String
+  originalId ObjectId
+  phone String
+  name String
+  email String
+  deletedAt Date
+  financialSnapshot_totalOrderAmount Number
+  financialSnapshot_walletBalance Number
+  financialSnapshot_pendingRefunds Number
+  financialSnapshot_totalEarnings Number
+  financialSnapshot_pendingWithdrawals Number
+  financialSnapshot_totalCommissionPaid Number
+  orderCount Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminCity {
+  name String
+  country String
+  status String
+  currency String
+  vatRate Number
+  defaultLanguage String
+  enabledLanguages Array_String
+  paymentGateways Array_undefined
+  zoneIds Array_ObjectId
+  activationChecklist Embedded
+  metadata Mixed
+  createdBy ObjectId
+  updatedBy ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodAdminWallet {
+  key String
+  balance Number
+  totalRevenue Number
+  totalPayouts Number
+  totalRefunds Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AppIntroAd {
+  title String
+  mediaUrl String
+  mediaType String
+  duration Number
+  isActive Boolean
+  order Number
+  type String
+  startDate Date
+  endDate Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminAuditLog {
+  actorId ObjectId
+  actorEmail String
+  actorRole String
+  action String
+  entityType String
+  entityId String
+  cityId ObjectId
+  previousValue Mixed
+  newValue Mixed
+  reason String
+  ip String
+  userAgent String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodBusinessSettings {
+  companyName String
+  email String
+  phone_countryCode String
+  phone_number String
+  address String
+  state String
+  pincode String
+  region String
+  logo_url String
+  logo_publicId String
+  favicon_url String
+  favicon_publicId String
+  supportEmail String
+  supportPhone String
+  supportHours String
+  termsAndConditionsPdf_url String
+  termsAndConditionsPdf_publicId String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodCategory {
+  name String
+  image String
+  type String
+  foodTypeScope String
+  restaurantId ObjectId
+  createdByRestaurantId ObjectId
+  approvalStatus String
+  isApproved Boolean
+  rejectionReason String
+  requestedAt Date
+  approvedAt Date
+  rejectedAt Date
+  globalizedAt Date
+  zoneId ObjectId
+  isActive Boolean
+  sortOrder Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminComplaint {
+  complaintRef String
+  orderId ObjectId
+  customerId ObjectId
+  complainantType String
+  vendorId ObjectId
+  driverId ObjectId
+  subject String
+  message String
+  proofPhotos Array_String
+  deliveryGpsLat Number
+  deliveryGpsLng Number
+  category String
+  status String
+  statusTrail Array_undefined
+  assignedAgentId ObjectId
+  assignedAgentName String
+  refundType String
+  refundAmount Number
+  refundStatus String
+  refundSplit Embedded
+  autoEscalateAt Date
+  escalatedToId ObjectId
+  csRefundLimit Number
+  customerResponseSent Boolean
+  customerResponseMessage String
+  customerResponseAt Date
+  internalNote String
+  city String
+  legacyTicketId ObjectId
+  resolvedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DeliveryBonusTransaction {
+  deliveryPartnerId ObjectId
+  transactionId String
+  amount Number
+  reference String
+  createdByAdminId ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryCashLimit {
+  deliveryCashLimit Number
+  deliveryWithdrawalLimit Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryCommissionRule {
+  name String
+  minDistance Number
+  maxDistance Number
+  commissionPerKm Number
+  basePayout Number
+  status Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryEmergencyHelp {
+  medicalEmergency String
+  accidentHelpline String
+  contactPolice String
+  insurance String
+  teamLeader String
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DeliveryOrderFeeSettings {
+  feePerOrder Number
+  commissionPerDay Number
+  commissionPerWeek Number
+  commissionPerMonth Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DriverDocumentReview {
+  driverId ObjectId
+  fleetPartnerId ObjectId
+  documentType String
+  documentUrl String
+  expiryDate Date
+  status String
+  rejectionReason String
+  reviewedBy ObjectId
+  reviewedAt Date
+  history Array_undefined
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodEarningAddon {
+  title String
+  description String
+  requiredOrders Number
+  earningAmount Number
+  startDate Date
+  endDate Date
+  maxRedemptions Number
+  currentRedemptions Number
+  status String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodEarningAddonHistory {
+  offerId ObjectId
+  deliveryPartnerId ObjectId
+  ordersCompleted Number
+  ordersRequired Number
+  earningAmount Number
+  totalEarning Number
+  status String
+  completedAt Date
+  creditedAt Date
+  creditedNotes String
+  cancelledAt Date
+  cancelReason String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminEnvironmentSetting {
+  environment String
+  isActive Boolean
+  apiBaseUrl String
+  adminBaseUrl String
+  appVersion String
+  releaseChannel String
+  maintenanceMode Boolean
+  config Mixed
+  updatedBy ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminFeatureToggle {
+  key String
+  label String
+  category String
+  scope String
+  cityId ObjectId
+  state String
+  config Mixed
+  locked Boolean
+  lastChangedBy ObjectId
+  lastChangedAt Date
+  rollbackUntil Date
+  previousState String
+  previousConfig Mixed
+  scheduledChanges Array_undefined
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FeedbackExperience {
+  userId ObjectId
+  userModel String
+  restaurantId ObjectId
+  rating Number
+  comment String
+  module String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodFeeSettings {
+  deliveryFee Number
+  deliveryFeeRanges Array_undefined
+  freeDeliveryUpTo Number
+  freeDeliveryThreshold Number
+  platformFee Number
+  packagingFee Number
+  gstRate Number
+  deliveryBonusAmount Number
+  dispatchRadiusTiers Array_Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FleetInvoice {
+  invoiceRef String
+  fleetPartnerId ObjectId
+  weekStartDate Date
+  weekEndDate Date
+  lines Array_undefined
+  totalDeliveries Number
+  grossServiceFee Number
+  vatRate Number
+  vatAmount Number
+  totalAmount Number
+  currency String
+  status String
+  submittedAt Date
+  approvedByAdminId ObjectId
+  approvedAt Date
+  rejectionReason String
+  paidAt Date
+  paymentRef String
+  invoicePdfUrl String
+  accountantNote String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodItem {
+  restaurantId ObjectId
+  categoryId ObjectId
+  categoryName String
+  name String
+  description String
+  price Number
+  priceOnOtherPlatforms Number
+  otherPlatformGst Number
+  variants Array_undefined
+  image String
+  foodType String
+  isAvailable Boolean
+  preparationTime String
+  approvalStatus String
+  rejectionReason String
+  requestedAt Date
+  approvedAt Date
+  rejectedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminIntegrationSetting {
+  provider String
+  label String
+  category String
+  environment String
+  cityId ObjectId
+  status String
+  publicConfig Mixed
+  secretRefs Mixed
+  requires2fa Boolean
+  lastCheckedAt Date
+  lastChangedBy ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodOffer {
+  couponCode String
+  discountType String
+  discountValue Number
+  customerScope String
+  restaurantScope String
+  restaurantId ObjectId
+  minOrderValue Number
+  maxDiscount Number
+  usageLimit Number
+  perUserLimit Number
+  usedCount Number
+  startDate Date
+  isFirstOrderOnly Boolean
+  endDate Date
+  status String
+  showInCart Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodOfferUsage {
+  offerId ObjectId
+  userId ObjectId
+  count Number
+  lastUsedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table AdminOtaConfig {
+  cityId ObjectId
+  type String
+  languageCode String
+  version Number
+  status String
+  payload Mixed
+  validation Mixed
+  publishedAt Date
+  createdBy ObjectId
+  updatedBy ObjectId
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodPageContent {
+  key String
+  legal Embedded
+  about Embedded
+  support Embedded
+  updatedBy ObjectId
+  updatedByRole String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodReferralLog {
+  referrerId ObjectId
+  refereeId ObjectId
+  role String
+  rewardAmount Number
+  status String
+  reason String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodReferralSettings {
+  referralRewardUser Number
+  referralRewardDelivery Number
+  referralLimitUser Number
+  referralLimitDelivery Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantCommission {
+  restaurantId ObjectId
+  defaultCommission_type String
+  defaultCommission_value Number
+  platformCommissionVatPercent Number
+  foodVatPercent Number
+  notes String
+  status Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodSafetyEmergencyReport {
+  userId ObjectId
+  userName String
+  userEmail String
+  userPhone String
+  message String
+  status String
+  priority String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table VendorTimingSettings {
+  breakfast Embedded
+  lunch Embedded
+  dinner Embedded
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodZone {
+  name String
+  zoneName String
+  country String
+  serviceLocation String
+  unit String
+  coordinates Array_undefined
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryPartner {
+  name String
+  phone String
+  email String
+  countryCode String
+  address String
+  city String
+  state String
+  vehicleType String
+  vehicleName String
+  vehicleNumber String
+  panNumber String
+  aadharNumber String
+  drivingLicenseNumber String
+  profilePhoto String
+  fcmTokens Array_String
+  fcmTokenMobile Array_String
+  aadharPhoto String
+  panPhoto String
+  drivingLicensePhoto String
+  drivingLicenseBackPhoto String
+  vehicleInsuranceUrl String
+  status String
+  rejectionReason String
+  rejectedAt Date
+  approvedAt Date
+  bankAccountHolderName String
+  bankAccountNumber String
+  bankIfscCode String
+  bankName String
+  upiId String
+  upiQrCode String
+  availabilityStatus String
+  shiftStartPic String
+  shiftStartTime Date
+  shiftStartAddress String
+  lastLocation_type String
+  lastLocation_coordinates Array_Number
+  lastLat Number
+  lastLng Number
+  lastLocationAt Date
+  referralCode String
+  referredBy ObjectId
+  referralCount Number
+  rating Number
+  totalRatings Number
+  fleetPartnerId ObjectId
+  dob Date
+  nationalIdUrl String
+  drivingLicenceExpiry Date
+  drivingLicenceStatus String
+  vehicleRegistrationUrl String
+  bankIban String
+  cashBalance Number
+  cashLimit Number
+  isOnline Boolean
+  currentShift String
+  zoneIds Array_ObjectId
+  earningsToday Number
+  deliveriesToday Number
+  minimumGuarantee Number
+  bonusTarget Number
+  bonusAmount Number
+  socketRoomId String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryRoute {
+  deliveryPartnerId ObjectId
+  zoneId ObjectId
+  zoneName String
+  stops Array_undefined
+  totalDistanceMeters Number
+  totalStops Number
+  totalOrders Number
+  generatedAt Date
+  routeStatus String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryWallet {
+  deliveryPartnerId ObjectId
+  balance Number
+  lockedAmount Number
+  cashInHand Number
+  totalEarnings Number
+  totalBonus Number
+  totalSettled Number
+  totalDeliveries Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryCashDeposit {
+  deliveryPartnerId ObjectId
+  amount Number
+  paymentMethod String
+  status String
+  razorpayOrderId String
+  razorpayPaymentId String
+  adminId ObjectId
+  adminNote String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodDeliveryWithdrawal {
+  deliveryPartnerId ObjectId
+  amount Number
+  status String
+  paymentMethod String
+  bankDetails_accountNumber String
+  bankDetails_ifscCode String
+  bankDetails_bankName String
+  bankDetails_accountHolderName String
+  upiId String
+  upiQrCode String
+  adminNote String
+  rejectionReason String
+  transactionId String
+  processedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table DeliverySupportTicket {
+  deliveryPartnerId ObjectId
+  ticketId String
+  subject String
+  description String
+  category String
+  priority String
+  status String
+  adminResponse String
+  respondedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodExploreIcon {
+  label String
+  iconUrl String
+  publicId String
+  linkType String
+  targetPath String
+  sortOrder Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodGourmetRestaurant {
+  restaurantId ObjectId
+  tags Array_String
+  priority Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodHeroBanner {
+  imageUrl String
+  publicId String
+  title String
+  ctaText String
+  ctaLink String
+  linkedRestaurantIds Array_ObjectId
+  sortOrder Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodLandingSettings {
+  exploreMoreHeading String
+  recommendedRestaurantIds Array_ObjectId
+  showHeroBanners Boolean
+  showUnder250 Boolean
+  showDining Boolean
+  showExploreIcons Boolean
+  showTop10 Boolean
+  showGourmet Boolean
+  under250PriceLimit Number
+  festBannerVideoUrl String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodUnder250Banner {
+  imageUrl String
+  publicId String
+  title String
+  ctaText String
+  ctaLink String
+  zoneId String
+  sortOrder Number
+  isActive Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodTransaction {
+  orderId ObjectId
+  userId ObjectId
+  restaurantId ObjectId
+  deliveryPartnerId ObjectId
+  paymentMethod String
+  status String
+  currency String
+  pricing_subtotal Number
+  pricing_tax Number
+  pricing_packagingFee Number
+  pricing_deliveryFee Number
+  pricing_platformFee Number
+  pricing_restaurantCommission Number
+  pricing_discount Number
+  pricing_total Number
+  pricing_currency String
+  payment_method String
+  payment_status String
+  payment_amountDue Number
+  payment_razorpay_orderId String
+  payment_razorpay_paymentId String
+  payment_razorpay_signature String
+  payment_qr_qrId String
+  payment_qr_imageUrl String
+  payment_qr_paymentLinkId String
+  payment_qr_shortUrl String
+  payment_qr_status String
+  payment_qr_expiresAt Date
+  amounts_totalCustomerPaid Number
+  amounts_restaurantShare Number
+  amounts_restaurantCommission Number
+  amounts_riderShare Number
+  amounts_platformNetProfit Number
+  amounts_taxAmount Number
+  amounts_commissionVatAmount Number
+  amounts_platformCommissionVatAmount Number
+  amounts_foodVatAmount Number
+  gateway_provider String
+  gateway_razorpayOrderId String
+  gateway_razorpayPaymentId String
+  gateway_razorpaySignature String
+  gateway_qrUrl String
+  gateway_qrExpiresAt Date
+  settlement_isRestaurantSettled Boolean
+  settlement_restaurantSettledAt Date
+  settlement_isRiderSettled Boolean
+  settlement_riderSettledAt Date
+  history Array_undefined
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodOrder {
+  order_id String
+  orderId String
+  userId ObjectId
+  restaurantId ObjectId
+  zoneId ObjectId
+  transactionId ObjectId
+  items Array_undefined
+  deliveryAddress Embedded
+  customerName String
+  customerPhone String
+  pricing Embedded
+  payment Embedded
+  orderStatus String
+  dispatch Embedded
+  deliveryState Embedded
+  statusHistory Array_undefined
+  ratings Embedded
+  restaurantNote String
+  note String
+  sendCutlery Boolean
+  deliveryFleet String
+  scheduledAt Date
+  riderEarning Number
+  deliveryBonusAmount Number
+  platformProfit Number
+  pickupOtp String
+  deliveryOtp String
+  deliveryVerification Embedded
+  lastRiderLocation_type String
+  lastRiderLocation_coordinates Array_Number
+  subscriptionId ObjectId
+  mealPlanId ObjectId
+  deliveryDate Date
+  deliverySlot String
+  orderType String
+  proofMethod String
+  proofPhotoUrl String
+  deliveryGps_lat Number
+  deliveryGps_lng Number
+  gpsMismatch Boolean
+  collectionBatchId String
+  collectionPinVerified Boolean
+  fleetPartnerId ObjectId
+  driverTip Number
+  vatBreakdown_foodNet Number
+  vatBreakdown_foodVatRate Number
+  vatBreakdown_foodVatAmount Number
+  vatBreakdown_foodVatOwner String
+  vatBreakdown_deliveryNet Number
+  vatBreakdown_deliveryVatRate Number
+  vatBreakdown_deliveryVatAmount Number
+  vatBreakdown_deliveryVatOwner String
+  vatBreakdown_isReverseCharge Boolean
+  vatBreakdown_totalGross Number
+  vatBreakdown_currency String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodSettings {
+  key String
+  dispatchMode String
+  updatedBy_role String
+  updatedBy_adminId ObjectId
+  updatedBy_at Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodAddon {
+  restaurantId ObjectId
+  draft Embedded
+  published Embedded
+  approvalStatus String
+  rejectionReason String
+  requestedAt Date
+  approvedAt Date
+  rejectedAt Date
+  isAvailable Boolean
+  isDeleted Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantWithdrawal {
+  restaurantId ObjectId
+  amount Number
+  status String
+  paymentMethod String
+  bankDetails_accountNumber String
+  bankDetails_ifscCode String
+  bankDetails_bankName String
+  bankDetails_accountHolderName String
+  adminNote String
+  rejectionReason String
+  transactionId String
+  processedAt Date
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantOutletTimings {
+  restaurantId ObjectId
+  timings Array_undefined
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table PantryItem {
+  vendorId ObjectId
+  title String
+  price Number
+  image String
+  isAvailable Boolean
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurant {
+  restaurantName String
+  ownerName String
+  ownerEmail String
+  ownerPhone String
+  restaurantNameNormalized String
+  ownerPhoneDigits String
+  ownerPhoneLast10 String
+  primaryContactNumber String
+  pureVegRestaurant Boolean
+  addressLine1 String
+  addressLine2 String
+  area String
+  city String
+  state String
+  pincode String
+  landmark String
+  cuisines Array_String
+  openingTime String
+  closingTime String
+  openDays Array_String
+  isAcceptingOrders Boolean
+  panNumber String
+  nameOnPan String
+  gstRegistered Boolean
+  gstNumber String
+  gstLegalName String
+  gstAddress String
+  fssaiNumber String
+  fssaiExpiry Date
+  accountNumber String
+  ifscCode String
+  accountHolderName String
+  accountType String
+  upiId String
+  upiQrImage String
+  menuImages Array_String
+  menuPdf String
+  coverImages Array_String
+  profileImage String
+  fcmTokens Array_String
+  fcmTokenMobile Array_String
+  location Embedded
+  zoneId ObjectId
+  zoneName String
+  pendingZoneId ObjectId
+  pendingLocation Embedded
+  zoneChangeStatus String
+  zoneChangeRejectionReason String
+  businessModel String
+  panImage String
+  gstImage String
+  fssaiImage String
+  estimatedDeliveryTime String
+  estimatedDeliveryTimeMinutes Number
+  featuredDish String
+  featuredPrice Number
+  offer String
+  rating Number
+  totalRatings Number
+  diningSettings_isEnabled Boolean
+  diningSettings_maxGuests Number
+  diningSettings_diningType Array_String
+  menu_sections Array
+  status String
+  approvedAt Date
+  rejectedAt Date
+  rejectionReason String
+  pendingUpdateReason String
+  zoneRank Number
+  vendorType String
+  kitchenPartnerId ObjectId
+  foodLicenceUrl String
+  foodLicenceExpiry Date
+  foodLicenceStatus String
+  vatNumber String
+  ownerIdImage String
+  mealSlots Array_String
+  commissionRate Number
+  vatRate Number
+  vacationMode Boolean
+  vacationStart Date
+  vacationEnd Date
+  isFeatured Boolean
+  featuredUntil Date
+  activeSubscriberCount Number
+  forecastPushTime String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantMenu {
+  restaurantId ObjectId
+  sections Array_Mixed
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantWallet {
+  restaurantId ObjectId
+  balance Number
+  lockedAmount Number
+  totalEarnings Number
+  totalSettled Number
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodRestaurantSupportTicket {
+  restaurantId ObjectId
+  category String
+  issueType String
+  subject String
+  description String
+  orderRef String
+  priority String
+  status String
+  adminResponse String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodSupportTicket {
+  userId ObjectId
+  type String
+  orderId ObjectId
+  restaurantId ObjectId
+  issueType String
+  description String
+  status String
+  adminResponse String
+  image String
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Table FoodUserWallet {
+  userId ObjectId
+  balance Number
+  referralEarnings Number
+  transactions Array_undefined
+  _id ObjectId
+  createdAt Date
+  updatedAt Date
+}
+
+Ref: FoodAdmin.assignedCityIds > AdminCity._id
+Ref: FoodNotification.broadcastId > BroadcastNotification._id
+Ref: BroadcastNotification.createdBy > FoodAdmin._id
+Ref: Payment.orderId > FoodOrder._id
+Ref: Payment.userId > FoodUser._id
+Ref: Refund.paymentId > Payment._id
+Ref: Refund.orderId > FoodOrder._id
+Ref: Refund.userId > FoodUser._id
+Ref: Settlement.transactionIds > Transaction._id
+Ref: Transaction.paymentId > Payment._id
+Ref: Transaction.orderId > FoodOrder._id
+Ref: FoodUser.referredBy > FoodUser._id
+Ref: CollectionBatch.vendorId > FoodRestaurant._id
+Ref: CollectionBatch.driverId > FoodDeliveryPartner._id
+Ref: CollectionBatch.fleetPartnerId > FleetPartner._id
+Ref: CollectionBatch.orderIds > FoodOrder._id
+Ref: DMBDailyMenu.vendorId > FoodRestaurant._id
+Ref: DMBDailyMenu.mealPlanId > DMBMealPlan._id
+Ref: DMBMealPlan.vendorId > FoodRestaurant._id
+Ref: DMBMealPlan.zoneIds > FoodZone._id
+Ref: DMBMealPlan.kitchenPartnerId > KitchenPartner._id
+Ref: DMBDailyOrder.subscriptionId > DMBSubscription._id
+Ref: DMBDailyOrder.userId > FoodUser._id
+Ref: DMBDailyOrder.vendorId > FoodRestaurant._id
+Ref: DMBDailyOrder.dispatch_deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodDeliveryTipTransaction.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodDeliveryTipTransaction.orderId > DMBDailyOrder._id
+Ref: DMBSubscription.userId > FoodUser._id
+Ref: DMBSubscription.vendorId > FoodRestaurant._id
+Ref: DMBSubscription.zoneId > FoodZone._id
+Ref: DMBSubscription.mealPlanId > DMBMealPlan._id
+Ref: FleetPartner.drivers > FoodDeliveryPartner._id
+Ref: AdminCity.zoneIds > FoodZone._id
+Ref: AdminCity.createdBy > FoodAdmin._id
+Ref: AdminCity.updatedBy > FoodAdmin._id
+Ref: AdminAuditLog.actorId > FoodAdmin._id
+Ref: AdminAuditLog.cityId > AdminCity._id
+Ref: FoodCategory.restaurantId > FoodRestaurant._id
+Ref: FoodCategory.createdByRestaurantId > FoodRestaurant._id
+Ref: FoodCategory.zoneId > FoodZone._id
+Ref: AdminComplaint.orderId > FoodOrder._id
+Ref: AdminComplaint.customerId > FoodUser._id
+Ref: AdminComplaint.vendorId > FoodRestaurant._id
+Ref: AdminComplaint.driverId > FoodDeliveryPartner._id
+Ref: AdminComplaint.assignedAgentId > FoodAdmin._id
+Ref: AdminComplaint.escalatedToId > FoodAdmin._id
+Ref: DeliveryBonusTransaction.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: DriverDocumentReview.driverId > FoodDeliveryPartner._id
+Ref: DriverDocumentReview.fleetPartnerId > FleetPartner._id
+Ref: DriverDocumentReview.reviewedBy > FoodAdmin._id
+Ref: FoodEarningAddonHistory.offerId > FoodEarningAddon._id
+Ref: FoodEarningAddonHistory.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: AdminEnvironmentSetting.updatedBy > FoodAdmin._id
+Ref: AdminFeatureToggle.cityId > AdminCity._id
+Ref: AdminFeatureToggle.lastChangedBy > FoodAdmin._id
+Ref: FeedbackExperience.restaurantId > FoodRestaurant._id
+Ref: FleetInvoice.fleetPartnerId > FleetPartner._id
+Ref: FleetInvoice.approvedByAdminId > FoodAdmin._id
+Ref: FoodItem.restaurantId > FoodRestaurant._id
+Ref: FoodItem.categoryId > FoodCategory._id
+Ref: AdminIntegrationSetting.cityId > AdminCity._id
+Ref: AdminIntegrationSetting.lastChangedBy > FoodAdmin._id
+Ref: FoodOffer.restaurantId > FoodRestaurant._id
+Ref: FoodOfferUsage.offerId > FoodOffer._id
+Ref: FoodOfferUsage.userId > FoodUser._id
+Ref: AdminOtaConfig.cityId > AdminCity._id
+Ref: AdminOtaConfig.createdBy > FoodAdmin._id
+Ref: AdminOtaConfig.updatedBy > FoodAdmin._id
+Ref: FoodRestaurantCommission.restaurantId > FoodRestaurant._id
+Ref: FoodSafetyEmergencyReport.userId > FoodUser._id
+Ref: FoodDeliveryPartner.referredBy > FoodDeliveryPartner._id
+Ref: FoodDeliveryPartner.fleetPartnerId > FleetPartner._id
+Ref: FoodDeliveryPartner.zoneIds > FoodZone._id
+Ref: FoodDeliveryRoute.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodDeliveryRoute.zoneId > FoodZone._id
+Ref: FoodDeliveryWallet.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodDeliveryCashDeposit.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodDeliveryWithdrawal.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: DeliverySupportTicket.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodGourmetRestaurant.restaurantId > FoodRestaurant._id
+Ref: FoodHeroBanner.linkedRestaurantIds > FoodRestaurant._id
+Ref: FoodLandingSettings.recommendedRestaurantIds > FoodRestaurant._id
+Ref: FoodTransaction.orderId > FoodOrder._id
+Ref: FoodTransaction.userId > FoodUser._id
+Ref: FoodTransaction.restaurantId > FoodRestaurant._id
+Ref: FoodTransaction.deliveryPartnerId > FoodDeliveryPartner._id
+Ref: FoodOrder.userId > FoodUser._id
+Ref: FoodOrder.restaurantId > FoodRestaurant._id
+Ref: FoodOrder.zoneId > FoodZone._id
+Ref: FoodOrder.transactionId > FoodTransaction._id
+Ref: FoodOrder.subscriptionId > DMBSubscription._id
+Ref: FoodOrder.mealPlanId > DMBMealPlan._id
+Ref: FoodOrder.fleetPartnerId > FleetPartner._id
+Ref: FoodAddon.restaurantId > FoodRestaurant._id
+Ref: FoodRestaurantWithdrawal.restaurantId > FoodRestaurant._id
+Ref: FoodRestaurantOutletTimings.restaurantId > FoodRestaurant._id
+Ref: PantryItem.vendorId > FoodRestaurant._id
+Ref: FoodRestaurant.zoneId > FoodZone._id
+Ref: FoodRestaurant.pendingZoneId > FoodZone._id
+Ref: FoodRestaurant.kitchenPartnerId > KitchenPartner._id
+Ref: FoodRestaurantMenu.restaurantId > FoodRestaurant._id
+Ref: FoodRestaurantWallet.restaurantId > FoodRestaurant._id
+Ref: FoodRestaurantSupportTicket.restaurantId > FoodRestaurant._id
+Ref: FoodSupportTicket.userId > FoodUser._id
+Ref: FoodSupportTicket.orderId > FoodOrder._id
+Ref: FoodSupportTicket.restaurantId > FoodRestaurant._id

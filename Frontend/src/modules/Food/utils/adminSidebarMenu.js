@@ -87,7 +87,7 @@ export const adminSidebarMenu = [
           { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
         ],
       },
-      { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
+      // { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
       { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
       { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
       { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
@@ -120,12 +120,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/contact-messages",
         icon: "Mail",
       },
-      {
-        type: "link",
-        label: "Safety Emergency Reports",
-        path: "/admin/food/safety-emergency-reports",
-        icon: "AlertTriangle",
-      },
+      // {
+      //   type: "link",
+      //   label: "Safety Emergency Reports",
+      //   path: "/admin/food/safety-emergency-reports",
+      //   icon: "AlertTriangle",
+      // },
     ],
   },
 
@@ -230,67 +230,6 @@ export const adminSidebarMenu = [
     ],
   },
 
-  // // ─── CUSTOMER MANAGEMENT ────────────────────────────────────────────────
-  // {
-  //   type: "section",
-  //   label: "CUSTOMER MANAGEMENT",
-  //   roles: ["SUPER_ADMIN", "CUSTOMER_SERVICE"],
-  //   items: [
-  //     {
-  //       type: "link",
-  //       label: "Customers",
-  //       path: "/admin/food/customers",
-  //       icon: "Users",
-  //     },
-  //     {
-  //       type: "link",
-  //       label: "Support Tickets",
-  //       path: "/admin/food/support-tickets",
-  //       icon: "MessageSquare",
-  //     },
-  //     {
-  //       type: "link",
-  //       label: "User Feedback",
-  //       path: "/admin/food/contact-messages",
-  //       icon: "Mail",
-  //     },
-  //     {
-  //       type: "link",
-  //       label: "Safety Emergency Reports",
-  //       path: "/admin/food/safety-emergency-reports",
-  //       icon: "AlertTriangle",
-  //     },
-  //   ],
-  // },
-
-  // // ─── DRIVER MANAGEMENT ──────────────────────────────────────────────────
-  // {
-  //   type: "section",
-  //   label: "DRIVER MANAGEMENT",
-  //   roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER"],
-  //   items: [
-  //     {
-  //       type: "expandable",
-  //       label: "Deliveryman",
-  //       icon: "Package",
-  //       subItems: [
-  //         { label: "New Join Request", path: "/admin/food/delivery-partners/join-request" },
-  //         { label: "Deliveryman List", path: "/admin/food/delivery-partners" },
-  //         { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews" },
-  //         { label: "Bonus", path: "/admin/food/delivery-partners/bonus" },
-  //         { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
-  //         { label: "Earning Addon History", path: "/admin/food/delivery-partners/earning-addon-history" },
-  //         { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
-  //       ],
-  //     },
-  //     { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },
-  //     { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
-  //     { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
-  //     { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
-  //     { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare" },
-  //     { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone" },
-  //   ],
-  // },
 
   // ─── FLEET MANAGEMENT (AP-06 FM) ─────────────────────────────────────────
   {
@@ -367,17 +306,17 @@ export const adminSidebarMenu = [
     ],
   },
 
-  // ─── INTEGRATION & ENVIRONMENT (AP-09 / AP-12) ───────────────────────────
-  {
-    type: "section",
-    label: "INTEGRATIONS & ENV",
-    roles: ["SUPER_ADMIN"],
-    items: [
-      { type: "link", label: "Integration Settings", path: "/admin/food/integrations", icon: "Link" },
-      { type: "link", label: "Environment Management", path: "/admin/food/environments", icon: "Database" },
-      { type: "link", label: "Audit Logs", path: "/admin/food/audit-logs", icon: "FileText" },
-    ],
-  },
+  // // ─── INTEGRATION & ENVIRONMENT (AP-09 / AP-12) ───────────────────────────
+  // {
+  //   type: "section",
+  //   label: "INTEGRATIONS & ENV",
+  //   roles: ["SUPER_ADMIN"],
+  //   items: [
+  //     { type: "link", label: "Integration Settings", path: "/admin/food/integrations", icon: "Link" },
+  //     { type: "link", label: "Environment Management", path: "/admin/food/environments", icon: "Database" },
+  //     { type: "link", label: "Audit Logs", path: "/admin/food/audit-logs", icon: "FileText" },
+  //   ],
+  // },
 
   // ─── OTA & CONTENT (AP-13) ───────────────────────────────────────────────
   {
@@ -385,8 +324,8 @@ export const adminSidebarMenu = [
     label: "OTA & CONTENT",
     roles: ["SUPER_ADMIN", "WEB_MANAGER"],
     items: [
-      { type: "link", label: "OTA Config & Theme", path: "/admin/food/ota-config", icon: "Palette" },
-      { type: "link", label: "Email Templates", path: "/admin/food/email-template", icon: "Mail" },
+      // { type: "link", label: "OTA Config & Theme", path: "/admin/food/ota-config", icon: "Palette" },
+      // { type: "link", label: "Email Templates", path: "/admin/food/email-template", icon: "Mail" },
       { type: "link", label: "About Us", path: "/admin/food/pages-social-media/about", icon: "Globe" },
       { type: "link", label: "Terms & Conditions", path: "/admin/food/pages-social-media/terms", icon: "FileText" },
       { type: "link", label: "Privacy Policy", path: "/admin/food/pages-social-media/privacy", icon: "Lock" },
@@ -413,7 +352,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Business Setup", path: "/admin/food/business-setup", icon: "Settings" },
       { type: "link", label: "Theme Settings", path: "/admin/food/theme-settings", icon: "Palette" },
       { type: "link", label: "Broadcast Notification", path: "/admin/food/broadcast-notification", icon: "Bell" },
-      { type: "link", label: "Delivery Boy Commission", path: "/admin/food/delivery-boy-commission", icon: "DollarSign" },
+      // { type: "link", label: "Delivery Boy Commission", path: "/admin/food/delivery-boy-commission", icon: "DollarSign" },
     ],
   },
 ];
