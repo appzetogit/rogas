@@ -90,8 +90,11 @@ const KitchenPartnersList = () => {
       let finalData = { ...formData };
       if (documentFile) {
         const uploadRes = await uploadAPI.uploadMedia(documentFile, { folder: "appzeto/kitchen-partners" });
-        if (uploadRes?.success || uploadRes?.data?.url) {
-          finalData.documents = uploadRes.data.url || uploadRes.data;
+        const payload = uploadRes?.data?.data || uploadRes?.data;
+        if (payload?.url) {
+          finalData.documents = payload.url;
+        } else if (typeof payload === 'string') {
+          finalData.documents = payload;
         }
       }
 

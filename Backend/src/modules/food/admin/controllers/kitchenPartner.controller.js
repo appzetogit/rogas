@@ -15,7 +15,7 @@ export const createKitchenPartner = async (req, res) => {
             status,
             bankDetails,
             address,
-            // documents logic could be added here if passed as string/url
+            documents,
         } = req.body;
 
         // Check if email already exists
@@ -35,6 +35,7 @@ export const createKitchenPartner = async (req, res) => {
             status: status || 'Active',
             bankDetails,
             address: address || {},
+            documents,
             // homeCooks, orders, earnings will default to 0 as per schema
         });
 
