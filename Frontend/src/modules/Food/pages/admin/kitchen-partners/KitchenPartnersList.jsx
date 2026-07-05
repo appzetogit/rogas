@@ -158,36 +158,36 @@ const KitchenPartnersList = () => {
       id: 1,
       title: "TOTAL PARTNERS",
       value: partners.length,
-      icon: <Users className="w-5 h-5 text-emerald-600" />,
-      chartColor: "text-emerald-600",
+      icon: <Users className="w-5 h-5 text-[#1F7A63]" />,
+      chartColor: "text-[#1F7A63]",
     },
     {
       id: 2,
       title: "ACTIVE",
       value: partners.filter(p => p.status === 'Active').length,
-      icon: <CheckCircle className="w-5 h-5 text-emerald-600" />,
-      chartColor: "text-emerald-600",
+      icon: <CheckCircle className="w-5 h-5 text-[#1F7A63]" />,
+      chartColor: "text-[#1F7A63]",
     },
     {
       id: 3,
       title: "TOTAL EARNINGS",
       value: `₹${partners.reduce((sum, p) => sum + (p.earnings || 0), 0).toLocaleString()}`,
-      icon: <Wallet className="w-5 h-5 text-emerald-600" />,
-      chartColor: "text-emerald-600",
+      icon: <Wallet className="w-5 h-5 text-[#1F7A63]" />,
+      chartColor: "text-[#1F7A63]",
     },
   ];
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen font-sans text-slate-800">
+    <div className="p-6 bg-[#F5F5F0] min-h-screen font-sans text-[#2B2B2B]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-700">Kitchen Partner Network</h1>
+          <h1 className="text-2xl font-bold text-[#1F7A63]">Kitchen Partner Network</h1>
           <p className="text-sm text-slate-500 mt-1">Manage and monitor your kitchen ecosystem</p>
         </div>
         <button
           onClick={() => openModal('add')}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium transition-colors border border-emerald-200"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F7A63]/10 hover:bg-[#1F7A63]/20 text-[#1F7A63] rounded-lg font-medium transition-colors border border-[#1F7A63]/30"
         >
           <Plus className="w-4 h-4" />
           Add Partner
@@ -199,13 +199,13 @@ const KitchenPartnersList = () => {
         {stats.map((stat) => (
           <div key={stat.id} className="bg-[#ffffff] p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden" style={{ backgroundColor: 'var(--ad-card-bg, #ffffff)' }}>
             <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[#1F7A63]/10 flex items-center justify-center">
                 {stat.icon}
               </div>
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500 mb-1 tracking-wider">{stat.title}</p>
-              <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>
+              <h3 className="text-2xl font-bold text-[#2B2B2B]">{stat.value}</h3>
             </div>
             <div className="absolute bottom-0 right-0 w-32 h-16 opacity-30">
               <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={`w-full h-full ${stat.chartColor}`}>
@@ -226,13 +226,13 @@ const KitchenPartnersList = () => {
               placeholder="Search partners..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 w-full md:w-64 bg-[#ffffff]"
+              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63] w-full md:w-64 bg-[#ffffff]"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-[#ffffff]"
+            className="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63] bg-[#ffffff]"
           >
             <option>All Status</option>
             <option>Active</option>
@@ -254,7 +254,7 @@ const KitchenPartnersList = () => {
             <div className="flex items-center justify-center h-48 text-slate-500">No Kitchen Partners found.</div>
           ) : (
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-50/50 text-slate-500 text-xs font-semibold tracking-wider">
+              <thead className="bg-[#F5F5F0]/50 text-slate-500 text-xs font-semibold tracking-wider">
                 <tr>
                   <th className="px-6 py-4 rounded-tl-2xl">PARTNER NAME</th>
                   <th className="px-6 py-4">CITY</th>
@@ -267,7 +267,7 @@ const KitchenPartnersList = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {partners.map((partner) => (
-                  <tr key={partner._id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={partner._id} className="hover:bg-[#F5F5F0]/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
@@ -276,7 +276,7 @@ const KitchenPartnersList = () => {
                           className="w-10 h-10 rounded-lg object-cover bg-slate-100" 
                         />
                         <div>
-                          <div className="font-medium text-slate-900">{partner.companyName}</div>
+                          <div className="font-medium text-[#2B2B2B]">{partner.companyName}</div>
                           <div className="text-xs text-slate-500 mt-0.5">ID: {partner.partnerId}</div>
                         </div>
                       </div>
@@ -289,7 +289,7 @@ const KitchenPartnersList = () => {
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                           partner.status === "Active"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "bg-[#1F7A63]/10 text-[#1F7A63]"
                             : partner.status === "Suspended" || partner.status === "Inactive"
                             ? "bg-red-50 text-red-700"
                             : "bg-slate-100 text-slate-700"
@@ -313,19 +313,19 @@ const KitchenPartnersList = () => {
                           className="absolute right-8 top-10 w-40 bg-[#ffffff] rounded-lg shadow-lg border border-slate-100 py-1 z-50 text-left flex flex-col"
                         >
                           <button 
-                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-[#F5F5F0] text-left"
                             onClick={() => openModal('view', partner)}
                           >
                             View
                           </button>
                           <button 
-                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-[#F5F5F0] text-left"
                             onClick={() => openModal('edit', partner)}
                           >
                             Edit
                           </button>
                           <button 
-                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-[#F5F5F0] text-left"
                             onClick={() => handleStatusChange(partner._id, partner.status)}
                           >
                             {partner.status === "Active" ? "Deactivate" : "Activate"}
@@ -347,7 +347,7 @@ const KitchenPartnersList = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsModalOpen(false)}></div>
           <div className="relative bg-[#ffffff] rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl" style={{ backgroundColor: '#ffffff' }}>
             <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-[#ffffff] z-10" style={{ backgroundColor: '#ffffff' }}>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-[#2B2B2B]">
                 {modalMode === 'add' ? 'Add New Kitchen Partner' : modalMode === 'edit' ? 'Edit Kitchen Partner' : 'View Kitchen Partner'}
               </h2>
               <button 
@@ -363,25 +363,25 @@ const KitchenPartnersList = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <p className="text-sm font-medium text-slate-500">Company Name</p>
-                      <p className="font-semibold text-slate-900 mt-1">{formData.companyName}</p>
+                      <p className="font-semibold text-[#2B2B2B] mt-1">{formData.companyName}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-500">Email</p>
-                      <p className="font-medium text-slate-900 mt-1">{formData.email}</p>
+                      <p className="font-medium text-[#2B2B2B] mt-1">{formData.email}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-500">VAT Number</p>
-                      <p className="font-medium text-slate-900 mt-1">{formData.vatNumber || "-"}</p>
+                      <p className="font-medium text-[#2B2B2B] mt-1">{formData.vatNumber || "-"}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-500">Management Fee (%)</p>
-                      <p className="font-medium text-slate-900 mt-1">{formData.managementFee ? `${formData.managementFee}%` : "-"}</p>
+                      <p className="font-medium text-[#2B2B2B] mt-1">{formData.managementFee ? `${formData.managementFee}%` : "-"}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-500">Status</p>
                       <p className={`inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-medium ${
                           formData.status === "Active"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "bg-[#1F7A63]/10 text-[#1F7A63]"
                             : formData.status === "Suspended" || formData.status === "Inactive"
                             ? "bg-red-50 text-red-700"
                             : "bg-slate-100 text-slate-700"
@@ -389,32 +389,32 @@ const KitchenPartnersList = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-500">Bank Details</p>
-                      <p className="font-medium text-slate-900 mt-1">{formData.bankDetails || "-"}</p>
+                      <p className="font-medium text-[#2B2B2B] mt-1">{formData.bankDetails || "-"}</p>
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-md font-semibold text-slate-900 mt-4 pt-4 border-t border-slate-100">Address Information</h3>
+                    <h3 className="text-md font-semibold text-[#2B2B2B] mt-4 pt-4 border-t border-slate-100">Address Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                       <div className="md:col-span-2">
                         <p className="text-sm font-medium text-slate-500">Street Address</p>
-                        <p className="font-medium text-slate-900 mt-1">{formData.address?.street || "-"}</p>
+                        <p className="font-medium text-[#2B2B2B] mt-1">{formData.address?.street || "-"}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-500">City</p>
-                        <p className="font-medium text-slate-900 mt-1">{formData.address?.city || "-"}</p>
+                        <p className="font-medium text-[#2B2B2B] mt-1">{formData.address?.city || "-"}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-500">State</p>
-                        <p className="font-medium text-slate-900 mt-1">{formData.address?.state || "-"}</p>
+                        <p className="font-medium text-[#2B2B2B] mt-1">{formData.address?.state || "-"}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-500">Pincode</p>
-                        <p className="font-medium text-slate-900 mt-1">{formData.address?.pincode || "-"}</p>
+                        <p className="font-medium text-[#2B2B2B] mt-1">{formData.address?.pincode || "-"}</p>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-md font-semibold text-slate-900 mt-4 pt-4 border-t border-slate-100">Documents / Compliance</h3>
+                    <h3 className="text-md font-semibold text-[#2B2B2B] mt-4 pt-4 border-t border-slate-100">Documents / Compliance</h3>
                     {formData.documents ? (
                       <div className="mt-4">
                         <img src={formData.documents} alt="Compliance Document" className="w-full max-w-sm h-auto rounded-lg border border-slate-200 shadow-sm" />
@@ -445,7 +445,7 @@ const KitchenPartnersList = () => {
                       required
                       value={formData.companyName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter company name" 
                     />
                   </div>
@@ -458,7 +458,7 @@ const KitchenPartnersList = () => {
                       disabled={modalMode === 'edit'}
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63] disabled:bg-[#F5F5F0] disabled:text-slate-500" 
                       placeholder="Enter email address" 
                     />
                   </div>
@@ -469,7 +469,7 @@ const KitchenPartnersList = () => {
                       name="vatNumber"
                       value={formData.vatNumber}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter VAT number" 
                     />
                   </div>
@@ -481,7 +481,7 @@ const KitchenPartnersList = () => {
                       min="0" max="100"
                       value={formData.managementFee}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="e.g. 15" 
                     />
                   </div>
@@ -491,7 +491,7 @@ const KitchenPartnersList = () => {
                       name="status"
                       value={formData.status}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]"
                     >
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
@@ -503,10 +503,10 @@ const KitchenPartnersList = () => {
                       type="file" 
                       accept="image/*"
                       onChange={(e) => setDocumentFile(e.target.files[0])}
-                      className="w-full px-4 py-1.5 border border-slate-200 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
+                      className="w-full px-4 py-1.5 border border-slate-200 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#1F7A63]/10 file:text-[#1F7A63] hover:file:bg-[#1F7A63]/20" 
                     />
                     {formData.documents && !documentFile && (
-                      <p className="text-xs text-emerald-600 mt-1">Current document uploaded. Choose new to replace.</p>
+                      <p className="text-xs text-[#1F7A63] mt-1">Current document uploaded. Choose new to replace.</p>
                     )}
                   </div>
                 </div>
@@ -517,14 +517,14 @@ const KitchenPartnersList = () => {
                     name="bankDetails"
                     value={formData.bankDetails}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                     rows="2" 
                     placeholder="Enter bank account details for settlement"
                   ></textarea>
                 </div>
 
                 {/* Address Section */}
-                <h3 className="text-md font-semibold text-slate-900 mt-6 pt-6 border-t border-slate-100">Address Information</h3>
+                <h3 className="text-md font-semibold text-[#2B2B2B] mt-6 pt-6 border-t border-slate-100">Address Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Street Address</label>
@@ -533,7 +533,7 @@ const KitchenPartnersList = () => {
                       name="address.street"
                       value={formData.address.street}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter full address" 
                     />
                   </div>
@@ -544,7 +544,7 @@ const KitchenPartnersList = () => {
                       name="address.city"
                       value={formData.address.city}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter city" 
                     />
                   </div>
@@ -555,7 +555,7 @@ const KitchenPartnersList = () => {
                       name="address.state"
                       value={formData.address.state}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter state" 
                     />
                   </div>
@@ -566,7 +566,7 @@ const KitchenPartnersList = () => {
                       name="address.pincode"
                       value={formData.address.pincode}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F7A63]/20 focus:border-[#1F7A63]" 
                       placeholder="Enter pincode" 
                     />
                   </div>
@@ -576,14 +576,14 @@ const KitchenPartnersList = () => {
                   <button 
                     type="button" 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-2.5 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                    className="px-6 py-2.5 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-[#F5F5F0] transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 bg-emerald-700 text-white rounded-lg font-medium hover:bg-emerald-800 transition-colors disabled:opacity-50"
+                    className="px-6 py-2.5 bg-[#1F7A63] text-white rounded-lg font-medium hover:bg-emerald-800 transition-colors disabled:opacity-50"
                   >
                     {isSubmitting ? "Saving..." : modalMode === 'edit' ? "Save Changes" : "Save Partner"}
                   </button>

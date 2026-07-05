@@ -577,4 +577,12 @@
 .admin-theme-container .text-zinc-500,
 .admin-theme-container .text-neutral-500 {
   color: var(--ad-card-text-muted) !important;
-}
+}
+/* Custom overrides for Admin Panel Theme requested by User */
+.admin-theme-container {
+  --ad-primary: #1F7A63 !important;
+  --ad-primary-strong: #175d4b !important;
+  --ad-background: #F5F5F0 !important;
+  --ad-text: #2B2B2B !important;
+  --ad-text-primary: #2B2B2B !important;
+}
