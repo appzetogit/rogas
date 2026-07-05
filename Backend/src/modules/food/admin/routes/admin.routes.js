@@ -15,6 +15,7 @@ import * as liveMonitorController from '../controllers/liveMonitor.controller.js
 import * as appIntroAdController from '../controllers/appIntroAd.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import menuBulkRoutes from './menuBulk.routes.js';
+import kitchenPartnerRoutes from './kitchenPartner.routes.js';
 
 const router = express.Router();
 
@@ -302,5 +303,8 @@ router.delete('/vendor-subscription-plans/:id', adminController.deleteVendorSubs
 // ----- Vendor Timing Settings -----
 router.get('/vendor-timing-settings', adminController.getVendorTimingSettingsController);
 router.put('/vendor-timing-settings', adminController.updateVendorTimingSettingsController);
+
+// ----- Kitchen Partners -----
+router.use('/kitchen-partners', kitchenPartnerRoutes);
 
 export default router;

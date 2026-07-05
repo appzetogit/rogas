@@ -108,24 +108,27 @@ export const adminSidebarMenu = [
         path: "/admin/food/customers",
         icon: "Users",
       },
-      // {
-      //   type: "link",
-      //   label: "Support Tickets",
-      //   path: "/admin/food/support-tickets",
-      //   icon: "MessageSquare",
-      // },
       {
         type: "link",
         label: "User Feedback",
         path: "/admin/food/contact-messages",
         icon: "Mail",
       },
-      // {
-      //   type: "link",
-      //   label: "Safety Emergency Reports",
-      //   path: "/admin/food/safety-emergency-reports",
-      //   icon: "AlertTriangle",
-      // },
+    ],
+  },
+
+  // ─── KITCHEN PARTNERS MANAGEMENT ──────────────────────────────────────────
+  {
+    type: "section",
+    label: "KITCHEN PARTNERS",
+    roles: ["SUPER_ADMIN"],
+    items: [
+      {
+        type: "link",
+        label: "All Kitchen Partners",
+        path: "/admin/food/kitchen-partners",
+        icon: "ChefHat",
+      },
     ],
   },
 
