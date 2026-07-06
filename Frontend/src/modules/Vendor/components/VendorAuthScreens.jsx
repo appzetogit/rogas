@@ -224,6 +224,12 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
   const zoneDropdownRef = useRef(null);
 
+  const [kitchenPartners, setKitchenPartners] = useState([]);
+  const [selectedKitchenPartnerId, setSelectedKitchenPartnerId] = useState('');
+  const [kitchenPartnerSearch, setKitchenPartnerSearch] = useState('');
+  const [isKitchenPartnerDropdownOpen, setIsKitchenPartnerDropdownOpen] = useState(false);
+  const kpDropdownRef = useRef(null);
+
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState(52.2297); // default Warsaw
   const [lng, setLng] = useState(21.0122); // default Warsaw
@@ -259,15 +265,45 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
     });
   }, []);
 
+  const latestStates = useRef({ selectedZoneName, selectedKitchenPartnerId, kitchenPartners });
+  useEffect(() => {
+    latestStates.current = { selectedZoneName, selectedKitchenPartnerId, kitchenPartners };
+  }, [selectedZoneName, selectedKitchenPartnerId, kitchenPartners]);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (zoneDropdownRef.current && !zoneDropdownRef.current.contains(event.target)) {
         setIsZoneDropdownOpen(false);
+        setZoneSearch(latestStates.current.selectedZoneName || '');
+      }
+      if (kpDropdownRef.current && !kpDropdownRef.current.contains(event.target)) {
+        setIsKitchenPartnerDropdownOpen(false);
+        const { selectedKitchenPartnerId: kpId, kitchenPartners: kps } = latestStates.current;
+        setKitchenPartnerSearch(kpId ? kps.find(kp => kp._id === kpId)?.companyName || '' : '');
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (selectedZoneName) {
+      zoneAPI.getPublicKitchenPartners({ zoneName: selectedZoneName })
+        .then(res => {
+          const fetchedKPs = res.data?.data?.kitchenPartners || res.data?.kitchenPartners || [];
+          setKitchenPartners(fetchedKPs);
+          setSelectedKitchenPartnerId('');
+          setKitchenPartnerSearch('');
+        })
+        .catch(err => {
+          console.error('Failed to load kitchen partners', err);
+        });
+    } else {
+      setKitchenPartners([]);
+      setSelectedKitchenPartnerId('');
+      setKitchenPartnerSearch('');
+    }
+  }, [selectedZoneName]);
 
   const fetchAddressFromCoordinates = (latitude, longitude) => {
     if (window.google && window.google.maps) {
@@ -364,6 +400,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       alert("Please select a service zone!");
       return;
     }
+    if (type === 'Home Cook' && !selectedKitchenPartnerId) {
+      alert("Please select a Kitchen Partner!");
+      return;
+    }
     if (!address) {
       alert("Please specify your business location/address!");
       return;
@@ -414,7 +454,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       addressLine1: addressDetails.addressLine1,
       area: addressDetails.area,
       state: addressDetails.state,
-      pincode: addressDetails.pincode
+      pincode: addressDetails.pincode,
+      kitchenPartnerId: type === 'Home Cook' ? selectedKitchenPartnerId : undefined
     });
   };
 
@@ -497,7 +538,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   }}
                   onFocus={() => setIsZoneDropdownOpen(true)}
                 />
-                <span className="absolute right-4 top-3 text-primary">
+                <span 
+                  className="absolute right-4 top-3 text-primary cursor-pointer z-10"
+                  onClick={() => setIsZoneDropdownOpen(!isZoneDropdownOpen)}
+                >
                   <span className="material-symbols-outlined text-[20px]">
                     {isZoneDropdownOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
                   </span>
@@ -505,8 +549,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               </div>
               {isZoneDropdownOpen && (
                 <div className="absolute z-[60] w-full mt-1 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {zones.filter(z => z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).length > 0 ? (
-                    zones.filter(z => z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).map(z => (
+                  {zones.filter(z => zoneSearch === selectedZoneName || z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).length > 0 ? (
+                    zones.filter(z => zoneSearch === selectedZoneName || z.name?.toLowerCase().includes(zoneSearch.toLowerCase())).map(z => (
                       <button
                         key={z._id}
                         type="button"
@@ -527,6 +571,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 </div>
               )}
             </div>
+
 
             {/* Location Section */}
             <div className="space-y-2 pt-1">
@@ -604,6 +649,64 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 )}
               </div>
             </div>
+
+            {/* Kitchen Partner Dropdown (Home Cook Only) */}
+            {type === 'Home Cook' && (
+              <div className="space-y-1.5 relative pt-2" ref={kpDropdownRef}>
+                <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">KITCHEN PARTNER (HOME COOK ONLY)</label>
+                <div className="relative">
+                  <input
+                    className="w-full h-12 px-4 pr-10 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
+                    type="text"
+                    placeholder="Search and select kitchen partner..."
+                    value={kitchenPartnerSearch}
+                    onChange={(e) => {
+                      setKitchenPartnerSearch(e.target.value);
+                      setIsKitchenPartnerDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsKitchenPartnerDropdownOpen(true)}
+                  />
+                  <span 
+                    className="absolute right-4 top-3 text-primary cursor-pointer z-10"
+                    onClick={() => setIsKitchenPartnerDropdownOpen(!isKitchenPartnerDropdownOpen)}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {isKitchenPartnerDropdownOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
+                    </span>
+                  </span>
+                </div>
+                {isKitchenPartnerDropdownOpen && (
+                  <div className="absolute z-[60] w-full mt-1 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {!selectedZoneName ? (
+                       <div className="px-4 py-3 text-[12px] text-outline">Please select a service zone first</div>
+                    ) : kitchenPartners.filter(kp => {
+                         const currentSelectedName = kitchenPartners.find(k => k._id === selectedKitchenPartnerId)?.companyName || '';
+                         return kitchenPartnerSearch === currentSelectedName || kp.companyName?.toLowerCase().includes(kitchenPartnerSearch.toLowerCase());
+                       }).length > 0 ? (
+                      kitchenPartners.filter(kp => {
+                        const currentSelectedName = kitchenPartners.find(k => k._id === selectedKitchenPartnerId)?.companyName || '';
+                        return kitchenPartnerSearch === currentSelectedName || kp.companyName?.toLowerCase().includes(kitchenPartnerSearch.toLowerCase());
+                      }).map(kp => (
+                        <button
+                          key={kp._id}
+                          type="button"
+                          className="w-full text-left px-4 py-3 text-[13px] hover:bg-primary-container/10 active:bg-primary-container/20 border-b border-outline-variant/10 last:border-0 transition-colors font-medium text-on-surface"
+                          onClick={() => {
+                            setSelectedKitchenPartnerId(kp._id);
+                            setKitchenPartnerSearch(kp.companyName);
+                            setIsKitchenPartnerDropdownOpen(false);
+                          }}
+                        >
+                          {kp.companyName}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-[12px] text-outline">No Kitchen Partner available for the selected service zone.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-1.5 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
@@ -822,14 +925,6 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                    )
                 })}
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">KITCHEN PARTNER <span className="text-primary-container opacity-60">(Home Cook only)</span></label>
-              <button className="w-full h-12 px-4 rounded-lg bg-primary-container/5 border border-primary-container/20 flex items-center justify-between text-[13px] text-on-surface transition-all active:bg-primary-container/10">
-                <span className="font-semibold text-primary">FreshKitchen Partners Sp. z o.o.</span>
-                <span className="material-symbols-outlined text-primary">arrow_drop_down</span>
-              </button>
             </div>
           </div>
 

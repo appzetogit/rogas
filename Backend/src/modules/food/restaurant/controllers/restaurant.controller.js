@@ -198,3 +198,25 @@ export const listZonesController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const listPublicKitchenPartnersController = async (req, res, next) => {
+    try {
+        const { zoneName } = req.query;
+        if (!zoneName) {
+            return res.status(400).json({ success: false, message: 'zoneName is required' });
+        }
+
+        // Import KitchenPartner inline to avoid circular dependencies if any
+        const KitchenPartner = (await import('../../../../models/KitchenPartner.js')).default;
+        
+        // Find active kitchen partners whose city matches the zone name (case-insensitive)
+        const kitchenPartners = await KitchenPartner.find({
+            status: 'Active',
+            'address.city': { $regex: new RegExp(`^${zoneName}$`, 'i') }
+        }).select('_id companyName address.city').lean();
+
+        return sendResponse(res, 200, 'Kitchen partners fetched successfully', { kitchenPartners });
+    } catch (error) {
+        next(error);
+    }
+};

@@ -1813,6 +1813,9 @@ export const zoneAPI = {
   /** Public: list active zones (for onboarding dropdowns). */
   getPublicZones: (params = {}, config = {}) =>
     userClient.get("/food/zones/public", { params: params ?? {}, ...config }),
+  /** Public: list active kitchen partners by zone (for onboarding dropdowns). */
+  getPublicKitchenPartners: (params = {}, config = {}) =>
+    userClient.get("/food/restaurant/kitchen-partners/public", { params: params ?? {}, ...config }),
 };
 export const uploadAPI = {
   /**

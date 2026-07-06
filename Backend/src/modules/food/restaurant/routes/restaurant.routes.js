@@ -14,7 +14,8 @@ import {
     uploadRestaurantCoverImagesController,
     uploadRestaurantMenuImagesController,
     getRestaurantComplaintsController,
-    listZonesController
+    listZonesController,
+    listPublicKitchenPartnersController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -95,6 +96,9 @@ router.get('/categories/public', cacheResponse(600, 'categories'), listCategorie
 
 // Public: active zones for customer app
 router.get('/zones/public', listZonesController);
+
+// Public: active kitchen partners for vendor onboarding
+router.get('/kitchen-partners/public', listPublicKitchenPartnersController);
 
 // Public: vendor timing settings (used in onboarding and public display)
 router.get('/vendor-timing-settings/public', cacheResponse(600, 'vendor_timings'), getVendorTimingSettingsController);

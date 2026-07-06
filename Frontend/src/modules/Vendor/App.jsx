@@ -648,6 +648,9 @@ export default function App() {
                 if (p.mealSlots && p.mealSlots.length > 0) {
                   formData.append('mealSlots', p.mealSlots.join(','));
                 }
+                if (p.kitchenPartnerId) {
+                  formData.append('kitchenPartnerId', p.kitchenPartnerId);
+                }
 
                 // Call real backend registration
                 const res = await restaurantClient.post("/food/restaurant/register", formData);

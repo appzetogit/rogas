@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { adminAPI } from "@food/api"
+import { kitchenPartnerApi } from "../../../../../services/api/kitchenPartnerApi"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
@@ -85,6 +86,8 @@ const normalizeDetailsFormFromRestaurant = (restaurant) => {
     openingTime: restaurant?.openingTime || restaurant?.deliveryTimings?.openingTime || "",
     closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
     isActive: restaurant?.isActive !== false,
+    vendorType: restaurant?.vendorType || "",
+    kitchenPartnerId: restaurant?.kitchenPartnerId?._id || restaurant?.kitchenPartnerId || "",
   }
 }
 
@@ -134,6 +137,7 @@ export default function EditRestaurant() {
   const [restaurant, setRestaurant] = useState(null)
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
+  const [kitchenPartners, setKitchenPartners] = useState([])
 
   const [detailsForm, setDetailsForm] = useState(() => normalizeDetailsFormFromRestaurant(null))
   const [locationForm, setLocationForm] = useState(() => normalizeLocationFormFromRestaurant(null))
@@ -198,6 +202,18 @@ export default function EditRestaurant() {
       .catch(() => {
         if (!mounted) return
         setZones([])
+      })
+      
+    kitchenPartnerApi
+      .getPartners({ limit: 1000 })
+      .then((res) => {
+        const list = res?.data?.kitchenPartners || res?.kitchenPartners || res?.data?.data?.kitchenPartners || [];
+        if (!mounted) return;
+        setKitchenPartners(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setKitchenPartners([]);
       })
       .finally(() => {
         if (!mounted) return
@@ -317,6 +333,8 @@ export default function EditRestaurant() {
         openingTime: detailsForm.openingTime,
         closingTime: detailsForm.closingTime,
         isActive: detailsForm.isActive !== false,
+        vendorType: detailsForm.vendorType || undefined,
+        kitchenPartnerId: detailsForm.kitchenPartnerId || undefined,
       }
 
       const res = await adminAPI.updateRestaurant(restaurantId, payload)
@@ -432,6 +450,38 @@ export default function EditRestaurant() {
                   <Label>Restaurant Name</Label>
                   <Input value={detailsForm.name} onChange={(e) => setDetailsForm((p) => ({ ...p, name: e.target.value }))} />
                 </div>
+                <div>
+                  <Label>Vendor Type</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 mt-2"
+                    value={detailsForm.vendorType}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, vendorType: e.target.value, kitchenPartnerId: e.target.value !== 'home_cook' ? '' : p.kitchenPartnerId }))}
+                  >
+                    <option value="">Select Vendor Type</option>
+                    <option value="home_cook">Home Cook</option>
+                    <option value="cloud_kitchen">Cloud Kitchen</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="catering">Catering</option>
+                    <option value="pantry_shop">Pantry Shop</option>
+                  </select>
+                </div>
+                {detailsForm.vendorType === 'home_cook' && (
+                  <div>
+                    <Label>Kitchen Partner</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 mt-2"
+                      value={detailsForm.kitchenPartnerId}
+                      onChange={(e) => setDetailsForm((p) => ({ ...p, kitchenPartnerId: e.target.value }))}
+                    >
+                      <option value="">Select Kitchen Partner</option>
+                      {kitchenPartners.map((kp) => (
+                        <option key={kp._id || kp.id} value={kp._id || kp.id}>
+                          {kp.companyName || kp.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <Label>Pure Veg</Label>
                   <div className="mt-2 flex items-center gap-2">
