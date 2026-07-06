@@ -24,7 +24,9 @@ export default function JoinRequest() {
   const [rejectionReason, setRejectionReason] = useState("")
   const [availableZones, setAvailableZones] = useState([])
   const [loadingZones, setLoadingZones] = useState(false)
-  const [selectedZoneId, setSelectedZoneId] = useState("")
+  const [selectedZoneIds, setSelectedZoneIds] = useState([])
+  const [allowedShifts, setAllowedShifts] = useState([])
+  const [maxVendorCapacity, setMaxVendorCapacity] = useState(0)
   const [filters, setFilters] = useState({
     zone: "",
     jobType: "",
@@ -115,7 +117,9 @@ export default function JoinRequest() {
 
   const handleApprove = async (request) => {
     setSelectedRequest(request)
-    setSelectedZoneId("")
+    setSelectedZoneIds([])
+    setAllowedShifts([])
+    setMaxVendorCapacity(0)
     setIsApproveOpen(true)
     try {
       setLoadingZones(true)
@@ -134,21 +138,27 @@ export default function JoinRequest() {
 
   const confirmApprove = async () => {
     if (!selectedRequest) return
-    if (!selectedZoneId) {
-      toast.error("Please select a delivery zone")
+    if (selectedZoneIds.length === 0) {
+      toast.error("Please select at least one delivery zone")
       return
     }
 
     try {
       setProcessing(true)
-      await adminAPI.approveDeliveryPartner(selectedRequest._id, selectedZoneId)
+      await adminAPI.approveDeliveryPartner(selectedRequest._id, {
+        zoneIds: selectedZoneIds,
+        allowedShifts,
+        maxVendorCapacity
+      })
       
       // Refresh the list
       await fetchJoinRequests()
       
       setIsApproveOpen(false)
       setSelectedRequest(null)
-      setSelectedZoneId("")
+      setSelectedZoneIds([])
+      setAllowedShifts([])
+      setMaxVendorCapacity(0)
       
       toast.success(`Successfully approved ${selectedRequest.name}'s join request!`)
     } catch (err) {
@@ -521,11 +531,11 @@ export default function JoinRequest() {
           </DialogHeader>
           <div className="px-6 pb-6 space-y-4">
             <p className="text-sm text-slate-700">
-              Assign an operational zone to approve "{selectedRequest?.name}"'s joining request.
+              Configure assignment rules to approve "{selectedRequest?.name}"'s joining request.
             </p>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Select Delivery Zone <span className="text-red-500">*</span>
+                Assigned Zone(s) <span className="text-red-500">*</span>
               </label>
               {loadingZones ? (
                 <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
@@ -533,29 +543,68 @@ export default function JoinRequest() {
                   <span>Loading available zones...</span>
                 </div>
               ) : (
-                <select
-                  value={selectedZoneId}
-                  onChange={(e) => setSelectedZoneId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 text-sm cursor-pointer"
-                  disabled={processing}
-                >
-                  <option value="" disabled>
-                    -- Choose Zone --
-                  </option>
+                <div className="grid grid-cols-2 gap-2 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
                   {availableZones.map((zone) => (
-                    <option key={zone._id} value={zone._id}>
+                    <label key={zone._id} className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        checked={selectedZoneIds.includes(zone._id)} 
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedZoneIds([...selectedZoneIds, zone._id])
+                          else setSelectedZoneIds(selectedZoneIds.filter(id => id !== zone._id))
+                        }}
+                      />
                       {zone.name || zone.zoneName}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
               )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Allowed Shift(s) <span className="text-slate-400 font-normal ml-1">(Optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                {['breakfast', 'lunch', 'dinner'].map(shift => (
+                  <label key={shift} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={allowedShifts.includes(shift)} 
+                      onChange={(e) => {
+                        if (e.target.checked) setAllowedShifts([...allowedShifts, shift])
+                        else setAllowedShifts(allowedShifts.filter(s => s !== shift))
+                      }}
+                    />
+                    {shift}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Maximum Vendor Capacity <span className="text-slate-400 font-normal ml-1">(0 = Unlimited)</span>
+              </label>
+              <input 
+                type="number" 
+                min="0"
+                value={maxVendorCapacity} 
+                onChange={(e) => setMaxVendorCapacity(parseInt(e.target.value) || 0)} 
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 text-sm"
+                placeholder="e.g. 10"
+              />
             </div>
           </div>
           <DialogFooter className="px-6 pb-6">
             <button
               onClick={() => {
                 setIsApproveOpen(false)
-                setSelectedZoneId("")
+                setSelectedZoneIds([])
+                setAllowedShifts([])
+                setMaxVendorCapacity(0)
               }}
               disabled={processing}
               className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50"
@@ -564,7 +613,7 @@ export default function JoinRequest() {
             </button>
             <button
               onClick={confirmApprove}
-              disabled={processing || !selectedZoneId || loadingZones}
+              disabled={processing || selectedZoneIds.length === 0 || loadingZones}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {processing && <Loader2 className="w-4 h-4 animate-spin" />}

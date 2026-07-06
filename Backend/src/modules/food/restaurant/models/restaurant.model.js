@@ -304,6 +304,12 @@ const restaurantSchema = new mongoose.Schema(
       ref: 'KitchenPartner',
       default: null,
     },
+    /** Assigned Delivery Partner for automated dispatch */
+    assignedDeliveryPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodDeliveryPartner',
+      default: null,
+    },
     /** EU food business licence — mandatory before going live */
     foodLicenceUrl: { type: String, default: '' },
     foodLicenceExpiry: { type: Date, default: null },

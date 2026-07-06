@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Eye, User, Star, ArrowUpDown, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, Trash2, X } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, User, Star, ArrowUpDown, Settings, FileText, FileSpreadsheet, Loader2, Check, Columns, ExternalLink, Calendar, MapPin, CreditCard, Mail, Phone, Bike, FileCheck, Pencil, Save, Trash2, X, Package } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
@@ -20,8 +20,19 @@ export default function DeliverymanList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [viewDetails, setViewDetails] = useState(null)
+  const [isEditAssignmentMode, setIsEditAssignmentMode] = useState(false)
+  const [editAssignmentData, setEditAssignmentData] = useState({
+    zoneIds: [],
+    allowedShifts: [],
+    maxVendorCapacity: 0,
+    selectedVendorIds: []
+  })
+  const [eligibleVendors, setEligibleVendors] = useState([])
+  const [loadingAssignmentData, setLoadingAssignmentData] = useState(false)
+  const [availableZones, setAvailableZones] = useState([])
   const [editingDeliveryId, setEditingDeliveryId] = useState(null)
   const [editValues, setEditValues] = useState({ pocketBalance: "", cashInHand: "" })
   const [savingDeliveryId, setSavingDeliveryId] = useState(null)
@@ -208,6 +219,92 @@ export default function DeliverymanList() {
     return deliverymen
   }, [deliverymen])
 
+  const handleEditAssignmentClick = async () => {
+    setIsEditAssignmentMode(true)
+    const initialZones = viewDetails.zoneIds || []
+    const initialShifts = viewDetails.allowedShifts || []
+    
+    setEditAssignmentData({
+      zoneIds: initialZones,
+      allowedShifts: initialShifts,
+      maxVendorCapacity: viewDetails.maxVendorCapacity || 0,
+      selectedVendorIds: viewDetails.assignedVendors?.map(v => typeof v === 'object' ? v._id || v.id : v) || []
+    })
+    
+    try {
+      setLoadingAssignmentData(true)
+      const zoneRes = await adminAPI.getZones({ isActive: true })
+      if (zoneRes.data?.success) {
+        setAvailableZones(zoneRes.data.data.zones || [])
+      }
+      
+      await fetchEligibleVendors(viewDetails._id, initialZones, initialShifts)
+    } catch (err) {
+      toast.error("Error preparing edit assignment form")
+    } finally {
+      setLoadingAssignmentData(false)
+    }
+  }
+
+  const fetchEligibleVendors = async (id, zoneIds, allowedShifts) => {
+    try {
+      setLoadingAssignmentData(true)
+      const res = await adminAPI.getEligibleVendorsForDeliveryPartner(id, {
+        zoneIds: zoneIds.join(','),
+        allowedShifts: allowedShifts.join(',')
+      })
+      if (res.data?.success) {
+        const vendors = res.data.data || []
+        setEligibleVendors(vendors)
+        
+        const eligibleIds = vendors.map(v => String(v.id))
+        setEditAssignmentData(prev => ({
+          ...prev,
+          selectedVendorIds: prev.selectedVendorIds.filter(vId => eligibleIds.includes(String(vId)))
+        }))
+      }
+    } catch (err) {
+      toast.error("Failed to fetch eligible vendors")
+    } finally {
+      setLoadingAssignmentData(false)
+    }
+  }
+
+  const handleAssignmentChange = async (key, value) => {
+    setEditAssignmentData(prev => {
+      const updated = { ...prev, [key]: value }
+      if (key === 'zoneIds' || key === 'allowedShifts') {
+        fetchEligibleVendors(viewDetails._id, updated.zoneIds, updated.allowedShifts)
+      }
+      return updated
+    })
+  }
+
+  const handleSaveAssignment = async () => {
+    if (editAssignmentData.selectedVendorIds.length > editAssignmentData.maxVendorCapacity && editAssignmentData.maxVendorCapacity > 0) {
+      toast.error(`Cannot assign ${editAssignmentData.selectedVendorIds.length} vendors when capacity is ${editAssignmentData.maxVendorCapacity}`)
+      return
+    }
+
+    try {
+      setProcessing(true)
+      await adminAPI.updateDeliveryPartnerAssignment(viewDetails._id, editAssignmentData)
+      toast.success("Assignment updated successfully")
+      
+      handleView({ _id: viewDetails._id })
+      setIsEditAssignmentMode(false)
+      fetchDeliverymen()
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update assignment")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const cancelEditAssignment = () => {
+    setIsEditAssignmentMode(false)
+  }
+
   const handleView = async (deliveryman) => {
     try {
       setLoading(true)
@@ -226,6 +323,9 @@ totalWithdrawn: deliveryman.totalWithdrawn || 0,
 availableCashLimit: deliveryman.availableCashLimit || 0,
         })
         setIsViewOpen(true)
+        if (deliveryman._id !== viewDetails?._id) {
+          setIsEditAssignmentMode(false)
+        }
       } else {
         alert("Failed to load details")
       }
@@ -928,6 +1028,226 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                   </div>
                 )}
 
+                {/* Assignment Details */}
+                <div className="pb-6 border-b border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Package className="w-4 h-4" /> Assignment Details
+                    </h3>
+                    {!isEditAssignmentMode ? (
+                      <button 
+                        onClick={handleEditAssignmentClick}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        <Pencil className="w-3 h-3" /> Edit Assignment
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={cancelEditAssignment}
+                          className="text-xs font-semibold text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Cancel
+                        </button>
+                        <button 
+                          onClick={handleSaveAssignment}
+                          disabled={processing || loadingAssignmentData}
+                          className="text-xs font-semibold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1 disabled:opacity-50"
+                        >
+                          {processing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!isEditAssignmentMode ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase">Assigned Zones</label>
+                          <p className="text-sm text-slate-900 mt-1">
+                            {viewDetails.zoneIds?.length ? viewDetails.zoneIds.length + ' Zone(s)' : 'None'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase">Allowed Shifts</label>
+                          <p className="text-sm text-slate-900 mt-1 capitalize">
+                            {viewDetails.allowedShifts?.length ? viewDetails.allowedShifts.join(', ') : 'None'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase">Max Vendor Capacity</label>
+                          <p className="text-sm text-slate-900 mt-1">{viewDetails.maxVendorCapacity || 'Unlimited'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase">Currently Assigned</label>
+                          <p className="text-sm font-bold text-blue-600 mt-1">{viewDetails.assignedVendors?.length || 0}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Assigned Vendors List */}
+                      {viewDetails.assignedVendors?.length > 0 && (
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Assigned Vendors</label>
+                          <div className="bg-slate-50 border border-slate-200 rounded-lg max-h-48 overflow-y-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-slate-100 text-slate-600 sticky top-0">
+                                <tr>
+                                  <th className="py-2 px-3 font-semibold">Vendor Name</th>
+                                  <th className="py-2 px-3 font-semibold">Vendor ID</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {viewDetails.assignedVendors.map((vendor, i) => {
+                                  const vId = typeof vendor === 'object' ? vendor._id || vendor.id : vendor;
+                                  const vName = typeof vendor === 'object' && vendor.restaurantName ? vendor.restaurantName : 'Unknown';
+                                  return (
+                                    <tr key={vId || i} className="hover:bg-slate-100">
+                                      <td className="py-2 px-3 font-medium text-slate-900">{vName}</td>
+                                      <td className="py-2 px-3 text-slate-500 font-mono">VEND-{String(vId).slice(-6).toUpperCase()}</td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                      {loadingAssignmentData && !availableZones.length ? (
+                        <div className="flex items-center justify-center py-4 text-blue-600">
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                          <span className="text-sm font-medium">Loading config...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Assigned Zones <span className="text-red-500">*</span></label>
+                              <div className="flex flex-col gap-2 max-h-32 overflow-y-auto bg-white p-2 border border-slate-200 rounded">
+                                {availableZones.map(zone => (
+                                  <label key={zone._id} className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <input 
+                                      type="checkbox" 
+                                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                      checked={editAssignmentData.zoneIds.includes(zone._id)}
+                                      onChange={(e) => {
+                                        const newZones = e.target.checked 
+                                          ? [...editAssignmentData.zoneIds, zone._id]
+                                          : editAssignmentData.zoneIds.filter(id => id !== zone._id)
+                                        handleAssignmentChange('zoneIds', newZones)
+                                      }}
+                                    />
+                                    {zone.name || zone.zoneName}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Allowed Shifts</label>
+                              <div className="flex flex-wrap gap-3 bg-white p-2 border border-slate-200 rounded">
+                                {['breakfast', 'lunch', 'dinner'].map(shift => (
+                                  <label key={shift} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
+                                    <input 
+                                      type="checkbox" 
+                                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                      checked={editAssignmentData.allowedShifts.includes(shift)}
+                                      onChange={(e) => {
+                                        const newShifts = e.target.checked 
+                                          ? [...editAssignmentData.allowedShifts, shift]
+                                          : editAssignmentData.allowedShifts.filter(s => s !== shift)
+                                        handleAssignmentChange('allowedShifts', newShifts)
+                                      }}
+                                    />
+                                    {shift}
+                                  </label>
+                                ))}
+                              </div>
+                              
+                              <div className="mt-4">
+                                <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Max Vendor Capacity</label>
+                                <input 
+                                  type="number" 
+                                  min="0"
+                                  value={editAssignmentData.maxVendorCapacity}
+                                  onChange={(e) => handleAssignmentChange('maxVendorCapacity', parseInt(e.target.value) || 0)}
+                                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500"
+                                />
+                                {editAssignmentData.selectedVendorIds.length > editAssignmentData.maxVendorCapacity && editAssignmentData.maxVendorCapacity > 0 && (
+                                  <p className="text-xs text-red-500 mt-1 font-semibold">
+                                    Capacity cannot be less than currently selected vendors ({editAssignmentData.selectedVendorIds.length})
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center justify-between">
+                              <span>Eligible Vendors</span>
+                              <span className="text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full text-[10px]">
+                                Selected: {editAssignmentData.selectedVendorIds.length} / {editAssignmentData.maxVendorCapacity || 'Unlimited'}
+                              </span>
+                            </label>
+                            
+                            {loadingAssignmentData ? (
+                               <div className="flex justify-center p-4"><Loader2 className="w-5 h-5 animate-spin text-blue-500" /></div>
+                            ) : eligibleVendors.length === 0 ? (
+                              <div className="bg-white p-4 border border-slate-200 rounded text-center text-slate-500 text-sm">
+                                No eligible vendors found for the selected zones and shifts.
+                              </div>
+                            ) : (
+                              <div className="bg-white border border-slate-200 rounded max-h-48 overflow-y-auto">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-slate-100 text-slate-600 sticky top-0">
+                                    <tr>
+                                      <th className="py-2 px-3 font-semibold w-10 text-center">Select</th>
+                                      <th className="py-2 px-3 font-semibold">Vendor Name</th>
+                                      <th className="py-2 px-3 font-semibold">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200">
+                                    {eligibleVendors.map((vendor) => {
+                                      const isSelected = editAssignmentData.selectedVendorIds.includes(String(vendor.id))
+                                      return (
+                                        <tr key={vendor.id} className={`hover:bg-blue-50 cursor-pointer ${isSelected ? 'bg-blue-50/50' : ''}`} onClick={() => {
+                                            const newSelected = isSelected 
+                                              ? editAssignmentData.selectedVendorIds.filter(id => id !== String(vendor.id))
+                                              : [...editAssignmentData.selectedVendorIds, String(vendor.id)]
+                                            handleAssignmentChange('selectedVendorIds', newSelected)
+                                          }}>
+                                          <td className="py-2 px-3 text-center">
+                                            <input 
+                                              type="checkbox" 
+                                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                              checked={isSelected}
+                                              readOnly
+                                            />
+                                          </td>
+                                          <td className="py-2 px-3 font-medium text-slate-900">{vendor.name} <span className="text-slate-400 font-mono text-[10px] ml-1">(VEND-{String(vendor.id).slice(-6).toUpperCase()})</span></td>
+                                          <td className="py-2 px-3 capitalize">
+                                            <span className={`px-1.5 py-0.5 rounded font-medium ${
+                                              vendor.isCurrentlyAssigned ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                            }`}>
+                                              {vendor.isCurrentlyAssigned ? 'Currently Assigned' : 'Unassigned'}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {/* Pocket Details */}
                 <div className="pb-6 border-b border-slate-200">
                   <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">

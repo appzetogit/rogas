@@ -194,7 +194,13 @@ const toRestaurantProfile = (doc) => {
         pendingZoneId: doc.pendingZoneId ? String(doc.pendingZoneId) : '',
         zoneChangeStatus: doc.zoneChangeStatus || 'none',
         zoneChangeRejectionReason: doc.zoneChangeRejectionReason || '',
-        pendingLocation: doc.pendingLocation || null
+        pendingLocation: doc.pendingLocation || null,
+        assignedDeliveryPartner: doc.assignedDeliveryPartnerId ? {
+            _id: doc.assignedDeliveryPartnerId._id,
+            name: doc.assignedDeliveryPartnerId.name || '',
+            phone: doc.assignedDeliveryPartnerId.phone || '',
+            profilePhoto: doc.assignedDeliveryPartnerId.profilePhoto || ''
+        } : null
     };
 };
 
@@ -492,6 +498,7 @@ export const registerRestaurant = async (payload, files) => {
 export const getCurrentRestaurantProfile = async (restaurantId) => {
     if (!restaurantId) return null;
     const doc = await FoodRestaurant.findById(restaurantId)
+        .populate('assignedDeliveryPartnerId', 'name profilePhoto phone')
         .select(
             [
                 'restaurantName',
@@ -536,7 +543,8 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'pendingZoneId',
                 'pendingLocation',
                 'zoneChangeStatus',
-                'zoneChangeRejectionReason'
+                'zoneChangeRejectionReason',
+                'assignedDeliveryPartnerId'
             ].join(' ')
         )
         .lean();

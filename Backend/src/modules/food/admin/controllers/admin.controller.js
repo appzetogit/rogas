@@ -13,6 +13,7 @@ import { topupUserWalletByAdmin } from '../../user/services/userWallet.service.j
 import { invalidateCache } from '../../../../middleware/cache.js';
 import { FoodBusinessSettings } from '../models/businessSettings.model.js';
 import { sendRestaurantOnboardingEmail } from '../../../../utils/email.js';
+import * as assignmentService from '../services/assignment.service.js';
 
 // ----- Customers / Users -----
 export async function getCustomers(req, res, next) {
@@ -1352,8 +1353,9 @@ export async function getDeliveryPartnerById(req, res, next) {
 
 export async function approveDeliveryPartner(req, res, next) {
     try {
-        const { zoneId } = req.body || {};
-        const partner = await adminService.approveDeliveryPartner(req.params.id, zoneId);
+        const { zoneIds, allowedShifts, maxVendorCapacity, zoneId } = req.body || {};
+        const zones = zoneIds || (zoneId ? [zoneId] : []);
+        const partner = await adminService.approveDeliveryPartner(req.params.id, zones, allowedShifts, maxVendorCapacity);
         if (!partner) {
             return res.status(404).json({
                 success: false,
@@ -1752,5 +1754,41 @@ export async function updateVendorTimingSettingsController(req, res, next) {
         res.status(200).json({ success: true, message: 'Vendor timing settings updated successfully', data });
     } catch (error) {
         next(error);
+    }
+}
+
+// ─── Delivery Partner Assignments ────────────────────────────────────────────
+
+export async function getEligibleVendorsForDeliveryPartnerController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { zoneIds, allowedShifts } = req.query;
+        
+        let parsedZoneIds = [];
+        if (zoneIds) {
+            parsedZoneIds = Array.isArray(zoneIds) ? zoneIds : zoneIds.split(',');
+        }
+        
+        let parsedShifts = [];
+        if (allowedShifts) {
+            parsedShifts = Array.isArray(allowedShifts) ? allowedShifts : allowedShifts.split(',');
+        }
+        
+        const data = await assignmentService.getEligibleVendorsForDeliveryPartner(id, parsedZoneIds, parsedShifts);
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateDeliveryPartnerAssignmentController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const payload = req.body; // expected: { zoneIds, allowedShifts, maxVendorCapacity, selectedVendorIds }
+        
+        const data = await assignmentService.updateDeliveryPartnerAssignment(id, payload);
+        res.status(200).json({ success: true, message: 'Assignment configuration updated successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
     }
 }

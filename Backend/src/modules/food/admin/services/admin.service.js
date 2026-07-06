@@ -34,6 +34,7 @@ import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdr
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import KitchenPartner from '../../../../models/KitchenPartner.js';
+import { assignVendorsToDeliveryPartner, assignDeliveryPartnerToVendor } from './assignment.service.js';
 import {
     backfillLegacyCategoryWorkflow,
     categoryAllowsFoodType,
@@ -2569,6 +2570,14 @@ export async function updateRestaurantStatus(id, body = {}) {
         );
     }
 
+    if (oldDoc.status !== 'approved' && newStatus === 'approved') {
+        try {
+            await assignDeliveryPartnerToVendor(id);
+        } catch (err) {
+            logger.error(`[ASSIGN-PARTNER] Failed to assign delivery partner to vendor: ${err.message}`);
+        }
+    }
+
     return updated;
 }
 
@@ -4586,7 +4595,10 @@ export async function checkEarningAddonCompletions(deliveryPartnerId, _force = f
 }
 
 export async function getDeliveryPartnerById(id) {
-    const partner = await FoodDeliveryPartner.findById(id).lean();
+    const partner = await FoodDeliveryPartner.findById(id).populate({
+        path: 'assignedVendors',
+        select: '_id restaurantName'
+    }).lean();
     if (!partner) return null;
     const deliveryId = partner._id ? `DP-${partner._id.toString().slice(-8).toUpperCase()}` : null;
     return {
@@ -4694,23 +4706,33 @@ export async function getDeliverymanReviews(query = {}) {
     return { reviews, total, page, limit };
 }
 
-export async function approveDeliveryPartner(id, zoneId) {
-    if (!zoneId || !mongoose.Types.ObjectId.isValid(zoneId)) {
-        throw new ValidationError('A valid Zone ID must be assigned to approve the delivery partner');
+export async function approveDeliveryPartner(id, zoneIds, allowedShifts, maxVendorCapacity) {
+    if (!zoneIds || !Array.isArray(zoneIds) || zoneIds.length === 0) {
+        throw new ValidationError('At least one valid Zone ID must be assigned to approve the delivery partner');
     }
-    const zoneExists = await FoodZone.findById(zoneId);
-    if (!zoneExists) {
-        throw new ValidationError('The assigned zone does not exist');
+    
+    // validate all zones
+    const zoneCount = await FoodZone.countDocuments({ _id: { $in: zoneIds } });
+    if (zoneCount !== zoneIds.length) {
+        throw new ValidationError('One or more assigned zones do not exist');
     }
 
     const partner = await FoodDeliveryPartner.findById(id);
     if (!partner) return null;
-    partner.zoneIds = [new mongoose.Types.ObjectId(zoneId)];
+    partner.zoneIds = zoneIds.map(z => new mongoose.Types.ObjectId(z));
+    partner.allowedShifts = allowedShifts || [];
+    partner.maxVendorCapacity = Number(maxVendorCapacity) || 0;
     partner.status = 'approved';
     partner.approvedAt = new Date();
     partner.rejectedAt = undefined;
     partner.rejectionReason = undefined;
     await partner.save();
+
+    try {
+        await assignVendorsToDeliveryPartner(partner._id);
+    } catch (err) {
+        logger.error(`[ASSIGN-VENDOR] Failed to assign vendors to delivery partner: ${err.message}`);
+    }
 
     try {
         const { notifyVendorsOfDriverUpdate } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.service.js');

@@ -164,6 +164,12 @@ const deliveryPartnerSchema = new mongoose.Schema(
         },
         /** Assigned delivery zones */
         zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
+        /** Allowed shifts for vendor assignment */
+        allowedShifts: [{ type: String, enum: ['breakfast', 'lunch', 'dinner'] }],
+        /** Maximum number of vendors this partner can handle */
+        maxVendorCapacity: { type: Number, default: 0, min: 0 },
+        /** List of assigned vendors (load balancing) */
+        assignedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant' }],
         /** Today's earnings (reset daily) */
         earningsToday: { type: Number, default: 0, min: 0 },
         /** Today's delivery count (reset daily) */
