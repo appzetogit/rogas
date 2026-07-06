@@ -857,9 +857,9 @@ export default function VendorRequest() {
                             <div className="flex items-start gap-3">
                               <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
                               <div>
-                                <p className="text-xs text-slate-500">Kitchen Partner Sp. z o.o.</p>
+                                <p className="text-xs text-slate-500">Kitchen Partner</p>
                                 <p className="text-sm font-semibold text-blue-600">
-                                  {r.kitchenPartnerId?.companyName || "FreshKitchen Partners Sp. z o.o."}
+                                  {r.kitchenPartnerId?.companyName || "Not Assigned"}
                                 </p>
                               </div>
                             </div>

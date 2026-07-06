@@ -33,6 +33,7 @@ import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurant
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
+import KitchenPartner from '../../../../models/KitchenPartner.js';
 import {
     backfillLegacyCategoryWorkflow,
     categoryAllowsFoodType,
@@ -2175,6 +2176,7 @@ export async function getRestaurantById(id) {
     return FoodRestaurant.findById(id)
         .select('-__v')
         .populate('zoneId', 'name zoneName serviceLocation isActive')
+        .populate('kitchenPartnerId', 'companyName')
         .lean();
 }
 
@@ -2501,7 +2503,35 @@ export async function updateRestaurantById(id, body = {}) {
         }
     }
 
+    const oldKitchenPartnerId = doc.kitchenPartnerId;
+    const oldVendorType = doc.vendorType;
+    let isStatusApproved = doc.status === 'approved';
+
+    if (body.vendorType !== undefined) {
+        doc.vendorType = toStr(body.vendorType);
+    }
+    if (body.kitchenPartnerId !== undefined) {
+        doc.kitchenPartnerId = body.kitchenPartnerId || null;
+    }
+
     await doc.save();
+
+    if (isStatusApproved) {
+        const oldIsHomeCook = oldVendorType === 'home_cook' && !!oldKitchenPartnerId;
+        const newIsHomeCook = doc.vendorType === 'home_cook' && !!doc.kitchenPartnerId;
+
+        if (oldIsHomeCook && newIsHomeCook) {
+            if (String(oldKitchenPartnerId) !== String(doc.kitchenPartnerId)) {
+                await KitchenPartner.updateOne({ _id: oldKitchenPartnerId, homeCooks: { $gt: 0 } }, { $inc: { homeCooks: -1 } });
+                await KitchenPartner.findByIdAndUpdate(doc.kitchenPartnerId, { $inc: { homeCooks: 1 } });
+            }
+        } else if (oldIsHomeCook && !newIsHomeCook) {
+            await KitchenPartner.updateOne({ _id: oldKitchenPartnerId, homeCooks: { $gt: 0 } }, { $inc: { homeCooks: -1 } });
+        } else if (!oldIsHomeCook && newIsHomeCook) {
+            await KitchenPartner.findByIdAndUpdate(doc.kitchenPartnerId, { $inc: { homeCooks: 1 } });
+        }
+    }
+
     return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
 }
 
@@ -2509,13 +2539,16 @@ export async function updateRestaurantStatus(id, body = {}) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const raw = body.status !== undefined ? body.status : body.isActive;
     const isActive = parseBooleanLike(raw, 'status');
-    const status = isActive ? 'approved' : 'rejected';
+    const newStatus = isActive ? 'approved' : 'rejected';
 
-    return FoodRestaurant.findByIdAndUpdate(
+    const oldDoc = await FoodRestaurant.findById(id);
+    if (!oldDoc) return null;
+
+    const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
         {
             $set: {
-                status,
+                status: newStatus,
                 approvedAt: isActive ? new Date() : undefined,
                 rejectedAt: isActive ? undefined : new Date(),
                 rejectionReason: isActive ? undefined : 'Disabled by admin'
@@ -2523,6 +2556,20 @@ export async function updateRestaurantStatus(id, body = {}) {
         },
         { new: true, runValidators: false }
     ).lean();
+
+    const isHomeCook = oldDoc.vendorType === 'home_cook' && !!oldDoc.kitchenPartnerId;
+    if (isHomeCook && oldDoc.status !== 'approved' && newStatus === 'approved') {
+        await KitchenPartner.findByIdAndUpdate(oldDoc.kitchenPartnerId, { 
+            $push: { homeCooks: { homeKitchenId: oldDoc._id, homeKitchenName: oldDoc.restaurantName } } 
+        });
+    } else if (isHomeCook && oldDoc.status === 'approved' && newStatus !== 'approved') {
+        await KitchenPartner.updateOne(
+            { _id: oldDoc.kitchenPartnerId }, 
+            { $pull: { homeCooks: { homeKitchenId: oldDoc._id } } }
+        );
+    }
+
+    return updated;
 }
 
 export async function updateRestaurantLocation(id, body = {}) {
@@ -3454,6 +3501,14 @@ export async function approveRestaurant(id) {
     ).lean();
 
     if (updated) {
+        if (!isZoneChange) {
+            const isHomeCook = updated.vendorType === 'home_cook' && !!updated.kitchenPartnerId;
+            if (isHomeCook && restaurant.status !== 'approved' && updated.status === 'approved') {
+                await KitchenPartner.findByIdAndUpdate(updated.kitchenPartnerId, { 
+                    $push: { homeCooks: { homeKitchenId: updated._id, homeKitchenName: updated.restaurantName } } 
+                });
+            }
+        }
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             const title = isZoneChange ? 'Zone Update Approved 🗺️' : 'Congratulations! 🎉';
@@ -3514,6 +3569,15 @@ export async function rejectRestaurant(id, reason) {
     ).lean();
 
     if (updated) {
+        if (!isZoneChange) {
+            const isHomeCook = updated.vendorType === 'home_cook' && !!updated.kitchenPartnerId;
+            if (isHomeCook && restaurant.status === 'approved' && updated.status !== 'approved') {
+                await KitchenPartner.updateOne(
+                    { _id: updated.kitchenPartnerId }, 
+                    { $pull: { homeCooks: { homeKitchenId: updated._id } } }
+                );
+            }
+        }
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             const title = isZoneChange ? 'Zone Update Rejected 🗺️' : 'Update on Registration 📝';

@@ -43,10 +43,10 @@ const kitchenPartnerSchema = new mongoose.Schema(
             pincode: { type: String },
         },
         // PRD required metrics
-        homeCooks: {
-            type: Number,
-            default: 0,
-        },
+        homeCooks: [{
+            homeKitchenId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant' },
+            homeKitchenName: { type: String }
+        }],
         orders: {
             type: Number,
             default: 0,

@@ -285,7 +285,7 @@ const KitchenPartnersList = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600">{partner.address?.city || "-"}</td>
-                    <td className="px-6 py-4 text-slate-600">{partner.homeCooks}</td>
+                    <td className="px-6 py-4 text-slate-600">{Array.isArray(partner.homeCooks) ? partner.homeCooks.length : (partner.homeCooks || 0)}</td>
                     <td className="px-6 py-4 text-slate-600">{partner.orders}</td>
                     <td className="px-6 py-4 text-slate-600">₹{partner.earnings?.toLocaleString()}</td>
                     <td className="px-6 py-4">

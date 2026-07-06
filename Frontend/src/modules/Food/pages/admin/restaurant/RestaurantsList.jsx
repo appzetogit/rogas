@@ -1746,6 +1746,17 @@ export default function RestaurantsList() {
                             </div>
                           </div>
                         )}
+                        {r?.vendorType === 'home_cook' && (
+                          <div className="flex items-start gap-3 mt-3">
+                            <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                            <div>
+                              <p className="text-xs text-slate-500">Kitchen Partner</p>
+                              <p className="text-sm font-medium text-blue-600">
+                                {r.kitchenPartnerId?.companyName || "Not Assigned"}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         {isEditingLocation && (
                           <p className="text-xs text-indigo-700 font-medium bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
                             Location editor is shown at the bottom of this details modal.
