@@ -242,46 +242,6 @@ export default function HomeDashboard({
         </div>
       </div>
 
-      {/* Assigned Delivery Partner card */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3 mt-4 border border-outline-variant/30 text-left animate-fadeIn">
-        <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">
-          ASSIGNED DELIVERY PARTNER
-        </h3>
-        
-        {profile?.assignedDeliveryPartner ? (
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 bg-surface-container shadow-xs">
-              {profile.assignedDeliveryPartner.profilePhoto ? (
-                <img alt="Assigned Delivery Boy" className="w-full h-full object-cover" src={profile.assignedDeliveryPartner.profilePhoto} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                  <span className="material-symbols-outlined text-primary text-[24px]">person</span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-[14px] text-on-surface">
-                {profile.assignedDeliveryPartner.name || 'Unnamed Delivery Boy'}
-              </p>
-              {profile.assignedDeliveryPartner.phone && (
-                <a
-                  href={`tel:${profile.assignedDeliveryPartner.phone}`}
-                  className="text-[12px] text-primary font-semibold flex items-center gap-1 mt-0.5"
-                >
-                  <span className="material-symbols-outlined text-[14px]">call</span>
-                  {profile.assignedDeliveryPartner.phone}
-                </a>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-orange-50 border border-orange-100 p-3 rounded-lg flex items-center gap-2">
-            <span className="material-symbols-outlined text-orange-500 text-[18px]">info</span>
-            <p className="text-[13px] text-orange-700 font-medium">No Delivery Boy Assigned Yet.</p>
-          </div>
-        )}
-      </div>
-
       {/* Driver status card */}
       <div className="bg-white rounded-xl p-4 shadow-sm space-y-3 mt-4 border border-outline-variant/30 text-left animate-fadeIn">
         <div className="flex items-center justify-between">

@@ -1129,14 +1129,21 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
         }
 
         if (!driver) {
-            // No driver assigned to a specific batch yet, look up any online and approved driver assigned to this vendor's zone
-            const vendor = await FoodRestaurant.findById(vendorId).select('zoneId serviceZone city location');
-            const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
-            const vendorCity = vendor?.city || vendor?.location?.city;
+            // No driver assigned to a specific batch yet, look up explicitly assigned driver or fallback to online and approved driver assigned to this vendor's zone
+            const vendor = await FoodRestaurant.findById(vendorId).select('assignedDeliveryPartnerId zoneId serviceZone city location');
+            
+            if (vendor && vendor.assignedDeliveryPartnerId) {
+                driver = await FoodDeliveryPartner.findById(vendor.assignedDeliveryPartnerId)
+                    .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+            }
 
-            const driverFilter = {
-                status: 'approved',
-            };
+            if (!driver) {
+                const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
+                const vendorCity = vendor?.city || vendor?.location?.city;
+
+                const driverFilter = {
+                    status: 'approved',
+                };
 
             const locationConditions = [];
 
@@ -1179,6 +1186,8 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
                 driver = fallbackDrivers.find(d => d.availabilityStatus === 'online') || fallbackDrivers[0] || null;
             }
         }
+        }
+
 
         res.json({
             success: true,
