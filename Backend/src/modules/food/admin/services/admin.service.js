@@ -4010,7 +4010,7 @@ export async function getDeliveryPartners(query) {
         zone: doc.city || doc.state || doc.address || '',
         vehicleType: doc.vehicleType || '',
         status: doc.status,
-        totalOrders: countsMap.get(String(doc._id)) || 0,
+        totalOrders: (countsMap.get(String(doc._id)) || 0) + (doc.deliveriesToday || 0),
         profilePhoto: doc.profilePhoto || null,
         profileImage: doc.profilePhoto ? { url: doc.profilePhoto } : null
     }));
@@ -4644,8 +4644,13 @@ export async function getDeliverymanReviews(query = {}) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
-    const filter = {
+    const foodFilter = {
         'ratings.deliveryPartner.rating': { $exists: true, $ne: null }
+    };
+    
+    const dmbFilter = {
+        'isRated': true,
+        'deliveryRating': { $exists: true, $ne: null }
     };
 
     if (query.search && String(query.search).trim()) {
@@ -4668,28 +4673,43 @@ export async function getDeliverymanReviews(query = {}) {
             ]
         }).select('_id').lean();
 
-        filter.$or = [
+        foodFilter.$or = [
             { orderId: searchRegex },
             { 'ratings.deliveryPartner.comment': searchRegex },
             { 'dispatch.deliveryPartnerId': { $in: partners.map(p => p._id) } },
             { userId: { $in: customers.map(c => c._id) } }
         ];
+        
+        dmbFilter.$or = [
+            { orderId: searchRegex },
+            { 'ratingFeedback': searchRegex },
+            { 'dispatch.deliveryPartnerId': { $in: partners.map(p => p._id) } },
+            { userId: { $in: customers.map(c => c._id) } }
+        ];
     }
 
-    const [docs, total] = await Promise.all([
-        FoodOrder.find(filter)
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+    const [foodDocs, dmbDocs, totalFood, totalDmb] = await Promise.all([
+        FoodOrder.find(foodFilter)
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
+            .limit(skip + limit)
             .populate('userId', 'name email phone')
             .populate('dispatch.deliveryPartnerId', 'name phone')
             .select('orderId userId dispatch.deliveryPartnerId ratings.deliveryPartner createdAt deliveryState.deliveredAt')
             .lean(),
-        FoodOrder.countDocuments(filter)
+        DMBDailyOrder.find(dmbFilter)
+            .sort({ createdAt: -1 })
+            .limit(skip + limit)
+            .populate('userId', 'name email phone')
+            .populate('dispatch.deliveryPartnerId', 'name phone')
+            .select('orderId userId dispatch.deliveryPartnerId deliveryRating ratingFeedback createdAt deliveredAt')
+            .lean(),
+        FoodOrder.countDocuments(foodFilter),
+        DMBDailyOrder.countDocuments(dmbFilter)
     ]);
 
-    const reviews = docs.map((doc, index) => ({
-        sl: skip + index + 1,
+    const foodReviews = foodDocs.map(doc => ({
         orderId: doc.orderId,
         deliveryman: doc.dispatch?.deliveryPartnerId?.name || 'Unknown',
         deliverymanId: doc.dispatch?.deliveryPartnerId?._id || 'N/A',
@@ -4700,10 +4720,36 @@ export async function getDeliverymanReviews(query = {}) {
         review: doc.ratings?.deliveryPartner?.comment || '',
         rating: doc.ratings?.deliveryPartner?.rating || 0,
         submittedAt: doc.createdAt,
-        deliveredAt: doc.deliveryState?.deliveredAt
+        deliveredAt: doc.deliveryState?.deliveredAt,
+        type: 'food'
+    }));
+    
+    const dmbReviews = dmbDocs.map(doc => ({
+        orderId: doc.orderId,
+        deliveryman: doc.dispatch?.deliveryPartnerId?.name || 'Unknown',
+        deliverymanId: doc.dispatch?.deliveryPartnerId?._id || 'N/A',
+        deliverymanPhone: doc.dispatch?.deliveryPartnerId?.phone || 'N/A',
+        customer: doc.userId?.name || 'Unknown',
+        customerId: doc.userId?._id || 'N/A',
+        customerPhone: doc.userId?.phone || 'N/A',
+        review: doc.ratingFeedback || '',
+        rating: doc.deliveryRating || 0,
+        submittedAt: doc.createdAt,
+        deliveredAt: doc.deliveredAt,
+        type: 'dmb'
     }));
 
-    return { reviews, total, page, limit };
+    const allReviews = [...foodReviews, ...dmbReviews]
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+        .slice(skip, skip + limit)
+        .map((review, index) => ({
+            ...review,
+            sl: skip + index + 1
+        }));
+
+    const total = totalFood + totalDmb;
+
+    return { reviews: allReviews, total, page, limit };
 }
 
 export async function approveDeliveryPartner(id, zoneIds, allowedShifts, maxVendorCapacity) {
@@ -5163,62 +5209,8 @@ export async function getDeliveryWallets(query = {}) {
 
         const partnerId = new mongoose.Types.ObjectId(p._id);
 
-        const [earningsAgg, cashCollectedAgg, cashDepositsAgg, bonusAgg, withdrawalAgg] = await Promise.all([
-            FoodOrder.aggregate([
-                { $match: { 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered' } },
-                { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } } } }
-            ]),
-            FoodOrder.aggregate([
-                {
-                    $match: {
-                        'dispatch.deliveryPartnerId': partnerId,
-                        orderStatus: 'delivered',
-                        'payment.method': 'cash'
-                    }
-                },
-                { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } } } }
-            ]),
-            FoodDeliveryCashDeposit.aggregate([
-                {
-                    $match: {
-                        deliveryPartnerId: partnerId,
-                        status: 'Completed'
-                    }
-                },
-                { $group: { _id: null, depositedCash: { $sum: { $ifNull: ['$amount', 0] } } } }
-            ]),
-            DeliveryBonusTransaction.aggregate([
-                { $match: { deliveryPartnerId: partnerId } },
-                { $group: { _id: null, total: { $sum: '$amount' } } }
-            ]),
-            FoodDeliveryWithdrawal.aggregate([
-                { $match: { deliveryPartnerId: partnerId } },
-                {
-                    $group: {
-                        _id: null,
-                        totalWithdrawn: {
-                            $sum: {
-                                $cond: [{ $eq: ['$status', 'approved'] }, { $ifNull: ['$amount', 0] }, 0]
-                            }
-                        },
-                        pendingWithdrawals: {
-                            $sum: {
-                                $cond: [{ $eq: ['$status', 'pending'] }, { $ifNull: ['$amount', 0] }, 0]
-                            }
-                        }
-                    }
-                }
-            ])
-        ]);
-
-        const totalEarned = Number(earningsAgg?.[0]?.totalEarned) || 0;
-        const grossCashCollected = Number(cashCollectedAgg?.[0]?.cashCollected) || 0;
-        const totalDepositedCash = Number(cashDepositsAgg?.[0]?.depositedCash) || 0;
-        const cashInHand = Math.max(0, grossCashCollected - totalDepositedCash);
-        const totalBonus = Number(bonusAgg?.[0]?.total) || 0;
-        const totalWithdrawn = Number(withdrawalAgg?.[0]?.totalWithdrawn) || 0;
-        const pendingWithdrawals = Number(withdrawalAgg?.[0]?.pendingWithdrawals) || 0;
-        const pocketBalance = Math.max(0, (totalEarned + totalBonus) - (totalWithdrawn + pendingWithdrawals));
+        const { getDeliveryPartnerWalletEnhanced } = await import('../../delivery/services/deliveryFinance.service.js');
+        const enhancedWallet = await getDeliveryPartnerWalletEnhanced(p._id);
 
         return {
             walletId: wallet?._id,
@@ -5226,13 +5218,13 @@ export async function getDeliveryWallets(query = {}) {
             name: p.name,
             phone: p.phone || '',
             deliveryIdString: partnerIdstr,
-            pocketBalance,
-            remainingCashLimit: Math.max(0, globalLimit - cashInHand),
-            cashCollected: grossCashCollected,
-            totalEarning: totalEarned,
-            bonus: totalBonus,
-            totalWithdrawn,
-            cashInHand,
+            pocketBalance: enhancedWallet.pocketBalance || 0,
+            remainingCashLimit: enhancedWallet.availableCashLimit || 0,
+            cashCollected: enhancedWallet.cashInHand || 0,
+            totalEarning: enhancedWallet.totalEarned || 0,
+            bonus: enhancedWallet.totalBonus || 0,
+            totalWithdrawn: enhancedWallet.totalWithdrawn || 0,
+            cashInHand: enhancedWallet.cashInHand || 0,
         };
     }));
 

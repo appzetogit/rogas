@@ -178,7 +178,7 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         totalEarned,
         totalBonus,
         totalCashLimit,
-        availableCashLimit: Math.max(0, totalCashLimit - cashInHand + pocketBalance),
+        availableCashLimit: Math.max(0, totalCashLimit - cashInHand),
         deliveryWithdrawalLimit,
         transactions: transactions.slice(0, 50)
     };
