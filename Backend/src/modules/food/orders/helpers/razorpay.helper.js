@@ -44,7 +44,7 @@ export function createPaymentLink({ amountPaise, currency = 'INR', description, 
         currency,
         description: description || `Order ${orderId}`,
         customer: {
-            name: customerName || 'Customer',
+            name: customerName || '',
             email: customerEmail || 'customer@example.com',
             contact: customerPhone ? String(customerPhone).replace(/\D/g, '').slice(-10) : '9999999999'
         }

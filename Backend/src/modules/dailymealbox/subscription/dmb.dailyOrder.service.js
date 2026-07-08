@@ -481,7 +481,7 @@
 //         deliverySlot: o.deliverySlot,
 //         deliveryDate: o.deliveryDate,
 //         customer: {
-//             name: o.userId?.name || 'Customer',
+//             name: o.userId?.name || '',
 //             phone: o.userId?.phone || ''
 //         },
 //         meals: o.meals.map(m => ({
@@ -804,7 +804,7 @@
 //     deliveryDate: order.deliveryDate,
 //     deliverySlot: order.deliverySlot,
 //     vendor: {
-//         name: order.vendorId?.restaurantName || 'Vendor',
+//         name: order.vendorId?.restaurantName || '',
 //         image: order.vendorId?.profileImage || null,
 //         city: order.vendorId?.city || '',
 //         location: order.vendorId?.location || null
@@ -1381,7 +1381,7 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
         deliverySlot: o.deliverySlot,
         deliveryDate: o.deliveryDate,
         customer: {
-            name: o.userId?.name || 'Customer',
+            name: o.userId?.name || '',
             phone: o.userId?.phone || ''
         },
         meals: o.meals.map(m => ({
@@ -1655,7 +1655,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                 deliveryAddress: o.deliveryAddress,
                 meals: o.meals,
                 customer: {
-                    name: o.userId?.name || 'Customer',
+                    name: o.userId?.name || '',
                     phone: o.userId?.phone || ''
                 },
                 pricing: o.pricing
@@ -1902,7 +1902,7 @@ const formatOrderCard = (order) => ({
     deliveryDate: order.deliveryDate,
     deliverySlot: order.deliverySlot,
     vendor: {
-        name: order.vendorId?.restaurantName || 'Vendor',
+        name: order.vendorId?.restaurantName || '',
         image: order.vendorId?.profileImage || null,
         city: order.vendorId?.city || '',
         location: order.vendorId?.location || null

@@ -152,7 +152,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
 
             {/* Name */}
             <h4 className="text-sm font-bold text-gray-900 leading-tight mb-1">
-               {stop.name || (isPickup ? 'Vendor' : 'Customer')}
+               {stop.name || ''}
             </h4>
 
             {/* Order count for vendor stops */}

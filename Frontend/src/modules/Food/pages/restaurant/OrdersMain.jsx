@@ -73,7 +73,7 @@ const transformOrderForList = (order) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
   status: order.status || "pending",
-  customerName: order.userId?.name || order.customerName || "Customer",
+  customerName: order.userId?.name || order.customerName || "",
   type: "Home Delivery",
   tableOrToken: null,
   timePlaced: new Date(getAllOrdersTimestamp(order)).toLocaleDateString(
@@ -127,7 +127,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
             orderId: order.orderId || order._id,
             mongoId: order._id,
             status: order.status || "delivered",
-            customerName: order.userId?.name || order.customerName || "Customer",
+            customerName: order.userId?.name || order.customerName || "",
             type: "Home Delivery",
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
@@ -333,7 +333,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
             orderId: order.orderId || order._id,
             mongoId: order._id,
             status: order.status || "cancelled",
-            customerName: order.userId?.name || order.customerName || "Customer",
+            customerName: order.userId?.name || order.customerName || "",
             type: "Home Delivery",
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
@@ -3711,7 +3711,7 @@ function PreparingOrders({
               orderId: order.orderId || order._id,
               mongoId: order._id,
               status: order.status || "preparing",
-              customerName: order.userId?.name || "Customer",
+              customerName: order.userId?.name || "",
               type:
                 order.deliveryFleet === "standard"
                   ? "Home Delivery"
@@ -4028,7 +4028,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
             orderId: order.orderId || order._id,
             mongoId: order._id,
             status: order.status || "ready",
-            customerName: order.userId?.name || "Customer",
+            customerName: order.userId?.name || "",
             type:
               order.deliveryFleet === "standard"
                 ? "Home Delivery"
@@ -4155,7 +4155,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
             orderId: order.orderId || order._id,
             mongoId: order._id,
             status: order.status || "out_for_delivery",
-            customerName: order.userId?.name || "Customer",
+            customerName: order.userId?.name || "",
             type:
               order.deliveryFleet === "standard"
                 ? "Home Delivery"

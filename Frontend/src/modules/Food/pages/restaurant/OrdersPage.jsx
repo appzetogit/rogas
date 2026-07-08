@@ -169,7 +169,7 @@ export default function OrdersPage() {
               amount: order.pricing?.total || 0,
               status: order.status || 'pending',
               createdAt: order.createdAt,
-              customerName: order.userId?.name || order.customerName || 'Customer',
+              customerName: order.userId?.name || order.customerName || '',
               customerPhone: order.userId?.phone || order.customerPhone || '',
               address: order.address
             }
@@ -239,7 +239,7 @@ export default function OrdersPage() {
                 amount: order.pricing?.total || 0,
                 status: order.status || 'pending',
                 createdAt: order.createdAt,
-                customerName: order.userId?.name || order.customerName || 'Customer',
+                customerName: order.userId?.name || order.customerName || '',
                 customerPhone: order.userId?.phone || order.customerPhone || '',
                 address: order.address
               }
@@ -292,7 +292,7 @@ export default function OrdersPage() {
                 amount: order.pricing?.total || 0,
                 status: order.status || 'pending',
                 createdAt: order.createdAt,
-                customerName: order.userId?.name || order.customerName || 'Customer',
+                customerName: order.userId?.name || order.customerName || '',
                 customerPhone: order.userId?.phone || order.customerPhone || '',
                 address: order.address
               }

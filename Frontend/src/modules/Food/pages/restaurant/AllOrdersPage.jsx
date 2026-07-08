@@ -188,7 +188,7 @@ export default function AllOrdersPage() {
     const restaurantName = restaurantData?.name || order.restaurantId?.name || 'Restaurant'
     
     // Get customer name
-    const customerName = order.userId?.name || order.customerName || 'Customer'
+    const customerName = order.userId?.name || order.customerName || ''
     
     // Format items
     const items = (order.items || []).map(item => ({

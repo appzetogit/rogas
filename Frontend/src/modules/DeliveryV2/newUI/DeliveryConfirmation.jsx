@@ -154,14 +154,14 @@ const DeliveryConfirmation = ({
         setQrCodeUrl(res.data.imageUrl);
       } else {
         const amount = order.cashAmount || order.pricing?.total || 15;
-        const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "Vendor")}&am=${amount}&cu=INR`;
+        const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "")}&am=${amount}&cu=INR`;
         const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
         setQrCodeUrl(fallbackUrl);
       }
     } catch (err) {
       console.warn("Failed to generate Razorpay QR code:", err);
       const amount = order.cashAmount || order.pricing?.total || 15;
-      const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "Vendor")}&am=${amount}&cu=INR`;
+      const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "")}&am=${amount}&cu=INR`;
       const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
       setQrCodeUrl(fallbackUrl);
     } finally {
@@ -211,7 +211,7 @@ const DeliveryConfirmation = ({
       const lng = o.customerLng || (20.98 + idx * 0.004);
       return {
         id: o.id,
-        name: o.customerName || "Customer",
+        name: o.customerName || "",
         address: o.customerAddress || "",
         lat,
         lng
@@ -514,7 +514,7 @@ const DeliveryConfirmation = ({
     <div className="bg-white border border-[#e0e3e0] rounded-xl p-4 shadow-sm space-y-4">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-extrabold text-[#181d1b] text-lg">{order?.customerName || "Customer"}</h3>
+          <h3 className="font-extrabold text-[#181d1b] text-lg">{order?.customerName || ""}</h3>
           <p className="text-xs text-[#3e4945] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
             {order?.deliveryAddress || "Customer Address"}

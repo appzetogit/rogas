@@ -688,7 +688,7 @@ export async function getOperationsSnapshot(query = {}) {
                 routePoints.push({
                     type: 'pickup',
                     orderId: delivery.orderId,
-                    label: delivery.vendor.name || 'Vendor',
+                    label: delivery.vendor.name || '',
                     ...delivery.vendor.location
                 });
             }

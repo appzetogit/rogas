@@ -761,7 +761,7 @@ export default function LiveOperationsMap() {
                       {(d.assignedDeliveries || []).slice(0, 4).map((delivery, idx) => (
                         <div key={delivery._id || delivery.orderId || idx} className="mt-1.5 rounded-xl bg-[#F5F5F0] border border-gray-100 p-2.5">
                           <p className="font-bold text-[#2B2B2B]">{delivery.orderId || `Order ${idx + 1}`} <span className="text-[#1F7A63] text-[10px] uppercase font-extrabold ml-1.5">- {delivery.status}</span></p>
-                          <p className="text-gray-500 text-[11px] mt-0.5 truncate">{delivery.vendor?.name || "Vendor"} to {delivery.address || "destination"}</p>
+                          <p className="text-gray-500 text-[11px] mt-0.5 truncate">{delivery.vendor?.name || ""} to {delivery.address || "destination"}</p>
                         </div>
                       ))}
                       {d.lastLocationAt && (

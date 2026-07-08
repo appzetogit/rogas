@@ -107,14 +107,14 @@ export async function buildRouteForPartner(partnerId, coords = null) {
                 vendorLng: r?.location?.longitude || (r?.location?.coordinates?.[0]) || null,
                 customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates?.[1]) || null,
                 customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates?.[0]) || null,
-                restaurantName: r?.restaurantName || 'Vendor',
+                restaurantName: r?.restaurantName || '',
                 restaurantAddress: [
                     r?.location?.addressLine1 || r?.location?.address || '',
                     r?.location?.area || r?.area || '',
                     r?.location?.city || r?.city || ''
                 ].filter(Boolean).join(', '),
                 restaurantPhone: r?.ownerPhone || '',
-                customerName: order.customerName || order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || 'Customer',
+                customerName: order.customerName || order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || '',
                 customerAddress: [
                     order.deliveryAddress?.street || '',
                     order.deliveryAddress?.city || '',
@@ -136,14 +136,14 @@ export async function buildRouteForPartner(partnerId, coords = null) {
                 vendorLng: v?.location?.longitude || (v?.location?.coordinates?.[0]) || null,
                 customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates?.[1]) || null,
                 customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates?.[0]) || null,
-                restaurantName: v?.restaurantName || 'Vendor',
+                restaurantName: v?.restaurantName || '',
                 restaurantAddress: [
                     v?.location?.addressLine1 || v?.location?.address || '',
                     v?.location?.area || v?.area || '',
                     v?.location?.city || v?.city || ''
                 ].filter(Boolean).join(', '),
                 restaurantPhone: v?.ownerPhone || v?.phone || '',
-                customerName: order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || 'Customer',
+                customerName: order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || '',
                 customerAddress: [
                     order.deliveryAddress?.street || '',
                     order.deliveryAddress?.city || '',
@@ -174,14 +174,14 @@ export async function buildRouteForPartner(partnerId, coords = null) {
                 vendorLng: r?.location?.longitude || (r?.location?.coordinates?.[0]) || null,
                 customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates?.[1]) || null,
                 customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates?.[0]) || null,
-                restaurantName: r?.restaurantName || 'Vendor',
+                restaurantName: r?.restaurantName || '',
                 restaurantAddress: [
                     r?.location?.addressLine1 || r?.location?.address || '',
                     r?.location?.area || r?.area || '',
                     r?.location?.city || r?.city || ''
                 ].filter(Boolean).join(', '),
                 restaurantPhone: r?.ownerPhone || '',
-                customerName: order.customerName || order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || 'Customer',
+                customerName: order.customerName || order.deliveryAddress?.fullName || order.deliveryAddress?.name || order.userId?.name || '',
                 customerAddress: [
                     order.deliveryAddress?.street || '',
                     order.deliveryAddress?.city || '',

@@ -1035,7 +1035,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 deliveryAddress: o.deliveryAddress,
                 meals: o.meals,
                 customer: {
-                    name: o.userId?.name || 'Customer',
+                    name: o.userId?.name || '',
                     phone: o.userId?.phone || ''
                 },
                 pricing: o.pricing

@@ -206,7 +206,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 stopIndex: stopIdx++,
                 id: `pickup_${vendorId}_${targetSlot}`,
                 type: 'pickup',
-                name: vendor?.restaurantName || 'Vendor',
+                name: vendor?.restaurantName || '',
                 address: vendor?.addressLine1 || '',
                 phone: vendor?.phone || '',
                 lat: vendorLat,
@@ -235,7 +235,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         stopIndex: stopIdx++,
                         id: `delivery_${order._id}`,
                         type: 'delivery',
-                        name: order.userId?.name || 'Customer',
+                        name: order.userId?.name || '',
                         address: order.deliveryAddress?.street || order.deliveryAddress?.city || '',
                         phone: order.userId?.phone || '',
                         lat: custLat,
@@ -260,7 +260,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         stopIndex: stopIdx++,
                         id: `delivery_${order._id}`,
                         type: 'delivery',
-                        name: order.userId?.name || 'Customer',
+                        name: order.userId?.name || '',
                         address: order.deliveryAddress?.street || order.deliveryAddress?.city || '',
                         phone: order.userId?.phone || '',
                         lat: custLat,
@@ -377,7 +377,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             ordersWithPins.push(orderObj);
         }
 
-        const vendorName = batch.vendorId?.restaurantName || 'Vendor';
+        const vendorName = batch.vendorId?.restaurantName || '';
         const vendorAddress = batch.vendorId?.addressLine1 || 'Vendor Address';
         const vendorPhone = batch.vendorId?.phone || '';
         const vendorLocation = batch.vendorId?.location || null;
@@ -413,7 +413,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 ...ordersWithPins.map((order, idx) => ({
                     id: 'delivery_' + order._id,
                     type: 'D',
-                    name: order.userId?.name || 'Customer',
+                    name: order.userId?.name || '',
                     address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
                     status: 'WAITING',
                     orderId: order._id,
@@ -421,7 +421,8 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
                     boxNumber: idx + 1,
                     vendorId: order.vendorId?._id || order.vendorId,
-                    slot: order.deliverySlot
+                    slot: order.deliverySlot,
+                    riderEarning: order.riderEarning
                 }))
             ];
         } else {
@@ -449,7 +450,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 return {
                     id: 'delivery_' + order._id,
                     type: 'D',
-                    name: order.userId?.name || 'Customer',
+                    name: order.userId?.name || '',
                     address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
                     status: stopStatus,
                     orderId: order._id,

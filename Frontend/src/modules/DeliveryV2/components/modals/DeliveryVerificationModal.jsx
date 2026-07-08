@@ -221,7 +221,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
     setIsGeneratingQr(true);
     try {
       const res = await deliveryAPI.createCollectQr(orderId, {
-        name: order.userName || 'Customer',
+        name: order.userName || '',
         phone: order.userPhone || ''
       });
       const link = res?.data?.data?.shortUrl || res?.data?.shortUrl || null;

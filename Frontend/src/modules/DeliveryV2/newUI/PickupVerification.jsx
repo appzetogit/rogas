@@ -140,7 +140,7 @@ const PickupVerification = ({
       </button>
       <div className="text-center">
         <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Vendor Pickup</p>
-        <h2 className="text-sm font-bold text-gray-900">{order?.vendorName || "Vendor"}</h2>
+        <h2 className="text-sm font-bold text-gray-900">{order?.vendorName || ""}</h2>
       </div>
       <div className="w-5 h-5" /> {
         /* spacer */
@@ -216,7 +216,7 @@ const PickupVerification = ({
     <div className="bg-white rounded-2xl border border-[#bec9c3] p-4 shadow-sm space-y-3">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-extrabold text-gray-900 text-lg">{order?.vendorName || "Vendor"}</h3>
+          <h3 className="font-extrabold text-gray-900 text-lg">{order?.vendorName || ""}</h3>
           <p className="text-xs text-[#5d5f5b] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
             {order?.pickupAddress || order?.vendorAddress || "Vendor Address"}

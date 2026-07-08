@@ -100,7 +100,7 @@ export async function createCollectQr(
     currency: 'INR',
     description: `Order ${order._id.toString()} - COD collect`,
     orderId: order._id.toString(),
-    customerName: customerInfo.name || user.name || 'Customer',
+    customerName: customerInfo.name || user.name || '',
     customerEmail: customerInfo.email || user.email || 'customer@example.com',
     customerPhone: customerInfo.phone || user.phone,
   });

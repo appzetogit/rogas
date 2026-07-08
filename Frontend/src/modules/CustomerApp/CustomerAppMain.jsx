@@ -306,7 +306,7 @@ export default function CustomerAppMain() {
               phone={phoneNumber}
               onVerify={async (code) => {
                 try {
-                  const nameToPass = signupName || "Customer";
+                  const nameToPass = signupName || "";
                   const res = await authAPI.verifyOTP(
                     phoneNumber,
                     code,

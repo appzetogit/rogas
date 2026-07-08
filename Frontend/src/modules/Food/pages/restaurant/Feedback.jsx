@@ -243,7 +243,7 @@ export default function Feedback() {
             const year = orderDate.getFullYear()
             const formattedDate = `${day} ${month}, ${year}`
 
-            const userName = order.userId?.name || order.customerName || 'Customer'
+            const userName = order.userId?.name || order.customerName || ''
             const userImage = order.userId?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`
             const outlet = order.restaurantName || (restaurantData?.name) || 'Restaurant'
 
@@ -463,7 +463,7 @@ export default function Feedback() {
                           {complaint.userId?.name?.[0] || 'U'}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 dark:text-white text-sm">{complaint.userId?.name || 'Customer'}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{complaint.userId?.name || ''}</p>
                           <p className="text-[10px] text-gray-500 font-bold uppercase">Order #{complaint.orderId?.orderId || 'N/A'}</p>
                         </div>
                       </div>

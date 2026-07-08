@@ -151,58 +151,9 @@ const validatePhoneCountryAndLength = (phone) => {
 };
 
 export const checkPhoneConflict = async (phone, expectedRole) => {
-  if (!phone) return;
-  const digits = String(phone).replace(/\D/g, "");
-  if (!digits) return;
-  const last10 = digits.slice(-10);
-
-  const candidates = [phone, digits, last10].filter(Boolean);
-
-  // 1. Check Customer (FoodUser)
-  if (expectedRole !== "USER") {
-    const userQuery = {
-      $or: [
-        { phone: { $in: candidates } },
-        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
-      ]
-    };
-    const user = await FoodUser.findOne(userQuery).lean();
-    if (user) {
-      throw new ValidationError("This phone number is already registered.");
-    }
-  }
-
-  // 2. Check Vendor (FoodRestaurant)
-  if (expectedRole !== "RESTAURANT") {
-    const phoneOrFields = (field) => [
-      { [field]: { $in: candidates } },
-      ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
-    ];
-    const restaurant = await FoodRestaurant.findOne({
-      $or: [
-        ...phoneOrFields("ownerPhone"),
-        ...phoneOrFields("primaryContactNumber"),
-        ...phoneOrFields("ownerPhoneDigits"),
-        ...phoneOrFields("ownerPhoneLast10"),
-      ],
-    }).lean();
-    if (restaurant && restaurant.status !== 'rejected') {
-      throw new ValidationError("This phone number is already registered.");
-    }
-  }
-
-  // 3. Check Delivery Partner (FoodDeliveryPartner)
-  if (expectedRole !== "DELIVERY_PARTNER") {
-    const deliveryPartner = await FoodDeliveryPartner.findOne({
-      $or: [
-        { phone: { $in: candidates } },
-        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
-      ]
-    }).lean();
-    if (deliveryPartner && deliveryPartner.status !== 'rejected') {
-      throw new ValidationError("This phone number is already registered.");
-    }
-  }
+  // Cross-role conflict checks removed to allow the same mobile number 
+  // to be used independently for Customer, Vendor, and Delivery Partner accounts.
+  return;
 };
 
 export const checkPhoneAlreadyExists = async (phone, role) => {

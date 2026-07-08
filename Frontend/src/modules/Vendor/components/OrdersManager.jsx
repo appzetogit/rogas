@@ -421,7 +421,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                             {extraMeals > 0 && <span className="text-[12px] text-slate-400 font-medium"> +{extraMeals} more</span>}
                           </h3>
                           <p className="text-[12px] text-slate-500 font-medium mt-0.5">
-                            👤 {order.customer?.name || 'Customer'}
+                            👤 {order.customer?.name || ''}
                           </p>
                         </div>
                         <span className={`${sc.color} font-bold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider`}>

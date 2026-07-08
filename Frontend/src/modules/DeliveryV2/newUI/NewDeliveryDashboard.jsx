@@ -73,7 +73,7 @@ function NewDeliveryDashboard() {
         return {
           id: stop.orderId || stop.id || (stop.vendorId ? `vendor_${stop.vendorId}` : 'route-stop'),
           // Vendor fields (for PickupVerification)
-          vendorName: isPickup ? stop.name : (stop.vendorName || 'Vendor'),
+          vendorName: isPickup ? stop.name : (stop.vendorName || ''),
           vendorAddress: isPickup ? stop.address : (stop.vendorAddress || ''),
           vendorPhone: stop.phone || 'N/A',
           vendorLat: stop.lat || null,
@@ -94,7 +94,7 @@ function NewDeliveryDashboard() {
           status: isPickup ? 'ready_for_pickup' : 'picked_up',
           pin: stop.collectionPin || '----',
           deliveryPin: stop.deliveryPin || '----',
-          riderEarning: 15,
+          riderEarning: stop.riderEarning || 0,
           boxCount: stop.orderCount || 1,
           items: stop.orderCount
             ? [{ id: 1, name: 'Meal Boxes', quantity: stop.orderCount, checked: false }]
@@ -180,12 +180,12 @@ function NewDeliveryDashboard() {
         if (res.data.orders?.length > 0) {
           const mappedOrders = res.data.orders.map(o => ({
             id: o._id,
-            vendorName: o.vendorId?.restaurantName || 'Vendor',
+            vendorName: o.vendorId?.restaurantName || '',
             vendorAddress: o.vendorId?.addressLine1 || 'Vendor Address',
             vendorPhone: o.vendorId?.phone || "N/A",
             vendorLat: o.vendorId?.location?.latitude || o.vendorId?.location?.coordinates?.[1] || null,
             vendorLng: o.vendorId?.location?.longitude || o.vendorId?.location?.coordinates?.[0] || null,
-            customerName: o.userId?.name || 'Customer',
+            customerName: o.userId?.name || '',
             customerAddress: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.city || 'Customer Address',
             customerLat: o.deliveryAddress?.location?.latitude || o.deliveryAddress?.location?.coordinates?.[1] || null,
             customerLng: o.deliveryAddress?.location?.longitude || o.deliveryAddress?.location?.coordinates?.[0] || null,
@@ -325,6 +325,13 @@ function NewDeliveryDashboard() {
       if (s.type === "delivery" || s.type === "D") return { ...s, status: "READY" };
       return s;
     }));
+    
+    // Switch active order to the first delivery stop so the delivery screen has the correct order ID
+    const firstDeliveryStop = stops.find(s => s.type === "delivery" || s.type === "D");
+    if (firstDeliveryStop) {
+      setSelectedOrderId(firstDeliveryStop.orderId || firstDeliveryStop.id);
+    }
+    
     setCurrentScreen("delivery");
   };
 
@@ -572,7 +579,7 @@ function NewDeliveryDashboard() {
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Pickup from</p>
                         <p className="text-sm font-semibold text-gray-800">
-                          {newBatchRequest.vendorInfo?.vendorName || newBatchRequest.vendorName || 'Vendor'}
+                          {newBatchRequest.vendorInfo?.vendorName || newBatchRequest.vendorName || ''}
                         </p>
                         {newBatchRequest.vendorInfo?.vendorAddress && (
                           <p className="text-xs text-gray-500 mt-0.5">
@@ -623,7 +630,7 @@ function NewDeliveryDashboard() {
                     <div className="max-h-28 overflow-y-auto space-y-2 pr-1 font-sans">
                       {newBatchRequest.orders.map((order, idx) => (
                         <div key={order._id || idx} className="text-xs border-b border-gray-200/60 pb-2 last:border-0 last:pb-0">
-                          <p className="font-extrabold text-gray-800">Stop #{idx + 1}: {order.customer?.name || 'Customer'}</p>
+                          <p className="font-extrabold text-gray-800">Stop #{idx + 1}: {order.customer?.name || ''}</p>
                           <p className="text-gray-500 mt-0.5">📍 {order.deliveryAddress?.street || 'No Street'}, {order.deliveryAddress?.city || 'No City'}</p>
                           {order.customer?.phone && (
                             <p className="text-gray-400 text-[10px] mt-0.5">📞 {order.customer.phone}</p>

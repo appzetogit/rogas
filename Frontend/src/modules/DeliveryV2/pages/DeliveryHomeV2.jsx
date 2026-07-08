@@ -1154,7 +1154,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                            <div className="flex justify-between items-start gap-4">
                               <div>
                                  <p className="text-gray-950 font-bold text-base sm:text-xl leading-tight">
-                                    {activeOrder?.user?.name || activeOrder?.deliveryAddress?.name || "Customer"}
+                                    {activeOrder?.user?.name || activeOrder?.deliveryAddress?.name || ""}
                                  </p>
                                  <p className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2">
                                     {activeOrder?.deliveryAddress?.address || activeOrder?.deliveryAddress?.street || "Customer Location"}

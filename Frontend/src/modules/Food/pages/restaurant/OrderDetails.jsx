@@ -178,7 +178,7 @@ export default function OrderDetails() {
             order.deliveryAddress?.name,
             order.deliveryAddress?.fullName,
             order.address?.name
-          ) || "Customer"
+          ) || ""
 
           const restaurantName = firstText(
             order.restaurantName,

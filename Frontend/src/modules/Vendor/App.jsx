@@ -108,7 +108,7 @@ export default function App() {
               partner: userObj.kitchenPartnerId?.companyName || 'FreshKitchen Partners Sp. z o.o.',
               rating: typeof userObj.rating === 'number' ? userObj.rating : 4.9,
               isRegistered: true,
-              avatarInitials: (userObj.restaurantName || userObj.name || 'Vendor').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+              avatarInitials: (userObj.restaurantName || userObj.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
             });
 
             // Set vacation mode states from backend
@@ -244,7 +244,7 @@ export default function App() {
       name: userData.restaurantName || userData.name || 'Vendor Partner',
       partner: 'FreshKitchen Partners Sp. z o.o.',
       isRegistered: true,
-      avatarInitials: (userData.restaurantName || userData.name || 'Vendor').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+      avatarInitials: (userData.restaurantName || userData.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     });
     triggerGlobalToast('Welcome! Vendor account active 🍳');
     navigate('/vendor/dashboard');

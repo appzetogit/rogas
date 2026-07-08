@@ -228,7 +228,7 @@ export default function RestaurantComplaints() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Customer</p>
-                        <p className="font-medium">{complaint.userId?.name || 'Customer'}</p>
+                        <p className="font-medium">{complaint.userId?.name || ''}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Restaurant</p>
