@@ -1241,44 +1241,82 @@ export async function getCustomers(query = {}) {
     const userIds = docs.map((u) => u._id).filter(Boolean);
     const orderStats = userIds.length > 0
         ? await FoodOrder.aggregate([
-            { $match: { userId: { $in: userIds } } },
+            { $match: { userId: { $in: userIds }, orderStatus: 'delivered' } },
             {
                 $group: {
                     _id: '$userId',
-                    totalOrder: { $sum: 1 },
-                    totalOrderAmount: { $sum: { $ifNull: ['$pricing.total', 0] } }
+                    totalOrder: { $sum: 1 }
                 }
             }
         ])
         : [];
 
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+    const dmbStats = userIds.length > 0
+        ? await DMBDailyOrder.aggregate([
+            { $match: { userId: { $in: userIds }, status: 'delivered' } },
+            {
+                $group: {
+                    _id: '$userId',
+                    totalOrder: { $sum: 1 }
+                }
+            }
+        ])
+        : [];
+
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const activeSubscriptions = userIds.length > 0
+        ? await DMBSubscription.find({ userId: { $in: userIds }, status: 'active' }).populate('mealPlanId', 'name').lean()
+        : [];
+
     const orderStatsMap = new Map(
         orderStats.map((x) => [
             String(x._id),
-            {
-                totalOrder: Number(x.totalOrder || 0),
-                totalOrderAmount: Number(x.totalOrderAmount || 0)
-            }
+            { totalOrder: Number(x.totalOrder || 0) }
+        ])
+    );
+    const dmbStatsMap = new Map(
+        dmbStats.map((x) => [
+            String(x._id),
+            { totalOrder: Number(x.totalOrder || 0) }
         ])
     );
 
+    const subMap = activeSubscriptions.reduce((acc, sub) => {
+        const uid = sub.userId.toString();
+        if (!acc[uid]) {
+            acc[uid] = sub;
+        }
+        return acc;
+    }, {});
+
     let customers = docs.map((u) => {
-        const stats = orderStatsMap.get(String(u._id)) || { totalOrder: 0, totalOrderAmount: 0 };
+        const stats = orderStatsMap.get(String(u._id)) || { totalOrder: 0 };
+        const dStats = dmbStatsMap.get(String(u._id)) || { totalOrder: 0 };
+        
+        const activeSub = subMap[String(u._id)];
+        let planStr = 'No Active Plan';
+        if (activeSub) {
+             const dur = activeSub.duration ? (activeSub.duration.charAt(0).toUpperCase() + activeSub.duration.slice(1).replace('_', ' ')) : 'Plan';
+             const meal = activeSub.mealPlanId?.name || '';
+             planStr = meal ? `${meal} (${dur})` : dur;
+        }
+
         return ({
-        id: u._id,
-        _id: u._id,
-        name: u.name || 'Unnamed',
-        email: u.email || '',
-        phone: u.phone || '',
-        profileImage: sanitizeUrl(u.profileImage || ''),
-        countryCode: u.countryCode || '+91',
-        status: u.isActive !== false,
-        isActive: u.isActive !== false,
-        isVerified: u.isVerified === true,
-        totalOrder: stats.totalOrder,
-        totalOrderAmount: stats.totalOrderAmount,
-        joiningDate: u.createdAt,
-        createdAt: u.createdAt
+            id: u._id,
+            _id: u._id,
+            name: u.name || 'Unnamed',
+            email: u.email || '',
+            phone: u.phone || '',
+            profileImage: sanitizeUrl(u.profileImage || ''),
+            countryCode: u.countryCode || '+91',
+            status: u.isActive !== false,
+            isActive: u.isActive !== false,
+            isVerified: u.isVerified === true,
+            totalOrder: stats.totalOrder + dStats.totalOrder,
+            customerPlan: planStr,
+            joiningDate: u.createdAt,
+            createdAt: u.createdAt
         });
     });
 
@@ -1296,7 +1334,7 @@ export async function getCustomerById(id) {
     if (!u) return null;
     const customerObjectId = new mongoose.Types.ObjectId(id);
     const orderStats = await FoodOrder.aggregate([
-        { $match: { userId: customerObjectId } },
+        { $match: { userId: customerObjectId, orderStatus: 'delivered' } },
         {
             $group: {
                 _id: '$userId',
@@ -1305,12 +1343,59 @@ export async function getCustomerById(id) {
             }
         }
     ]);
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+    const dmbStats = await DMBDailyOrder.aggregate([
+        { $match: { userId: customerObjectId, status: 'delivered' } },
+        {
+            $group: {
+                _id: '$userId',
+                totalOrders: { $sum: 1 },
+                totalOrderAmount: { $sum: { $ifNull: ['$pricing.totalPrice', 0] } }
+            }
+        }
+    ]);
     const stats = orderStats?.[0] || {};
+    const dStats = dmbStats?.[0] || {};
     const sanitizeUrl = (s) => {
         if (!s) return '';
         const str = String(s).trim();
         return str.replace(/^`+|`+$/g, '').trim();
     };
+
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const subscriptions = await DMBSubscription.find({ userId: customerObjectId })
+        .sort({ createdAt: -1 })
+        .populate('vendorId', 'restaurantName _id')
+        .populate('mealPlanId', 'name')
+        .lean();
+
+    const subscriptionPlans = subscriptions.map(sub => {
+        const vendor = sub.vendorId || {};
+        const mealPlan = sub.mealPlanId || {};
+        
+        let remainingDays = null;
+        if (sub.status === 'active' && sub.endDate) {
+            const diff = new Date(sub.endDate).getTime() - Date.now();
+            remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        return {
+            _id: sub._id,
+            subscriptionId: sub.subscriptionId,
+            planName: mealPlan.name || 'Custom Plan',
+            duration: sub.duration,
+            purchaseDate: sub.createdAt,
+            startDate: sub.startDate,
+            endDate: sub.endDate,
+            status: sub.status,
+            vendorName: vendor.restaurantName || vendor.name || 'Unknown',
+            vendorDisplayId: vendor._id ? `REST-${vendor._id.toString().slice(-8).toUpperCase()}` : 'N/A',
+            amount: sub.pricing?.totalPrice || 0,
+            paymentMethod: sub.paymentMethod || 'N/A',
+            remainingDays
+        };
+    });
+
     return {
         id: u._id,
         _id: u._id,
@@ -1322,12 +1407,13 @@ export async function getCustomerById(id) {
         status: u.isActive !== false,
         isActive: u.isActive !== false,
         isVerified: u.isVerified === true,
-        totalOrders: Number(stats.totalOrders || 0),
-        totalOrder: Number(stats.totalOrders || 0),
-        totalOrderAmount: Number(stats.totalOrderAmount || 0),
+        totalOrders: Number(stats.totalOrders || 0) + Number(dStats.totalOrders || 0),
+        totalOrder: Number(stats.totalOrders || 0) + Number(dStats.totalOrders || 0),
+        totalOrderAmount: Number(stats.totalOrderAmount || 0) + Number(dStats.totalOrderAmount || 0),
         joiningDate: u.createdAt,
         createdAt: u.createdAt,
-        updatedAt: u.updatedAt
+        updatedAt: u.updatedAt,
+        subscriptionPlans
     };
 }
 

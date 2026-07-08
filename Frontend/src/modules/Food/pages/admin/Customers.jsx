@@ -460,7 +460,7 @@ export default function Customers() {
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Contact Information</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Order</th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Order Amount</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Customer Plan</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Joining Date</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Active/Inactive</th>
                   <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Actions</th>
@@ -522,7 +522,9 @@ export default function Customers() {
                         <span className="text-sm text-slate-700">{customer.totalOrder || 0}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{"\u20B9"} {(customer.totalOrderAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                          {customer.customerPlan || "No Active Plan"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{formatDateTime(customer.joiningDate)}</span>
@@ -657,7 +659,7 @@ export default function Customers() {
 
               {/* Addresses Section */}
               {userDetails.addresses && userDetails.addresses.length > 0 && (
-                <div>
+                <div className="mb-6">
                   <h4 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
                     Addresses
@@ -685,6 +687,75 @@ export default function Customers() {
                   </div>
                 </div>
               )}
+
+              {/* Subscription Plans Section */}
+              <div className="mb-6">
+                <h4 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  Subscription Plan Details
+                </h4>
+                {userDetails.subscriptionPlans && userDetails.subscriptionPlans.length > 0 ? (
+                  <div className="space-y-3">
+                    {userDetails.subscriptionPlans.map((plan, index) => (
+                      <div key={index} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{plan.planName}</p>
+                            <p className="text-xs text-slate-600 capitalize">{plan.duration} Plan • ID: {plan.subscriptionId}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            plan.status === 'active' ? 'bg-green-100 text-green-700' : 
+                            plan.status === 'expired' ? 'bg-red-100 text-red-700' : 
+                            'bg-slate-200 text-slate-700'
+                          } capitalize`}>
+                            {plan.status}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Purchase Date</p>
+                            <p className="text-xs font-medium text-slate-800">{formatDateTime(plan.purchaseDate)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Start Date</p>
+                            <p className="text-xs font-medium text-slate-800">{formatDateTime(plan.startDate)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Valid Till</p>
+                            <p className="text-xs font-medium text-slate-800">{plan.endDate ? formatDateTime(plan.endDate) : 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Plan Amount</p>
+                            <p className="text-xs font-bold text-slate-800">{"\u20B9"}{(plan.amount || 0).toLocaleString('en-IN')}</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t border-slate-200">
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Vendor</p>
+                            <p className="text-xs font-medium text-slate-800 truncate" title={plan.vendorName}>{plan.vendorName} ({plan.vendorDisplayId})</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase">Payment</p>
+                            <p className="text-xs font-medium text-slate-800 capitalize">{plan.paymentMethod || 'N/A'}</p>
+                          </div>
+                          {plan.status === 'active' && plan.remainingDays !== null && (
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-500 uppercase">Remaining</p>
+                              <p className="text-xs font-bold text-blue-600">{plan.remainingDays} Days Left</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-lg p-4 border border-dashed border-slate-300 text-center">
+                    <p className="text-sm text-slate-500">No Subscription Plan Found</p>
+                  </div>
+                )}
+              </div>
 
               {/* Recent Orders Section */}
               {userDetails.orders && userDetails.orders.length > 0 && (
