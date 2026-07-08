@@ -200,8 +200,9 @@ const DeliveryConfirmation = ({
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const { isLoaded, loadError } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: apiKey
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places", "drawing", "geometry"]
   });
 
   const deliveryStops = (orders || [order])

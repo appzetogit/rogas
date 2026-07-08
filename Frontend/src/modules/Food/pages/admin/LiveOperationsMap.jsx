@@ -260,6 +260,9 @@ export default function LiveOperationsMap() {
   });
 
   // Include any extra online drivers from Firebase that are not in the DB snapshot
+  // REMOVED: This was causing ghost/deleted test drivers from Firebase to show up on the map.
+  // We should ONLY show drivers that actually exist in the database snapshot.
+  /*
   realtimeDriverLocations.current.forEach((realtime, driverId) => {
     if (!matchedDbIds.has(driverId)) {
       mergedDrivers.push({
@@ -285,6 +288,7 @@ export default function LiveOperationsMap() {
       });
     }
   });
+  */
 
   const filteredDrivers = mergedDrivers.filter((d) => {
     if (filter === "online") return d.isOnline;

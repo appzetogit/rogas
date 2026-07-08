@@ -244,7 +244,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places", "drawing", "geometry"]
   });
 
   useEffect(() => {

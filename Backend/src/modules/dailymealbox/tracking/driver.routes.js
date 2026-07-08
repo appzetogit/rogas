@@ -114,7 +114,6 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                     break;
                 }
             }
-            // If past all slots for today, show dinner (last slot) as preview
             if (!nextSlot) {
                 nextSlot = 'dinner';
                 const cfg = timingSettings['dinner'] || {};
@@ -122,10 +121,44 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 const end = hhmmToMins(cfg.endTime);
                 nextSlotWindow = { start: cfg.startTime || '17:00', end: cfg.endTime || '21:00', startMins: start, endMins: end };
             }
+            
+            // STRICT SLOT ENFORCEMENT: Do not show future slots if the current slot is not active
+            return res.json({
+                success: true,
+                isSlotActive: false,
+                activeSlot: null,
+                slotWindow: null,
+                nextSlot: nextSlot,
+                nextSlotWindow: nextSlotWindow,
+                stops: [],
+                totalOrders: 0,
+                message: `Next slot: ${nextSlot} starts at ${fmtTime(nextSlotWindow?.startMins)}`
+            });
         }
 
-        const targetSlot = activeSlot || nextSlot;
-        const isSlotActive = !!activeSlot;
+        const targetSlot = activeSlot;
+        const isSlotActive = true;
+
+        // Fetch driver profile to check assigned slots and vendors
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        const driver = await FoodDeliveryPartner.findById(req.user.userId || req.user._id).lean();
+        
+        // Ensure driver is allowed to work in the active slot
+        if (!driver || !driver.allowedShifts?.includes(targetSlot)) {
+            return res.json({
+                success: true,
+                isSlotActive: false,
+                activeSlot: null,
+                slotWindow: null,
+                nextSlot: null,
+                nextSlotWindow: null,
+                stops: [],
+                totalOrders: 0,
+                message: `You are not assigned to the ${targetSlot} shift.`
+            });
+        }
+
+        const assignedVendors = driver.assignedVendors || [];
 
         // ─── 2. Build today's date range ─────────────────────────────────────
         const today = new Date();
@@ -148,14 +181,12 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 success: true,
                 isSlotActive,
                 activeSlot: targetSlot,
-                slotWindow: isSlotActive ? slotWindow : nextSlotWindow,
-                nextSlot: isSlotActive ? null : nextSlot,
-                nextSlotWindow: isSlotActive ? null : nextSlotWindow,
+                slotWindow: slotWindow,
+                nextSlot: null,
+                nextSlotWindow: null,
                 stops: [],
                 totalOrders: 0,
-                message: isSlotActive
-                    ? `No ${targetSlot} orders found for today.`
-                    : `Next slot: ${nextSlot} at ${fmtTime(nextSlotWindow?.startMins)}`
+                message: `No ${targetSlot} orders found for today.`
             });
         }
 
@@ -315,10 +346,37 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             status: { $in: ['driver_assigned', 'driver_en_route', 'collected'] }
         }).populate('vendorId', 'restaurantName location addressLine1 phone').sort({ createdAt: -1 });
 
+        const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
+        const timingSettings = await getVendorTimingSettings();
+        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+        const hhmmToMins = (str) => {
+            if (!str) return null;
+            const [h, m] = str.split(':').map(Number);
+            return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+        };
+
+        const allowedSlots = [];
+        const SLOTS = ['breakfast', 'lunch', 'dinner'];
+        for (const slot of SLOTS) {
+            const cfg = timingSettings[slot];
+            if (cfg && cfg.isEnabled !== false) {
+                const start = hhmmToMins(cfg.startTime);
+                // If the slot's start time is now or in the past, it's allowed (active or previous)
+                if (start !== null && start <= nowMins) {
+                    allowedSlots.push(slot);
+                }
+            }
+        }
+
         let batch = null;
         let orders = [];
 
         for (const candidate of batches) {
+            // STRICT SLOT ENFORCEMENT: Skip future slots
+            if (!allowedSlots.includes(candidate.deliverySlot)) {
+                continue;
+            }
+
             const candidateOrders = await DMBDailyOrder.find({
                 _id: { $in: candidate.orderIds }
             })

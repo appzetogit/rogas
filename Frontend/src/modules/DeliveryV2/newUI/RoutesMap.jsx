@@ -35,8 +35,9 @@ const mapOptions = {
 
 export const RoutesMap = ({ stops = [] }) => {
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    libraries: LIBRARIES
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places", "drawing", "geometry"]
   });
 
   const [activeMarker, setActiveMarker] = useState(null);

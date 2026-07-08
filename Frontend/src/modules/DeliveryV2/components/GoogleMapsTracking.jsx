@@ -101,9 +101,8 @@ export default function GoogleMapsTracking({
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: apiKey || '',
-    // Do not load `places` — it pulls Geocoding-related code paths; Directions is in core Maps JS.
-    libraries: MAP_LIBRARIES,
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places", "drawing", "geometry"]
   })
 
   // Combine storeLocation with sellerLocations
