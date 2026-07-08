@@ -1,10 +1,29 @@
-import { Bell, ShoppingBag, DollarSign, Star, Navigation, Wallet, HeartHandshake } from "lucide-react";
+import { Bell, ShoppingBag, DollarSign, Star, Navigation, Wallet, HeartHandshake, Gift } from "lucide-react";
+import { useState, useEffect } from "react";
+import { deliveryAPI } from "@food/api";
+
 const DashboardHome = ({
   stats,
   toggleOnline,
   activeOrder,
   onNavigateToPickup
 }) => {
+  const [addons, setAddons] = useState([]);
+
+  useEffect(() => {
+    const fetchAddons = async () => {
+      try {
+        const res = await deliveryAPI.getActiveEarningAddons();
+        if (res?.data?.success) {
+          setAddons(res.data.data?.offers || []);
+        }
+      } catch (err) {
+        console.error("Error fetching addons:", err);
+      }
+    };
+    fetchAddons();
+  }, []);
+
   return <div className="space-y-4 animate-fadeIn">
     {
       /* Top Welcome Header */
@@ -115,25 +134,42 @@ const DashboardHome = ({
     </div>
 
     {
-      /* Weekly Bonus Progress */
+      /* Earning Addon Offers */
     }
-    <div className="bg-white p-4 rounded-xl border border-[#e0e3e0] shadow-sm">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-bold text-gray-900 text-sm">Weekly Bonus</h3>
-        <span className="text-xs font-bold text-[#00604c] bg-[#9ef3d7] px-2 py-0.5 rounded">
-          {stats.weeklyBonusProgress * 10}% Complete
-        </span>
+    {addons.length > 0 ? (
+      addons.map((addon) => {
+        const progressPercent = Math.min(100, Math.round((addon.currentOrders / addon.targetOrders) * 100)) || 0;
+        return (
+          <div key={addon.id} className="bg-white p-4 rounded-xl border border-[#e0e3e0] shadow-sm">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-gray-900 text-sm">{addon.title}</h3>
+              <span className="text-xs font-bold text-[#00604c] bg-[#9ef3d7] px-2 py-0.5 rounded">
+                {progressPercent}% Complete
+              </span>
+            </div>
+            <div className="w-full h-3 bg-[#e5e9e5] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <p className="mt-2.5 text-xs text-[#3e4945]">
+              {progressPercent >= 100 
+                ? `Completed! Enjoy your ${addon.targetAmount} PLN bonus payout.` 
+                : `Deliver ${addon.targetOrders - addon.currentOrders} more orders to earn ${addon.targetAmount} PLN extra`}
+            </p>
+          </div>
+        );
+      })
+    ) : (
+      <div className="bg-white p-6 rounded-xl border border-dashed border-[#bec9c3] text-center text-[#5d5f5b] shadow-sm">
+        <div className="flex justify-center mb-3">
+          <Gift className="w-8 h-8 text-[#bec9c3]" />
+        </div>
+        <h3 className="font-extrabold text-gray-900 text-sm mb-1">No Earning Addon Offers Available</h3>
+        <p className="text-xs font-medium">Check back later for new bonus challenges and earning opportunities.</p>
       </div>
-      <div className="w-full h-3 bg-[#e5e9e5] rounded-full overflow-hidden">
-        <div
-          className="h-full bg-amber-500 rounded-full transition-all duration-500"
-          style={{ width: `${stats.weeklyBonusProgress * 10}%` }}
-        />
-      </div>
-      <p className="mt-2.5 text-xs text-[#3e4945]">
-        Deliver {10 - stats.weeklyBonusProgress} more orders to earn <span className="font-bold text-[#181d1b]">50 PLN extra</span>
-      </p>
-    </div>
+    )}
 
     {
       /* Secondary Info Cards */

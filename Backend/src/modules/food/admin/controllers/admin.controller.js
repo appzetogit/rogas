@@ -753,6 +753,15 @@ export async function getDeliveryEarnings(req, res, next) {
     }
 }
 
+export async function getDeliveryEarningTransactions(req, res, next) {
+    try {
+        const data = await adminService.getDeliveryEarningTransactions(req.query || {});
+        res.status(200).json({ success: true, message: 'Delivery earning transactions fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // ----- Earning Addon (admin) -----
 export async function getEarningAddons(req, res, next) {
     try {

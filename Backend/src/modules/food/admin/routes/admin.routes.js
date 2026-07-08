@@ -233,6 +233,7 @@ router.get('/delivery/available-partners', adminController.getAvailableDeliveryP
 router.get('/delivery/wallets', adminController.getDeliveryWallets);
 router.get('/delivery/bonus-transactions', adminController.getDeliveryPartnerBonusTransactions);
 router.get('/delivery/earnings', adminController.getDeliveryEarnings);
+router.get('/delivery/earning-transactions', adminController.getDeliveryEarningTransactions);
 router.post('/delivery/bonus', adminController.addDeliveryPartnerBonus);
 router.get('/delivery/commission-rules', adminController.getDeliveryCommissionRules);
 router.post('/delivery/commission-rules', adminController.createDeliveryCommissionRule);

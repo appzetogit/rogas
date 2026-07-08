@@ -4145,162 +4145,313 @@ export async function getDeliveryEarnings(query = {}) {
     const limit = Math.max(1, Math.min(1000, parseInt(query.limit, 10) || 50));
     const skip = (page - 1) * limit;
 
-    const filter = {
-        'dispatch.deliveryPartnerId': { $ne: null }
-    };
-
-    // Date range filters
-    const createdAtFilter = {};
-    if (query.fromDate) {
-        const from = new Date(query.fromDate);
-        if (!Number.isNaN(from.getTime())) {
-            from.setHours(0, 0, 0, 0);
-            createdAtFilter.$gte = from;
-        }
-    }
-    if (query.toDate) {
-        const to = new Date(query.toDate);
-        if (!Number.isNaN(to.getTime())) {
-            to.setHours(23, 59, 59, 999);
-            createdAtFilter.$lte = to;
-        }
-    }
-
-    // Period filters (only when explicit date range is not provided)
-    if (!createdAtFilter.$gte && !createdAtFilter.$lte) {
-        const period = String(query.period || 'all').trim().toLowerCase();
-        const now = new Date();
-        if (period === 'today') {
-            const start = new Date(now);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(now);
-            end.setHours(23, 59, 59, 999);
-            createdAtFilter.$gte = start;
-            createdAtFilter.$lte = end;
-        } else if (period === 'week') {
-            const start = new Date(now);
-            start.setHours(0, 0, 0, 0);
-            start.setDate(start.getDate() - start.getDay()); // Sunday
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            end.setHours(23, 59, 59, 999);
-            createdAtFilter.$gte = start;
-            createdAtFilter.$lte = end;
-        } else if (period === 'month') {
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            end.setHours(23, 59, 59, 999);
-            createdAtFilter.$gte = start;
-            createdAtFilter.$lte = end;
-        }
-    }
-
-    if (createdAtFilter.$gte || createdAtFilter.$lte) {
-        filter.createdAt = createdAtFilter;
-    }
-
+    const partnerFilter = { status: 'approved' };
     if (query.deliveryPartnerId && mongoose.Types.ObjectId.isValid(query.deliveryPartnerId)) {
-        filter['dispatch.deliveryPartnerId'] = new mongoose.Types.ObjectId(query.deliveryPartnerId);
+        partnerFilter._id = new mongoose.Types.ObjectId(query.deliveryPartnerId);
     }
-
+    
     const search = String(query.search || '').trim();
     if (search) {
         const regex = new RegExp(search, 'i');
-
-        const [partners, restaurants] = await Promise.all([
-            FoodDeliveryPartner.find({
-                $or: [{ name: regex }, { phone: regex }, { email: regex }]
-            }).select('_id').lean(),
-            FoodRestaurant.find({
-                $or: [{ restaurantName: regex }, { name: regex }]
-            }).select('_id').lean()
-        ]);
-
-        const partnerIds = partners.map((p) => p._id);
-        const restaurantIds = restaurants.map((r) => r._id);
-
-        filter.$or = [
-            { orderId: regex },
-            { 'dispatch.deliveryPartnerId': { $in: partnerIds } },
-            { restaurantId: { $in: restaurantIds } }
+        partnerFilter.$or = [
+            { name: regex },
+            { phone: regex },
+            { email: regex }
         ];
     }
 
-    const [orders, total, earningsAgg, distinctPartners] = await Promise.all([
-        FoodOrder.find(filter)
-            .sort({ createdAt: -1 })
+    const [partners, totalPartners] = await Promise.all([
+        FoodDeliveryPartner.find(partnerFilter)
+            .select('name phone email status')
             .skip(skip)
             .limit(limit)
-            .select('orderId orderStatus createdAt pricing riderEarning deliveryPartnerSettlement dispatch.deliveryPartnerId restaurantId')
-            .populate({ path: 'dispatch.deliveryPartnerId', select: 'name phone' })
-            .populate({ path: 'restaurantId', select: 'restaurantName name' })
             .lean(),
-        FoodOrder.countDocuments(filter),
-        FoodOrder.aggregate([
-            { $match: filter },
-            {
-                $group: {
-                    _id: null,
-                    totalEarnings: {
-                        $sum: {
-                            $ifNull: [
-                                '$riderEarning',
-                                {
-                                    $ifNull: [
-                                        '$deliveryPartnerSettlement',
-                                        { $ifNull: ['$pricing.deliveryFee', 0] }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    totalOrders: { $sum: 1 }
-                }
-            }
-        ]),
-        FoodOrder.distinct('dispatch.deliveryPartnerId', filter)
+        FoodDeliveryPartner.countDocuments(partnerFilter)
     ]);
 
-    const earnings = orders.map((order) => {
-        const partner = order?.dispatch?.deliveryPartnerId;
-        const amount = Number(
-            order?.riderEarning ??
-            order?.deliveryPartnerSettlement ??
-            order?.pricing?.deliveryFee ??
-            0
-        ) || 0;
+    const partnerIds = partners.map(p => p._id);
+
+    // Date filters (only for Today/Week/Month scoped orders, if requested specifically by date)
+    let startOfToday, startOfWeek, startOfMonth;
+    const now = new Date();
+    
+    if (query.fromDate && query.toDate) {
+        startOfToday = new Date(query.fromDate);
+        startOfToday.setHours(0, 0, 0, 0);
+        // If specific dates are provided, treat them as the "period" for today/week/month
+    } else {
+        startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    const wallets = await FoodDeliveryWallet.find({ deliveryPartnerId: { $in: partnerIds } }).lean();
+    const walletMap = wallets.reduce((acc, w) => {
+        acc[w.deliveryPartnerId.toString()] = w;
+        return acc;
+    }, {});
+
+    // Aggregate orders for today, week, month
+    const orderStats = await FoodOrder.aggregate([
+        { 
+            $match: { 
+                'dispatch.deliveryPartnerId': { $in: partnerIds },
+                orderStatus: 'delivered'
+            } 
+        },
+        {
+            $group: {
+                _id: '$dispatch.deliveryPartnerId',
+                todayEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveryState.deliveredAt', startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                weeklyEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveryState.deliveredAt', startOfWeek || startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                monthlyEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveryState.deliveredAt', startOfMonth || startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                lifetimeEarning: {
+                    $sum: { $ifNull: ['$riderEarning', 0] }
+                },
+                totalTips: { $sum: { $ifNull: ['$tipAmount', 0] } },
+                totalDeliveries: { $sum: 1 },
+                lastEarningDate: { $max: '$deliveryState.deliveredAt' }
+            }
+        }
+    ]);
+
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+    const dmbStats = await DMBDailyOrder.aggregate([
+        { 
+            $match: { 
+                'dispatch.deliveryPartnerId': { $in: partnerIds },
+                status: 'delivered'
+            } 
+        },
+        {
+            $group: {
+                _id: '$dispatch.deliveryPartnerId',
+                todayEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveredAt', startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                weeklyEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveredAt', startOfWeek || startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                monthlyEarning: {
+                    $sum: {
+                        $cond: [{ $gte: ['$deliveredAt', startOfMonth || startOfToday] }, { $ifNull: ['$riderEarning', 0] }, 0]
+                    }
+                },
+                lifetimeEarning: {
+                    $sum: { $ifNull: ['$riderEarning', 0] }
+                },
+                totalTips: { $sum: { $ifNull: ['$driverTip', 0] } },
+                totalDeliveries: { $sum: 1 },
+                lastEarningDate: { $max: '$deliveredAt' }
+            }
+        }
+    ]);
+
+    const bonusStats = await DeliveryBonusTransaction.aggregate([
+        { 
+            $match: { 
+                deliveryPartnerId: { $in: partnerIds }
+            } 
+        },
+        {
+            $group: {
+                _id: '$deliveryPartnerId',
+                totalAddonRewards: { $sum: '$amount' },
+                todayBonus: {
+                    $sum: {
+                        $cond: [{ $gte: ['$createdAt', startOfToday] }, '$amount', 0]
+                    }
+                },
+                weeklyBonus: {
+                    $sum: {
+                        $cond: [{ $gte: ['$createdAt', startOfWeek || startOfToday] }, '$amount', 0]
+                    }
+                },
+                monthlyBonus: {
+                    $sum: {
+                        $cond: [{ $gte: ['$createdAt', startOfMonth || startOfToday] }, '$amount', 0]
+                    }
+                },
+                lifetimeBonus: { $sum: '$amount' },
+                lastBonusDate: { $max: '$createdAt' }
+            }
+        }
+    ]);
+
+    const orderStatsMap = orderStats.reduce((acc, s) => {
+        acc[s._id.toString()] = s;
+        return acc;
+    }, {});
+
+    const dmbStatsMap = dmbStats.reduce((acc, s) => {
+        acc[s._id.toString()] = s;
+        return acc;
+    }, {});
+
+    const bonusStatsMap = bonusStats.reduce((acc, s) => {
+        acc[s._id.toString()] = s;
+        return acc;
+    }, {});
+
+    let globalTotalEarnings = 0;
+    let globalTotalOrders = 0;
+
+    const earnings = partners.map(partner => {
+        const pid = partner._id.toString();
+        const orders = orderStatsMap[pid] || {};
+        const dmb = dmbStatsMap[pid] || {};
+        const bonus = bonusStatsMap[pid] || {};
+
+        const lastEarningTime = Math.max(
+            orders.lastEarningDate ? new Date(orders.lastEarningDate).getTime() : 0,
+            dmb.lastEarningDate ? new Date(dmb.lastEarningDate).getTime() : 0,
+            bonus.lastBonusDate ? new Date(bonus.lastBonusDate).getTime() : 0
+        );
+
+        const totalTips = (orders.totalTips || 0) + (dmb.totalTips || 0);
+        const totalEarn = (orders.lifetimeEarning || 0) + (dmb.lifetimeEarning || 0) + (bonus.lifetimeBonus || 0) + totalTips;
+        const totalDel = (orders.totalDeliveries || 0) + (dmb.totalDeliveries || 0);
+
+        globalTotalEarnings += totalEarn;
+        globalTotalOrders += totalDel;
 
         return {
-            transactionId: String(order._id),
-            orderId: order.orderId || 'N/A',
-            deliveryPartnerId: partner?._id ? String(partner._id) : null,
-            deliveryPartnerName: partner?.name || 'N/A',
-            deliveryPartnerPhone: partner?.phone || 'N/A',
-            restaurantName: order?.restaurantId?.restaurantName || order?.restaurantId?.name || 'N/A',
-            amount,
-            orderTotal: Number(order?.pricing?.total || 0) || 0,
-            deliveryFee: Number(order?.pricing?.deliveryFee || 0) || 0,
-            orderStatus: order?.orderStatus || 'N/A',
-            createdAt: order?.createdAt || null
+            deliveryPartnerId: partner._id,
+            deliveryId: `DP-${pid.slice(-8).toUpperCase()}`,
+            name: partner.name,
+            phone: partner.phone,
+            totalEarnings: totalEarn,
+            orderEarnings: (orders.lifetimeEarning || 0) + (dmb.lifetimeEarning || 0),
+            addonRewards: bonus.totalAddonRewards || 0,
+            tips: totalTips,
+            totalCompletedOrders: totalDel,
+            todayEarnings: (orders.todayEarning || 0) + (dmb.todayEarning || 0) + (bonus.todayBonus || 0),
+            weeklyEarnings: (orders.weeklyEarning || 0) + (dmb.weeklyEarning || 0) + (bonus.weeklyBonus || 0),
+            monthlyEarnings: (orders.monthlyEarning || 0) + (dmb.monthlyEarning || 0) + (bonus.monthlyBonus || 0),
+            lifetimeEarnings: totalEarn,
+            lastEarningDate: lastEarningTime > 0 ? new Date(lastEarningTime) : null
         };
     });
-
-    const agg = earningsAgg?.[0] || {};
-    const totalDeliveryPartners = (distinctPartners || []).filter(Boolean).length;
 
     return {
         earnings,
         summary: {
-            totalDeliveryPartners,
-            totalEarnings: Number(agg.totalEarnings || 0),
-            totalOrders: Number(agg.totalOrders || 0)
+            totalDeliveryPartners: totalPartners,
+            totalEarnings: globalTotalEarnings,
+            totalOrders: globalTotalOrders
         },
         pagination: {
             page,
             limit,
-            total,
-            pages: Math.ceil(total / limit) || 1
+            total: totalPartners,
+            pages: Math.ceil(totalPartners / limit) || 1
+        }
+    };
+}
+
+export async function getDeliveryEarningTransactions(query = {}) {
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const limit = Math.max(1, Math.min(1000, parseInt(query.limit, 10) || 50));
+    const skip = (page - 1) * limit;
+
+    const partnerFilter = { 'dispatch.deliveryPartnerId': { $ne: null }, orderStatus: 'delivered' };
+    const bonusFilter = {};
+
+    if (query.deliveryPartnerId && mongoose.Types.ObjectId.isValid(query.deliveryPartnerId)) {
+        const pid = new mongoose.Types.ObjectId(query.deliveryPartnerId);
+        partnerFilter['dispatch.deliveryPartnerId'] = pid;
+        bonusFilter.deliveryPartnerId = pid;
+    }
+
+    if (query.fromDate && query.toDate) {
+        const from = new Date(query.fromDate);
+        from.setHours(0, 0, 0, 0);
+        const to = new Date(query.toDate);
+        to.setHours(23, 59, 59, 999);
+        partnerFilter['deliveryState.deliveredAt'] = { $gte: from, $lte: to };
+        bonusFilter.createdAt = { $gte: from, $lte: to };
+    }
+
+
+    const [orders, bonuses] = await Promise.all([
+        FoodOrder.find(partnerFilter)
+            .sort({ 'deliveryState.deliveredAt': -1 })
+            .limit(skip + limit)
+            .select('orderId orderStatus deliveryState.deliveredAt pricing riderEarning deliveryPartnerSettlement tipAmount')
+            .lean(),
+        DeliveryBonusTransaction.find(bonusFilter)
+            .sort({ createdAt: -1 })
+            .limit(skip + limit)
+            .lean()
+    ]);
+
+    let transactions = [];
+
+    for (const order of orders) {
+        const amount = Number(order.riderEarning || order.deliveryPartnerSettlement || order.pricing?.deliveryFee || 0);
+        if (amount > 0) {
+            transactions.push({
+                transactionId: `ORD-${order._id}`,
+                date: order.deliveryState?.deliveredAt || order.createdAt || new Date(),
+                source: 'Order Earning',
+                referenceId: order.orderId,
+                amount: amount,
+                status: 'credited'
+            });
+        }
+        if (order.tipAmount > 0) {
+            transactions.push({
+                transactionId: `TIP-${order._id}`,
+                date: order.deliveryState?.deliveredAt || order.createdAt || new Date(),
+                source: 'Customer Tip',
+                referenceId: order.orderId,
+                amount: order.tipAmount,
+                status: 'credited'
+            });
+        }
+    }
+
+    for (const bonus of bonuses) {
+        transactions.push({
+            transactionId: `BONUS-${bonus._id}`,
+            date: bonus.createdAt,
+            source: bonus.reference?.includes('Addon') ? 'Earning Addon Reward' : 'Bonus / Adjustment',
+            referenceId: bonus.transactionId,
+            amount: bonus.amount,
+            status: 'credited'
+        });
+    }
+
+    // Sort descending by date
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const totalTransactions = transactions.length;
+    const paginated = transactions.slice(skip, skip + limit);
+
+    return {
+        transactions: paginated,
+        pagination: {
+            page,
+            limit,
+            total: totalTransactions,
+            pages: Math.ceil(totalTransactions / limit) || 1
         }
     };
 }
@@ -4545,7 +4696,7 @@ export async function checkEarningAddonCompletions(deliveryPartnerId, _force = f
         const partners = await FoodDeliveryPartner.find({ status: 'approved' }).select('_id').lean();
         partnerIds = partners.map(p => p._id);
     } else if (deliveryPartnerId && mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
-        partnerIds = [deliveryPartnerId];
+        partnerIds = [new mongoose.Types.ObjectId(deliveryPartnerId)];
     }
 
     if (partnerIds.length === 0) return { completionsFound: 0 };
@@ -4567,12 +4718,12 @@ export async function checkEarningAddonCompletions(deliveryPartnerId, _force = f
             const orderCount = await FoodOrder.countDocuments({
                 'dispatch.deliveryPartnerId': pId,
                 orderStatus: 'delivered',
-                createdAt: { $gte: offer.startDate, $lte: offer.endDate }
+                'deliveryState.deliveredAt': { $gte: offer.startDate, $lte: offer.endDate }
             });
 
             if (orderCount >= (offer.requiredOrders || 1)) {
                 // Requirement met!
-                await FoodEarningAddonHistory.create({
+                const history = await FoodEarningAddonHistory.create({
                     offerId: offer._id,
                     deliveryPartnerId: pId,
                     ordersCompleted: orderCount,
@@ -4585,6 +4736,13 @@ export async function checkEarningAddonCompletions(deliveryPartnerId, _force = f
                 
                 // Update current redemptions in addon
                 await FoodEarningAddon.findByIdAndUpdate(offer._id, { $inc: { currentRedemptions: 1 } });
+                
+                // Auto-credit immediately!
+                try {
+                    await creditEarningAddonHistory(history._id, 'Auto-credited upon completion');
+                } catch (creditErr) {
+                    console.error('Failed to auto-credit addon history', creditErr);
+                }
                 
                 globalCompletions++;
             }

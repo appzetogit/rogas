@@ -502,6 +502,8 @@ export const adminAPI = {
   /** Delivery Earnings (admin) */
   getDeliveryEarnings: (params = {}) =>
     adminClient.get("/food/admin/delivery/earnings", { params }),
+  getDeliveryEarningTransactions: (params = {}) =>
+    adminClient.get("/food/admin/delivery/earning-transactions", { params }),
   addDeliveryPartnerBonus: (deliveryPartnerId, amount, reference = "") =>
     adminClient.post("/food/admin/delivery/bonus", {
       deliveryPartnerId: String(deliveryPartnerId),

@@ -117,6 +117,17 @@ async function handleDeliveryCompleted(data) {
             );
 
             logger.info(`[PaymentProcessor] Delivery partner ${deliveryPartnerId} credited ${riderEarning} for order ${orderId}`);
+
+            // Automatically check and complete Earning Addon offers
+            try {
+                const { checkEarningAddonCompletions } = await import('../../modules/food/admin/services/admin.service.js');
+                const completions = await checkEarningAddonCompletions(deliveryPartnerId);
+                if (completions && completions.completionsFound > 0) {
+                    logger.info(`[PaymentProcessor] Delivery partner ${deliveryPartnerId} completed ${completions.completionsFound} addon offers!`);
+                }
+            } catch (err) {
+                logger.error(`[PaymentProcessor] Failed to check addon completions: ${err.message}`);
+            }
         } catch (err) {
             logger.error(`[PaymentProcessor] Failed to credit delivery partner: ${err.message}`);
         }
