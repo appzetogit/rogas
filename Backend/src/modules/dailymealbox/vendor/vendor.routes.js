@@ -820,34 +820,25 @@ router.post('/daily-orders/verify-batch-otp', authMiddleware, requireRoles('REST
 // Helper to check if vendor has pending/undelivered orders from previous batches or slots
 async function checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate) {
     const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
-    const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
 
-    // Find all batches for this vendor
-    const batches = await CollectionBatch.find({ vendorId });
+    // Only check batches for the SAME date and SAME slot.
+    // Cross-slot batches (e.g., a Lunch batch still in transit) must NEVER block
+    // a different slot (e.g., Dinner) from generating a new collection PIN.
+    const batches = await CollectionBatch.find({
+        vendorId,
+        deliveryDate: targetDate,
+        deliverySlot: requestedSlot
+    });
 
     for (const batch of batches) {
         if (!batch.orderIds || batch.orderIds.length === 0) continue;
 
-        // Skip if it is the current slot's batch that hasn't been collected yet
-        const isSameSlotAndDate = batch.deliverySlot === requestedSlot &&
-            new Date(batch.deliveryDate).getTime() === new Date(targetDate).getTime();
+        // Skip batches that are already completed or failed
+        if (['collected', 'failed'].includes(batch.status)) continue;
 
-        if (isSameSlotAndDate && ['pending', 'driver_assigned'].includes(batch.status)) {
-            continue;
-        }
-
-        // Check the orders in this batch
-        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } });
-        const hasPendingOrders = orders.some(order => !['delivered', 'skipped', 'failed'].includes(order.status));
-
-        if (hasPendingOrders) {
-            return {
-                hasPending: true,
-                batchId: batch.batchId,
-                slot: batch.deliverySlot,
-                date: batch.deliveryDate
-            };
-        }
+        // pending/driver_assigned batches for this same slot will be re-used or updated
+        // by the caller — they are not a blocking condition
+        if (['pending', 'driver_assigned'].includes(batch.status)) continue;
     }
 
     return { hasPending: false };
@@ -863,14 +854,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         const targetDate = date ? new Date(date) : new Date();
         targetDate.setUTCHours(0, 0, 0, 0);
 
-        // 1. Verify that the requested slot is the currently active meal slot according to admin timing settings.
-        const { checkAdminTimingWindow } = await import('../subscription/dmb.dailyOrder.service.js');
-        const timingCheck = await checkAdminTimingWindow(requestedSlot);
-        if (!timingCheck.allowed) {
-            return res.status(400).json({ success: false, message: `Cannot request delivery partner outside active meal slot window: ${timingCheck.message}` });
-        }
-
-        // 2. Fetch all daily orders for this slot and date to perform readiness validations.
+        // 1. Fetch all daily orders for this slot and date to perform readiness validations.
         const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
         const allOrders = await DMBDailyOrder.find({
             vendorId,

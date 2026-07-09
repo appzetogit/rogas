@@ -1499,32 +1499,25 @@ const buildDriverFilter = (vendor) => {
  * Helper to check if vendor has pending/undelivered orders from previous batches or slots
  */
 async function checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate) {
-    // Find all batches for this vendor
-    const batches = await CollectionBatch.find({ vendorId });
+    // Only check batches for the SAME date and SAME slot.
+    // Cross-slot batches (e.g., a Lunch batch still "out_for_delivery") must NEVER block
+    // a different slot (e.g., Dinner) from generating a new collection PIN.
+    // Old batches from previous dates are also irrelevant.
+    const batches = await CollectionBatch.find({
+        vendorId,
+        deliveryDate: targetDate,
+        deliverySlot: requestedSlot
+    });
 
     for (const batch of batches) {
         if (!batch.orderIds || batch.orderIds.length === 0) continue;
 
-        // Skip if it is the current slot's batch that hasn't been collected yet
-        const isSameSlotAndDate = batch.deliverySlot === requestedSlot && 
-            new Date(batch.deliveryDate).getTime() === new Date(targetDate).getTime();
+        // Skip batches that are already completed or failed
+        if (['collected', 'failed'].includes(batch.status)) continue;
 
-        if (isSameSlotAndDate && ['pending', 'driver_assigned'].includes(batch.status)) {
-            continue;
-        }
-
-        // Check the orders in this batch
-        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } });
-        const hasPendingOrders = orders.some(order => !['delivered', 'skipped', 'failed'].includes(order.status));
-
-        if (hasPendingOrders) {
-            return {
-                hasPending: true,
-                batchId: batch.batchId,
-                slot: batch.deliverySlot,
-                date: batch.deliveryDate
-            };
-        }
+        // Skip pending/driver_assigned batches for this same slot — those are the
+        // ones we are about to re-use or update, not a blocking condition.
+        if (['pending', 'driver_assigned'].includes(batch.status)) continue;
     }
 
     return { hasPending: false };
@@ -1569,17 +1562,14 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         // FIX: log vendor details so we can debug city/zone issues easily
         logger.info(`[DRIVER-NOTIFY] Vendor details — city: "${vendor?.city}", location.city: "${vendor?.location?.city}", zoneId: "${vendor?.zoneId}"`);
 
-        // Find existing batch or create a new one
+        // Find an existing active batch (pending or driver_assigned) for this slot/date.
+        // Ignore collected/failed batches — they are done and should not block a new one.
         let batch = await CollectionBatch.findOne({
             vendorId,
             deliveryDate: targetDate,
-            deliverySlot: slot
+            deliverySlot: slot,
+            status: { $in: ['pending', 'driver_assigned'] }
         });
-
-        if (batch && batch.status !== 'pending') {
-            logger.info(`[DRIVER-NOTIFY] Batch ${batch.batchId} already has status "${batch.status}" — skipping re-broadcast`);
-            return;
-        }
 
         if (!batch) {
             const pendingCheck = await checkPendingDeliveriesForVendor(vendorId, slot, targetDate);
@@ -1829,16 +1819,14 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
 
     const orders = await DMBDailyOrder.find(filter);
     if (orders.length === 0) {
-        return { count: 0, date: dateStr(targetDate), slot, message: 'No pending orders found' };
+        // Orders may already be in 'ready' status from a previous call.
+        // Still trigger batch creation in case the OTP/batch was never generated.
+        if (slot) {
+            await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot);
+        }
+        return { count: 0, date: dateStr(targetDate), slot, message: 'No pending orders found (may already be ready)' };
     }
 
-    // ─── Enforce admin-configured timing window ───────────────────────────
-    if (slot) {
-        const timingCheck = await checkAdminTimingWindow(slot);
-        if (!timingCheck.allowed) {
-            throw new Error(timingCheck.message);
-        }
-    }
 
     const io = getIO();
     let count = 0;
