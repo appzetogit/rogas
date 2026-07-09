@@ -1801,3 +1801,54 @@ export async function updateDeliveryPartnerAssignmentController(req, res, next) 
         res.status(400).json({ success: false, message: error.message });
     }
 }
+
+export async function getVendorSubscribersController(req, res) {
+    try {
+        const { id } = req.params;
+        const options = req.query;
+        const data = await adminService.getVendorSubscribers(id, options);
+        res.status(200).json({ success: true, message: 'Vendor subscribers fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function getVendorSubscribersSummaryController(req, res) {
+    try {
+        const { id } = req.params;
+        const data = await adminService.getVendorSubscribersSummary(id);
+        res.status(200).json({ success: true, message: 'Vendor subscribers summary fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function getVendorSubscriberDetailsController(req, res) {
+    try {
+        const { id, subId } = req.params;
+        const data = await adminService.getVendorSubscriberDetails(id, subId);
+        if (!data) return res.status(404).json({ success: false, message: 'Subscription not found' });
+        res.status(200).json({ success: true, message: 'Subscription details fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function getAllSubscribersController(req, res) {
+    try {
+        const options = req.query;
+        const data = await adminService.getAllSubscribers(options);
+        res.status(200).json({ success: true, message: 'Subscribers fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function getAllSubscribersSummaryController(req, res) {
+    try {
+        const data = await adminService.getAllSubscribersSummary();
+        res.status(200).json({ success: true, message: 'Subscribers summary fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}

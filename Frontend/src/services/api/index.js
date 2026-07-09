@@ -263,6 +263,13 @@ export const adminAPI = {
   // Aliases for RestaurantWithdraws page
   getWithdrawalRequests: (params) => adminAPI.getWithdrawals(params),
   approveWithdrawalRequest: (id) => adminAPI.updateWithdrawalStatus(id, { status: "approved" }),
+  
+  // ----- Subscribers -----
+  getAllSubscribers: (params = {}) => adminClient.get("/food/admin/subscribers", { params }),
+  getAllSubscribersSummary: () => adminClient.get("/food/admin/subscribers/summary"),
+  getVendorSubscribers: (vendorId, params = {}) => adminClient.get(`/food/admin/vendors/${vendorId}/subscribers`, { params }),
+  getVendorSubscribersSummary: (vendorId) => adminClient.get(`/food/admin/vendors/${vendorId}/subscribers/summary`),
+  getVendorSubscriberDetails: (vendorId, subId) => adminClient.get(`/food/admin/vendors/${vendorId}/subscribers/${subId}`),
   rejectWithdrawalRequest: (id, reason) => adminAPI.updateWithdrawalStatus(id, { status: "rejected", rejectionReason: reason }),
   /** Delivery boy wallets (stub until backend implements - returns empty so list still loads) */
   getDeliveryBoyWallets: (params) =>
@@ -680,6 +687,10 @@ export const restaurantAPI = {
   createPromocode: (data) => restaurantClient.post("/food/promocodes", data),
   togglePromocodeStatus: (id, isActive) => restaurantClient.patch(`/food/promocodes/${id}`, { isActive }),
   deletePromocode: (id) => restaurantClient.delete(`/food/promocodes/${id}`),
+
+  // Subscribers
+  getVendorSubscribers: (params = {}) => restaurantClient.get("/food/restaurant/subscribers", { params }),
+  getVendorProductionSummary: () => restaurantClient.get("/food/restaurant/subscribers/production-summary"),
 
   /** Update restaurant profile fields (name/cuisines/location/menuImages). */
   updateProfile: (body) =>

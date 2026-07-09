@@ -10,7 +10,9 @@ import {
     uploadRestaurantCoverImages,
     uploadRestaurantMenuImages,
     listPublicOffers,
-    getRestaurantComplaints
+    getRestaurantComplaints,
+    getVendorSubscribers,
+    getVendorProductionSummary
 } from '../services/restaurant.service.js';
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
@@ -220,3 +222,25 @@ export const listPublicKitchenPartnersController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getVendorSubscribersController = async (req, res, next) => {
+    try {
+        const vendorId = req.user?.userId;
+        const options = req.query;
+        const data = await getVendorSubscribers(vendorId, options);
+        return sendResponse(res, 200, 'Vendor subscribers fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getVendorProductionSummaryController = async (req, res, next) => {
+    try {
+        const vendorId = req.user?.userId;
+        const data = await getVendorProductionSummary(vendorId);
+        return sendResponse(res, 200, 'Production summary fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+

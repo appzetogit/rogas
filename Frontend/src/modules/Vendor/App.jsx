@@ -28,7 +28,7 @@ import PantryMenuManager from './components/PantryMenuManager';
 import EarningsManager from './components/EarningsManager';
 import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
-
+import VendorSubscribers from '../Food/pages/restaurant/VendorSubscribers';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
@@ -720,6 +720,7 @@ export default function App() {
             )}
             <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
             <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
+            <Route path="/subscribers" element={<VendorSubscribers />} />
             <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
             <Route path="*" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
           </Routes>

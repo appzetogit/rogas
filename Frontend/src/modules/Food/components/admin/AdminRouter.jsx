@@ -28,6 +28,7 @@ const AddRestaurant = lazy(() => import("@food/pages/admin/restaurant/AddRestaur
 const JoiningRequest = lazy(() => import("@food/pages/admin/restaurant/JoiningRequest"));
 const VendorRequest = lazy(() => import("@food/pages/admin/restaurant/VendorRequest"));
 const SubscriptionPlans = lazy(() => import("@food/pages/admin/restaurant/SubscriptionPlans"));
+const AdminAllSubscribers = lazy(() => import("@food/pages/admin/restaurant/AdminAllSubscribers"));
 const VendorTiming = lazy(() => import("@food/pages/admin/restaurant/VendorTiming"));
 const RestaurantCommission = lazy(() => import("@food/pages/admin/restaurant/RestaurantCommission"));
 const RestaurantComplaints = lazy(() => import("@food/pages/admin/restaurant/RestaurantComplaints"));
@@ -130,6 +131,7 @@ const AddonActivation = lazy(() => import("@food/pages/admin/system/AddonActivat
 const LandingPageManagement = lazy(() => import("@food/pages/admin/system/LandingPageManagement"));
 const AppIntroAds = lazy(() => import("@food/pages/admin/advertisement/AppIntroAds"));
 const EditRestaurant = lazy(() => import("@food/pages/admin/restaurant/EditRestaurant"));
+const VendorSubscriberDetails = lazy(() => import("@food/pages/admin/restaurant/VendorSubscriberDetails"));
 const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"));
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"));
 const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"));
@@ -197,6 +199,7 @@ export default function AdminRouter() {
             {/* VENDOR MANAGEMENT */}
             <Route path="vendor-request" element={<VendorRequest />} />
             <Route path="subscription-plans" element={<SubscriptionPlans />} />
+            <Route path="subscribers" element={<AdminAllSubscribers />} />
             <Route path="vendor-timing" element={<VendorTiming />} />
 
             {/* RESTAURANT MANAGEMENT */}
@@ -211,6 +214,7 @@ export default function AdminRouter() {
             <Route path="restaurants" element={<RestaurantsList />} />
             <Route path="restaurants/add" element={<AddRestaurant />} />
             <Route path="restaurants/edit/:id" element={<EditRestaurant />} />
+            <Route path="vendors/:id/subscribers/:subId" element={<VendorSubscriberDetails />} />
             <Route path="restaurants/joining-request" element={<JoiningRequest />} />
             <Route path="restaurants/commission" element={<RestaurantCommission />} />
             <Route path="restaurants/complaints" element={<RestaurantComplaints />} />

@@ -15,7 +15,9 @@ import {
     uploadRestaurantMenuImagesController,
     getRestaurantComplaintsController,
     listZonesController,
-    listPublicKitchenPartnersController
+    listPublicKitchenPartnersController,
+    getVendorSubscribersController,
+    getVendorProductionSummaryController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -240,6 +242,10 @@ router.get('/download-menu-pdf/:id', authMiddleware, (req, res, next) => {
 
 // Delete account (Bearer RESTAURANT)
 router.delete('/account', authMiddleware, requireRestaurant, deleteRestaurantAccountController);
+
+// ----- Vendor Subscribers -----
+router.get('/subscribers', authMiddleware, requireRestaurant, getVendorSubscribersController);
+router.get('/subscribers/production-summary', authMiddleware, requireRestaurant, getVendorProductionSummaryController);
 
 export default router;
 

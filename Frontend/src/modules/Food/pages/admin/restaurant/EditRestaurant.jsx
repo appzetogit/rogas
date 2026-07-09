@@ -6,8 +6,8 @@ import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
-import { ArrowLeft, Loader2 } from "lucide-react"
-
+import { ArrowLeft, Loader2, Save } from "lucide-react"
+import VendorSubscribers from "./VendorSubscribers"
 const debugError = (..._args) => {}
 
 const toNumberOrEmpty = (value) => {
@@ -133,6 +133,7 @@ export default function EditRestaurant() {
   const [savingDetails, setSavingDetails] = useState(false)
   const [savingLocation, setSavingLocation] = useState(false)
   const [error, setError] = useState("")
+  const [activeTab, setActiveTab] = useState("profile")
 
   const [restaurant, setRestaurant] = useState(null)
   const [zones, setZones] = useState([])
@@ -430,7 +431,33 @@ export default function EditRestaurant() {
           </div>
         ) : (
           <div className="space-y-6">
-            <section className="bg-white rounded-xl border border-slate-200 p-6">
+            {/* Tabs */}
+            <div className="flex items-center gap-6 border-b border-slate-200 mb-6">
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`pb-3 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === "profile"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Profile Details
+              </button>
+              <button
+                onClick={() => setActiveTab("subscribers")}
+                className={`pb-3 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === "subscribers"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Subscribers
+              </button>
+            </div>
+
+            {activeTab === "profile" && (
+              <div className="space-y-6">
+                <section className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">Basic Details</h2>
                 <Button onClick={handleSaveDetails} disabled={savingDetails}>
@@ -639,6 +666,12 @@ export default function EditRestaurant() {
                 </div>
               </div>
             </section>
+          </div>
+            )}
+
+            {activeTab === "subscribers" && (
+              <VendorSubscribers vendorId={restaurantId} />
+            )}
           </div>
         )}
       </div>

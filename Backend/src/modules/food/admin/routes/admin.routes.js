@@ -306,6 +306,14 @@ router.delete('/vendor-subscription-plans/:id', adminController.deleteVendorSubs
 router.get('/vendor-timing-settings', adminController.getVendorTimingSettingsController);
 router.put('/vendor-timing-settings', adminController.updateVendorTimingSettingsController);
 
+// ----- Vendor Subscribers -----
+router.get('/subscribers', adminController.getAllSubscribersController);
+router.get('/subscribers/summary', adminController.getAllSubscribersSummaryController);
+
+router.get('/vendors/:id/subscribers', adminController.getVendorSubscribersController);
+router.get('/vendors/:id/subscribers/summary', adminController.getVendorSubscribersSummaryController);
+router.get('/vendors/:id/subscribers/:subId', adminController.getVendorSubscriberDetailsController);
+
 // ----- Kitchen Partners -----
 router.use('/kitchen-partners', kitchenPartnerRoutes);
 

@@ -5884,3 +5884,280 @@ export async function upsertVendorTimingSettings(payload) {
     ).lean();
     return doc;
 }
+
+export async function getVendorSubscribers(vendorId, options = {}) {
+    const mongoose = (await import('mongoose')).default;
+    if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+        throw new Error('Invalid vendor ID');
+    }
+    const { page = 1, limit = 10, status, mealType, planType, search } = options;
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const { FoodUser } = await import('../../../../core/users/user.model.js');
+    
+    let query = { vendorId: new mongoose.Types.ObjectId(vendorId) };
+    if (status) query.status = status;
+    if (planType) query.duration = planType;
+    if (mealType) query['meals.type'] = mealType;
+    
+    if (search) {
+        const users = await FoodUser.find({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id').lean();
+        const userIds = users.map(u => u._id);
+        
+        query.$or = [
+            { subscriptionId: { $regex: search, $options: 'i' } },
+            { userId: { $in: userIds } }
+        ];
+    }
+
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+        DMBSubscription.find(query)
+            .populate('userId', 'name phone email profileImage')
+            .populate('mealPlanId', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit, 10))
+            .lean(),
+        DMBSubscription.countDocuments(query)
+    ]);
+
+    const subscribers = docs.map(doc => {
+        const user = doc.userId || {};
+        const mealPlan = doc.mealPlanId || {};
+        let remainingDays = 0;
+        if (doc.status === 'active' && doc.endDate) {
+            const diff = new Date(doc.endDate).getTime() - Date.now();
+            remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        return {
+            _id: doc._id,
+            subscriptionId: doc.subscriptionId,
+            customerName: user.name || 'Unknown',
+            customerPhone: user.phone || 'N/A',
+            customerEmail: user.email || 'N/A',
+            customerId: user._id,
+            planName: mealPlan.name || 'Custom Plan',
+            planType: doc.duration,
+            mealTypes: (doc.meals || []).map(m => m.type).join(', '),
+            deliveryDays: doc.deliveryDays === 'mon_fri' ? 'Mon-Fri' : (doc.deliveryDays === 'full_week' ? 'Full Week' : (doc.deliveryDays || 'N/A')),
+            startDate: doc.startDate,
+            endDate: doc.endDate,
+            remainingDays,
+            status: doc.status,
+            totalRevenue: doc.pricing?.totalPrice || 0,
+            assignedDeliveryPartner: doc.assignedDeliveryPartner || null,
+        };
+    });
+
+    return { subscribers, total, page: parseInt(page, 10), pages: Math.ceil(total / limit) || 1 };
+}
+
+export async function getVendorSubscribersSummary(vendorId) {
+    const mongoose = (await import('mongoose')).default;
+    if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+        throw new Error('Invalid vendor ID');
+    }
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const objectId = new mongoose.Types.ObjectId(vendorId);
+
+    const stats = await DMBSubscription.aggregate([
+        { $match: { vendorId: objectId } },
+        {
+            $group: {
+                _id: '$status',
+                count: { $sum: 1 },
+                revenue: { $sum: '$pricing.totalPrice' }
+            }
+        }
+    ]);
+
+    const summary = {
+        totalSubscribers: 0,
+        activeSubscribers: 0,
+        pausedSubscribers: 0,
+        expiredSubscribers: 0,
+        cancelledSubscribers: 0,
+        totalRevenue: 0
+    };
+
+    stats.forEach(stat => {
+        summary.totalSubscribers += stat.count;
+        
+        // Only include revenue from successfully completed payments
+        if (['active', 'paused', 'expired'].includes(stat._id)) {
+            summary.totalRevenue += stat.revenue || 0;
+        }
+
+        if (stat._id === 'active') summary.activeSubscribers += stat.count;
+        if (stat._id === 'paused') summary.pausedSubscribers += stat.count;
+        if (stat._id === 'expired') summary.expiredSubscribers += stat.count;
+        if (stat._id === 'cancelled') summary.cancelledSubscribers += stat.count;
+    });
+
+    return summary;
+}
+
+export async function getVendorSubscriberDetails(vendorId, subId) {
+    const mongoose = (await import('mongoose')).default;
+    if (!subId || !mongoose.Types.ObjectId.isValid(subId)) {
+        throw new Error('Invalid subscription ID');
+    }
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+    const subscription = await DMBSubscription.findOne({ _id: subId, vendorId })
+        .populate('mealPlanId', 'name')
+        .populate('userId', 'name phone email addresses')
+        .lean();
+
+    if (!subscription) return null;
+
+    // Fetch delivery history
+    const dailyOrders = await DMBDailyOrder.find({ subscriptionId: subId })
+        .sort({ deliveryDate: -1 })
+        .populate('dispatch.deliveryPartnerId', 'name phone')
+        .lean();
+
+    let remainingDays = 0;
+    if (subscription.status === 'active' && subscription.endDate) {
+        const diff = new Date(subscription.endDate).getTime() - Date.now();
+        remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+    }
+
+    // Process address
+    const user = subscription.userId || {};
+    let address = {};
+    if (subscription.deliveryAddress) {
+        address = subscription.deliveryAddress;
+    } else if (user.addresses && user.addresses.length > 0) {
+        address = user.addresses.find(a => a.isDefault) || user.addresses[0];
+    }
+
+    return {
+        ...subscription,
+        userId: user,
+        deliveryAddress: address,
+        remainingDays,
+        deliveryHistory: dailyOrders.map(order => ({
+            _id: order._id,
+            deliveryDate: order.deliveryDate,
+            mealType: order.mealType,
+            status: order.status,
+            driverName: order.dispatch?.deliveryPartnerId?.name || 'Unassigned',
+            driverPhone: order.dispatch?.deliveryPartnerId?.phone || 'N/A',
+            podImage: order.proofOfDelivery || null
+        }))
+    };
+}
+
+export async function getAllSubscribersSummary() {
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const stats = await DMBSubscription.aggregate([
+        {
+            $group: {
+                _id: null,
+                totalSubscribers: { $sum: 1 },
+                activeSubscribers: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+                pausedSubscribers: { $sum: { $cond: [{ $eq: ['$status', 'paused'] }, 1, 0] } },
+                expiredSubscribers: { $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] } },
+                cancelledSubscribers: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+                totalRevenue: { 
+                    $sum: { 
+                        $cond: [
+                            { $in: ['$status', ['active', 'paused', 'expired']] },
+                            { $ifNull: ['$pricing.totalPrice', 0] },
+                            0
+                        ]
+                    } 
+                }
+            }
+        }
+    ]);
+    return stats[0] || {
+        totalSubscribers: 0,
+        activeSubscribers: 0,
+        pausedSubscribers: 0,
+        expiredSubscribers: 0,
+        cancelledSubscribers: 0,
+        totalRevenue: 0
+    };
+}
+
+export async function getAllSubscribers(options = {}) {
+    const { page = 1, limit = 10, status, mealType, planType, search } = options;
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const { FoodUser } = await import('../../../../core/users/user.model.js');
+    
+    let query = {};
+    if (status) query.status = status;
+    if (planType) query.duration = planType;
+    if (mealType) query['meals.type'] = mealType;
+    
+    if (search) {
+        const users = await FoodUser.find({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id').lean();
+        const userIds = users.map(u => u._id);
+        
+        query.$or = [
+            { subscriptionId: { $regex: search, $options: 'i' } },
+            { userId: { $in: userIds } }
+        ];
+    }
+
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+        DMBSubscription.find(query)
+            .populate('userId', 'name phone email profileImage')
+            .populate('mealPlanId', 'name')
+            .populate('vendorId', 'restaurantName')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit, 10))
+            .lean(),
+        DMBSubscription.countDocuments(query)
+    ]);
+
+    const subscribers = docs.map(doc => {
+        const user = doc.userId || {};
+        const mealPlan = doc.mealPlanId || {};
+        const vendor = doc.vendorId || {};
+        let remainingDays = 0;
+        if (doc.status === 'active' && doc.endDate) {
+            const diff = new Date(doc.endDate).getTime() - Date.now();
+            remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        return {
+            _id: doc._id,
+            subscriptionId: doc.subscriptionId,
+            customerName: user.name || 'Unknown',
+            customerPhone: user.phone || 'N/A',
+            customerEmail: user.email || 'N/A',
+            customerId: user._id,
+            vendorName: vendor.restaurantName || 'Unknown Vendor',
+            vendorId: doc.vendorId?._id || doc.vendorId,
+            planName: mealPlan.name || 'Custom Plan',
+            planType: doc.duration,
+            mealTypes: (doc.meals || []).map(m => m.type).join(', '),
+            deliveryDays: doc.deliveryDays === 'mon_fri' ? 'Mon-Fri' : (doc.deliveryDays === 'full_week' ? 'Full Week' : (doc.deliveryDays || 'N/A')),
+            startDate: doc.startDate,
+            endDate: doc.endDate,
+            remainingDays,
+            status: doc.status,
+            totalRevenue: doc.pricing?.totalPrice || 0,
+            assignedDeliveryPartner: doc.assignedDeliveryPartner || null,
+        };
+    });
+
+    return { data: subscribers, total, page: parseInt(page, 10), pages: Math.ceil(total / limit) || 1 };
+}

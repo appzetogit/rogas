@@ -1523,3 +1523,111 @@ export const getRestaurantComplaints = async (restaurantId, query = {}) => {
     return getComplaintsInternal({ ...query, restaurantId });
 };
 
+export async function getVendorSubscribers(vendorId, options = {}) {
+    if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+        throw new Error('Invalid vendor ID');
+    }
+    const { page = 1, limit = 10, status, mealType, planType, search } = options;
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const { FoodUser } = await import('../../../../core/users/user.model.js');
+    
+    let query = { vendorId: new mongoose.Types.ObjectId(vendorId) };
+    if (status) query.status = status;
+    if (planType) query.duration = planType;
+    if (mealType) query['meals.type'] = mealType;
+    
+    if (search) {
+        const users = await FoodUser.find({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id').lean();
+        const userIds = users.map(u => u._id);
+        
+        query.$or = [
+            { subscriptionId: { $regex: search, $options: 'i' } },
+            { userId: { $in: userIds } }
+        ];
+    }
+
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+        DMBSubscription.find(query)
+            .populate('userId', 'name phone email profileImage')
+            .populate('mealPlanId', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit, 10))
+            .lean(),
+        DMBSubscription.countDocuments(query)
+    ]);
+
+    const subscribers = docs.map(doc => {
+        const user = doc.userId || {};
+        const mealPlan = doc.mealPlanId || {};
+        let remainingDays = 0;
+        if (doc.status === 'active' && doc.endDate) {
+            const diff = new Date(doc.endDate).getTime() - Date.now();
+            remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        return {
+            _id: doc._id,
+            subscriptionId: doc.subscriptionId,
+            customerName: user.name || 'Unknown',
+            customerPhone: user.phone || 'N/A',
+            customerEmail: user.email || 'N/A',
+            planName: mealPlan.name || 'Custom Plan',
+            planType: doc.duration,
+            mealTypes: (doc.meals || []).map(m => m.type).join(', '),
+            deliveryDays: doc.deliveryDays === 'mon_fri' ? 'Mon-Fri' : (doc.deliveryDays === 'full_week' ? 'Full Week' : (doc.deliveryDays || 'N/A')),
+            startDate: doc.startDate,
+            endDate: doc.endDate,
+            remainingDays,
+            status: doc.status
+        };
+    });
+
+    return { subscribers, total, page: parseInt(page, 10), pages: Math.ceil(total / limit) || 1 };
+}
+
+export async function getVendorProductionSummary(vendorId) {
+    if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+        throw new Error('Invalid vendor ID');
+    }
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    
+    const activeSubs = await DMBSubscription.find({
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        status: 'active',
+        deliveryDays: today
+    }).lean();
+
+    const summary = {
+        breakfast: { totalSubscribers: 0, mealsRequired: 0 },
+        lunch: { totalSubscribers: 0, mealsRequired: 0 },
+        dinner: { totalSubscribers: 0, mealsRequired: 0 }
+    };
+
+    activeSubs.forEach(sub => {
+        const meals = sub.meals || [];
+        meals.forEach(meal => {
+            if (meal.type === 'breakfast') {
+                summary.breakfast.totalSubscribers += 1;
+                summary.breakfast.mealsRequired += meal.quantity || 1;
+            } else if (meal.type === 'lunch') {
+                summary.lunch.totalSubscribers += 1;
+                summary.lunch.mealsRequired += meal.quantity || 1;
+            } else if (meal.type === 'dinner') {
+                summary.dinner.totalSubscribers += 1;
+                summary.dinner.mealsRequired += meal.quantity || 1;
+            }
+        });
+    });
+
+    return summary;
+}
+

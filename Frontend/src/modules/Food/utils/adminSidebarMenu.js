@@ -57,6 +57,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/subscription-plans",
         icon: "Award",
       },
+      {
+        type: "link",
+        label: "Subscribers",
+        path: "/admin/food/subscribers",
+        icon: "Users",
+      },
       // {
       //   type: "link",
       //   label: "Restaurant Commission",

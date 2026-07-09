@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { restaurantAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { useNavigate } from 'react-router-dom';
 
 const mapContainerStyle = {
   width: '100%',
@@ -359,6 +360,7 @@ export default function ProfileSettings({
   onUpdateCutoff,
   onSignOut
 }) {
+  const navigate = useNavigate();
   const [subView, setSubView] = useState('profile');
 
   // ── Help & Support state ──────────────────────────────────────────────────
@@ -676,6 +678,25 @@ export default function ProfileSettings({
                 </div>
                 <span className="material-symbols-outlined text-primary group-active:translate-x-0.5 transition-transform text-[18px]">
                   chevron_right
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Customer & Subscribers section block */}
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Customers & Orders</h3>
+            <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left mb-5">
+              <button
+                onClick={() => navigate('/vendor/subscribers')}
+                className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-outline">group</span>
+                  <span className="font-bold text-[13px]">My Subscribers</span>
+                </div>
+                <span className="material-symbols-outlined text-outline group-active:translate-x-0.5 transition-transform text-[18px]">
+                  arrow_forward
                 </span>
               </button>
             </div>

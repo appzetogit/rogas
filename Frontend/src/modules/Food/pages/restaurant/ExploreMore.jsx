@@ -30,6 +30,11 @@ import {
   MapPin,
   LogOut,
   Ticket,
+  Phone,
+  FileLock,
+  ChevronDown,
+  Download,
+  Users,
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -757,6 +762,7 @@ export default function ExploreMore() {
     { id: 1, label: "Order history", icon: FileText, route: "/food/restaurant/orders/all" },
     { id: 2, label: "Complaints", icon: Star, route: "/food/restaurant/feedback?tab=complaints" },
     { id: 3, label: "Reviews", icon: MessageSquare, route: "/food/restaurant/feedback" },
+    { id: 4, label: "Subscribers", icon: Users, route: "/food/restaurant/subscribers" },
   ]
 
   const helpItems = [
