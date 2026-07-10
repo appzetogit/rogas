@@ -4,6 +4,7 @@ import { Search, Download, ChevronDown, Eye, FileDown, FileSpreadsheet, FileText
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportCustomersToCSV, exportCustomersToExcel, exportCustomersToPDF } from "@food/components/admin/customers/customersExportUtils"
 import { adminAPI } from "@food/api"
+import { Can } from "@food/hooks/usePermissions"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 const debugLog = (...args) => {}
@@ -529,30 +530,34 @@ export default function Customers() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{formatDateTime(customer.joiningDate)}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleStatus(customer.id || customer.sl)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${customer.status ? "bg-blue-600" : "bg-slate-300"
-                            }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${customer.status ? "translate-x-6" : "translate-x-1"
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <Can module="customerManagement" action="edit">
+                          <button
+                            onClick={() => handleToggleStatus(customer.id || customer.sl)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${customer.status ? "bg-blue-600" : "bg-slate-300"
                               }`}
-                          />
-                        </button>
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${customer.status ? "translate-x-6" : "translate-x-1"
+                                }`}
+                            />
+                          </button>
+                        </Can>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex justify-center gap-2">
-                          <button
-                            title="Top-up Wallet"
-                            onClick={() => {
-                              setCustomerToTopup(customer._id || customer.id || customer.sl);
-                              setShowTopupDialog(true);
-                            }}
-                            className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors"
-                          >
-                            <Wallet className="w-4 h-4" />
-                          </button>
+                          <Can module="customerManagement" action="edit">
+                            <button
+                              title="Top-up Wallet"
+                              onClick={() => {
+                                setCustomerToTopup(customer._id || customer.id || customer.sl);
+                                setShowTopupDialog(true);
+                              }}
+                              className="p-1.5 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                            >
+                              <Wallet className="w-4 h-4" />
+                            </button>
+                          </Can>
                           <button
                             title="View Details"
                             onClick={() => handleViewDetails(customer._id || customer.id || customer.sl)}

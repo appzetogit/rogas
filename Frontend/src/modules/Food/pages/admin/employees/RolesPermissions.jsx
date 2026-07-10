@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminClient } from "@food/api/axios";
 import { toast } from 'sonner';
+import { Can } from "@food/hooks/usePermissions";
 
 const modulesList = [
     { key: 'dashboard', label: 'Dashboard' },
@@ -227,12 +228,14 @@ export default function RolesPermissions() {
         <div className="p-6 bg-gray-50 min-h-screen">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-gray-800">Roles & Permissions</h1>
-                <button 
-                    onClick={openCreateForm}
-                    className="bg-[#f57224] text-white px-4 py-2 rounded shadow-sm hover:bg-[#e06117] transition-colors"
-                >
-                    + Add New Role
-                </button>
+                <Can module="rolesEmployees" action="create">
+                    <button 
+                        onClick={openCreateForm}
+                        className="bg-[#f57224] text-white px-4 py-2 rounded shadow-sm hover:bg-[#e06117] transition-colors"
+                    >
+                        + Add New Role
+                    </button>
+                </Can>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -266,19 +269,23 @@ export default function RolesPermissions() {
                                     <td className="p-4 text-sm text-gray-500">
                                         {new Date(role.createdAt).toLocaleDateString()}
                                     </td>
-                                    <td className="p-4 text-right">
-                                        <button 
-                                            onClick={() => openEditForm(role)}
-                                            className="text-blue-500 hover:text-blue-700 mr-4 border border-blue-200 px-3 py-1 rounded text-sm"
-                                        >
-                                            Edit
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(role._id)}
-                                            className="text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded text-sm"
-                                        >
-                                            Delete
-                                        </button>
+                                    <td className="p-4 text-right flex justify-end gap-2">
+                                        <Can module="rolesEmployees" action="edit">
+                                            <button 
+                                                onClick={() => openEditForm(role)}
+                                                className="text-blue-500 hover:text-blue-700 border border-blue-200 px-3 py-1 rounded text-sm"
+                                            >
+                                                Edit
+                                            </button>
+                                        </Can>
+                                        <Can module="rolesEmployees" action="delete">
+                                            <button 
+                                                onClick={() => handleDelete(role._id)}
+                                                className="text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded text-sm"
+                                            >
+                                                Delete
+                                            </button>
+                                        </Can>
                                     </td>
                                 </tr>
                             ))

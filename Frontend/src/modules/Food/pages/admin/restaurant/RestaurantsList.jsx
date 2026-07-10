@@ -6,6 +6,7 @@ import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
+import { Can } from "@food/hooks/usePermissions"
 
 // Import icons from Dashboard-icons
 const debugLog = (...args) => {}
@@ -1148,13 +1149,15 @@ export default function RestaurantsList() {
             <h2 className="text-xl font-bold text-slate-900">Vendors List</h2>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/admin/food/restaurants/add")}
-                className="px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Vendor</span>
-              </button>
+              <Can module="vendorManagement" action="create">
+                <button 
+                  onClick={() => navigate("/admin/food/restaurants/add")}
+                  className="bg-[#f57224] text-white h-10 px-4 rounded-xl flex items-center justify-center font-medium shadow-sm hover:bg-[#d85c18] transition-colors"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  <span>Add Vendor</span>
+                </button>
+              </Can>
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
                   type="text"
@@ -1364,23 +1367,27 @@ export default function RestaurantsList() {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => handleBanRestaurant(restaurant)}
-                              className={`p-1.5 rounded transition-colors ${!restaurant.isActive
-                                ? "text-green-600 hover:bg-green-50"
-                                : "text-red-600 hover:bg-red-50"
-                                }`}
-                              title={!restaurant.isActive ? "Unban Vendor" : "Ban Vendor"}
-                            >
-                              <ShieldX className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRestaurant(restaurant)}
-                              className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                              title="Delete Vendor"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <Can module="vendorManagement" action="edit">
+                              <button
+                                onClick={() => handleBanRestaurant(restaurant)}
+                                className={`p-1.5 rounded transition-colors ${!restaurant.isActive
+                                  ? "text-green-600 hover:bg-green-50"
+                                  : "text-red-600 hover:bg-red-50"
+                                  }`}
+                                title={!restaurant.isActive ? "Unban Vendor" : "Ban Vendor"}
+                              >
+                                <ShieldX className="w-4 h-4" />
+                              </button>
+                            </Can>
+                            <Can module="vendorManagement" action="delete">
+                              <button
+                                onClick={() => handleDeleteRestaurant(restaurant)}
+                                className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete Vendor"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </Can>
                           </div>
                         </td>
                       </tr>
@@ -1411,12 +1418,14 @@ export default function RestaurantsList() {
               </div>
               <div className="flex items-center gap-2">
                 {!isEditingDetails ? (
-                  <button
-                    onClick={handleStartEditDetails}
-                    className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-                  >
-                    Edit Details
-                  </button>
+                  <Can module="vendorManagement" action="edit">
+                    <button
+                      onClick={handleStartEditDetails}
+                      className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                    >
+                      Edit Details
+                    </button>
+                  </Can>
                 ) : (
                   <>
                     <button

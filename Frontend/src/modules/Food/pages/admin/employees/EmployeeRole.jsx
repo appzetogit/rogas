@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Shield, Eye, EyeOff, X, Check } from "lucide-react";
 import { adminClient } from "@food/api/axios";
+import { Can } from "@food/hooks/usePermissions";
 
 const PRD_ROLES = [
   { value: "SUPER_ADMIN",       label: "Super Admin",       color: "#ef4444", description: "Full system access - all permissions" },
@@ -116,10 +117,12 @@ export default function EmployeeRole() {
               <p className="text-sm text-gray-400">7 PRD-defined roles with RBAC</p>
             </div>
           </div>
-          <button onClick={() => { setShowCreateForm(true); setError(""); setSuccess(""); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 text-sm">
-            <UserPlus className="w-4 h-4" /> Create Employee
-          </button>
+          <Can module="rolesEmployees" action="create">
+            <button onClick={() => { setShowCreateForm(true); setError(""); setSuccess(""); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 text-sm">
+              <UserPlus className="w-4 h-4" /> Create Employee
+            </button>
+          </Can>
         </div>
       </div>
 
@@ -255,11 +258,13 @@ export default function EmployeeRole() {
                           <p className="text-xs text-indigo-400 mt-0.5">Cities: {admin.assignedCityIds.map(c => c?.name || c).join(", ")}</p>
                         )}
                       </div>
-                      <button onClick={() => toggleActive(admin)}
-                        className={"px-3 py-1.5 rounded-xl text-xs font-bold transition " +
-                          (admin.isActive ? "bg-red-900/50 text-red-300 hover:bg-red-900" : "bg-green-900/50 text-green-300 hover:bg-green-900")}>
-                        {admin.isActive ? "Deactivate" : "Activate"}
-                      </button>
+                      <Can module="rolesEmployees" action="edit">
+                        <button onClick={() => toggleActive(admin)}
+                          className={"px-3 py-1.5 rounded-xl text-xs font-bold transition " +
+                            (admin.isActive ? "bg-red-900/50 text-red-300 hover:bg-red-900" : "bg-green-900/50 text-green-300 hover:bg-green-900")}>
+                          {admin.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                      </Can>
                     </div>
                   );
                 })}
