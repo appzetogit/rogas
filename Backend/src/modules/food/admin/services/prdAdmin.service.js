@@ -77,6 +77,7 @@ export async function listAdminUsers(query = {}) {
         FoodAdmin.find(filter)
             .select('-password')
             .populate('assignedCityIds', 'name country status currency')
+            .populate('roleId', 'name')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)

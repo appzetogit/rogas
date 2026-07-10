@@ -103,26 +103,80 @@ const iconMap = {
 }
 
 // Helper: get current admin role from localStorage
-function getAdminRole() {
+function getAdminUser() {
   try {
     const userStr = localStorage.getItem('admin_user');
     if (userStr) {
-      const user = JSON.parse(userStr);
-      return user.adminRole || 'SUPER_ADMIN';
+      return JSON.parse(userStr);
     }
   } catch (e) {}
-  return 'SUPER_ADMIN';
+  return { adminRole: 'SUPER_ADMIN' };
 }
 
-// Filter menu items by role
-function filterMenuByRole(menu, adminRole) {
+// Maps sidebar section labels AND top-level link labels → permission module keys
+const labelToModuleMap = {
+  // Top-level links
+  "DASHBOARD": "dashboard",
+  "LIVE OPERATIONS MAP": "dashboard",
+  // Sections
+  "VENDOR MANAGEMENT": "vendorManagement",
+  "DRIVER MANAGEMENT": "driverManagement",
+  "CUSTOMER MANAGEMENT": "customerManagement",
+  "KITCHEN PARTNERS": "kitchenPartners",
+  "ROLES & EMPLOYEES": "rolesEmployees",
+  "COMPLAINTS & REFUNDS": "complaintsRefunds",
+  "ORDER MANAGEMENT": "orderManagement",
+  "FOOD MANAGEMENT": "foodManagement",
+  "FLEET MANAGEMENT": "fleetManagement",
+  "ZONE & CITY MANAGEMENT": "zoneCityManagement",
+  "PROMOTIONS MANAGEMENT": "promotionsManagement",
+  "FINANCIAL MANAGEMENT": "financialManagement",
+  "REPORTS": "reports",
+  "FEATURE FLAGS": "featureFlags",
+  "OTA & CONTENT": "otaContent",
+  "SYSTEM SETTINGS": "systemSettings",
+};
+
+function filterMenuByRole(menu, user) {
+  const adminRole = user?.adminRole || 'SUPER_ADMIN';
+  const isSuperAdmin = adminRole === 'SUPER_ADMIN';
+  const customPermissions = user?.roleId?.permissions || null;
+
   return menu
-    .filter(item => !item.roles || item.roles.includes(adminRole))
     .map(item => {
+      // Handle top-level links (e.g. Dashboard, Live Operations Map)
+      if (item.type === 'link') {
+        if (isSuperAdmin) return item;
+        if (customPermissions) {
+          const modKey = labelToModuleMap[item.label?.toUpperCase()];
+          if (modKey && customPermissions[modKey]?.view === true) return item;
+          return null;
+        }
+        // Legacy PRD role fallback
+        if (!item.roles || item.roles.includes(adminRole)) return item;
+        return null;
+      }
+
       if (item.type === 'section') {
-        const filteredItems = (item.items || []).filter(
-          sub => !sub.roles || sub.roles.includes(adminRole)
-        );
+        let sectionAllowed = false;
+        
+        if (isSuperAdmin) {
+          sectionAllowed = true;
+        } else if (customPermissions) {
+          const modKey = labelToModuleMap[item.label?.toUpperCase()];
+          sectionAllowed = modKey ? customPermissions[modKey]?.view === true : false;
+        } else {
+          sectionAllowed = !item.roles || item.roles.includes(adminRole);
+        }
+
+        if (!sectionAllowed) return null;
+
+        const filteredItems = (item.items || []).filter(sub => {
+          if (isSuperAdmin) return true;
+          if (customPermissions) return true; // section level view grants sub items view
+          return !sub.roles || sub.roles.includes(adminRole);
+        });
+        
         if (filteredItems.length === 0) return null;
         return { ...item, items: filteredItems };
       }
@@ -135,7 +189,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState("")
   const [badges, setBadges] = useState({})
-  const [adminRole] = useState(() => getAdminRole())
+  const [adminUser] = useState(() => getAdminUser())
 
   useEffect(() => {
     const fetchBadges = async () => {
@@ -312,17 +366,16 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
   // Filter menu items based on search query AND role
   const filteredMenuData = useMemo(() => {
-    // First apply role-based filter
-    const roleFiltered = filterMenuByRole(adminSidebarMenu, adminRole);
+    const baseFiltered = filterMenuByRole(adminSidebarMenu, adminUser);
 
     if (!searchQuery.trim()) {
-      return roleFiltered;
+      return baseFiltered;
     }
 
     const query = searchQuery.toLowerCase().trim()
     const filtered = []
 
-    roleFiltered.forEach((item) => {
+    baseFiltered.forEach((item) => {
       if (item.type === "link") {
         if (item.label.toLowerCase().includes(query)) {
           filtered.push(item)
@@ -360,7 +413,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     })
 
     return filtered
-  }, [searchQuery, adminRole])
+  }, [searchQuery, adminUser])
 
   // Auto-expand sections with matches when searching
   useEffect(() => {

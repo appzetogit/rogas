@@ -97,6 +97,7 @@ const RestaurantWithdraws = lazy(() => import("@food/pages/admin/transactions/Re
 const WithdrawMethod = lazy(() => import("@food/pages/admin/transactions/WithdrawMethod"));
 // Employee Management
 const EmployeeRole = lazy(() => import("@food/pages/admin/employees/EmployeeRole"));
+const RolesPermissions = lazy(() => import("@food/pages/admin/employees/RolesPermissions"));
 const AddEmployee = lazy(() => import("@food/pages/admin/employees/AddEmployee"));
 const EmployeeList = lazy(() => import("@food/pages/admin/employees/EmployeeList"));
 // Business Settings
@@ -289,6 +290,7 @@ export default function AdminRouter() {
             <Route path="withdraw-method" element={<WithdrawMethod />} />
             
             <Route path="employee-role" element={<EmployeeRole />} />
+            <Route path="roles-permissions" element={<RolesPermissions />} />
             <Route path="employees" element={<EmployeeList />} />
             <Route path="employees/add" element={<AddEmployee />} />
 

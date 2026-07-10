@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Shield, Eye, EyeOff, X, Check } from "lucide-react";
 import { adminClient } from "@food/api/axios";
 
@@ -23,15 +23,15 @@ const ROLE_PERMISSIONS = {
 };
 
 export default function EmployeeRole() {
-  const [activeTab, setActiveTab] = useState("roles");
   const [selectedRole, setSelectedRole] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [cities, setCities] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", confirmPassword: "",
-    adminRole: "CUSTOMER_SERVICE", assignedCityIds: []
+    adminRole: "CUSTOMER_SERVICE", roleId: "", assignedCityIds: []
   });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,9 +55,16 @@ export default function EmployeeRole() {
     } catch (e) {}
   }, []);
 
+  const loadRoles = useCallback(async () => {
+    try {
+      const res = await adminClient.get("/food/admin/custom-roles");
+      if (res?.data?.success) setRoles(res.data.data.roles || []);
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
-    if (activeTab === "employees") { loadAdmins(); loadCities(); }
-  }, [activeTab, loadAdmins, loadCities]);
+    loadAdmins(); loadCities(); loadRoles();
+  }, [loadAdmins, loadCities, loadRoles]);
 
   const handleCreate = async () => {
     setError(""); setSuccess("");
@@ -68,14 +75,16 @@ export default function EmployeeRole() {
     try {
       const res = await adminClient.post("/food/admin/employees", {
         name: form.name, email: form.email, phone: form.phone,
-        password: form.password, adminRole: form.adminRole,
+        password: form.password, 
+        adminRole: form.adminRole || undefined,
+        roleId: form.roleId || undefined,
         assignedCityIds: form.assignedCityIds,
       });
       if (res?.data?.success) {
-        setSuccess("Employee created with role " + form.adminRole);
+        setSuccess("Employee created successfully");
         setAdmins(prev => [res.data.data.admin, ...prev]);
         setShowCreateForm(false);
-        setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "", adminRole: "CUSTOMER_SERVICE", assignedCityIds: [] });
+        setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "", adminRole: "CUSTOMER_SERVICE", roleId: "", assignedCityIds: [] });
       }
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to create employee");
@@ -107,65 +116,15 @@ export default function EmployeeRole() {
               <p className="text-sm text-gray-400">7 PRD-defined roles with RBAC</p>
             </div>
           </div>
-          {activeTab === "employees" && (
-            <button onClick={() => { setShowCreateForm(true); setError(""); setSuccess(""); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 text-sm">
-              <UserPlus className="w-4 h-4" /> Create Employee
-            </button>
-          )}
+          <button onClick={() => { setShowCreateForm(true); setError(""); setSuccess(""); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 text-sm">
+            <UserPlus className="w-4 h-4" /> Create Employee
+          </button>
         </div>
       </div>
 
-      <div className="px-6 pt-4 flex gap-1 border-b border-gray-800">
-        {[{ key: "roles", label: "Roles and Permissions" }, { key: "employees", label: "Employees" }].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={"px-5 py-2.5 text-sm font-semibold border-b-2 transition " +
-              (activeTab === tab.key ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-400 hover:text-gray-200")}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className="px-6 py-6">
-        {activeTab === "roles" && (
-          <div>
-            <p className="text-sm text-gray-400 mb-5">
-              These 7 roles are fixed per the PRD. Permissions are enforced by the backend middleware.
-              Super Admin assigns a role when creating each employee account.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {PRD_ROLES.map(role => {
-                const isSelected = selectedRole === role.value;
-                return (
-                  <button key={role.value} onClick={() => setSelectedRole(isSelected ? null : role.value)}
-                    className={"w-full text-left p-4 rounded-2xl border-2 transition-all " +
-                      (isSelected ? "border-blue-500 bg-blue-900/20" : "border-gray-700 bg-gray-800/50 hover:border-gray-600")}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: role.color + "22" }}>
-                        <Shield className="w-4 h-4" style={{ color: role.color }} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-white text-sm">{role.label}</p>
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
-                    </div>
-                    <p className="text-xs text-gray-400 leading-relaxed">{role.description}</p>
-                    {isSelected && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {(ROLE_PERMISSIONS[role.value] || []).map(p => (
-                          <span key={p} className="px-1.5 py-0.5 rounded text-xs bg-blue-900/40 text-blue-300 font-mono">{p}</span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "employees" && (
-          <div>
+        <div>
             {showCreateForm && (
               <div className="bg-gray-900 rounded-2xl border border-gray-700 p-5 mb-6">
                 <div className="flex items-center justify-between mb-4">
@@ -209,12 +168,21 @@ export default function EmployeeRole() {
                     <label className="block text-xs text-gray-400 mb-2">Assign Role</label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {PRD_ROLES.map(role => (
-                        <button key={role.value} type="button" onClick={() => setF("adminRole", role.value)}
+                        <button key={role.value} type="button" onClick={() => { setF("adminRole", role.value); setF("roleId", ""); }}
                           className={"p-2.5 rounded-xl border text-xs font-bold text-left transition " +
-                            (form.adminRole === role.value ? "border-indigo-500 text-white" : "border-gray-700 text-gray-400 hover:border-gray-600")}
-                          style={form.adminRole === role.value ? { background: role.color + "22", borderColor: role.color } : {}}>
+                            (form.adminRole === role.value && !form.roleId ? "border-indigo-500 text-white" : "border-gray-700 text-gray-400 hover:border-gray-600")}
+                          style={form.adminRole === role.value && !form.roleId ? { background: role.color + "22", borderColor: role.color } : {}}>
                           <div className="w-2 h-2 rounded-full mb-1.5" style={{ background: role.color }} />
-                          {role.label}
+                          {role.label} (Legacy PRD)
+                        </button>
+                      ))}
+                      {roles.map(role => (
+                        <button key={role._id} type="button" onClick={() => { setF("roleId", role._id); setF("adminRole", ""); }}
+                          className={"p-2.5 rounded-xl border text-xs font-bold text-left transition " +
+                            (form.roleId === role._id ? "border-orange-500 text-white" : "border-gray-700 text-gray-400 hover:border-gray-600")}
+                          style={form.roleId === role._id ? { background: "#f9731622", borderColor: "#f97316" } : {}}>
+                          <div className="w-2 h-2 rounded-full mb-1.5" style={{ background: "#f97316" }} />
+                          {role.name} (Custom)
                         </button>
                       ))}
                     </div>
@@ -270,11 +238,15 @@ export default function EmployeeRole() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <p className="font-bold text-white truncate">{admin.name || "Unnamed"}</p>
-                          {roleObj && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: roleObj.color + "22", color: roleObj.color }}>
-                              {roleObj.label}
+                          {admin.roleId ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500/20 text-orange-500 border border-orange-500/30">
+                              {admin.roleId?.name || 'Custom Role'}
                             </span>
-                          )}
+                          ) : roleObj ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: roleObj.color + "22", color: roleObj.color }}>
+                              {roleObj.label} (Legacy)
+                            </span>
+                          ) : null}
                           {!admin.isActive && <span className="px-2 py-0.5 rounded-full text-xs bg-gray-800 text-gray-500">Inactive</span>}
                         </div>
                         <p className="text-sm text-gray-400 truncate">{admin.email}</p>
@@ -294,7 +266,6 @@ export default function EmployeeRole() {
               </div>
             )}
           </div>
-        )}
       </div>
     </div>
   );

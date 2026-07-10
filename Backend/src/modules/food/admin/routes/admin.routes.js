@@ -16,10 +16,13 @@ import * as appIntroAdController from '../controllers/appIntroAd.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import menuBulkRoutes from './menuBulk.routes.js';
 import kitchenPartnerRoutes from './kitchenPartner.routes.js';
+import roleRoutes from './role.routes.js';
+import { requirePermission } from '../../../../middleware/rbac.middleware.js';
 
 const router = express.Router();
 
 router.use('/menu', menuBulkRoutes);
+router.use('/custom-roles', roleRoutes);
 
 // ----- Public Business Settings (No Admin Required) -----
 router.get('/business-settings/public', businessSettingsController.getBusinessSettings);
@@ -35,284 +38,284 @@ const requireAdmin = (req, _res, next) => {
 router.use(requireAdmin);
 
 // ----- Admin PRD Core Controls -----
-router.get('/roles/matrix', prdAdminController.getRoleMatrix);
-router.get('/roles/users', prdAdminController.listAdminUsers);
-router.patch('/roles/users/:id', prdAdminController.updateAdminRole);
-router.get('/audit-logs', prdAdminController.listAuditLogs);
-router.get('/fraud-alerts', prdAdminController.getFraudAlerts);
+router.get('/roles/matrix', requirePermission('rolesEmployees', 'view'), prdAdminController.getRoleMatrix);
+router.get('/roles/users', requirePermission('rolesEmployees', 'view'), prdAdminController.listAdminUsers);
+router.patch('/roles/users/:id', requirePermission('rolesEmployees', 'edit'), prdAdminController.updateAdminRole);
+router.get('/audit-logs', requirePermission('systemSettings', 'view'), prdAdminController.listAuditLogs);
+router.get('/fraud-alerts', requirePermission('systemSettings', 'view'), prdAdminController.getFraudAlerts);
 
 // ----- AP-09 Employee Management -----
-router.post('/employees', prdAdminExtController.createAdminEmployee);
-router.patch('/employees/:id', prdAdminExtController.updateAdminEmployee);
-router.delete('/employees/:id', prdAdminExtController.deleteAdminEmployee);
+router.post('/employees', requirePermission('rolesEmployees', 'create'), prdAdminExtController.createAdminEmployee);
+router.patch('/employees/:id', requirePermission('rolesEmployees', 'edit'), prdAdminExtController.updateAdminEmployee);
+router.delete('/employees/:id', requirePermission('rolesEmployees', 'delete'), prdAdminExtController.deleteAdminEmployee);
 
 // ----- AP-02 Live Operations Map -----
-router.get('/operations/snapshot', prdAdminController.getOperationsSnapshot);
+router.get('/operations/snapshot', requirePermission('dashboard', 'view'), prdAdminController.getOperationsSnapshot);
 
 // ----- AP-03 Feature Toggles -----
-router.get('/feature-toggles', prdAdminController.listFeatureToggles);
-router.put('/feature-toggles', prdAdminController.upsertFeatureToggle);
-router.post('/feature-toggles/:id/rollback', prdAdminController.rollbackFeatureToggle);
+router.get('/feature-toggles', requirePermission('featureFlags', 'view'), prdAdminController.listFeatureToggles);
+router.put('/feature-toggles', requirePermission('featureFlags', 'edit'), prdAdminController.upsertFeatureToggle);
+router.post('/feature-toggles/:id/rollback', requirePermission('featureFlags', 'edit'), prdAdminController.rollbackFeatureToggle);
 
 // ----- AP-04 Complaint & Refund Management -----
-router.get('/complaints', prdAdminExtController.listComplaints);
-router.post('/complaints', prdAdminExtController.createComplaint);
-router.get('/complaints/:id', prdAdminExtController.getComplaintById);
-router.patch('/complaints/:id/status', prdAdminExtController.updateComplaintStatus);
-router.post('/complaints/:id/refund', prdAdminExtController.issueComplaintRefund);
-router.post('/complaints/:id/escalate', prdAdminExtController.escalateComplaint);
-router.post('/complaints/:id/respond', prdAdminExtController.sendComplaintResponse);
+router.get('/complaints', requirePermission('complaintsRefunds', 'view'), prdAdminExtController.listComplaints);
+router.post('/complaints', requirePermission('complaintsRefunds', 'create'), prdAdminExtController.createComplaint);
+router.get('/complaints/:id', requirePermission('complaintsRefunds', 'view'), prdAdminExtController.getComplaintById);
+router.patch('/complaints/:id/status', requirePermission('complaintsRefunds', 'edit'), prdAdminExtController.updateComplaintStatus);
+router.post('/complaints/:id/refund', requirePermission('complaintsRefunds', 'edit'), prdAdminExtController.issueComplaintRefund);
+router.post('/complaints/:id/escalate', requirePermission('complaintsRefunds', 'edit'), prdAdminExtController.escalateComplaint);
+router.post('/complaints/:id/respond', requirePermission('complaintsRefunds', 'edit'), prdAdminExtController.sendComplaintResponse);
 
 // ----- AP-07 Fleet Invoice & Financial -----
-router.get('/fleet/invoices', prdAdminExtController.listFleetInvoices);
-router.patch('/fleet/invoices/:id/approve', prdAdminExtController.approveFleetInvoice);
-router.patch('/fleet/invoices/:id/reject', prdAdminExtController.rejectFleetInvoice);
-router.patch('/fleet/invoices/:id/paid', prdAdminExtController.markFleetInvoicePaid);
-router.get('/reports/vat', prdAdminExtController.getVatReport);
+router.get('/fleet/invoices', requirePermission('fleetManagement', 'view'), prdAdminExtController.listFleetInvoices);
+router.patch('/fleet/invoices/:id/approve', requirePermission('fleetManagement', 'edit'), prdAdminExtController.approveFleetInvoice);
+router.patch('/fleet/invoices/:id/reject', requirePermission('fleetManagement', 'edit'), prdAdminExtController.rejectFleetInvoice);
+router.patch('/fleet/invoices/:id/paid', requirePermission('fleetManagement', 'edit'), prdAdminExtController.markFleetInvoicePaid);
+router.get('/reports/vat', requirePermission('reports', 'view'), prdAdminExtController.getVatReport);
 
 // ----- AP-08 City Management -----
-router.get('/cities', prdAdminController.listCities);
-router.post('/cities', prdAdminController.createCity);
-router.patch('/cities/:id', prdAdminController.updateCity);
-router.get('/cities/:id/activation-checklist', prdAdminController.getCityChecklist);
+router.get('/cities', requirePermission('zoneCityManagement', 'view'), prdAdminController.listCities);
+router.post('/cities', requirePermission('zoneCityManagement', 'create'), prdAdminController.createCity);
+router.patch('/cities/:id', requirePermission('zoneCityManagement', 'edit'), prdAdminController.updateCity);
+router.get('/cities/:id/activation-checklist', requirePermission('zoneCityManagement', 'view'), prdAdminController.getCityChecklist);
 
 // ----- AP-09 API & Integration Settings -----
-router.get('/integrations', prdAdminController.listIntegrations);
-router.put('/integrations', prdAdminController.upsertIntegration);
+router.get('/integrations', requirePermission('systemSettings', 'view'), prdAdminController.listIntegrations);
+router.put('/integrations', requirePermission('systemSettings', 'edit'), prdAdminController.upsertIntegration);
 
 // ----- AP-12 Environment Management -----
-router.get('/environments', prdAdminController.listEnvironments);
-router.put('/environments', prdAdminController.upsertEnvironment);
+router.get('/environments', requirePermission('systemSettings', 'view'), prdAdminController.listEnvironments);
+router.put('/environments', requirePermission('systemSettings', 'edit'), prdAdminController.upsertEnvironment);
 
 // ----- AP-13 OTA Config -----
-router.get('/ota-configs', prdAdminController.listOtaConfigs);
-router.post('/ota-configs', prdAdminController.createOtaConfig);
-router.post('/ota-configs/:id/publish', prdAdminController.publishOtaConfig);
+router.get('/ota-configs', requirePermission('otaContent', 'view'), prdAdminController.listOtaConfigs);
+router.post('/ota-configs', requirePermission('otaContent', 'create'), prdAdminController.createOtaConfig);
+router.post('/ota-configs/:id/publish', requirePermission('otaContent', 'edit'), prdAdminController.publishOtaConfig);
 
 // ----- FM-01/FM-02/FM-03 Fleet Manager -----
-router.get('/fleet/dashboard', prdAdminController.getFleetDashboard);
-router.get('/fleet/partners', prdAdminController.listFleetPartners);
-router.post('/fleet/partners', prdAdminController.createFleetPartner);
-router.patch('/fleet/partners/:id/status', prdAdminController.updateFleetPartnerStatus);
-router.get('/fleet/driver-documents', prdAdminController.listDriverDocuments);
-router.put('/fleet/driver-documents', prdAdminController.upsertDriverDocument);
-router.patch('/fleet/driver-documents/:id/review', prdAdminController.reviewDriverDocument);
+router.get('/fleet/dashboard', requirePermission('fleetManagement', 'view'), prdAdminController.getFleetDashboard);
+router.get('/fleet/partners', requirePermission('fleetManagement', 'view'), prdAdminController.listFleetPartners);
+router.post('/fleet/partners', requirePermission('fleetManagement', 'create'), prdAdminController.createFleetPartner);
+router.patch('/fleet/partners/:id/status', requirePermission('fleetManagement', 'edit'), prdAdminController.updateFleetPartnerStatus);
+router.get('/fleet/driver-documents', requirePermission('fleetManagement', 'view'), prdAdminController.listDriverDocuments);
+router.put('/fleet/driver-documents', requirePermission('fleetManagement', 'edit'), prdAdminController.upsertDriverDocument);
+router.patch('/fleet/driver-documents/:id/review', requirePermission('fleetManagement', 'edit'), prdAdminController.reviewDriverDocument);
 
 // ----- Broadcast Notifications -----
-router.post('/notifications/broadcast', notificationBroadcastController.createBroadcastNotificationController);
-router.get('/notifications/broadcast', notificationBroadcastController.getBroadcastNotificationsController);
-router.delete('/notifications/broadcast/:id', notificationBroadcastController.deleteBroadcastNotificationController);
+router.post('/notifications/broadcast', requirePermission('systemSettings', 'create'), notificationBroadcastController.createBroadcastNotificationController);
+router.get('/notifications/broadcast', requirePermission('systemSettings', 'view'), notificationBroadcastController.getBroadcastNotificationsController);
+router.delete('/notifications/broadcast/:id', requirePermission('systemSettings', 'delete'), notificationBroadcastController.deleteBroadcastNotificationController);
 
 // ----- Customers -----
-router.get('/customers', adminController.getCustomers);
-router.get('/customers/:id', adminController.getCustomerById);
-router.patch('/customers/:id/status', adminController.updateCustomerStatus);
-router.post('/customers/:id/wallet-topup', adminController.topupCustomerWallet);
+router.get('/customers', requirePermission('customerManagement', 'view'), adminController.getCustomers);
+router.get('/customers/:id', requirePermission('customerManagement', 'view'), adminController.getCustomerById);
+router.patch('/customers/:id/status', requirePermission('customerManagement', 'edit'), adminController.updateCustomerStatus);
+router.post('/customers/:id/wallet-topup', requirePermission('customerManagement', 'edit'), adminController.topupCustomerWallet);
 
 // ----- Safety / Emergency Reports -----
-router.get('/safety-emergency-reports', adminController.getSafetyEmergencyReports);
-router.put('/safety-emergency-reports/:id/status', adminController.updateSafetyEmergencyStatus);
-router.put('/safety-emergency-reports/:id/priority', adminController.updateSafetyEmergencyPriority);
-router.delete('/safety-emergency-reports/:id', adminController.deleteSafetyEmergencyReport);
+router.get('/safety-emergency-reports', requirePermission('driverManagement', 'view'), adminController.getSafetyEmergencyReports);
+router.put('/safety-emergency-reports/:id/status', requirePermission('driverManagement', 'edit'), adminController.updateSafetyEmergencyStatus);
+router.put('/safety-emergency-reports/:id/priority', requirePermission('driverManagement', 'edit'), adminController.updateSafetyEmergencyPriority);
+router.delete('/safety-emergency-reports/:id', requirePermission('driverManagement', 'delete'), adminController.deleteSafetyEmergencyReport);
 
 // ----- Support Tickets (users) -----
-router.get('/support-tickets', adminController.getSupportTicketsController);
-router.patch('/support-tickets/:id', adminController.updateSupportTicketController);
+router.get('/support-tickets', requirePermission('customerManagement', 'view'), adminController.getSupportTicketsController);
+router.patch('/support-tickets/:id', requirePermission('customerManagement', 'edit'), adminController.updateSupportTicketController);
 router.get('/global-search', adminController.globalSearch);
-router.get('/restaurants/complaints', adminController.getRestaurantComplaints);
-router.patch('/restaurants/complaints/:id', adminController.updateRestaurantComplaint);
+router.get('/restaurants/complaints', requirePermission('complaintsRefunds', 'view'), adminController.getRestaurantComplaints);
+router.patch('/restaurants/complaints/:id', requirePermission('complaintsRefunds', 'edit'), adminController.updateRestaurantComplaint);
 
 // ----- Restaurants -----
-router.get('/restaurants', adminController.getRestaurants);
-router.get('/dashboard-stats', adminController.getDashboardStats);
-router.get('/reports/restaurants', adminController.getRestaurantReport);
-router.get('/reports/transactions', adminController.getTransactionReport);
-router.get('/reports/tax', adminController.getTaxReport);
-router.get('/reports/tax/:id', adminController.getTaxReportDetail);
-router.get('/restaurants/pending', adminController.getPendingRestaurants);
-router.get('/restaurants/reviews', adminController.getRestaurantReviews);
-router.get('/restaurants/:id/menu-pdf', adminController.getRestaurantMenuPdfDownloadUrl);
-router.get('/restaurants/:id/download-menu-pdf', adminController.downloadRestaurantMenuPdf);
-router.get('/restaurants/:id', adminController.getRestaurantById);
-router.get('/restaurants/:id/analytics', adminController.getRestaurantAnalytics);
-router.get('/restaurants/:id/menu', adminController.getRestaurantMenuById);
-router.post('/restaurants', adminController.createRestaurant);
-router.patch('/restaurants/:id', adminController.updateRestaurantById);
-router.patch('/restaurants/:id/status', adminController.updateRestaurantStatus);
-router.patch('/restaurants/:id/location', adminController.updateRestaurantLocation);
-router.patch('/restaurants/:id/menu', adminController.updateRestaurantMenuById);
-router.patch('/restaurants/:id/approve', adminController.approveRestaurant);
-router.patch('/restaurants/:id/reject', adminController.rejectRestaurant);
-router.patch('/restaurants/:id/zone-rank', adminController.updateRestaurantZoneRank);
-router.delete('/restaurants/:id', adminController.deleteRestaurant);
+router.get('/restaurants', requirePermission('vendorManagement', 'view'), adminController.getRestaurants);
+router.get('/dashboard-stats', requirePermission('dashboard', 'view'), adminController.getDashboardStats);
+router.get('/reports/restaurants', requirePermission('reports', 'view'), adminController.getRestaurantReport);
+router.get('/reports/transactions', requirePermission('reports', 'view'), adminController.getTransactionReport);
+router.get('/reports/tax', requirePermission('reports', 'view'), adminController.getTaxReport);
+router.get('/reports/tax/:id', requirePermission('reports', 'view'), adminController.getTaxReportDetail);
+router.get('/restaurants/pending', requirePermission('vendorManagement', 'view'), adminController.getPendingRestaurants);
+router.get('/restaurants/reviews', requirePermission('vendorManagement', 'view'), adminController.getRestaurantReviews);
+router.get('/restaurants/:id/menu-pdf', requirePermission('vendorManagement', 'view'), adminController.getRestaurantMenuPdfDownloadUrl);
+router.get('/restaurants/:id/download-menu-pdf', requirePermission('vendorManagement', 'view'), adminController.downloadRestaurantMenuPdf);
+router.get('/restaurants/:id', requirePermission('vendorManagement', 'view'), adminController.getRestaurantById);
+router.get('/restaurants/:id/analytics', requirePermission('vendorManagement', 'view'), adminController.getRestaurantAnalytics);
+router.get('/restaurants/:id/menu', requirePermission('vendorManagement', 'view'), adminController.getRestaurantMenuById);
+router.post('/restaurants', requirePermission('vendorManagement', 'create'), adminController.createRestaurant);
+router.patch('/restaurants/:id', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantById);
+router.patch('/restaurants/:id/status', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantStatus);
+router.patch('/restaurants/:id/location', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantLocation);
+router.patch('/restaurants/:id/menu', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantMenuById);
+router.patch('/restaurants/:id/approve', requirePermission('vendorManagement', 'edit'), adminController.approveRestaurant);
+router.patch('/restaurants/:id/reject', requirePermission('vendorManagement', 'edit'), adminController.rejectRestaurant);
+router.patch('/restaurants/:id/zone-rank', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantZoneRank);
+router.delete('/restaurants/:id', requirePermission('vendorManagement', 'delete'), adminController.deleteRestaurant);
 
 // ----- Restaurant Commission -----
-router.get('/restaurant-commissions/bootstrap', adminController.getRestaurantCommissionBootstrap);
-router.get('/restaurant-commissions', adminController.getRestaurantCommissions);
-router.post('/restaurant-commissions', adminController.createRestaurantCommission);
-router.get('/restaurant-commissions/:id', adminController.getRestaurantCommissionById);
-router.patch('/restaurant-commissions/:id', adminController.updateRestaurantCommission);
-router.delete('/restaurant-commissions/:id', adminController.deleteRestaurantCommission);
-router.patch('/restaurant-commissions/:id/toggle', adminController.toggleRestaurantCommissionStatus);
+router.get('/restaurant-commissions/bootstrap', requirePermission('vendorManagement', 'view'), adminController.getRestaurantCommissionBootstrap);
+router.get('/restaurant-commissions', requirePermission('vendorManagement', 'view'), adminController.getRestaurantCommissions);
+router.post('/restaurant-commissions', requirePermission('vendorManagement', 'create'), adminController.createRestaurantCommission);
+router.get('/restaurant-commissions/:id', requirePermission('vendorManagement', 'view'), adminController.getRestaurantCommissionById);
+router.patch('/restaurant-commissions/:id', requirePermission('vendorManagement', 'edit'), adminController.updateRestaurantCommission);
+router.delete('/restaurant-commissions/:id', requirePermission('vendorManagement', 'delete'), adminController.deleteRestaurantCommission);
+router.patch('/restaurant-commissions/:id/toggle', requirePermission('vendorManagement', 'edit'), adminController.toggleRestaurantCommissionStatus);
 
 // ----- Categories -----
-router.get('/categories', adminController.getCategories);
-router.post('/categories', adminController.createCategory);
-router.patch('/categories/:id', adminController.updateCategory);
-router.delete('/categories/:id', adminController.deleteCategory);
-router.patch('/categories/:id/toggle', adminController.toggleCategoryStatus);
-router.patch('/categories/:id/approve', adminController.approveCategory);
-router.patch('/categories/:id/reject', adminController.rejectCategory);
-router.patch('/categories/:id/make-global', adminController.makeCategoryGlobal);
+router.get('/categories', requirePermission('foodManagement', 'view'), adminController.getCategories);
+router.post('/categories', requirePermission('foodManagement', 'create'), adminController.createCategory);
+router.patch('/categories/:id', requirePermission('foodManagement', 'edit'), adminController.updateCategory);
+router.delete('/categories/:id', requirePermission('foodManagement', 'delete'), adminController.deleteCategory);
+router.patch('/categories/:id/toggle', requirePermission('foodManagement', 'edit'), adminController.toggleCategoryStatus);
+router.patch('/categories/:id/approve', requirePermission('foodManagement', 'edit'), adminController.approveCategory);
+router.patch('/categories/:id/reject', requirePermission('foodManagement', 'edit'), adminController.rejectCategory);
+router.patch('/categories/:id/make-global', requirePermission('foodManagement', 'edit'), adminController.makeCategoryGlobal);
 
 // ----- Restaurant Add-ons Approval -----
-router.get('/addons', addonsApprovalController.getRestaurantAddons);
-router.patch('/addons/:id', addonsApprovalController.updateRestaurantAddon);
-router.patch('/addons/:id/approve', addonsApprovalController.approveRestaurantAddon);
-router.patch('/addons/:id/reject', addonsApprovalController.rejectRestaurantAddon);
+router.get('/addons', requirePermission('foodManagement', 'view'), addonsApprovalController.getRestaurantAddons);
+router.patch('/addons/:id', requirePermission('foodManagement', 'edit'), addonsApprovalController.updateRestaurantAddon);
+router.patch('/addons/:id/approve', requirePermission('foodManagement', 'edit'), addonsApprovalController.approveRestaurantAddon);
+router.patch('/addons/:id/reject', requirePermission('foodManagement', 'edit'), addonsApprovalController.rejectRestaurantAddon);
 
 // ----- Foods -----
 // Food approval queue (pending items created by restaurants)
-router.get('/foods/pending-approvals', foodApprovalController.getPendingFoodApprovals);
-router.patch('/foods/bulk-approve', foodApprovalController.bulkApproveFoodItemsController);
-router.patch('/foods/:id/approve', foodApprovalController.approveFoodItemController);
-router.patch('/foods/:id/reject', foodApprovalController.rejectFoodItemController);
+router.get('/foods/pending-approvals', requirePermission('foodManagement', 'view'), foodApprovalController.getPendingFoodApprovals);
+router.patch('/foods/bulk-approve', requirePermission('foodManagement', 'edit'), foodApprovalController.bulkApproveFoodItemsController);
+router.patch('/foods/:id/approve', requirePermission('foodManagement', 'edit'), foodApprovalController.approveFoodItemController);
+router.patch('/foods/:id/reject', requirePermission('foodManagement', 'edit'), foodApprovalController.rejectFoodItemController);
 
-router.get('/foods', adminController.getFoods);
-router.post('/foods', adminController.createFood);
-router.patch('/foods/:id', adminController.updateFood);
-router.delete('/foods/:id', adminController.deleteFood);
+router.get('/foods', requirePermission('foodManagement', 'view'), adminController.getFoods);
+router.post('/foods', requirePermission('foodManagement', 'create'), adminController.createFood);
+router.patch('/foods/:id', requirePermission('foodManagement', 'edit'), adminController.updateFood);
+router.delete('/foods/:id', requirePermission('foodManagement', 'delete'), adminController.deleteFood);
 
 // ----- Offers & Coupons -----
-router.get('/offers', adminController.getAllOffers);
-router.post('/offers', adminController.createAdminOffer);
-router.patch('/offers/:id/cart-visibility', adminController.updateAdminOfferCartVisibility);
-router.delete('/offers/:id', adminController.deleteAdminOffer);
+router.get('/offers', requirePermission('promotionsManagement', 'view'), adminController.getAllOffers);
+router.post('/offers', requirePermission('promotionsManagement', 'create'), adminController.createAdminOffer);
+router.patch('/offers/:id/cart-visibility', requirePermission('promotionsManagement', 'edit'), adminController.updateAdminOfferCartVisibility);
+router.delete('/offers/:id', requirePermission('promotionsManagement', 'delete'), adminController.deleteAdminOffer);
 
 // ----- Feedback Experience (Admin) -----
-router.get('/feedback-experiences', feedbackExperienceController.getFeedbackExperiences);
-router.delete('/feedback-experiences/:id', feedbackExperienceController.deleteFeedbackExperience);
+router.get('/feedback-experiences', requirePermission('customerManagement', 'view'), feedbackExperienceController.getFeedbackExperiences);
+router.delete('/feedback-experiences/:id', requirePermission('customerManagement', 'delete'), feedbackExperienceController.deleteFeedbackExperience);
 
 // ----- Fee Settings -----
-router.get('/fee-settings', adminController.getFeeSettings);
-router.put('/fee-settings', adminController.createOrUpdateFeeSettings);
+router.get('/fee-settings', requirePermission('financialManagement', 'view'), adminController.getFeeSettings);
+router.put('/fee-settings', requirePermission('financialManagement', 'edit'), adminController.createOrUpdateFeeSettings);
 
 // ----- Referral Settings -----
-router.get('/referral-settings', adminController.getReferralSettings);
-router.put('/referral-settings', adminController.createOrUpdateReferralSettings);
+router.get('/referral-settings', requirePermission('promotionsManagement', 'view'), adminController.getReferralSettings);
+router.put('/referral-settings', requirePermission('promotionsManagement', 'edit'), adminController.createOrUpdateReferralSettings);
 
 // ----- Business Settings -----
-router.get('/business-settings', businessSettingsController.getBusinessSettings);
-router.patch('/business-settings', upload.fields([
+router.get('/business-settings', requirePermission('systemSettings', 'view'), businessSettingsController.getBusinessSettings);
+router.patch('/business-settings', requirePermission('systemSettings', 'edit'), upload.fields([
     { name: 'logo', maxCount: 1 },
     { name: 'favicon', maxCount: 1 },
     { name: 'termsAndConditionsPdf', maxCount: 1 }
 ]), businessSettingsController.updateBusinessSettings);
 
 // ----- Delivery Cash Limit -----
-router.get('/delivery-cash-limit', adminController.getDeliveryCashLimit);
-router.patch('/delivery-cash-limit', adminController.updateDeliveryCashLimit);
+router.get('/delivery-cash-limit', requirePermission('driverManagement', 'view'), adminController.getDeliveryCashLimit);
+router.patch('/delivery-cash-limit', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryCashLimit);
 
 // ----- Delivery Emergency Help -----
-router.get('/delivery-emergency-help', adminController.getEmergencyHelp);
-router.put('/delivery-emergency-help', adminController.createOrUpdateEmergencyHelp);
+router.get('/delivery-emergency-help', requirePermission('driverManagement', 'view'), adminController.getEmergencyHelp);
+router.put('/delivery-emergency-help', requirePermission('driverManagement', 'edit'), adminController.createOrUpdateEmergencyHelp);
 
 // ----- Withdrawals (admin) -----
-router.get('/withdrawals', adminController.getWithdrawals);
-router.patch('/withdrawals/:id', adminController.updateWithdrawalStatus);
-router.get('/delivery/withdrawals', adminController.getDeliveryWithdrawals);
-router.patch('/delivery/withdrawals/:id', adminController.updateDeliveryWithdrawalStatus);
-router.get('/delivery/cash-limit-settlements', adminController.getCashLimitSettlements);
+router.get('/withdrawals', requirePermission('financialManagement', 'view'), adminController.getWithdrawals);
+router.patch('/withdrawals/:id', requirePermission('financialManagement', 'edit'), adminController.updateWithdrawalStatus);
+router.get('/delivery/withdrawals', requirePermission('financialManagement', 'view'), adminController.getDeliveryWithdrawals);
+router.patch('/delivery/withdrawals/:id', requirePermission('financialManagement', 'edit'), adminController.updateDeliveryWithdrawalStatus);
+router.get('/delivery/cash-limit-settlements', requirePermission('driverManagement', 'view'), adminController.getCashLimitSettlements);
 
 // ----- Delivery partners & general -----
-router.get('/delivery/order-fee-settings', adminController.getDeliveryOrderFeeSettings);
-router.post('/delivery/order-fee-settings', adminController.updateDeliveryOrderFeeSettings);
-router.get('/delivery/commission-audit', adminController.getDeliveryCommissionAudit);
-router.get('/delivery/join-requests', adminController.getDeliveryJoinRequests);
-router.get('/delivery/available-partners', adminController.getAvailableDeliveryPartners);
-router.get('/delivery/wallets', adminController.getDeliveryWallets);
-router.get('/delivery/bonus-transactions', adminController.getDeliveryPartnerBonusTransactions);
-router.get('/delivery/earnings', adminController.getDeliveryEarnings);
-router.get('/delivery/earning-transactions', adminController.getDeliveryEarningTransactions);
-router.post('/delivery/bonus', adminController.addDeliveryPartnerBonus);
-router.get('/delivery/commission-rules', adminController.getDeliveryCommissionRules);
-router.post('/delivery/commission-rules', adminController.createDeliveryCommissionRule);
-router.patch('/delivery/commission-rules/:id', adminController.updateDeliveryCommissionRule);
-router.delete('/delivery/commission-rules/:id', adminController.deleteDeliveryCommissionRule);
-router.patch('/delivery/commission-rules/:id/status', adminController.toggleDeliveryCommissionRuleStatus);
-router.get('/delivery/reviews', adminController.getDeliverymanReviews);
-router.get('/contact-messages', adminController.getContactMessages);
-router.get('/delivery/earning-addons', adminController.getEarningAddons);
-router.post('/delivery/earning-addons', adminController.createEarningAddon);
-router.patch('/delivery/earning-addons/:id', adminController.updateEarningAddon);
-router.delete('/delivery/earning-addons/:id', adminController.deleteEarningAddon);
-router.patch('/delivery/earning-addons/:id/status', adminController.toggleEarningAddonStatus);
-router.get('/delivery/earning-addon-history', adminController.getEarningAddonHistory);
-router.post('/delivery/earning-addon-history/:id/credit', adminController.creditEarningToWallet);
-router.post('/delivery/earning-addon-history/:id/cancel', adminController.cancelEarningAddonHistory);
-router.post('/delivery/earning-addon-completions/check', adminController.checkEarningAddonCompletions);
-router.get('/delivery/support-tickets/stats', adminController.getSupportTicketStats);
-router.get('/delivery/support-tickets', adminController.getSupportTickets);
-router.patch('/delivery/support-tickets/:id', adminController.updateSupportTicket);
-router.get('/delivery/partners', adminController.getDeliveryPartners);
-router.get('/delivery/:id', adminController.getDeliveryPartnerById);
-router.patch('/delivery/:id/approve', adminController.approveDeliveryPartner);
-router.patch('/delivery/:id/reject', adminController.rejectDeliveryPartner);
-router.patch('/delivery/:id/availability', adminController.updateDeliveryPartnerAvailabilityAdmin);
-router.delete('/delivery/:id', adminController.deleteDeliveryPartner);
-router.get('/delivery/:id/eligible-vendors', adminController.getEligibleVendorsForDeliveryPartnerController);
-router.patch('/delivery/:id/assignment', adminController.updateDeliveryPartnerAssignmentController);
+router.get('/delivery/order-fee-settings', requirePermission('driverManagement', 'view'), adminController.getDeliveryOrderFeeSettings);
+router.post('/delivery/order-fee-settings', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryOrderFeeSettings);
+router.get('/delivery/commission-audit', requirePermission('driverManagement', 'view'), adminController.getDeliveryCommissionAudit);
+router.get('/delivery/join-requests', requirePermission('driverManagement', 'view'), adminController.getDeliveryJoinRequests);
+router.get('/delivery/available-partners', requirePermission('driverManagement', 'view'), adminController.getAvailableDeliveryPartners);
+router.get('/delivery/wallets', requirePermission('financialManagement', 'view'), adminController.getDeliveryWallets);
+router.get('/delivery/bonus-transactions', requirePermission('driverManagement', 'view'), adminController.getDeliveryPartnerBonusTransactions);
+router.get('/delivery/earnings', requirePermission('driverManagement', 'view'), adminController.getDeliveryEarnings);
+router.get('/delivery/earning-transactions', requirePermission('driverManagement', 'view'), adminController.getDeliveryEarningTransactions);
+router.post('/delivery/bonus', requirePermission('driverManagement', 'create'), adminController.addDeliveryPartnerBonus);
+router.get('/delivery/commission-rules', requirePermission('driverManagement', 'view'), adminController.getDeliveryCommissionRules);
+router.post('/delivery/commission-rules', requirePermission('driverManagement', 'create'), adminController.createDeliveryCommissionRule);
+router.patch('/delivery/commission-rules/:id', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryCommissionRule);
+router.delete('/delivery/commission-rules/:id', requirePermission('driverManagement', 'delete'), adminController.deleteDeliveryCommissionRule);
+router.patch('/delivery/commission-rules/:id/status', requirePermission('driverManagement', 'edit'), adminController.toggleDeliveryCommissionRuleStatus);
+router.get('/delivery/reviews', requirePermission('driverManagement', 'view'), adminController.getDeliverymanReviews);
+router.get('/contact-messages', requirePermission('customerManagement', 'view'), adminController.getContactMessages);
+router.get('/delivery/earning-addons', requirePermission('driverManagement', 'view'), adminController.getEarningAddons);
+router.post('/delivery/earning-addons', requirePermission('driverManagement', 'create'), adminController.createEarningAddon);
+router.patch('/delivery/earning-addons/:id', requirePermission('driverManagement', 'edit'), adminController.updateEarningAddon);
+router.delete('/delivery/earning-addons/:id', requirePermission('driverManagement', 'delete'), adminController.deleteEarningAddon);
+router.patch('/delivery/earning-addons/:id/status', requirePermission('driverManagement', 'edit'), adminController.toggleEarningAddonStatus);
+router.get('/delivery/earning-addon-history', requirePermission('driverManagement', 'view'), adminController.getEarningAddonHistory);
+router.post('/delivery/earning-addon-history/:id/credit', requirePermission('driverManagement', 'edit'), adminController.creditEarningToWallet);
+router.post('/delivery/earning-addon-history/:id/cancel', requirePermission('driverManagement', 'edit'), adminController.cancelEarningAddonHistory);
+router.post('/delivery/earning-addon-completions/check', requirePermission('driverManagement', 'view'), adminController.checkEarningAddonCompletions);
+router.get('/delivery/support-tickets/stats', requirePermission('driverManagement', 'view'), adminController.getSupportTicketStats);
+router.get('/delivery/support-tickets', requirePermission('driverManagement', 'view'), adminController.getSupportTickets);
+router.patch('/delivery/support-tickets/:id', requirePermission('driverManagement', 'edit'), adminController.updateSupportTicket);
+router.get('/delivery/partners', requirePermission('driverManagement', 'view'), adminController.getDeliveryPartners);
+router.get('/delivery/:id', requirePermission('driverManagement', 'view'), adminController.getDeliveryPartnerById);
+router.patch('/delivery/:id/approve', requirePermission('driverManagement', 'edit'), adminController.approveDeliveryPartner);
+router.patch('/delivery/:id/reject', requirePermission('driverManagement', 'edit'), adminController.rejectDeliveryPartner);
+router.patch('/delivery/:id/availability', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryPartnerAvailabilityAdmin);
+router.delete('/delivery/:id', requirePermission('driverManagement', 'delete'), adminController.deleteDeliveryPartner);
+router.get('/delivery/:id/eligible-vendors', requirePermission('driverManagement', 'view'), adminController.getEligibleVendorsForDeliveryPartnerController);
+router.patch('/delivery/:id/assignment', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryPartnerAssignmentController);
 // ----- Zones -----
-router.get('/zones', adminController.getZones);
-router.get('/zones/:id', adminController.getZoneById);
-router.post('/zones', adminController.createZone);
-router.patch('/zones/:id', adminController.updateZone);
-router.delete('/zones/:id', adminController.deleteZone);
+router.get('/zones', requirePermission('zoneCityManagement', 'view'), adminController.getZones);
+router.get('/zones/:id', requirePermission('zoneCityManagement', 'view'), adminController.getZoneById);
+router.post('/zones', requirePermission('zoneCityManagement', 'create'), adminController.createZone);
+router.patch('/zones/:id', requirePermission('zoneCityManagement', 'edit'), adminController.updateZone);
+router.delete('/zones/:id', requirePermission('zoneCityManagement', 'delete'), adminController.deleteZone);
 
 // Dining routes removed — not part of DailyMealBox PRD
 
 // ----- Orders -----
-router.post('/orders/manual', prdAdminController.createManualOrder);
-router.get('/orders', orderController.listOrdersAdminController);
-router.get('/orders/:orderId', orderController.getOrderByIdAdminController);
-router.delete('/orders/:orderId', orderController.deleteOrderAdminController);
-router.post('/orders/:orderId/assign-delivery', orderController.assignDeliveryPartnerController);
+router.post('/orders/manual', requirePermission('orderManagement', 'create'), prdAdminController.createManualOrder);
+router.get('/orders', requirePermission('orderManagement', 'view'), orderController.listOrdersAdminController);
+router.get('/orders/:orderId', requirePermission('orderManagement', 'view'), orderController.getOrderByIdAdminController);
+router.delete('/orders/:orderId', requirePermission('orderManagement', 'delete'), orderController.deleteOrderAdminController);
+router.post('/orders/:orderId/assign-delivery', requirePermission('orderManagement', 'edit'), orderController.assignDeliveryPartnerController);
 
 // ----- CMS Pages (About + legal) -----
-router.get('/pages-social-media/:key', getAdminPageController);
-router.put('/pages-social-media/:key', upsertAdminPageController);
+router.get('/pages-social-media/:key', requirePermission('otaContent', 'view'), getAdminPageController);
+router.put('/pages-social-media/:key', requirePermission('otaContent', 'edit'), upsertAdminPageController);
 
 router.get('/sidebar-badges', adminController.getSidebarBadges);
-router.get('/notifications/fssai-expired', adminController.getExpiredFssaiNotifications);
+router.get('/notifications/fssai-expired', requirePermission('vendorManagement', 'view'), adminController.getExpiredFssaiNotifications);
 
 // ----- Live Monitor -----
-router.get('/live-monitor/status', liveMonitorController.getLiveMonitorStatus);
+router.get('/live-monitor/status', requirePermission('dashboard', 'view'), liveMonitorController.getLiveMonitorStatus);
 
 // ----- App Intro & Ads -----
-router.get('/app-intro-ads', appIntroAdController.getAppIntroAds);
-router.post('/app-intro-ads', upload.fields([{ name: 'media', maxCount: 1 }]), appIntroAdController.createAppIntroAd);
-router.patch('/app-intro-ads/order', appIntroAdController.updateAppIntroAdsOrder);
-router.patch('/app-intro-ads/:id', upload.fields([{ name: 'media', maxCount: 1 }]), appIntroAdController.updateAppIntroAd);
-router.patch('/app-intro-ads/:id/toggle', appIntroAdController.toggleAppIntroAdStatus);
-router.delete('/app-intro-ads/:id', appIntroAdController.deleteAppIntroAd);
+router.get('/app-intro-ads', requirePermission('promotionsManagement', 'view'), appIntroAdController.getAppIntroAds);
+router.post('/app-intro-ads', requirePermission('promotionsManagement', 'create'), upload.fields([{ name: 'media', maxCount: 1 }]), appIntroAdController.createAppIntroAd);
+router.patch('/app-intro-ads/order', requirePermission('promotionsManagement', 'edit'), appIntroAdController.updateAppIntroAdsOrder);
+router.patch('/app-intro-ads/:id', requirePermission('promotionsManagement', 'edit'), upload.fields([{ name: 'media', maxCount: 1 }]), appIntroAdController.updateAppIntroAd);
+router.patch('/app-intro-ads/:id/toggle', requirePermission('promotionsManagement', 'edit'), appIntroAdController.toggleAppIntroAdStatus);
+router.delete('/app-intro-ads/:id', requirePermission('promotionsManagement', 'delete'), appIntroAdController.deleteAppIntroAd);
 
 // ----- Vendor Subscription Plans -----
-router.get('/vendor-subscription-plans', adminController.getVendorSubscriptionPlans);
-router.post('/vendor-subscription-plans', adminController.createVendorSubscriptionPlan);
-router.put('/vendor-subscription-plans/:id', adminController.updateVendorSubscriptionPlan);
-router.delete('/vendor-subscription-plans/:id', adminController.deleteVendorSubscriptionPlan);
+router.get('/vendor-subscription-plans', requirePermission('vendorManagement', 'view'), adminController.getVendorSubscriptionPlans);
+router.post('/vendor-subscription-plans', requirePermission('vendorManagement', 'create'), adminController.createVendorSubscriptionPlan);
+router.put('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'edit'), adminController.updateVendorSubscriptionPlan);
+router.delete('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'delete'), adminController.deleteVendorSubscriptionPlan);
 
 // ----- Vendor Timing Settings -----
-router.get('/vendor-timing-settings', adminController.getVendorTimingSettingsController);
-router.put('/vendor-timing-settings', adminController.updateVendorTimingSettingsController);
+router.get('/vendor-timing-settings', requirePermission('vendorManagement', 'view'), adminController.getVendorTimingSettingsController);
+router.put('/vendor-timing-settings', requirePermission('vendorManagement', 'edit'), adminController.updateVendorTimingSettingsController);
 
 // ----- Vendor Subscribers -----
-router.get('/subscribers', adminController.getAllSubscribersController);
-router.get('/subscribers/summary', adminController.getAllSubscribersSummaryController);
+router.get('/subscribers', requirePermission('vendorManagement', 'view'), adminController.getAllSubscribersController);
+router.get('/subscribers/summary', requirePermission('vendorManagement', 'view'), adminController.getAllSubscribersSummaryController);
 
-router.get('/vendors/:id/subscribers', adminController.getVendorSubscribersController);
-router.get('/vendors/:id/subscribers/summary', adminController.getVendorSubscribersSummaryController);
-router.get('/vendors/:id/subscribers/:subId', adminController.getVendorSubscriberDetailsController);
+router.get('/vendors/:id/subscribers', requirePermission('vendorManagement', 'view'), adminController.getVendorSubscribersController);
+router.get('/vendors/:id/subscribers/summary', requirePermission('vendorManagement', 'view'), adminController.getVendorSubscribersSummaryController);
+router.get('/vendors/:id/subscribers/:subId', requirePermission('vendorManagement', 'view'), adminController.getVendorSubscriberDetailsController);
 
 // ----- Kitchen Partners -----
 router.use('/kitchen-partners', kitchenPartnerRoutes);

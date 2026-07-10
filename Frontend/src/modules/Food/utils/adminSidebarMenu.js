@@ -144,8 +144,8 @@ export const adminSidebarMenu = [
     label: "ROLES & EMPLOYEES",
     roles: ["SUPER_ADMIN"],
     items: [
-      { type: "link", label: "Roles & Permissions", path: "/admin/food/employee-role", icon: "Lock" },
-      { type: "link", label: "Employees", path: "/admin/food/employees", icon: "UserCog" },
+      { type: "link", label: "Roles & Permissions", path: "/admin/food/roles-permissions", icon: "Shield" },
+      { type: "link", label: "Employees", path: "/admin/food/employee-role", icon: "Users" },
     ],
   },
 

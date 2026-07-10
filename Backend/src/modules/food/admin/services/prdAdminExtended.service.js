@@ -529,7 +529,8 @@ export async function createAdminEmployee(body = {}, req) {
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '').trim();
     const name = String(body.name || '').trim();
-    const adminRole = String(body.adminRole || 'CUSTOMER_SERVICE').trim().toUpperCase();
+    const adminRole = body.adminRole ? String(body.adminRole).trim().toUpperCase() : 'CUSTOMER_SERVICE';
+    const roleId = body.roleId ? objectIdOrNull(body.roleId) : undefined;
     if (!email || !password || !name) throw new ValidationError('email, password, and name are required');
     if (password.length < 8) throw new ValidationError('Password must be at least 8 characters');
     const existing = await FoodAdmin.findOne({ email });
@@ -540,6 +541,7 @@ export async function createAdminEmployee(body = {}, req) {
         name,
         phone: body.phone || '',
         adminRole,
+        roleId,
         assignedCityIds: Array.isArray(body.assignedCityIds)
             ? body.assignedCityIds.filter(id => mongoose.Types.ObjectId.isValid(id))
             : [],
@@ -564,6 +566,9 @@ export async function updateAdminEmployee(id, body = {}, req) {
         const { ADMIN_PRD_ROLES } = await import('../constants/adminPrd.js');
         if (!ADMIN_PRD_ROLES.includes(role)) throw new ValidationError('Invalid admin role');
         admin.adminRole = role;
+    }
+    if (body.roleId !== undefined) {
+        admin.roleId = body.roleId ? objectIdOrNull(body.roleId) : undefined;
     }
     if (body.assignedCityIds !== undefined) {
         admin.assignedCityIds = Array.isArray(body.assignedCityIds)

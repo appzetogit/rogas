@@ -34,8 +34,12 @@ const adminSchema = new mongoose.Schema(
         adminRole: {
             type: String,
             enum: ADMIN_PRD_ROLES,
-            default: 'SUPER_ADMIN',
+            default: 'CUSTOMER_SERVICE',
             index: true
+        },
+        roleId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'AdminRole'
         },
         assignedCityIds: [{
             type: mongoose.Schema.Types.ObjectId,

@@ -402,7 +402,9 @@ export const adminLogin = async (email, password) => {
     throw new ValidationError("Email and password are required");
   }
 
-  const admin = await FoodAdmin.findOne({ email });
+  // Import AdminRole to ensure it's registered before populating
+  await import('../../modules/food/admin/models/role.model.js');
+  const admin = await FoodAdmin.findOne({ email }).populate('roleId');
   if (!admin) {
     throw new AuthError("Invalid credentials");
   }
@@ -678,7 +680,7 @@ export const getProfile = async (userId, role) => {
       profile = await FoodUser.findById(id).lean();
       break;
     case ROLES.ADMIN:
-      profile = await FoodAdmin.findById(id).select("-password").lean();
+      profile = await FoodAdmin.findById(id).populate('roleId').select("-password").lean();
       break;
     case ROLES.RESTAURANT:
       profile = await getCurrentRestaurantProfile(id);
