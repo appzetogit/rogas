@@ -24,8 +24,8 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
           </button>
           <h1 className="text-[18px] font-extrabold text-primary">Invoice Settings</h1>
         </div>
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-[#bec9c3]/50">
-          <img alt="Business executive profile warm smirk" className="w-full h-full object-cover" src={IMAGES.profileManExecutiveInvoice}/>
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[13px]">
+          U
         </div>
       </header>
 

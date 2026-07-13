@@ -7,7 +7,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
   const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
 
   const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || "Jan W.";
-  const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto || IMAGES.driverMaleApproachable;
+  const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto;
   const driverVehicle = trackedOrder?.dispatch?.deliveryPartner?.vehicleType || "E-bike";
   const driverPhone = trackedOrder?.dispatch?.deliveryPartner?.phone || "";
 
@@ -93,8 +93,12 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
           <div className="flex-1 px-4">
             <div className="bg-white rounded-2xl p-3 flex items-center justify-between shadow-lg border border-[#bec9c3]/20">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#e4e2e1]">
-                  <img alt={`Driver ${driverName} portrait`} className="w-full h-full object-cover" src={driverPhoto} />
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#e4e2e1] flex items-center justify-center font-bold text-gray-500">
+                  {driverPhoto ? (
+                    <img alt={`Driver ${driverName} portrait`} className="w-full h-full object-cover" src={driverPhoto} />
+                  ) : (
+                    driverName ? driverName.charAt(0).toUpperCase() : "D"
+                  )}
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-on-surface leading-tight">{driverName} · {driverVehicle}</span>

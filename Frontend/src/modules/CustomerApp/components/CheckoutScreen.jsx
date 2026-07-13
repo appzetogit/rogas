@@ -134,8 +134,8 @@ export function CheckoutScreen({
           <span className="material-symbols-outlined text-[24px]">arrow_back</span>
         </button>
         <h1 className="text-[17px] font-extrabold text-[#1b1c1c]">Checkout</h1>
-        <div className="w-9 h-9 rounded-full overflow-hidden border border-[#bec9c3]/50">
-          <img alt="Profile" className="w-full h-full object-cover" src={IMAGES.profileWomanRoundAvatarCheckout} />
+        <div className="w-9 h-9 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[14px]">
+          U
         </div>
       </header>
 

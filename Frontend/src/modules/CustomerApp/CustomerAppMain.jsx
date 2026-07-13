@@ -10,6 +10,7 @@ import { PlansScreen } from "./components/PlansScreen";
 import { CalendarScreen } from "./components/CalendarScreen";
 import { OrdersScreen, clearOrdersCache } from "./components/OrdersScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { WalletScreen } from "./components/WalletScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
 import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
@@ -463,6 +464,7 @@ export default function CustomerAppMain() {
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
               onGoToCheckout={() => navigate("/user/checkout")}
               onGoToSubscription={() => navigate("/user/subscription")}
+              onGoToWallet={() => navigate("/user/wallet")}
               onGoToSupport={() => navigate("/user/support")}
               onShowNotificationToast={showToast}
               dietaryPrefs={dietaryPrefs}
@@ -472,6 +474,13 @@ export default function CustomerAppMain() {
               onLogout={handleLogout}
               onUpdateProfile={handleUpdateProfile}
               onUpdateProfileState={handleUpdateProfileState}
+            />
+          } />
+
+          <Route path="wallet" element={
+            <WalletScreen
+              onBack={() => navigate("/user/profile")}
+              currentUser={currentUser}
             />
           } />
 

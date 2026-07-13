@@ -27,8 +27,8 @@ export function WelcomeScreen({ onSignup, onLogin }) {
 
         {/* Illustration Area */}
         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[280px] h-[220px] z-10">
-          <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden p-3 rotate-[-2deg] transition-all hover:rotate-0 duration-300">
-            <img alt="Fresh meal box" className="w-full h-full object-cover rounded-[24px]" src={IMAGES.foodBoxTomatoesBread} />
+          <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden p-3 rotate-[-2deg] transition-all hover:rotate-0 duration-300 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+            <span className="material-symbols-outlined text-[80px] text-primary/50">takeout_dining</span>
           </div>
         </div>
       </section>
@@ -137,8 +137,10 @@ export function GoalsScreen({ onBack, onNext }) {
       </div>
 
       {/* Cinematic Imagery */}
-      <div className="mt-8 rounded-2xl overflow-hidden h-32 relative shadow-sm">
-        <img className="w-full h-full object-cover" src={IMAGES.earthyGrainsDiningIngredientsBanner} alt="Organic ingredients" />
+      <div className="mt-8 rounded-2xl overflow-hidden h-32 relative shadow-sm bg-gradient-to-tr from-primary/30 to-primary/10">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="material-symbols-outlined text-[64px] text-primary/30">eco</span>
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         <div className="absolute bottom-3 left-4 text-white">
           <p className="text-[11px] font-bold tracking-wider uppercase opacity-85">Pro Tip</p>
@@ -249,8 +251,10 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
       </section>
 
       {/* visual context display card */}
-      <section className="mt-8 relative rounded-2xl overflow-hidden aspect-[16/9] shadow-sm">
-        <img alt="Organic meal prep counter" className="w-full h-full object-cover" src={IMAGES.cinematicOverheadIngredientsCounter} />
+      <section className="mt-8 relative rounded-2xl overflow-hidden aspect-[16/9] shadow-sm bg-gradient-to-tr from-primary/30 to-primary/10">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="material-symbols-outlined text-[80px] text-primary/30">restaurant_menu</span>
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-5">
           <p className="text-white font-bold text-base">Personalized Nutrition</p>
           <p className="text-white/80 text-[12px] font-medium font-sans">We exclude ingredients you don't like.</p>

@@ -15,10 +15,10 @@ const STATUS_COLORS = {
 
 const STATUS_LABELS = {
   scheduled: "Scheduled",
-  preparing: "In Preparation 🔥",
+  preparing: "In Preparation ",
   ready: "Ready for Pickup ✓",
-  out_for_delivery: "On the Way 🛵",
-  delivered: "Delivered ✅",
+  out_for_delivery: "On the Way ",
+  delivered: "Delivered ",
   skipped: "Skipped",
 };
 
@@ -408,14 +408,18 @@ export function HomeScreen({
           </div>
           <button
             onClick={onGoToProfile}
-            className="w-12 h-12 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow"
+            className="relative w-12 h-12 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow flex items-center justify-center bg-white/20 text-white font-bold text-[18px]"
           >
-            <img
-              alt="User profile"
-              className="w-full h-full object-cover"
-              src={currentUser?.profileImage || IMAGES.profileAnnaMain}
-              loading="eager"
-            />
+            <span className="z-0">{userName ? userName.charAt(0).toUpperCase() : "U"}</span>
+            {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
+              <img
+                alt="User profile"
+                className="absolute inset-0 w-full h-full object-cover z-10"
+                src={currentUser.profileImage}
+                loading="eager"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            )}
           </button>
         </div>
       </header>

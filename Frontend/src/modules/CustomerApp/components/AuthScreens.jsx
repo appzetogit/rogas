@@ -35,11 +35,9 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
 
       <main className="px-5 flex-1 flex flex-col pb-6">
         <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
-          <img 
-            src={IMAGES.foodBoxTomatoesBread} 
-            alt="Food Banner" 
-            className="w-full h-full object-cover" 
-          />
+          <div className="w-full h-full bg-gradient-to-tr from-primary/30 to-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[64px] text-primary/40">restaurant</span>
+          </div>
         </div>
 
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight">
@@ -267,11 +265,9 @@ export function UserDetailsScreen({ onContinue, onBack }) {
         </p>
 
         <div className="w-full h-32 rounded-2xl overflow-hidden mb-6 shadow-sm relative">
-          <img 
-            src={IMAGES.earthyGrainsDiningIngredientsBanner} 
-            alt="Healthy ingredients" 
-            className="w-full h-full object-cover" 
-          />
+          <div className="w-full h-full bg-gradient-to-tr from-primary/30 to-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[48px] text-primary/40">eco</span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">

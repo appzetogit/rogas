@@ -120,6 +120,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/contact-messages",
         icon: "Mail",
       },
+      {
+        type: "link",
+        label: "Customer Wallets",
+        path: "/admin/food/customers/wallets",
+        icon: "Wallet",
+      },
     ],
   },
 
@@ -241,16 +247,16 @@ export const adminSidebarMenu = [
 
 
   // ─── FLEET MANAGEMENT (AP-06 FM) ─────────────────────────────────────────
-  {
-    type: "section",
-    label: "FLEET MANAGEMENT",
-    roles: ["SUPER_ADMIN", "FLEET_MANAGER", "ACCOUNTANT"],
-    items: [
-      { type: "link", label: "Fleet Dashboard", path: "/admin/food/fleet/dashboard", icon: "Truck" },
-      { type: "link", label: "Fleet Partners", path: "/admin/food/fleet/partners", icon: "Building2" },
-      { type: "link", label: "Fleet Invoices", path: "/admin/food/fleet/invoices", icon: "Receipt" },
-    ],
-  },
+  // {
+  //   type: "section",
+  //   label: "FLEET MANAGEMENT",
+  //   roles: ["SUPER_ADMIN", "FLEET_MANAGER", "ACCOUNTANT"],
+  //   items: [
+  //     { type: "link", label: "Fleet Dashboard", path: "/admin/food/fleet/dashboard", icon: "Truck" },
+  //     { type: "link", label: "Fleet Partners", path: "/admin/food/fleet/partners", icon: "Building2" },
+  //     { type: "link", label: "Fleet Invoices", path: "/admin/food/fleet/invoices", icon: "Receipt" },
+  //   ],
+  // },
 
   // ─── ZONE & CITY MANAGEMENT (AP-08) ──────────────────────────────────────
   {
@@ -286,7 +292,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Restaurant Withdrawals", path: "/admin/food/restaurant-withdraws", icon: "CreditCard" },
       { type: "link", label: "Delivery Withdrawals", path: "/admin/food/delivery-withdrawal", icon: "Wallet" },
       { type: "link", label: "Delivery Boy Wallet", path: "/admin/food/delivery-boy-wallet", icon: "PiggyBank" },
-      { type: "link", label: "Fee Settings", path: "/admin/food/fee-settings", icon: "DollarSign" },
+      // { type: "link", label: "Fee Settings", path: "/admin/food/fee-settings", icon: "DollarSign" },
     ],
   },
 
@@ -306,14 +312,14 @@ export const adminSidebarMenu = [
   },
 
   // ─── FEATURE TOGGLES (AP-03) ─────────────────────────────────────────────
-  {
-    type: "section",
-    label: "FEATURE FLAGS",
-    roles: ["SUPER_ADMIN", "CITY_MANAGER"],
-    items: [
-      { type: "link", label: "Feature Toggles", path: "/admin/food/feature-toggles", icon: "Zap" },
-    ],
-  },
+  // {
+  //   type: "section",
+  //   label: "FEATURE FLAGS",
+  //   roles: ["SUPER_ADMIN", "CITY_MANAGER"],
+  //   items: [
+  //     { type: "link", label: "Feature Toggles", path: "/admin/food/feature-toggles", icon: "Zap" },
+  //   ],
+  // },
 
   // // ─── INTEGRATION & ENVIRONMENT (AP-09 / AP-12) ───────────────────────────
   // {

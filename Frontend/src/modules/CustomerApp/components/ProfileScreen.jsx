@@ -10,6 +10,7 @@ export function ProfileScreen({
   onGoToCheckout,
   onGoToSubscription,
   onGoToSupport,
+  onGoToWallet,
   onShowNotificationToast,
   dietaryPrefs,
   invoicePrefs,
@@ -145,17 +146,23 @@ export function ProfileScreen({
             {/* Profile Picture Upload Section */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#bec9c3]/20 flex flex-col items-center gap-4">
               <div className="relative">
-                <img
-                  className={`w-24 h-24 rounded-full border-2 border-primary/20 object-cover shadow-sm bg-primary/10 transition-opacity ${imageUploading ? "opacity-45" : ""}`}
-                  src={formData.profileImage || IMAGES.profileWomanCinematicGreen}
-                  alt="Avatar preview"
-                />
+                <div className={`relative w-24 h-24 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm bg-primary/10 flex items-center justify-center transition-opacity ${imageUploading ? "opacity-45" : ""} text-primary font-bold text-[36px]`}>
+                  <span className="z-0">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
+                  {formData.profileImage && formData.profileImage.trim() !== "" && (
+                    <img
+                      alt="Avatar preview"
+                      className="absolute inset-0 w-full h-full object-cover z-10"
+                      src={formData.profileImage}
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  )}
+                </div>
                 {imageUploading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full">
                     <span className="material-symbols-outlined text-white text-[24px] animate-spin">progress_activity</span>
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 bg-primary text-white w-8 h-8 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors">
+                <label className="absolute bottom-0 right-0 bg-primary text-white w-8 h-8 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors z-20 shadow-sm">
                   <span className="material-symbols-outlined text-[18px]">photo_camera</span>
                   <input
                     type="file"
@@ -291,7 +298,17 @@ export function ProfileScreen({
 
           <div className="relative z-10 flex items-center gap-4">
             <div className="relative flex-shrink-0">
-              <img className="w-16 h-16 rounded-full border-2 border-white/40 object-cover shadow-sm bg-primary/20" src={currentUser?.profileImage || IMAGES.profileWomanCinematicGreen} alt="Anna headshot smile" />
+              <div className="relative w-16 h-16 rounded-full border-2 border-white/40 overflow-hidden shadow-sm bg-white/20 flex items-center justify-center font-bold text-white text-[24px]">
+                <span className="z-0">{currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "U"}</span>
+                {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
+                  <img
+                    alt="Profile"
+                    className="absolute inset-0 w-full h-full object-cover z-10"
+                    src={currentUser.profileImage}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col">
@@ -437,9 +454,9 @@ export function ProfileScreen({
           </div>
 
           {/* Wallet credit list */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+          <div onClick={onGoToWallet} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer group">
             <div className="flex items-center gap-3">
-              <div className="bg-amber-100/35 p-2 rounded-xl text-brand-amber flex items-center justify-center">
+              <div className="bg-amber-100/35 p-2 rounded-xl text-brand-amber flex items-center justify-center group-active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[22px]">account_balance_wallet</span>
               </div>
               <div>
@@ -447,9 +464,9 @@ export function ProfileScreen({
                 <p className="text-xs text-on-surface-variant font-medium">PLN {walletCredits.toFixed(2)} active credits</p>
               </div>
             </div>
-            <button onClick={() => onShowNotificationToast(`Current subscription credit balance: PLN ${walletCredits.toFixed(2)}`)} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">
               {/* <span>View</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </div>
 

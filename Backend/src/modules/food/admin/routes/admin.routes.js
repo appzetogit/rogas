@@ -17,12 +17,14 @@ import { upload } from '../../../../middleware/upload.js';
 import menuBulkRoutes from './menuBulk.routes.js';
 import kitchenPartnerRoutes from './kitchenPartner.routes.js';
 import roleRoutes from './role.routes.js';
+import adminWalletRoutes from './adminWallet.routes.js';
 import { requirePermission } from '../../../../middleware/rbac.middleware.js';
 
 const router = express.Router();
 
 router.use('/menu', menuBulkRoutes);
 router.use('/custom-roles', roleRoutes);
+router.use('/customers/wallet', adminWalletRoutes);
 
 // ----- Public Business Settings (No Admin Required) -----
 router.get('/business-settings/public', businessSettingsController.getBusinessSettings);

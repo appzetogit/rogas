@@ -2119,4 +2119,10 @@ export const dmbCustomerAPI = {
   createTipOrder: (orderId, amount) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/payment-order`, { amount }),
   /** Verify Razorpay payment signature for tip */
   verifyTipPayment: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/verify-payment`, data),
+  /** Customer Wallet APIs */
+  getWallet: () => userClient.get("/food/user/wallet"),
+  createWalletTopupOrder: (amount) => userClient.post("/food/user/wallet/topup/order", { amount }),
+  verifyWalletTopupPayment: (data) => userClient.post("/food/user/wallet/topup/verify", data),
+  /** Admin Customer Wallet API */
+  getAllCustomerWallets: () => adminClient.get("/food/admin/customers/wallet/wallet-transactions"),
 };
