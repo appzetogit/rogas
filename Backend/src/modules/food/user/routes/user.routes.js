@@ -30,6 +30,10 @@ import {
     listMySupportTicketsController
 } from '../controllers/supportTicket.controller.js';
 import { deleteUserAccountController } from '../controllers/deleteAccount.controller.js';
+import { 
+    getDietaryPreferencesController, 
+    updateDietaryPreferencesController 
+} from '../controllers/dietaryPreferences.controller.js';
 
 const router = express.Router();
 
@@ -41,6 +45,10 @@ router.post('/profile/profile-image', upload.single('file'), uploadCurrentUserPr
 router.get('/wallet', getUserWalletController);
 router.post('/wallet/topup/order', createWalletTopupOrderController);
 router.post('/wallet/topup/verify', verifyWalletTopupPaymentController);
+
+// Dietary Preferences
+router.get('/dietary-preferences', getDietaryPreferencesController);
+router.put('/dietary-preferences', updateDietaryPreferencesController);
 
 // Referral stats (Bearer USER)
 router.get('/referrals/stats', getUserReferralStatsController);

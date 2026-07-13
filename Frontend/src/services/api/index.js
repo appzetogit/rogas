@@ -1675,6 +1675,12 @@ export const userAPI = {
   updateProfile: (body) =>
     userClient.patch("/food/user/profile", body ?? {}),
     
+  // Dietary Preferences
+  getDietaryPreferences: () => 
+    userClient.get("/food/user/dietary-preferences"),
+  updateDietaryPreferences: (data) => 
+    userClient.put("/food/user/dietary-preferences", data),
+    
   // Promocodes
   getActivePromocodes: (restaurantId) =>
     userClient.get(`/food/promocodes/restaurant/${restaurantId}`),

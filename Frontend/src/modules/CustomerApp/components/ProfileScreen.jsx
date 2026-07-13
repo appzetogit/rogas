@@ -5,7 +5,7 @@ import { useTranslation } from "../../../contexts/LanguageContext";
 
 export function ProfileScreen({
   onGoBack,
-  onGoToOnboarding,
+  onGoToDietAndAllergens,
   onGoToInvoiceSettings,
   onGoToCheckout,
   onGoToSubscription,
@@ -411,7 +411,7 @@ export function ProfileScreen({
                 </p>
               </div>
             </div>
-            <button onClick={onGoToOnboarding} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+            <button onClick={onGoToDietAndAllergens} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Edit</span> */}
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>

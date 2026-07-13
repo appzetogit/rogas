@@ -16,6 +16,7 @@ import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScree
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
 import { SupportScreen } from "./components/SupportScreen";
+import { DietAndAllergensScreen } from "./components/DietAndAllergensScreen";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
@@ -102,7 +103,25 @@ export default function CustomerAppMain() {
     if (refreshToken) localStorage.setItem("user_refreshToken", refreshToken);
     localStorage.setItem("user_user", JSON.stringify(user));
     setCurrentUser(user);
+    fetchDietaryPreferences();
   };
+
+  const fetchDietaryPreferences = async () => {
+    try {
+      const res = await userAPI.getDietaryPreferences();
+      if (res.data?.success) {
+        setDietaryPrefs(res.data.data.preferences);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dietary preferences:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchDietaryPreferences();
+    }
+  }, [currentUser]);
 
   const handleLogout = () => {
     const rt = localStorage.getItem("user_refreshToken");
@@ -199,11 +218,37 @@ export default function CustomerAppMain() {
   // ─── Routing Handlers ────────────────────────────────────────────────────────
   const handleOnboardingNext = (stepPath) => navigate("/user/" + stepPath);
 
-  const handleDietPrefsSaveFromOnboarding = (prefs) => {
-    setDietaryPrefs(prefs);
+  const handleDietPrefsSaveFromOnboarding = async (prefs) => {
+    try {
+      const res = await userAPI.updateDietaryPreferences(prefs);
+      if (res.data?.success) {
+        setDietaryPrefs(res.data.data.preferences);
+      } else {
+        setDietaryPrefs(prefs);
+      }
+    } catch (err) {
+      console.error("Failed to save dietary preferences:", err);
+      setDietaryPrefs(prefs); // fallback to state
+    }
     setOnboardingCompleted(true);
     navigate("/user/home");
-    showToast("✅ Onboarding complete! Welcome to DailyMealBox.");
+    showToast("✅ Preferences saved successfully!");
+  };
+
+  const handleDietAndAllergensSave = async (prefs) => {
+    try {
+      const res = await userAPI.updateDietaryPreferences(prefs);
+      if (res.data?.success) {
+        setDietaryPrefs(res.data.data.preferences);
+      } else {
+        setDietaryPrefs(prefs);
+      }
+    } catch (err) {
+      console.error("Failed to save dietary preferences:", err);
+      setDietaryPrefs(prefs); // fallback to state
+    }
+    navigate("/user/profile");
+    showToast("✅ Diet & Allergens saved successfully!");
   };
 
   const handleLocationComplete = () => {
@@ -460,7 +505,7 @@ export default function CustomerAppMain() {
           <Route path="profile" element={
             <ProfileScreen
               onGoBack={() => navigate("/user/home")}
-              onGoToOnboarding={() => navigate("/user/diet-prefs")}
+              onGoToDietAndAllergens={() => navigate("/user/diet-allergens")}
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
               onGoToCheckout={() => navigate("/user/checkout")}
               onGoToSubscription={() => navigate("/user/subscription")}
@@ -474,6 +519,14 @@ export default function CustomerAppMain() {
               onLogout={handleLogout}
               onUpdateProfile={handleUpdateProfile}
               onUpdateProfileState={handleUpdateProfileState}
+            />
+          } />
+
+          <Route path="diet-allergens" element={
+            <DietAndAllergensScreen
+              onBack={() => navigate("/user/profile")}
+              initialPrefs={dietaryPrefs}
+              onSave={handleDietAndAllergensSave}
             />
           } />
 
