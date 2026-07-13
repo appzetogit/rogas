@@ -139,7 +139,7 @@ const getTomorrowDateStr = () => {
   return `${y}-${m}-${day}`;
 };
 
-function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub }) {
+function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub, matchDietary, dietaryPrefs }) {
   const [mealPlans, setMealPlans] = useState([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -204,8 +204,17 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     const fetchPlansAndDurations = async () => {
       try {
         setLoading(true);
+        const params = {};
+        if (matchDietary && dietaryPrefs) {
+          if (dietaryPrefs.dietType && dietaryPrefs.dietType !== 'No preference') {
+            params.dietType = dietaryPrefs.dietType;
+          }
+          if (dietaryPrefs.allergies && dietaryPrefs.allergies.length > 0) {
+            params.excludeAllergies = dietaryPrefs.allergies.join(',');
+          }
+        }
         const [plansRes, zonesRes, subPlansRes] = await Promise.all([
-          dmbCustomerAPI.getVendorPlans(vendorId),
+          dmbCustomerAPI.getVendorPlans(vendorId, params),
           dmbCustomerAPI.getPublicZones(),
           dmbCustomerAPI.getSubscriptionPlans()
         ]);
@@ -677,7 +686,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 }
 
 // ─── Main PlansScreen ──────────────────────────────────────────────────────────
-export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
+export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPrefs }) {
+  const [matchDietary, setMatchDietary] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -791,21 +801,41 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
           {activeTab === 'vendor_plans' && (
             <>
               {/* Search */}
-              <div className="relative mb-4">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]">search</span>
-            <input
-              type="text"
-              placeholder="Search vendors, cuisines, location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 pl-11 pr-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6e7a74]">
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            )}
-          </div>
+              <div className="mb-4 space-y-3">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search vendors, cuisines, location..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-12 pl-11 pr-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6e7a74]">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                  )}
+                </div>
+                {/* Diet & Allergies Filter Toggle */}
+                {dietaryPrefs && (
+                  <label className="flex items-center gap-3 bg-white border border-[#e4e2e1] rounded-xl p-3 shadow-sm cursor-pointer hover:border-primary/50 transition-colors">
+                    <div className="flex-1">
+                      <p className="font-extrabold text-[13px] text-[#1b1c1c]">Match My Diet & Allergens</p>
+                      <p className="text-[11px] text-[#6e7a74] mt-0.5">Filter plans based on your profile preferences</p>
+                    </div>
+                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${matchDietary ? 'bg-primary' : 'bg-[#e4e2e1]'}`}>
+                      <input 
+                        type="checkbox" 
+                        className="sr-only" 
+                        checked={matchDietary}
+                        onChange={(e) => setMatchDietary(e.target.checked)}
+                      />
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${matchDietary ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                  </label>
+                )}
+              </div>
 
           {/* Hero Banner */}
           <div className="bg-gradient-to-br from-[#1F7A63] to-[#155a49] rounded-2xl p-5 mb-5 relative overflow-hidden shadow-lg">
@@ -961,6 +991,8 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile }) {
           onClose={() => setOpenPlansFor(null)}
           onProceedToCheckout={handleProceedToCheckout}
           hasActiveSub={hasActiveSub}
+          matchDietary={matchDietary}
+          dietaryPrefs={dietaryPrefs}
         />
       )}
     </>

@@ -63,7 +63,7 @@ const mealPlanSchema = new mongoose.Schema(
         // ─── Diet Tags ────────────────────────────────────────────────────────
         dietTags: {
             type: [String],
-            enum: ['vegan', 'vegetarian', 'keto', 'gluten_free', 'dairy_free', 'halal'],
+            enum: ['vegan', 'vegetarian', 'keto', 'paleo', 'gluten_free', 'dairy_free', 'halal'],
             default: []
         },
 

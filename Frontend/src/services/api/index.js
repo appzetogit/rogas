@@ -2081,7 +2081,7 @@ export const dmbCustomerAPI = {
   getVendorMenu: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
   getPublicZones: (params = {}) => userClient.get("/food/restaurant/zones/public", { params }),
   /** Get vendor's subscription plan options (public, no auth) */
-  getVendorPlans: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/plans`),
+  getVendorPlans: (vendorId, params) => userClient.get(`/dmb/vendor/${vendorId}/plans`, { params }),
   /** Get all available pantry items globally (public) */
   getAllPantryItems: () => userClient.get(`/dmb/vendor/pantry-items/all`),
   getVendorPantryItems: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pantry-items`),

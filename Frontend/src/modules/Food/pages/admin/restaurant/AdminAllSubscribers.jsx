@@ -241,7 +241,6 @@ export default function AdminAllSubscribers() {
             </div>
           </div>
         )}
-        )}
       </div>
 
       {/* Modal for Subscriber Details */}

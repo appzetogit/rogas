@@ -203,6 +203,7 @@ export default function App() {
               carb: `${p.nutrition?.carbs || 25} g`,
               fat: `${p.nutrition?.fats || 10} g`,
               allergens: p.allergens || [],
+              dietType: (p.dietTags && p.dietTags.length > 0) ? p.dietTags[0].charAt(0).toUpperCase() + p.dietTags[0].slice(1) : 'No preference',
               status: p.status === 'active' ? 'Active' : 'Draft',
               portions: p.capacity || 10
             }));
@@ -372,6 +373,7 @@ export default function App() {
           isProvided: true
         },
         allergens: newMeal.allergens,
+        dietTags: newMeal.dietType && newMeal.dietType !== 'No preference' ? [newMeal.dietType.toLowerCase()] : [],
         photos: [newMeal.imageUrl],
         status: 'active',
         city: profile.location?.city || profile.city || 'indore',
@@ -394,6 +396,7 @@ export default function App() {
         carb: `${created.nutrition?.carbs || 25} g`,
         fat: `${created.nutrition?.fats || 10} g`,
         allergens: created.allergens || [],
+        dietType: (created.dietTags && created.dietTags.length > 0) ? created.dietTags[0].charAt(0).toUpperCase() + created.dietTags[0].slice(1) : 'No preference',
         status: created.status === 'active' ? 'Active' : 'Draft',
         portions: created.capacity || 10
       }]);
@@ -413,6 +416,9 @@ export default function App() {
       if (updatedFields.status) payload.status = updatedFields.status.toLowerCase();
       if (updatedFields.imageUrl) payload.photos = [updatedFields.imageUrl];
       if (updatedFields.allergens) payload.allergens = updatedFields.allergens;
+      if (updatedFields.dietType !== undefined) {
+        payload.dietTags = updatedFields.dietType && updatedFields.dietType !== 'No preference' ? [updatedFields.dietType.toLowerCase()] : [];
+      }
       if (updatedFields.calories || updatedFields.prot || updatedFields.carb || updatedFields.fat) {
         payload.nutrition = {
           calories: parseInt(updatedFields.calories) || 300,
@@ -437,6 +443,7 @@ export default function App() {
         carb: `${updated.nutrition?.carbs || 25} g`,
         fat: `${updated.nutrition?.fats || 10} g`,
         allergens: updated.allergens || [],
+        dietType: (updated.dietTags && updated.dietTags.length > 0) ? updated.dietTags[0].charAt(0).toUpperCase() + updated.dietTags[0].slice(1) : 'No preference',
         status: updated.status === 'active' ? 'Active' : 'Draft',
         portions: updated.capacity || 10
       } : m));

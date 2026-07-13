@@ -472,6 +472,7 @@ export default function CustomerAppMain() {
               onGoBack={() => navigate("/user/home")}
               onSelectPlan={handlePlanSelectionFlow}
               onGoToProfile={() => navigate("/user/profile")}
+              dietaryPrefs={dietaryPrefs}
             />
           } />
 

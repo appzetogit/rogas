@@ -534,10 +534,22 @@ router.get('/:vendorId/plans', async (req, res) => {
         const vendor = await FoodRestaurant.findById(req.params.vendorId).select('restaurantName city ownerName profileImage coverImages ratings rating');
         if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
 
-        const mealPlans = await DMBMealPlan.find({
+        const query = {
             vendorId: req.params.vendorId,
             status: 'active'
-        }).select('name pricePerDay availableSlots availableDays capacity nutrition');
+        };
+
+        if (req.query.dietType && req.query.dietType !== 'No preference') {
+            query.dietTags = req.query.dietType.toLowerCase();
+        }
+
+        if (req.query.excludeAllergies) {
+            const allergies = req.query.excludeAllergies.split(',').map(a => a.trim());
+            // Exclude meal plans that contain ANY of the excluded allergies
+            query.allergies = { $nin: allergies };
+        }
+
+        const mealPlans = await DMBMealPlan.find(query).select('name pricePerDay availableSlots availableDays capacity nutrition dietTags allergens');
 
         // Build subscription plan options
         const subscriptionPlans = [

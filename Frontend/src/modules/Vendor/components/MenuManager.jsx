@@ -282,6 +282,7 @@ export default function MenuManager({
   const [mealCarb, setMealCarb] = useState('');
   const [mealFat, setMealFat] = useState('');
   const [mealAllergens, setMealAllergens] = useState([]);
+  const [mealDietType, setMealDietType] = useState('No preference');
   const [mealImageUrl, setMealImageUrl] = useState('');
   const [mealPortions, setMealPortions] = useState(10);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -353,7 +354,8 @@ export default function MenuManager({
     setMealProt(meal.prot);
     setMealCarb(meal.carb);
     setMealFat(meal.fat);
-    setMealAllergens(meal.allergens);
+    setMealAllergens(meal.allergens || []);
+    setMealDietType(meal.dietType || 'No preference');
     setMealImageUrl(meal.imageUrl);
     setMealPortions(meal.portions);
     setSubView('addEdit');
@@ -370,6 +372,7 @@ export default function MenuManager({
     setMealCarb('');
     setMealFat('');
     setMealAllergens([]);
+    setMealDietType('No preference');
     // Provide a nice default delicious image
     setMealImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ');
     setMealPortions(12);
@@ -396,6 +399,7 @@ export default function MenuManager({
       carb: mealCarb || '20g',
       fat: mealFat || '10g',
       allergens: mealAllergens,
+      dietType: mealDietType,
       imageUrl: mealImageUrl,
       portions: mealPortions,
       status: 'Active'
@@ -910,6 +914,39 @@ export default function MenuManager({
               </div>
             </div>
 
+            {/* Diet Type selection */}
+            <div className="space-y-2">
+              <label className="text-[10px] text-outline uppercase font-semibold">Diet Type</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'Keto', label: 'Keto', desc: 'High fat, low carb', icon: 'bolt' },
+                  { id: 'Vegan', label: 'Vegan', desc: 'Plant-based only', icon: 'eco' },
+                  { id: 'Vegetarian', label: 'Vegetarian', desc: 'No meat or fish', icon: 'nutrition' },
+                  { id: 'Paleo', label: 'Paleo', desc: 'Whole foods only', icon: 'outdoor_grill' }
+                ].map(diet => {
+                  const isActive = mealDietType === diet.id;
+                  return (
+                    <div 
+                      key={diet.id}
+                      onClick={() => setMealDietType(isActive ? 'No preference' : diet.id)}
+                      className={`bg-white p-3 rounded-xl shadow-sm transition-all cursor-pointer ${isActive ? 'border-2 border-primary ring-1 ring-primary/10 bg-[#f0fdf4]' : 'border border-outline-variant hover:border-primary/40'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-primary' : 'text-[#6e7a74]'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                          {diet.icon}
+                        </span>
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isActive ? 'border-primary' : 'border-[#bec9c3]'}`}>
+                          {isActive && <div className="w-2 h-2 rounded-full bg-primary"></div>}
+                        </div>
+                      </div>
+                      <p className="font-bold text-[13px] text-on-surface">{diet.label}</p>
+                      <p className="text-[10px] text-outline leading-tight mt-0.5">{diet.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Allergens selectable pills grid list */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -917,7 +954,7 @@ export default function MenuManager({
                 <span className="text-[10px] text-error font-semibold italic">Select all that apply</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {['Gluten', 'Dairy', 'Egg', 'Celery', 'Nuts', 'Soy'].map((allergen) => {
+                {['Gluten', 'Dairy', 'Eggs', 'Nuts', 'Peanuts', 'Soy', 'Fish', 'Shellfish', 'Sesame', 'Mustard', 'Celery', 'Lupin', 'Molluscs', 'Sulphites'].map((allergen) => {
                 const isActive = mealAllergens.includes(allergen);
                 return (
                   <button
