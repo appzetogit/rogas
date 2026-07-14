@@ -102,7 +102,12 @@ const restaurantRegisterSchema = z.object({
     accountHolderName: z.string().optional(),
     accountType: z.string().optional(),
     vendorType: z.string().optional(),
-    kitchenPartnerId: z.string().optional()
+    kitchenPartnerId: z.string().optional(),
+    vatNumber: z.string().optional(),
+    mealSlots: z
+        .string()
+        .optional()
+        .transform((val) => (val ? val.split(',').map((s) => s.trim()).filter(Boolean) : []))
 });
 
 export const validateRestaurantRegisterDto = (body) => {

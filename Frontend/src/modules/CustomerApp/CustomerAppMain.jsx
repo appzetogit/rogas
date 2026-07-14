@@ -120,6 +120,13 @@ export default function CustomerAppMain() {
   useEffect(() => {
     if (currentUser) {
       fetchDietaryPreferences();
+      setInvoicePrefs({
+        receiptType: currentUser.invoiceType === 'b2b_vat' ? 'vat' : 'simple',
+        companyName: currentUser.companyName || "",
+        nipVat: currentUser.companyNip || "",
+        companyAddress: currentUser.companyAddress || "",
+        billingEmail: currentUser.billingEmail || "",
+      });
     }
   }, [currentUser]);
 
@@ -263,10 +270,31 @@ export default function CustomerAppMain() {
     showToast(`🛒 Opening checkout for ${checkoutData.vendorName || "vendor"}...`);
   };
 
-  const handleInvoiceSettingsSave = (settings) => {
-    setInvoicePrefs(settings);
-    navigate("/user/profile");
-    showToast("🧾 Invoice settings updated.");
+  const handleInvoiceSettingsSave = async (settings) => {
+    try {
+      const payload = {
+        invoiceType: settings.receiptType === 'vat' ? 'b2b_vat' : 'receipt',
+        companyName: settings.companyName,
+        companyNip: settings.nipVat,
+        companyAddress: settings.companyAddress,
+        billingEmail: settings.billingEmail,
+      };
+      
+      const res = await userAPI.updateProfile(payload);
+      if (res.data?.success) {
+        setInvoicePrefs(settings);
+        const u = res.data.data?.user || res.data.user || res.data;
+        if (u) {
+          setCurrentUser(u);
+          localStorage.setItem("user_user", JSON.stringify(u));
+        }
+        navigate("/user/profile");
+        showToast("🧾 Invoice settings updated.");
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || "Failed to save invoice settings";
+      toast.error(errMsg, { position: "top-center" });
+    }
   };
 
   const handleConfirmSubscription = () => {

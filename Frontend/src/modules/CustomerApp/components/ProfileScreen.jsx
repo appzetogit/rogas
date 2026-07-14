@@ -21,7 +21,24 @@ export function ProfileScreen({
   onUpdateProfileState
 }) {
   const { lang, changeLanguage, t } = useTranslation();
-  const [walletCredits] = useState(35.0);
+  const [walletCredits, setWalletCredits] = useState(0);
+
+  // Fetch wallet balance on mount
+  useEffect(() => {
+    let active = true;
+    if (userAPI.getWallet) {
+      userAPI.getWallet()
+        .then((res) => {
+          if (active) {
+            const balance = res?.data?.data?.wallet?.balance ?? res?.data?.wallet?.balance ?? 0;
+            setWalletCredits(Number(balance));
+          }
+        })
+        .catch((err) => console.error("Failed to fetch wallet", err));
+    }
+    return () => { active = false; };
+  }, []);
+
   const [showDangerDialog, setShowDangerDialog] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);

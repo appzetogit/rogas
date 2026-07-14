@@ -1598,12 +1598,13 @@ export default function RestaurantsList() {
                 const featuredDishVal = r?.featuredDish || r?.onboarding?.step4?.featuredDish || ""
                 const featuredPriceVal = r?.featuredPrice ?? r?.onboarding?.step4?.featuredPrice
                 const diningSettingsVal = r?.diningSettings || r?.onboarding?.step4?.diningSettings || null
-                const panDocumentUrl = typeof r?.panImage === "string" ? r.panImage : (r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url || "")
+                const panDocumentUrl = typeof r?.panImage === "string" ? r.panImage : (r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url || r?.ownerIdImage || "")
                 const gstDocumentUrl = typeof r?.gstImage === "string" ? r.gstImage : (r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url || "")
-                const fssaiDocumentUrl = typeof r?.fssaiImage === "string" ? r.fssaiImage : (r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url || "")
-                const hasPanSection = Boolean(r?.panNumber || r?.nameOnPan || panDocumentUrl || r?.onboarding?.step3?.pan?.panNumber || r?.onboarding?.step3?.pan?.nameOnPan)
+                const fssaiDocumentUrl = typeof r?.fssaiImage === "string" ? r.fssaiImage : (r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url || r?.foodLicenceUrl || r?.licenseFile || "")
+                const hasPanSection = Boolean(r?.panNumber || r?.nameOnPan || panDocumentUrl || r?.onboarding?.step3?.pan?.panNumber || r?.onboarding?.step3?.pan?.nameOnPan || r?.ownerIdImage)
                 const hasGstSection = Boolean(
                   r?.gstNumber ||
+                  r?.vatNumber ||
                   r?.gstLegalName ||
                   r?.gstAddress ||
                   gstDocumentUrl ||
@@ -1616,7 +1617,8 @@ export default function RestaurantsList() {
                   r?.fssaiExpiry ||
                   fssaiDocumentUrl ||
                   r?.onboarding?.step3?.fssai?.registrationNumber ||
-                  r?.onboarding?.step3?.fssai?.expiryDate
+                  r?.onboarding?.step3?.fssai?.expiryDate ||
+                  r?.foodLicenceUrl || r?.licenseFile
                 )
                 const hasBankSection = Boolean(
                   r?.accountNumber ||
@@ -1981,27 +1983,27 @@ export default function RestaurantsList() {
                           <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
-                              PAN Details
+                              Owner ID Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.panNumber || r?.onboarding?.step3?.pan?.panNumber) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">PAN Number</p>
+                                  <p className="text-xs text-slate-500 mb-1">Owner ID Number</p>
                                   <p className="font-medium text-slate-900">{r.panNumber || r.onboarding?.step3?.pan?.panNumber}</p>
                                 </div>
                               )}
                               {(r.nameOnPan || r?.onboarding?.step3?.pan?.nameOnPan) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">Name on PAN</p>
+                                  <p className="text-xs text-slate-500 mb-1">Name on Owner ID</p>
                                   <p className="font-medium text-slate-900">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
                                 </div>
                               )}
                               {panDocumentUrl && (
                                 <div className="md:col-span-2">
-                                  <p className="text-xs text-slate-500 mb-2">PAN Document</p>
+                                  <p className="text-xs text-slate-500 mb-2">Owner ID Upload</p>
                                   <a href={panDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View PAN Document</span>
+                                    <span>View Owner ID Upload</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
@@ -2015,21 +2017,14 @@ export default function RestaurantsList() {
                           <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
-                              GST Details
+                              VAT Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {(r.gstRegistered != null || r?.onboarding?.step3?.gst?.isRegistered != null) && (
+
+                              {(r.gstNumber || r.vatNumber || r?.onboarding?.step3?.gst?.gstNumber) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">GST Registered</p>
-                                  <p className="font-medium text-slate-900">
-                                    {r.gstRegistered != null ? (r.gstRegistered ? "Yes" : "No") : (r?.onboarding?.step3?.gst?.isRegistered ? "Yes" : "No")}
-                                  </p>
-                                </div>
-                              )}
-                              {(r.gstNumber || r?.onboarding?.step3?.gst?.gstNumber) && (
-                                <div>
-                                  <p className="text-xs text-slate-500 mb-1">GST Number</p>
-                                  <p className="font-medium text-slate-900">{r.gstNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
+                                  <p className="text-xs text-slate-500 mb-1">VAT Number</p>
+                                  <p className="font-medium text-slate-900">{r.gstNumber || r.vatNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
                                 </div>
                               )}
                               {(r.gstLegalName || r?.onboarding?.step3?.gst?.legalName) && (
@@ -2040,16 +2035,16 @@ export default function RestaurantsList() {
                               )}
                               {(r.gstAddress || r?.onboarding?.step3?.gst?.address) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">GST Address</p>
+                                  <p className="text-xs text-slate-500 mb-1">VAT Address</p>
                                   <p className="font-medium text-slate-900">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
                                 </div>
                               )}
                               {gstDocumentUrl && (
                                 <div className="md:col-span-2">
-                                  <p className="text-xs text-slate-500 mb-2">GST Document</p>
+                                  <p className="text-xs text-slate-500 mb-2">VAT Document</p>
                                   <a href={gstDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View GST Document</span>
+                                    <span>View VAT Document</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
@@ -2063,18 +2058,18 @@ export default function RestaurantsList() {
                           <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
-                              FSSAI Details
+                              EU Food Licence Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.fssaiNumber || r?.onboarding?.step3?.fssai?.registrationNumber) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">FSSAI Registration Number</p>
+                                  <p className="text-xs text-slate-500 mb-1">EU Food Licence</p>
                                   <p className="font-medium text-slate-900">{r.fssaiNumber || r.onboarding?.step3?.fssai?.registrationNumber}</p>
                                 </div>
                               )}
                               {(r.fssaiExpiry || r?.onboarding?.step3?.fssai?.expiryDate) && (
                                 <div>
-                                  <p className="text-xs text-slate-500 mb-1">FSSAI Expiry Date</p>
+                                  <p className="text-xs text-slate-500 mb-1">EU Food Licence Expiry Date</p>
                                   <p className="font-medium text-slate-900">
                                     {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
                                   </p>
@@ -2082,10 +2077,10 @@ export default function RestaurantsList() {
                               )}
                               {fssaiDocumentUrl && (
                                 <div className="md:col-span-2">
-                                  <p className="text-xs text-slate-500 mb-2">FSSAI Document</p>
+                                  <p className="text-xs text-slate-500 mb-2">EU Food Licence Document</p>
                                   <a href={fssaiDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View FSSAI Document</span>
+                                    <span>View EU Food Licence Document</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>

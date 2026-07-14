@@ -34,12 +34,16 @@ import {
     getDietaryPreferencesController, 
     updateDietaryPreferencesController 
 } from '../controllers/dietaryPreferences.controller.js';
+import { downloadInvoiceController } from '../controllers/invoice.controller.js';
 
 const router = express.Router();
 
 router.get('/profile', getCurrentUserProfileController);
 router.patch('/profile', updateCurrentUserProfileController);
 router.post('/profile/profile-image', upload.single('file'), uploadCurrentUserProfileImageController);
+
+// Invoice Download
+router.get('/invoices/:orderId/download', downloadInvoiceController);
 
 // Wallet (Bearer USER)
 router.get('/wallet', getUserWalletController);

@@ -10,6 +10,7 @@ const FoodApp = lazy(() => import('../modules/Food/routes'))
 const AuthApp = lazy(() => import('../modules/auth/routes'))
 const CustomerApp = lazy(() => import('../modules/CustomerApp/routes'))
 const VendorApp = lazy(() => import('../modules/Vendor/routes'))
+const OfficeApp = lazy(() => import('../modules/Office/routes'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
 import { applyDynamicTheme } from '../modules/Food/utils/themeSettings'
 
@@ -49,6 +50,14 @@ const VendorAppWrapper = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <VendorApp />
+    </Suspense>
+  )
+}
+
+const OfficeAppWrapper = () => {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <OfficeApp />
     </Suspense>
   )
 }
@@ -101,6 +110,9 @@ const AppRoutes = () => {
 
       {/* Vendor Module */}
       <Route path="/vendor/*" element={<VendorAppWrapper />} />
+
+      {/* Office Module */}
+      <Route path="/office/*" element={<OfficeAppWrapper />} />
 
       {/* Food Module - Handle both /food and root / for the user app */}
       <Route path="/food/*" element={<FoodAppWrapper />} />

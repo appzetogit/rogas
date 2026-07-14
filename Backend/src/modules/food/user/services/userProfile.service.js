@@ -39,6 +39,24 @@ export const updateCurrentUserProfile = async (userId, body) => {
     const ann = parseIsoDateOrNull(body.anniversary);
     if (ann !== undefined) user.anniversary = ann;
 
+    if (body.invoiceType !== undefined) {
+        if (!['receipt', 'b2b_vat'].includes(body.invoiceType)) {
+            throw new ValidationError('Invalid invoice type');
+        }
+        user.invoiceType = body.invoiceType;
+        if (body.invoiceType === 'b2b_vat') {
+            if (!body.companyName && !user.companyName) throw new ValidationError('Company name is required for VAT Invoice');
+            if (!body.companyNip && !user.companyNip) throw new ValidationError('NIP is required for VAT Invoice');
+            if (!body.companyAddress && !user.companyAddress) throw new ValidationError('Company address is required for VAT Invoice');
+            if (!body.billingEmail && !user.billingEmail) throw new ValidationError('Billing email is required for VAT Invoice');
+        }
+    }
+
+    if (body.companyName !== undefined) user.companyName = String(body.companyName || '').trim();
+    if (body.companyNip !== undefined) user.companyNip = String(body.companyNip || '').trim();
+    if (body.companyAddress !== undefined) user.companyAddress = String(body.companyAddress || '').trim();
+    if (body.billingEmail !== undefined) user.billingEmail = String(body.billingEmail || '').trim().toLowerCase();
+
     await user.save();
     return { user: user.toObject() };
 };

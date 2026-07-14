@@ -29,6 +29,7 @@ import subscriptionRoutes from '../modules/dailymealbox/subscription/subscriptio
 import driverDmbRoutes from '../modules/dailymealbox/tracking/driver.routes.js';
 import vendorDmbRoutes from '../modules/dailymealbox/vendor/vendor.routes.js';
 import dmbPaymentRoutes from '../modules/dailymealbox/payment/dmb.payment.routes.js';
+import officeRoutes from '../modules/dailymealbox/office/routes/office.routes.js';
 
 const router = express.Router();
 
@@ -79,6 +80,8 @@ router.use('/v1/dmb/driver', authMiddleware, driverDmbRoutes);
 router.use('/v1/dmb/vendor', vendorDmbRoutes);
 // DMB Payment routes (Razorpay)
 router.use('/v1/dmb/payments', dmbPaymentRoutes);
+// DMB Office routes
+router.use('/v1/dmb/office', officeRoutes);
 
 // ─── Development Helper Routes ──────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {

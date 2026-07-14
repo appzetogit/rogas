@@ -179,6 +179,7 @@ const userSchema = new mongoose.Schema(
         },
         companyNip: { type: String, default: '' },
         companyName: { type: String, default: '' },
+        companyAddress: { type: String, default: '' },
         billingEmail: { type: String, default: '' },
         /** Loyalty points balance */
         loyaltyPoints: { type: Number, default: 0, min: 0 },

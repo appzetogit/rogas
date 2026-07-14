@@ -10,6 +10,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
   // Modals for pause & cancel actions
   const [showPauseModal, setShowPauseModal] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   // Input states for actions
   const [pauseDays, setPauseDays] = useState(1);
@@ -154,6 +155,41 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
     }
   };
 
+  const handleDownloadInvoice = async (sub) => {
+    try {
+      setDownloadingId(sub._id);
+      const token = localStorage.getItem("user_accessToken");
+      const url = `${import.meta.env.VITE_API_BASE_URL || "/api"}/food/user/invoices/${sub._id}/download`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to download invoice. Check VAT profile settings.");
+      }
+  
+      const blob = await response.blob();
+      const objUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objUrl;
+      link.download = `Invoice-${sub.subscriptionId || sub._id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objUrl);
+      onShowNotificationToast("🧾 Invoice downloaded successfully!");
+    } catch (error) {
+      onShowNotificationToast(error.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const getStatusLabel = (status) => {
     switch (status) {
       case "active":
@@ -274,64 +310,76 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                   </div>
 
                   {/* Actions Row */}
-                  {(sub.status === "active" || sub.status === "paused") && (
-                    <div className="flex gap-3 pt-3 border-t border-[#f2eff0]">
-                      {sub.status === "active" ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              setPauseDays(1);
-                              setPauseReason("");
-                              setShowPauseModal(sub);
-                            }}
-                            title={getRemainingDays(sub) <= 1 ? "Cannot pause: only 1 day remaining" : undefined}
-                            className={`flex-1 py-2.5 rounded-xl border text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm ${
-                              getRemainingDays(sub) <= 1
-                                ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
-                                : "border-amber-200 text-amber-700 bg-amber-50/20 hover:bg-amber-50"
-                            }`}
-                            disabled={actionLoading || getRemainingDays(sub) <= 1}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">pause_circle</span>
-                            Pause
-                          </button>
-                          <button
-                            onClick={() => {
-                              setCancelReason("");
-                              setShowCancelModal(sub);
-                            }}
-                            className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                            disabled={actionLoading}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">cancel</span>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleResume(sub)}
-                            className="flex-1 py-2.5 rounded-xl bg-primary text-white hover:bg-[#155a49] text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-md"
-                            disabled={actionLoading}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">play_circle</span>
-                            Resume Plan
-                          </button>
-                          <button
-                            onClick={() => {
-                              setCancelReason("");
-                              setShowCancelModal(sub);
-                            }}
-                            className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                            disabled={actionLoading}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">cancel</span>
-                            Cancel
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-3 pt-3 border-t border-[#f2eff0]">
+                    {(sub.status === "active" || sub.status === "paused") && (
+                      <>
+                        {sub.status === "active" ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setPauseDays(1);
+                                setPauseReason("");
+                                setShowPauseModal(sub);
+                              }}
+                              title={getRemainingDays(sub) <= 1 ? "Cannot pause: only 1 day remaining" : undefined}
+                              className={`flex-1 py-2.5 rounded-xl border text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm ${
+                                getRemainingDays(sub) <= 1
+                                  ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
+                                  : "border-amber-200 text-amber-700 bg-amber-50/20 hover:bg-amber-50"
+                              }`}
+                              disabled={actionLoading || getRemainingDays(sub) <= 1}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">pause_circle</span>
+                              Pause
+                            </button>
+                            <button
+                              onClick={() => {
+                                setCancelReason("");
+                                setShowCancelModal(sub);
+                              }}
+                              className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
+                              disabled={actionLoading}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleResume(sub)}
+                              className="flex-1 py-2.5 rounded-xl bg-primary text-white hover:bg-[#155a49] text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-md"
+                              disabled={actionLoading}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                              Resume Plan
+                            </button>
+                            <button
+                              onClick={() => {
+                                setCancelReason("");
+                                setShowCancelModal(sub);
+                              }}
+                              className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
+                              disabled={actionLoading}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleDownloadInvoice(sub)}
+                      disabled={downloadingId === sub._id}
+                      className="w-full py-2.5 rounded-xl border border-[#bec9c3] text-[#1b1c1c] bg-white hover:bg-surface-container-low text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm mt-1"
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${downloadingId === sub._id ? "animate-spin" : ""}`}>
+                        {downloadingId === sub._id ? "autorenew" : "receipt_long"}
+                      </span>
+                      {downloadingId === sub._id ? "Generating..." : "Download Invoice"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
