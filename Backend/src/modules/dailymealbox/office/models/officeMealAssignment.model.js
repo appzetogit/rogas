@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 
 const officeMealAssignmentSchema = new mongoose.Schema(
     {
-        adminId: {
+        accountId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'FoodUser',
+            ref: 'OfficeAccount',
             required: true,
             index: true
         },
@@ -20,19 +20,38 @@ const officeMealAssignmentSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        mealSlot: {
-            type: String,
+        mealPlanId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DMBMealPlan',
+            required: true,
+            index: true
+        },
+        subscriptionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DMBSubscription'
+        },
+        mealSlots: {
+            type: [String],
             enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
         status: {
             type: String,
-            enum: ['Active', 'Paused', 'Cancelled'],
-            default: 'Active'
+            enum: ['active', 'paused', 'cancelled'],
+            default: 'active'
         },
         validUntil: {
             type: Date
+        },
+        assignedAt: {
+            type: Date,
+            default: Date.now
+        },
+        startDate: {
+            type: Date,
+            default: Date.now
         }
+
     },
     {
         collection: 'office_meal_assignments',

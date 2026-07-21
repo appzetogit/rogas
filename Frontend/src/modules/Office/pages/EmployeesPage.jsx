@@ -34,6 +34,7 @@ export default function EmployeesTab({
   // Form Fields State
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formPhone, setFormPhone] = useState('');
   const [formDept, setFormDept] = useState('Engineering');
   const [formBudget, setFormBudget] = useState('200');
   const [formSlot, setFormSlot] = useState('12:30 PM - 1:30 PM');
@@ -78,9 +79,8 @@ export default function EmployeesTab({
     setEditingEmployee(null);
     setFormName('');
     setFormEmail('');
+    setFormPhone('');
     setFormDept('Engineering');
-    setFormBudget('200');
-    setFormSlot('12:30 PM - 1:30 PM');
     setFormStatus('Active');
     setIsFormModalOpen(true);
   };
@@ -90,9 +90,8 @@ export default function EmployeesTab({
     setEditingEmployee(emp);
     setFormName(emp.name);
     setFormEmail(emp.email);
+    setFormPhone(emp.phone || '');
     setFormDept(emp.department);
-    setFormBudget(emp.monthlyBudget.toString());
-    setFormSlot(emp.preferredSlot);
     setFormStatus(emp.status);
     setIsFormModalOpen(true);
   };
@@ -104,24 +103,20 @@ export default function EmployeesTab({
       return;
     }
 
-    const budgetNum = parseFloat(formBudget) || 200;
-
     if (editingEmployee) {
       onUpdateEmployee(editingEmployee.id, {
         name: formName,
         email: formEmail,
+        phone: formPhone,
         department: formDept,
-        monthlyBudget: budgetNum,
-        preferredSlot: formSlot,
         status: formStatus,
       });
     } else {
       onAddEmployee({
         name: formName,
         email: formEmail,
+        phone: formPhone,
         department: formDept,
-        monthlyBudget: budgetNum,
-        preferredSlot: formSlot,
         status: formStatus,
       });
     }
@@ -241,8 +236,6 @@ export default function EmployeesTab({
               <tr className="bg-transparent border-b border-brand-divider">
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Employee</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Department</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Preferred Slot</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Monthly Budget</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -250,7 +243,7 @@ export default function EmployeesTab({
             <tbody className="divide-y divide-brand-divider">
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-brand-muted">
+                  <td colSpan={4} className="px-6 py-12 text-center text-brand-muted">
                     No employees match your active filters or search terms.
                   </td>
                 </tr>
@@ -280,10 +273,6 @@ export default function EmployeesTab({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-brand-muted">{emp.department}</td>
-                    <td className="px-6 py-4 text-sm text-brand-muted">{emp.preferredSlot}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-brand-text">
-                      ${emp.monthlyBudget.toFixed(2)}
-                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -297,7 +286,7 @@ export default function EmployeesTab({
                     </td>
                     <td className="px-6 py-4 text-right">
                       {/* Action buttons reveal on hover in desktop, visible on mobile */}
-                      <div className="flex items-center justify-end gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
+                      <div className="flex items-center justify-end gap-1.5 transition-opacity duration-150">
                         <button
                           onClick={() => handleOpenEdit(emp)}
                           className="p-1.5 text-brand-muted hover:text-brand-primary hover:bg-brand-primary/5 rounded-md transition-colors cursor-pointer"
@@ -362,53 +351,72 @@ export default function EmployeesTab({
       {/* Modal 1: Add/Edit Employee */}
       <AnimatePresence>
         {isFormModalOpen && (
-          <div className="fixed inset-0 bg-brand-text/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-xl modal-shadow overflow-hidden flex flex-col"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="bg-white w-[95vw] sm:w-[500px] rounded-xl shadow-2xl flex flex-col overflow-hidden"
             >
-              <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/30">
+              <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/50">
                 <h3 className="text-lg font-bold text-brand-primary">
                   {editingEmployee ? 'Edit Employee' : 'Add Employee'}
                 </h3>
                 <button
                   onClick={() => setIsFormModalOpen(false)}
-                  className="text-brand-muted hover:text-brand-text transition-colors cursor-pointer"
+                  className="text-brand-muted hover:text-brand-text transition-colors cursor-pointer p-1"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleSaveEmployee} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-full">
+              <form onSubmit={handleSaveEmployee} className="p-6 space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                       Full Name
                     </label>
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       placeholder="e.g. Sarah Jenkins"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                     />
                   </div>
 
-                  <div className="col-span-full">
+                  <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                       Work Email
                     </label>
                     <input
                       type="email"
                       required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       placeholder="sarah.j@company.com"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                     />
+                  </div>
+
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
+                      Phone Number
+                    </label>
+                    <div className="flex">
+                      <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-brand-divider bg-brand-bg text-brand-muted text-sm font-semibold">
+                        +48
+                      </span>
+                      <input
+                        type="tel"
+                        required
+                        className="w-full px-4 py-2.5 border border-brand-divider rounded-r-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
+                        placeholder="123 456 789"
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -416,7 +424,7 @@ export default function EmployeesTab({
                       Department
                     </label>
                     <select
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       value={formDept}
                       onChange={(e) => setFormDept(e.target.value)}
                     >
@@ -429,44 +437,14 @@ export default function EmployeesTab({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Monthly Budget ($)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted text-sm">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-full pl-8 pr-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
-                        placeholder="240"
-                        value={formBudget}
-                        onChange={(e) => setFormBudget(e.target.value)}
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Preferred Slot
-                    </label>
-                    <select
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
-                      value={formSlot}
-                      onChange={(e) => setFormSlot(e.target.value)}
-                    >
-                      <option value="12:00 PM - 1:00 PM">12:00 PM - 1:00 PM</option>
-                      <option value="12:30 PM - 1:30 PM">12:30 PM - 1:30 PM</option>
-                      <option value="1:00 PM - 2:00 PM">1:00 PM - 2:00 PM</option>
-                    </select>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                       Status
                     </label>
                     <select
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value)}
                     >
@@ -476,7 +454,7 @@ export default function EmployeesTab({
                   </div>
                 </div>
 
-                <div className="px-6 py-4 -mx-6 -mb-6 mt-6 bg-brand-bg/30 border-t border-brand-divider flex justify-end gap-3">
+                <div className="pt-4 mt-2 border-t border-brand-divider flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsFormModalOpen(false)}
@@ -486,7 +464,7 @@ export default function EmployeesTab({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                   >
                     {editingEmployee ? 'Save Changes' : 'Save Employee'}
                   </button>
@@ -500,31 +478,31 @@ export default function EmployeesTab({
       {/* Modal 2: Delete Confirmation */}
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 bg-brand-text/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-sm rounded-xl modal-shadow overflow-hidden text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="bg-white w-[95vw] sm:w-[400px] rounded-xl shadow-2xl overflow-hidden text-center"
             >
-              <div className="p-6">
-                <div className="w-14 h-14 bg-brand-error-bg text-brand-error-text rounded-full flex items-center justify-center mx-auto mb-4">
-                  <TriangleAlert className="w-7 h-7" />
+              <div className="p-8">
+                <div className="w-16 h-16 bg-brand-error-bg text-brand-error-text rounded-full flex items-center justify-center mx-auto mb-5">
+                  <TriangleAlert className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-brand-text mb-2">Delete Employee?</h3>
-                <p className="text-xs text-brand-muted leading-relaxed mb-6">
+                <h3 className="text-xl font-bold text-brand-text mb-3">Delete Employee?</h3>
+                <p className="text-sm text-brand-muted leading-relaxed mb-8">
                   Are you sure you want to remove <span className="font-bold text-brand-text">{employeeToDelete?.name}</span> from the system? This action cannot be undone and will cancel all active meal plans.
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <button
                     onClick={handleConfirmDelete}
-                    className="w-full py-3 bg-brand-error-text hover:bg-brand-error-text/90 text-white text-sm font-bold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+                    className="w-full py-3 bg-brand-error-text hover:bg-red-600 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                   >
                     Confirm Delete
                   </button>
                   <button
                     onClick={() => setIsDeleteModalOpen(false)}
-                    className="w-full py-3 text-brand-muted hover:bg-brand-bg text-sm font-semibold rounded-lg transition-all cursor-pointer"
+                    className="w-full py-3 text-brand-muted hover:bg-brand-bg border border-transparent hover:border-brand-divider text-sm font-semibold rounded-lg transition-all cursor-pointer"
                   >
                     Cancel
                   </button>

@@ -223,13 +223,23 @@ export const verifyUserOtpAndLogin = async (
   name,
 ) => {
   validatePhoneCountryAndLength(phone);
-  const trimmedName = typeof name === "string" ? name.trim() : "";
-  const existingUser = await FoodUser.findOne({ phone });
+  let trimmedName = typeof name === "string" ? name.trim() : "";
+  
+  const digits = String(phone).replace(/\D/g, "");
+  const last10 = digits.slice(-10);
+  const candidates = [phone, digits, last10].filter(Boolean);
+  
+  const existingUser = await FoodUser.findOne({
+      $or: [
+        { phone: { $in: candidates } },
+        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
+      ]
+  });
 
-  // For first-time signup, require name before OTP verification so OTP is not consumed prematurely.
-  if (!existingUser && !trimmedName) {
-    throw new ValidationError("Name is required for first-time signup");
-  }
+    // officeEmp fetch removed from top, will fetch below if role is EMPLOYEE
+
+  // No longer throwing error for missing name on first-time signup.
+  // The frontend handles name collection in the "About You" screen after OTP verification.
 
   const result = await verifyOtp(phone, otp);
 
@@ -240,8 +250,9 @@ export const verifyUserOtpAndLogin = async (
   let userDoc = existingUser;
   
   // Ensure user exists and mark as verified on successful OTP.
-  // Check if user is new or hasn't provided a name yet
-  const needsNamePrompt = !userDoc || !userDoc.name || String(userDoc.name).trim() === "" || String(userDoc.name).toLowerCase() === "null";
+  // Check if user is new or hasn't provided a name yet (consider trimmedName that might be auto-fetched)
+  const finalName = (userDoc && userDoc.name) ? String(userDoc.name).trim() : String(trimmedName).trim();
+  const needsNamePrompt = !finalName || finalName === "" || finalName.toLowerCase() === "null";
   const isNewUser = needsNamePrompt;
 
   if (!userDoc) {
@@ -262,6 +273,9 @@ export const verifyUserOtpAndLogin = async (
     }
     if (needsSave) await userDoc.save();
   }
+
+  // Hacky SYNC ASSIGNED MEAL PLAN removed. 
+  // It is now handled cleanly by assignMealPlan controller strictly.
 
   // Block login for deactivated users
   if (userDoc.isActive === false) {
@@ -388,11 +402,33 @@ export const verifyUserOtpAndLogin = async (
     expiresAt,
   });
 
+  const sanitizedUser = sanitizeUserForAuthResponse(user);
+
+  // Attach office employee data if role is EMPLOYEE
+  if (user.role === 'EMPLOYEE') {
+      try {
+          let OfficeEmployee = mongoose.models.OfficeEmployee;
+          if (!OfficeEmployee) {
+              const mod = await import("../../modules/dailymealbox/office/models/officeEmployee.model.js");
+              OfficeEmployee = mod.OfficeEmployee;
+          }
+          const officeEmp = await OfficeEmployee.findOne({ userId: user._id })
+              .populate('companyId', 'legalName nip')
+              .lean();
+          
+          if (officeEmp) {
+              sanitizedUser.officeEmployeeData = officeEmp;
+          }
+      } catch (err) {
+          console.error("Failed to fetch office employee data:", err);
+      }
+  }
+
   return {
     token: accessToken,
     accessToken,
     refreshToken,
-    user: sanitizeUserForAuthResponse(user),
+    user: sanitizedUser,
     isNewUser,
   };
 };
@@ -676,9 +712,37 @@ export const getProfile = async (userId, role) => {
   const id = userId;
 
   switch (role) {
-    case ROLES.USER:
+    case ROLES.USER: {
       profile = await FoodUser.findById(id).lean();
+      if (profile && profile.phone) {
+        try {
+          const { OfficeEmployee } = await import('../../modules/dailymealbox/office/models/officeEmployee.model.js');
+          const phoneWithoutPrefix = profile.phone.replace('+48', '').trim();
+          
+          const officeEmployee = await OfficeEmployee.findOne({
+            $or: [{ phone: profile.phone }, { phone: phoneWithoutPrefix }],
+            status: 'active',
+            subscriptionStatus: 'active'
+          })
+          .populate('assignedMealPlanId', 'name pricePerDay deliveryDays')
+          .populate('assignedVendorId', 'restaurantName profileImage')
+          .lean();
+
+          if (officeEmployee) {
+             profile.officeMealPlan = {
+                employeeId: officeEmployee._id,
+                companyAdminId: officeEmployee.adminId,
+                mealPlan: officeEmployee.assignedMealPlanId,
+                vendor: officeEmployee.assignedVendorId,
+                deliverySlot: officeEmployee.deliverySlot
+             };
+          }
+        } catch (e) {
+          logger.warn({ err: e }, "Failed to fetch office employee link");
+        }
+      }
       break;
+    }
     case ROLES.ADMIN:
       profile = await FoodAdmin.findById(id).populate('roleId').select("-password").lean();
       break;

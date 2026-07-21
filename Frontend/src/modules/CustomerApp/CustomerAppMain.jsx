@@ -350,7 +350,7 @@ export default function CustomerAppMain() {
             <AuthPhoneScreen
               isLogin={false}
               onToggleMode={() => navigate("/user/auth/login")}
-              onSendOtp={async (phone, name) => {
+              onSendOtp={async (phone) => {
                 try {
                   const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
                   // Pre-validate phone existence
@@ -363,7 +363,7 @@ export default function CustomerAppMain() {
                   await authAPI.sendOTP(fullPhone);
                   setAuthMode("signup");
                   setPhoneNumber(fullPhone);
-                  setSignupName(name || "");
+                  setSignupName("");
                   navigate("/user/otp");
                   showToast("📱 OTP sent to " + fullPhone);
                 } catch (err) {

@@ -1,17 +1,65 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
+import { getCompanyDetailsApi } from '../services/officeApi';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      navigate('/office/verify-otp');
-    }, 1000);
+    setError(null);
+    try {
+      let res;
+      if (isLogin) {
+        res = await loginOfficeAccountApi(email, password);
+      } else {
+        res = await registerOfficeAccountApi(email, password);
+      }
+      
+      const token = res.data?.data?.accessToken || res.data?.accessToken;
+      if (token) {
+        localStorage.setItem('office_token', token);
+        
+        // If it's a new registration, redirect directly to onboarding
+        if (!isLogin) {
+            navigate('/office/onboarding');
+            return;
+        }
+
+        // 2. Check company status for login
+        try {
+          const companyRes = await getCompanyDetailsApi();
+          const company = companyRes.data.data;
+          
+          if (company.status === 'under_review') {
+            navigate('/office/under-review');
+          } else if (company.status === 'rejected') {
+            setError('Your application was rejected. Please contact support.');
+          } else {
+            navigate('/office/dashboard');
+          }
+        } catch (companyErr) {
+          // Company doesn't exist (404), go to onboarding
+          if (companyErr.response?.status === 404) {
+             navigate('/office/onboarding');
+          } else {
+             throw companyErr;
+          }
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || (isLogin ? 'Login failed. Please check your credentials.' : 'Registration failed.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -81,12 +129,22 @@ export default function LoginPage() {
             </div>
 
             <div className="mb-8">
-              <h2 className="text-[#1A1C1E] text-2xl font-bold mb-2">Welcome back</h2>
-              <p className="text-[#6C7278] text-sm">Please enter your details to access your dashboard.</p>
+              <h2 className="text-[#1A1C1E] text-2xl font-bold mb-2">
+                {isLogin ? 'Welcome back' : 'Create an account'}
+              </h2>
+              <p className="text-[#6C7278] text-sm">
+                {isLogin ? 'Please enter your details to access your dashboard.' : 'Sign up to start managing your office meals.'}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-100">
+                  {error}
+                </div>
+              )}
+
               {/* Email */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[#4A4C56]">Email Address</label>
@@ -97,6 +155,8 @@ export default function LoginPage() {
                   <input
                     type="email"
                     required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
                     className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-sm text-[#1A1C1E] focus:outline-none focus:border-[#287965] focus:ring-1 focus:ring-[#287965] transition-colors"
                   />
@@ -118,6 +178,8 @@ export default function LoginPage() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full pl-10 pr-10 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-sm text-[#1A1C1E] focus:outline-none focus:border-[#287965] focus:ring-1 focus:ring-[#287965] transition-colors"
                   />
@@ -133,17 +195,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center pt-1">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  className="w-4 h-4 rounded border-[#D1D5DB] text-[#287965] focus:ring-[#287965]"
-                />
-                <label htmlFor="remember" className="ml-2 text-sm text-[#6C7278] cursor-pointer">
-                  Remember for 30 days
-                </label>
-              </div>
+              {/* Remember Me (Login only) */}
+              {isLogin && (
+                  <div className="flex items-center pt-1">
+                    <input
+                      type="checkbox"
+                      id="remember"
+                      className="w-4 h-4 rounded border-[#D1D5DB] text-[#287965] focus:ring-[#287965]"
+                    />
+                    <label htmlFor="remember" className="ml-2 text-sm text-[#6C7278] cursor-pointer">
+                      Remember for 30 days
+                    </label>
+                  </div>
+              )}
 
               {/* Submit */}
               <button
@@ -155,7 +219,7 @@ export default function LoginPage() {
                   <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
                 ) : (
                   <>
-                    Sign In
+                    {isLogin ? 'Sign In' : 'Create Account'}
                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </>
                 )}
@@ -167,20 +231,22 @@ export default function LoginPage() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#E5E7EB]"></div>
               </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-4 text-[#6C7278] uppercase font-medium tracking-wider">
-                  OR CONTINUE WITH
-                </span>
-              </div>
             </div>
 
             {/* Footer */}
             <div className="text-center">
               <p className="text-sm text-[#6C7278]">
-                Don't have an account?{' '}
-                <a href="#" className="text-[#287965] font-medium hover:underline">
-                  Contact Sales
-                </a>
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <button
+                  type="button"
+                  onClick={() => {
+                      setIsLogin(!isLogin);
+                      setError(null);
+                  }} 
+                  className="text-[#287965] font-medium hover:underline focus:outline-none"
+                >
+                  {isLogin ? "Sign up" : "Sign in"}
+                </button>
               </p>
             </div>
 

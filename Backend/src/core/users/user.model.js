@@ -168,7 +168,6 @@ const userSchema = new mongoose.Schema(
         /** Default delivery slot preference */
         deliverySlot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             default: 'lunch'
         },
         /** Invoice type: simple receipt or full B2B VAT invoice */
@@ -179,7 +178,8 @@ const userSchema = new mongoose.Schema(
         },
         companyNip: { type: String, default: '' },
         companyName: { type: String, default: '' },
-        companyAddress: { type: String, default: '' },
+        registeredAddress: { type: String, default: '' },
+        deliveryAddress: { type: String, default: '' },
         billingEmail: { type: String, default: '' },
         /** Loyalty points balance */
         loyaltyPoints: { type: Number, default: 0, min: 0 },
@@ -187,6 +187,13 @@ const userSchema = new mongoose.Schema(
         walletBalance: { type: Number, default: 0, min: 0 },
         /** Active city for the user */
         city: { type: String, default: '' },
+        /** B2B Company ID for Employees */
+        companyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'OfficeCompany',
+            default: null,
+            index: true
+        },
         /** Current subscription status (denormalized for fast queries) */
         subscriptionStatus: {
             type: String,

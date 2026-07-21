@@ -151,6 +151,9 @@ const OTAConfigPage       = lazy(() => import("@food/pages/admin/OTAConfigPage")
 const FleetManagerDashboard = lazy(() => import("@food/pages/admin/FleetManagerDashboard"));
 const AuditLogs             = lazy(() => import("@food/pages/admin/AuditLogs"));
 const IntegrationSettings   = lazy(() => import("@food/pages/admin/IntegrationSettings"));
+const OfficeOnboardingRequests = lazy(() => import("@food/pages/admin/office/OfficeOnboardingRequests"));
+const ApprovedOffices = lazy(() => import("@food/pages/admin/office/ApprovedOffices"));
+const OfficePayments  = lazy(() => import("@food/pages/admin/office/OfficePayments"));
 
 export default function AdminRouter() {
   return (
@@ -358,6 +361,10 @@ export default function AdminRouter() {
             <Route path="audit-logs" element={<AuditLogs />} />
             {/* AP-09 Integration Settings */}
             <Route path="integrations" element={<IntegrationSettings />} />
+            {/* Office Approvals */}
+            <Route path="office-approvals" element={<OfficeOnboardingRequests />} />
+            <Route path="approved-offices" element={<ApprovedOffices />} />
+            <Route path="office-payments"  element={<OfficePayments />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}

@@ -112,5 +112,56 @@ router.post('/video', upload.single('file'), async (req, res, next) => {
     }
 });
 
+// POST /v1/uploads/document (Allows both images and pdfs)
+router.post('/document', upload.single('file'), async (req, res, next) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file provided'
+            });
+        }
+
+        const mimeType = String(req.file.mimetype || '').toLowerCase();
+        const originalName = String(req.file.originalname || '').toLowerCase();
+        
+        const isPdf = mimeType === 'application/pdf' || originalName.endsWith('.pdf');
+        const isImage = mimeType.startsWith('image/');
+
+        if (!isPdf && !isImage) {
+            return res.status(400).json({
+                success: false,
+                message: 'Only PDF or Image files are allowed'
+            });
+        }
+
+        const folder = typeof req.body?.folder === 'string' && req.body.folder.trim()
+            ? req.body.folder.trim()
+            : 'uploads/documents';
+
+        let url;
+        if (isImage) {
+            url = await uploadImageBuffer(req.file.buffer, folder);
+        } else {
+            url = await uploadFileBuffer(req.file.buffer, folder, {
+                fileName: req.file.originalname || 'document.pdf',
+                format: 'pdf'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Document uploaded successfully',
+            data: {
+                url,
+                publicId: null,
+                originalName: req.file.originalname
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 export default router;
 

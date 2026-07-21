@@ -26,7 +26,7 @@ const router = express.Router();
  */
 
 // ─── Create Subscription ──────────────────────────────────────────────────
-router.post('/', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const sub = await createSubscription({ userId: req.user._id, ...req.body });
         res.status(201).json({ success: true, subscription: sub });
@@ -36,7 +36,7 @@ router.post('/', authMiddleware, requireRoles('USER'), async (req, res) => {
 });
 
 // ─── Get My Subscriptions ────────────────────────────────────────────────
-router.get('/my', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.get('/my', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const subscriptions = await getUserSubscriptions(req.user._id || req.user.userId, req.query.status);
         res.json({ success: true, subscriptions });
@@ -45,8 +45,18 @@ router.get('/my', authMiddleware, requireRoles('USER'), async (req, res) => {
     }
 });
 
+// ─── Get Any User's Subscriptions (Admin Only) ───────────────────────────
+router.get('/admin/user/:userId', authMiddleware, requireRoles('ADMIN'), async (req, res) => {
+    try {
+        const subscriptions = await getUserSubscriptions(req.params.userId, req.query.status);
+        res.json({ success: true, subscriptions });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── Get Today's & Tomorrow's Meal (HomeScreen card) ─────────────────────
-router.get('/today', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.get('/today', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const data = await getTodayAndTomorrowMeals(userId);
@@ -58,7 +68,7 @@ router.get('/today', authMiddleware, requireRoles('USER'), async (req, res) => {
 
 // ─── Get Customer Orders List (OrdersScreen) ──────────────────────────────
 // ?type=upcoming (default) | ?type=past
-router.get('/my-orders', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const { type = 'upcoming' } = req.query;
@@ -71,7 +81,7 @@ router.get('/my-orders', authMiddleware, requireRoles('USER'), async (req, res) 
 
 // ─── Skip a Specific Daily Order ────────────────────────────────────────────────
 // PATCH /dmb/subscriptions/daily-orders/:orderId/skip
-router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
@@ -113,7 +123,7 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER')
 
 // ─── Undo Skip for a Specific Daily Order ─────────────────────────────────────────
 // PATCH /dmb/subscriptions/daily-orders/:orderId/undo-skip
-router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
@@ -156,7 +166,7 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
 // ─── Change Meal for a Daily Order (before preparation starts) ───────────────────
 // PATCH /dmb/subscriptions/daily-orders/:orderId/change-meal
 // Body: { mealPlanIds: ['id1', 'id2'] }
-router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
@@ -208,7 +218,7 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
 });
 
 // ─── Skip a Delivery (PRD ACM-13) ─────────────────────────────────────────
-router.patch('/:subscriptionId/skip', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/:subscriptionId/skip', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const result = await skipDelivery({
             subscriptionId: req.params.subscriptionId,
@@ -223,7 +233,7 @@ router.patch('/:subscriptionId/skip', authMiddleware, requireRoles('USER'), asyn
 });
 
 // ─── Pause Subscription (PRD ACM-14) ──────────────────────────────────────
-router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const result = await pauseSubscription({
             subscriptionId: req.params.subscriptionId,
@@ -238,7 +248,7 @@ router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER'), asy
 });
 
 // ─── Resume Subscription ───────────────────────────────────────────────────
-router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const sub = await resumeSubscription(req.params.subscriptionId);
         if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found or not paused' });
@@ -249,7 +259,7 @@ router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER'), as
 });
 
 // ─── Cancel Subscription (PRD ACM-15 — EU Law, always accessible) ─────────
-router.patch('/:subscriptionId/cancel', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.patch('/:subscriptionId/cancel', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const sub = await cancelSubscription({
             subscriptionId: req.params.subscriptionId,
@@ -349,7 +359,7 @@ router.delete('/durations/:id', authMiddleware, requireRoles('ADMIN'), async (re
 
 // ─── Rate a Delivered Order ──────────────────────────────────────────────────
 // POST /dmb/subscriptions/daily-orders/:orderId/rate
-router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
@@ -401,7 +411,7 @@ router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER'),
 
 // ─── Create Razorpay Order for Driver Tip ────────────────────────────────────
 // POST /dmb/subscriptions/daily-orders/:orderId/tip/payment-order
-router.post('/daily-orders/:orderId/tip/payment-order', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/daily-orders/:orderId/tip/payment-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const { amount } = req.body;
@@ -465,7 +475,7 @@ router.post('/daily-orders/:orderId/tip/payment-order', authMiddleware, requireR
 
 // ─── Verify payment signature & credit driver tip ────────────────────────────
 // POST /dmb/subscriptions/daily-orders/:orderId/tip/verify-payment
-router.post('/daily-orders/:orderId/tip/verify-payment', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/daily-orders/:orderId/tip/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;

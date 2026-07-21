@@ -6,11 +6,16 @@ import {
     updateEmployee,
     deleteEmployee,
     getVendors,
-    assignMeals,
+    assignMealPlan,
+    createAssignmentOrder,
     getAssignments,
     deleteAssignment,
     getCompanyDetails,
-    updateCompanyDetails
+    updateCompanyDetails,
+    getOnboardingStatus,
+    startOnboarding,
+    updateOnboardingStep,
+    completeOnboarding
 } from '../controllers/office.controller.js';
 
 const router = express.Router();
@@ -27,11 +32,18 @@ router.delete('/employees/:id', deleteEmployee);
 // Vendors & Assignments
 router.get('/vendors', getVendors);
 router.get('/assignments', getAssignments);
-router.post('/assignments', assignMeals);
+router.post('/assignments/create-order', createAssignmentOrder);
+router.post('/assignments', assignMealPlan);
 router.delete('/assignments/:id', deleteAssignment);
 
 // Company Details
 router.get('/company', getCompanyDetails);
 router.put('/company', updateCompanyDetails);
+
+// Onboarding
+router.get('/onboarding/status', getOnboardingStatus);
+router.post('/onboarding/start', startOnboarding);
+router.put('/onboarding/step/:step', updateOnboardingStep);
+router.post('/onboarding/complete', completeOnboarding);
 
 export default router;

@@ -8,18 +8,13 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
     return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
   });
   const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const cleanDigits = phone.replace(/\D/g, "");
     if (cleanDigits.length === selectedCountry.phoneLength) {
-      if (!isLogin && name.trim().length < 2) {
-        alert("Please enter a valid name");
-        return;
-      }
       const fullPhone = `${selectedCountry.code}${cleanDigits}`;
-      onSendOtp(fullPhone, name.trim());
+      onSendOtp(fullPhone);
     } else {
       alert(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`);
     }
@@ -48,23 +43,6 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
         </p>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-          {!isLogin && (
-            <div className="mb-4">
-              <label className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-2 block">
-                Full Name
-              </label>
-              <div className="flex h-14 bg-white border border-[#bec9c3] rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-                <input 
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="flex-1 px-4 text-[14px] font-semibold text-[#1b1c1c] focus:outline-none"
-                  autoFocus
-                />
-              </div>
-            </div>
-          )}
 
           <div className="mb-8">
             <label className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-2 block">
@@ -98,7 +76,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
           <div className="mt-auto flex flex-col gap-5">
             <button 
               type="submit"
-              disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength || (!isLogin && name.trim().length < 2)}
+              disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
               className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]"
             >
               Send OTP

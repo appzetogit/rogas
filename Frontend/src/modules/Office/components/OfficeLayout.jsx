@@ -11,162 +11,217 @@ import EmployeesTab from '../pages/EmployeesPage';
 import VendorsTab from '../pages/VendorsPage';
 import MealPlansTab from '../pages/AssignmentsPage';
 import CompanyDetailsTab from '../pages/CompanyPage';
-
-import { INITIAL_EMPLOYEES, INITIAL_VENDORS, INITIAL_COMPANY_DETAILS } from '../mockData';
+import { 
+  getEmployeesApi, addEmployeeApi, updateEmployeeApi, deleteEmployeeApi, 
+  getVendorsApi, assignMealsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi 
+} from '../services/officeApi';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('employees');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const path = location.pathname.split('/').pop();
+  let activeTab = 'employees';
+  if (path === 'VendorsAssign') activeTab = 'vendors';
+  else if (path === 'AssignedMealPlans') activeTab = 'meal-plans';
+  else if (path === 'CompanyDetails') activeTab = 'company';
+  else activeTab = 'employees';
+
+  const setActiveTab = (tab) => {
+    if (tab === 'employees') navigate('/office/dashboard');
+    else if (tab === 'vendors') navigate('/office/VendorsAssign');
+    else if (tab === 'meal-plans') navigate('/office/AssignedMealPlans');
+    else if (tab === 'company') navigate('/office/CompanyDetails');
+  };
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  // Core state managers loaded from localStorage or fallback defaults
+  // Core state managers loaded from API
   const [employees, setEmployees] = useState([]);
-  const [vendors] = useState(INITIAL_VENDORS);
+  const [vendors, setVendors] = useState([]);
   const [companyDetails, setCompanyDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize state once on mount from localStorage
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [empRes, venRes, compRes] = await Promise.all([
+        getEmployeesApi({ limit: 1000 }), // fetch all for now
+        getVendorsApi(),
+        getCompanyDetailsApi()
+      ]);
+      const employeesData = (empRes.data.data.employees || []).map(emp => ({ ...emp, id: emp._id }));
+      const vendorsData = (venRes.data.data || []).map(v => ({ 
+        ...v, 
+        id: v._id,
+        name: v.restaurantName || v.name,
+        tag: v.vendorType || '',
+        categories: v.cuisines || [],
+        rating: v.rating || 0,
+        imageUrl: (v.coverImages && v.coverImages.length > 0) ? v.coverImages[0] : (v.profileImage || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80'),
+        shortName: (v.restaurantName || v.name || 'V').substring(0, 2).toUpperCase(),
+        reviewsCount: v.totalRatings || 0,
+        description: v.description || 'Verified local organic kitchen partner offering healthy daily meals.',
+      }));
+      setEmployees(employeesData);
+      setVendors(vendorsData);
+      setCompanyDetails(compRes.data.data || null);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      if (error.response?.status === 401) {
+         navigate('/office/login');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const savedEmployees = localStorage.getItem('dailymealbox_employees');
-    if (savedEmployees) {
-      try {
-        setEmployees(JSON.parse(savedEmployees));
-      } catch (e) {
-        setEmployees(INITIAL_EMPLOYEES);
-      }
-    } else {
-      setEmployees(INITIAL_EMPLOYEES);
-    }
-
-    const savedCompany = localStorage.getItem('dailymealbox_company');
-    if (savedCompany) {
-      try {
-        setCompanyDetails(JSON.parse(savedCompany));
-      } catch (e) {
-        setCompanyDetails(INITIAL_COMPANY_DETAILS);
-      }
-    } else {
-      setCompanyDetails(INITIAL_COMPANY_DETAILS);
-    }
+    fetchDashboardData();
   }, []);
 
-  // Helper to persist state securely
-  const saveEmployeesToStorage = (updatedList) => {
-    setEmployees(updatedList);
-    localStorage.setItem('dailymealbox_employees', JSON.stringify(updatedList));
-  };
-
-  const saveCompanyToStorage = (updatedCompany) => {
-    setCompanyDetails(updatedCompany);
-    localStorage.setItem('dailymealbox_company', JSON.stringify(updatedCompany));
-  };
-
   // 1. Employee Mutators
-  const handleAddEmployee = (empData) => {
-    // Generate unique random ID
-    const randomId = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
-    
-    // Choose a professional headshot from our preloaded high-quality pool
-    const headshots = [
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAZPjIhDc13lFWHTNyDlA8dDg0O_YNJI537TVVlVSrmADmFBrkn-CYbUaCB4oULTaGFciEmjZDBVRl9br48T87qEhpOvEpwP1Bol-b8QK8xdRdskT49VjPf1bpevkCItAhenI9dNVKniNBWm39j7nnGgNyfwn4VzucBEuD8UqGbs9xvdaoKCT_-W_HzXKPpK_QgyFCYJHjrtBd2rZ6xu8yxcHeei8QmM2FYEjl2mmpasC-xmZL-EIaq',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAEcPS3Yz8_0_bbTcwpjdjv0yPJ9b6GsdeHz6M-qjHdxLNliLP7-sKyfcD3aPXKTm3G6S1e1zCSnhmJTEIraEpGLsou592U8M5u1-ufQh9bdjYwgoK-Yd-SPWa1EN7XfvwT3m3o60-PFegOqYw61sQ0BGf_aGSCLOVTJJ3yMr5Q29JX39084N_1EK5DTW7F2r1aZ8FF75u6-0DCQMt2HBQvcQtNQzSXCvw7scaTn_2yv5YXBH-2kDOM',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAlEMTw9zOnAoLWCbuwiGv4tsGSOrXX5hx0C2zKXt-ZlZ4oPoSbT5DEjzZXUZdGYuGRQMDcNpBDWt4fOvSsSXvX-lCapiDCiuI9IThPB48EO43MTXWSCdDYRnrfeS24L8toUcCPAa91gPZWvD95RafoNeapsAjgq2MxbO8ZNpPDoBpoWjrgmNwfX7YaYvRBo-fpRQat_-tLAyqlbd7c3TYvOjVeZjKZE-WDKlVDhSVGXWREr8EeWndR',
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCloVLgxdy6z75f6VS31KyQTFX-UFooXFJkX9fAt_W0c1I57BuyxkTFHoKEx1ou77cpGUUKmo6MKqPPTJVaLD4yRFkIPF6rLvsut-oON4j4CD4gyNWbr_uGS3L6Cdxm4vsJCHXlOlMjG7EWpblhUVL_Pm_ZZwcpoMIGcQWDRxd2rLVnDdiXsnBxivgv8yszSCN9hf_O2x-B3ngXIC5yw_54oIZBEqwNQQLFwpJzDgDjOdlOptGxg3kk'
-    ];
-    const chosenAvatar = headshots[Math.floor(Math.random() * headshots.length)];
-
-    const newEmp = {
-      ...empData,
-      id: randomId,
-      avatarUrl: chosenAvatar,
-    };
-
-    const newList = [newEmp, ...employees];
-    saveEmployeesToStorage(newList);
-
-    // Sync total employees count in Company stats
-    if (companyDetails) {
-      saveCompanyToStorage({
-        ...companyDetails,
-        totalEmployees: companyDetails.totalEmployees + 1,
-      });
+  const handleAddEmployee = async (empData) => {
+    try {
+      await addEmployeeApi(empData);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to add employee');
     }
   };
 
-  const handleUpdateEmployee = (id, updatedFields) => {
-    const newList = employees.map((emp) => (emp.id === id ? { ...emp, ...updatedFields } : emp));
-    saveEmployeesToStorage(newList);
+  const handleUpdateEmployee = async (id, updatedFields) => {
+    try {
+      await updateEmployeeApi(id, updatedFields);
+      fetchDashboardData();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to update employee');
+    }
   };
 
-  const handleDeleteEmployee = (id) => {
-    const newList = employees.filter((emp) => emp.id !== id);
-    saveEmployeesToStorage(newList);
-
-    // Sync total employees count in Company stats
-    if (companyDetails) {
-      saveCompanyToStorage({
-        ...companyDetails,
-        totalEmployees: Math.max(0, companyDetails.totalEmployees - 1),
-      });
+  const handleDeleteEmployee = async (id) => {
+    try {
+      await deleteEmployeeApi(id);
+      fetchDashboardData();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to delete employee');
     }
   };
 
   // 2. Meal Subscription Actions (Assignment / Unassignment)
-  const handleAssignEmployees = (employeeIds, vendorId, deliverySlot) => {
-    const newList = employees.map((emp) => {
-      if (employeeIds.includes(emp.id)) {
-        return {
-          ...emp,
-          assignedVendorId: vendorId,
-          deliverySlot,
-        };
-      }
-      return emp;
-    });
-    saveEmployeesToStorage(newList);
-
-    // Dynamic calculations of budget utilization increase
-    if (companyDetails) {
-      const assignedCount = employeeIds.length;
-      const additionalBudget = assignedCount * 220; // estimate $220 average budget per assignment
-      const updatedUtil = Math.min(companyDetails.monthlyBudgetCap, companyDetails.budgetUtilized + additionalBudget);
-      saveCompanyToStorage({
-        ...companyDetails,
-        budgetUtilized: updatedUtil,
+  const handleAssignEmployees = async (employeeIds, vendorId, deliverySlot, subscriptionPlanId, totalAmount, vendorMealPlanId) => {
+    try {
+      // Step 1: Create order — pass subscriptionPlanId + totalAmount (for billing)
+      const orderRes = await createAssignmentOrderApi({
+        employeeIds,
+        subscriptionPlanId,
+        vendorId,
+        slots: deliverySlot,
+        totalAmount
       });
-    }
+      const orderData = orderRes.data.data;
 
-    alert(`Successfully mapped subscriptions for ${employeeIds.length} employee(s). All deliveries scheduled for ${deliverySlot}.`);
+      // Dev/mock bypass — backend returns isMock:true when Razorpay is not configured
+      if (orderData.isMock || orderData.orderId.startsWith('mock_')) {
+          await assignMealsApi({
+             employeeIds,
+             vendorId,
+             mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
+             subscriptionPlanId,                                  // keep for reference
+             slots: deliverySlot,
+             razorpayOrderId: orderData.orderId,
+             razorpayPaymentId: 'mock_payment_' + Date.now(),
+             razorpaySignature: 'mock_signature'
+          });
+          fetchDashboardData();
+          alert(`Subscriptions assigned for ${employeeIds.length} employee(s). Deliveries scheduled for ${deliverySlot.join(', ')}.`);
+          return;
+      }
+
+      // Step 2: Load Razorpay Script dynamically if not already present
+      if (!window.Razorpay) {
+         await new Promise((resolve, reject) => {
+             const script = document.createElement('script');
+             script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+             script.onload = resolve;
+             script.onerror = reject;
+             document.body.appendChild(script);
+         });
+      }
+
+      // Step 3: Open Razorpay Checkout using key returned from backend
+      const rzpKey = orderData.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || '';
+      if (!rzpKey) {
+        throw new Error('Razorpay key not configured. Please contact support.');
+      }
+
+      const options = {
+          key: rzpKey,
+          amount: orderData.amount,
+          currency: orderData.currency || 'INR',
+          name: "Rogas Meal Box",
+          description: "Office Meal Subscription",
+          order_id: orderData.orderId,
+          handler: async function (response) {
+              try {
+                  await assignMealsApi({
+                     employeeIds,
+                     vendorId,
+                     mealPlanId: vendorMealPlanId || subscriptionPlanId,
+                     subscriptionPlanId,
+                     slots: deliverySlot,
+                     razorpayOrderId: response.razorpay_order_id,
+                     razorpayPaymentId: response.razorpay_payment_id,
+                     razorpaySignature: response.razorpay_signature
+                  });
+                  fetchDashboardData();
+                  alert(`Payment successful! Subscriptions assigned for ${employeeIds.length} employee(s).`);
+              } catch (error) {
+                  alert(error.response?.data?.message || 'Payment verified but assignment failed. Please contact support.');
+              }
+          },
+          prefill: {
+              name: companyDetails?.legalName || "Office Admin",
+              email: companyDetails?.email || "admin@office.com",
+          },
+          theme: { color: "#088d5e" }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response){
+          alert("Payment failed: " + response.error.description);
+      });
+      rzp.open();
+    } catch (error) {
+      alert(error.response?.data?.message || error.message || 'Failed to initiate checkout');
+    }
   };
 
-  const handleUnassignEmployee = (id) => {
-    const newList = employees.map((emp) => {
-      if (emp.id === id) {
-        return {
-          ...emp,
-          assignedVendorId: undefined,
-          deliverySlot: undefined,
-        };
-      }
-      return emp;
-    });
-    saveEmployeesToStorage(newList);
 
-    // Dynamic calculations of budget utilization decrease
-    if (companyDetails) {
-      const updatedUtil = Math.max(2000, companyDetails.budgetUtilized - 220);
-      saveCompanyToStorage({
-        ...companyDetails,
-        budgetUtilized: updatedUtil,
-      });
+  const handleUnassignEmployee = async (id) => {
+    try {
+      // Find the assignment first, wait, employee ID isn't enough, we need assignment ID,
+      // Or we can delete by calling a special endpoint, but for now let's just make the backend delete it
+      // if we send an unassign request. Alternatively, I can call an API to find the assignment.
+      const res = await officeClient.get('/assignments');
+      const assignments = res.data.data;
+      const assignment = assignments.find(a => a.employeeId._id === id);
+      if (assignment) {
+         await officeClient.delete(`/assignments/${assignment._id}`);
+         fetchDashboardData();
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to unassign employee');
     }
   };
 
   // 3. Company details profile modifier
-  const handleUpdateCompanyDetails = (updatedFields) => {
-    if (companyDetails) {
-      saveCompanyToStorage({
-        ...companyDetails,
-        ...updatedFields,
-      });
+  const handleUpdateCompanyDetails = async (updatedFields) => {
+    try {
+      await updateCompanyDetailsApi(updatedFields);
+      fetchDashboardData();
+    } catch (error) {
+      alert('Failed to update company details');
     }
   };
 
@@ -278,8 +333,12 @@ export default function App() {
           </div>
         </header>
 
-        {/* CONTENT CANVAS AREA */}
         <main className="flex-1 p-6 md:p-8 space-y-6">
+          {loading ? (
+             <div className="flex items-center justify-center h-64">
+                <span className="material-symbols-outlined animate-spin text-4xl text-brand-primary">sync</span>
+             </div>
+          ) : (
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -322,6 +381,7 @@ export default function App() {
               )}
             </motion.div>
           </AnimatePresence>
+          )}
         </main>
 
         {/* LOGISTICS FOOTER */}

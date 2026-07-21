@@ -5647,6 +5647,15 @@ export async function createVendorSubscriptionPlan(body) {
     const deliveryDays = typeof body.deliveryDays === 'string' && ['mon_fri', 'full_week'].includes(body.deliveryDays) ? body.deliveryDays : 'full_week';
     const applyFoodVatOnMenu = body.applyFoodVatOnMenu === true || body.applyFoodVatOnMenu === 'true';
 
+    let daysCount = 0;
+    if (duration === 'day') {
+        daysCount = 1;
+    } else if (duration === 'week') {
+        daysCount = deliveryDays === 'mon_fri' ? 5 : 7;
+    } else if (duration === 'month') {
+        daysCount = deliveryDays === 'mon_fri' ? 20 : 30;
+    }
+
     const plan = new VendorSubscriptionPlan({
         name,
         price,
@@ -5657,6 +5666,7 @@ export async function createVendorSubscriptionPlan(body) {
         deliveryVat,
         platformFee,
         deliveryDays,
+        daysCount,
         applyFoodVatOnMenu,
         status: body.status === 'inactive' ? 'inactive' : 'active'
     });
@@ -5741,6 +5751,14 @@ export async function updateVendorSubscriptionPlan(id, body) {
             throw new ValidationError('Status must be active or inactive');
         }
         plan.status = body.status;
+    }
+
+    if (plan.duration === 'day') {
+        plan.daysCount = 1;
+    } else if (plan.duration === 'week') {
+        plan.daysCount = plan.deliveryDays === 'mon_fri' ? 5 : 7;
+    } else if (plan.duration === 'month') {
+        plan.daysCount = plan.deliveryDays === 'mon_fri' ? 20 : 30;
     }
 
     await plan.save();

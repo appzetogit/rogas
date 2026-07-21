@@ -399,6 +399,26 @@ export function ProfileScreen({
             </button>
           </div>
 
+          {/* Office Meal Plan */}
+          {currentUser?.officeMealPlan && (
+            <div className="bg-[#1f7a63] text-white rounded-2xl p-4 shadow-md flex items-center justify-between hover:bg-[#155a49] transition-all cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-xl text-white flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[22px]">corporate_fare</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">Office Meal Plan</h3>
+                  <p className="text-xs text-white/90 font-medium mt-0.5">
+                    {currentUser.officeMealPlan.vendor?.restaurantName} · {currentUser.officeMealPlan.mealPlan?.name}
+                  </p>
+                </div>
+              </div>
+              <button className="text-white hover:text-white/80 font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+          )}
+
           {/* Help & Support / Complaints */}
           <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">

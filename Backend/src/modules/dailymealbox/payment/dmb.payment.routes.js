@@ -18,7 +18,7 @@ const getRazorpay = () => new Razorpay({
  * Step 1: Create Razorpay order + pending DMB subscription
  * Body: { vendorId, mealPlanId, deliveryDays, deliverySlot, deliveryAddress, pricing }
  */
-router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const {
             vendorId,
@@ -112,7 +112,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER'), async (req, r
  * Step 2: Verify Razorpay signature → activate subscription
  * Body: { razorpayOrderId, razorpayPaymentId, razorpaySignature, subscriptionId }
  */
-router.post('/verify-payment', authMiddleware, requireRoles('USER'), async (req, res) => {
+router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature, subscriptionId } = req.body;
 

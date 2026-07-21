@@ -3,10 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check, MapPin, Navigation } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '250px',
+  borderRadius: '0.5rem'
+};
+const defaultCenter = { lat: 52.2297, lng: 21.0122 }; // Warsaw
 
 
 
@@ -27,6 +35,11 @@ export default function CompanyDetailsTab({
   const [contactRole, setContactRole] = useState(details.contactRole);
   const [contactEmail, setContactEmail] = useState(details.contactEmail);
   const [contactPhone, setContactPhone] = useState(details.contactPhone);
+  const [locationCoords, setLocationCoords] = useState(details.location || defaultCenter);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+  });
 
   const handleOpenEdit = () => {
     setLegalName(details.legalName);
@@ -39,6 +52,7 @@ export default function CompanyDetailsTab({
     setContactRole(details.contactRole);
     setContactEmail(details.contactEmail);
     setContactPhone(details.contactPhone);
+    setLocationCoords(details.location || defaultCenter);
     setIsEditModalOpen(true);
   };
 
@@ -55,9 +69,46 @@ export default function CompanyDetailsTab({
       contactRole,
       contactEmail,
       contactPhone,
+      location: locationCoords
     });
     setIsEditModalOpen(false);
     alert('Company details have been updated successfully.');
+  };
+
+  const fetchAddress = (lat, lng) => {
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setDelAddr(results[0].formatted_address);
+        } else {
+          console.error("Geocoder failed due to: " + status);
+        }
+      });
+    }
+  };
+
+  const onMapClick = useCallback((e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    setLocationCoords({ lat, lng });
+    fetchAddress(lat, lng);
+  }, []);
+
+  const handleLiveLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setLocationCoords({ lat, lng });
+          fetchAddress(lat, lng);
+        },
+        () => alert('Could not get live location. Please check your browser permissions.')
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
   };
 
   // Helper to render budget cap nicely
@@ -275,154 +326,192 @@ export default function CompanyDetailsTab({
       {/* Edit Details Modal */}
       <AnimatePresence>
         {isEditModalOpen && (
-          <div className="fixed inset-0 bg-brand-text/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 md:p-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-xl modal-shadow overflow-hidden flex flex-col max-h-[90vh]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden relative"
             >
-              <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/30">
-                <h3 className="text-lg font-bold text-brand-primary">Edit Company Details</h3>
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 sticky top-0 z-10">
+                <h3 className="text-lg font-bold text-gray-900">Edit Company Details</h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="text-brand-muted hover:text-brand-text cursor-pointer"
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-full">
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Company Legal Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={legalName}
-                      onChange={(e) => setLegalName(e.target.value)}
-                    />
-                  </div>
+              {/* Form Content */}
+              <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Company Legal Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={legalName}
+                        onChange={(e) => setLegalName(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      NIP (Tax ID)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={nip}
-                      onChange={(e) => setNip(e.target.value)}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        NIP (Tax ID)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={nip}
+                        onChange={(e) => setNip(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      REGON
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={regon}
-                      onChange={(e) => setRegon(e.target.value)}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        REGON
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={regon}
+                        onChange={(e) => setRegon(e.target.value)}
+                      />
+                    </div>
 
-                  <div className="col-span-full">
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Registered Address
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={regAddr}
-                      onChange={(e) => setRegAddr(e.target.value)}
-                    />
-                  </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Registered Address
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={regAddr}
+                        onChange={(e) => setRegAddr(e.target.value)}
+                      />
+                    </div>
 
-                  <div className="col-span-full">
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Delivery Address
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={delAddr}
-                      onChange={(e) => setDelAddr(e.target.value)}
-                    />
-                  </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Delivery Address
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={delAddr}
+                        onChange={(e) => setDelAddr(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Monthly Budget Cap (€)
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={budgetCap}
-                      onChange={(e) => setBudgetCap(e.target.value)}
-                    />
-                  </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                          Set Location (Map Pin)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleLiveLocation}
+                          className="flex items-center gap-1.5 text-[10px] font-bold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 px-2 py-1 rounded transition-colors cursor-pointer"
+                        >
+                          <Navigation className="w-3 h-3" />
+                          Use Live Location
+                        </button>
+                      </div>
+                      <div className="border border-gray-300 rounded-lg overflow-hidden relative">
+                        {!isLoaded ? (
+                          <div className="w-full h-[250px] bg-gray-100 flex items-center justify-center">
+                            <span className="text-sm text-gray-400 font-semibold">Loading Map...</span>
+                          </div>
+                        ) : (
+                          <GoogleMap
+                            mapContainerStyle={mapContainerStyle}
+                            zoom={13}
+                            center={locationCoords}
+                            onClick={onMapClick}
+                            options={{ disableDefaultUI: true, zoomControl: true }}
+                          >
+                            <Marker position={locationCoords} />
+                          </GoogleMap>
+                        )}
+                      </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Primary Contact Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Monthly Budget Cap (€)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={budgetCap}
+                        onChange={(e) => setBudgetCap(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Primary Contact Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Contact Phone
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none text-sm"
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                    />
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Contact Email
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Contact Phone
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-sm bg-white"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="px-6 py-4 -mx-6 -mb-6 mt-6 bg-brand-bg/30 border-t border-brand-divider flex justify-end gap-3">
+                {/* Footer fixed at bottom */}
+                <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 sticky bottom-0 z-10 shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="px-5 py-2.5 text-brand-muted text-sm font-semibold hover:bg-brand-bg rounded-lg transition-colors cursor-pointer"
+                    className="px-5 py-2.5 text-gray-600 text-sm font-semibold hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg transition-all active:scale-[0.98] shadow-sm cursor-pointer"
                   >
                     Save Changes
                   </button>

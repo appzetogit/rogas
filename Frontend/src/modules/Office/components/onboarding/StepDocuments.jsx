@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, CloudUpload, Paperclip, Check, Loader2, Trash2, ShieldCheck, Sparkles } from 'lucide-react';
+import { uploadDocumentApi } from '../../services/officeApi';
 
 const DOCUMENT_LIST = [
   {
@@ -46,38 +47,48 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
 
   const docsState = data.documents || {};
 
-  const handleUploadClick = (docKey, defaultName) => {
+  const handleFileChange = async (e, docKey) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     if (uploadingDoc) return; // Prevent double uploading
 
     setUploadingDoc(docKey);
-    setUploadProgress(0);
+    setUploadProgress(20);
 
-    // Simulate progress increments
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 20;
-      });
-    }, 150);
+    try {
+      // Simulate progress for UX
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => (prev < 90 ? prev + 10 : prev));
+      }, 500);
 
-    setTimeout(() => {
+      const response = await uploadDocumentApi(file);
       clearInterval(interval);
-      
+      setUploadProgress(100);
+
+      const url = response.data?.data?.url;
+      const originalName = response.data?.data?.originalName || file.name;
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
       const updatedDocs = {
         ...docsState,
         [docKey]: {
-          name: defaultName,
-          size: (1.2 + Math.random() * 2).toFixed(1) + ' MB',
+          url: url,
+          name: originalName,
+          size: sizeMB + ' MB',
           status: 'completed',
         },
       };
       
       updateData({ documents: updatedDocs });
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert(error.response?.data?.message || 'Failed to upload document.');
+    } finally {
       setUploadingDoc(null);
-    }, 1200);
+      setUploadProgress(0);
+      e.target.value = null; // Reset input
+    }
   };
 
   const handleDelete = (docKey) => {
@@ -236,15 +247,23 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleUploadClick(doc.key, doc.defaultName)}
-                  disabled={!!uploadingDoc}
-                  className="w-full py-2.5 px-4 rounded-lg border-2 border-[#287965] text-[#287965] hover:bg-[#287965]/5 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Paperclip className="w-3.5 h-3.5" />
-                  <span>Upload File</span>
-                </button>
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    id={`file-upload-${doc.key}`}
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, doc.key)}
+                    disabled={!!uploadingDoc}
+                  />
+                  <label
+                    htmlFor={`file-upload-${doc.key}`}
+                    className={`w-full py-2.5 px-4 rounded-lg border-2 border-[#287965] text-[#287965] hover:bg-[#287965]/5 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer ${!!uploadingDoc ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Upload File</span>
+                  </label>
+                </div>
               )}
             </div>
           );

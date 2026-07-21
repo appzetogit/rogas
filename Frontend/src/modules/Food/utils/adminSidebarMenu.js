@@ -144,6 +144,33 @@ export const adminSidebarMenu = [
     ],
   },
 
+  // ─── OFFICE & CORPORATE ─────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "OFFICE & CORPORATE",
+    roles: ["SUPER_ADMIN"],
+    items: [
+      {
+        type: "link",
+        label: "Office Approvals",
+        path: "/admin/food/office-approvals",
+        icon: "Building2",
+      },
+      {
+        type: "link",
+        label: "Approved Offices",
+        path: "/admin/food/approved-offices",
+        icon: "Building",
+      },
+      {
+        type: "link",
+        label: "Office Payments",
+        path: "/admin/food/office-payments",
+        icon: "Receipt",
+      },
+    ],
+  },
+
   // ─── ROLES & EMPLOYEES (AP-09) ───────────────────────────────────────────
   {
     type: "section",

@@ -12,6 +12,7 @@ import * as prdAdminExtController from '../controllers/prdAdminExtended.controll
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import * as liveMonitorController from '../controllers/liveMonitor.controller.js';
+import * as officeCompanyApprovalController from '../controllers/officeCompanyApproval.controller.js';
 import * as appIntroAdController from '../controllers/appIntroAd.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import menuBulkRoutes from './menuBulk.routes.js';
@@ -179,6 +180,62 @@ router.patch('/addons/:id/reject', requirePermission('foodManagement', 'edit'), 
 // ----- Foods -----
 // Food approval queue (pending items created by restaurants)
 router.get('/foods/pending-approvals', requirePermission('foodManagement', 'view'), foodApprovalController.getPendingFoodApprovals);
+
+// ----- Office Companies Approval -----
+router.get('/office-companies', requirePermission('vendorManagement', 'view'), officeCompanyApprovalController.getOfficeCompanies);
+router.patch('/office-companies/:id/approve', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.approveOfficeCompany);
+router.patch('/office-companies/:id/reject', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.rejectOfficeCompany);
+
+// ----- Office Payments (admin view) -----
+router.get('/office-payments', requirePermission('vendorManagement', 'view'), async (req, res) => {
+    try {
+        const { OfficePayment } = await import('../../../dailymealbox/office/models/officePayment.model.js');
+        const { OfficeCompany } = await import('../../../dailymealbox/office/models/officeCompany.model.js');
+        const { VendorSubscriptionPlan } = await import('../../../dailymealbox/subscription/vendorSubscriptionPlan.model.js');
+        const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+
+        const { status, page = 1, limit = 20 } = req.query;
+        const filter = {};
+        if (status) filter.status = status;
+
+        const skip = (Number(page) - 1) * Number(limit);
+        const [payments, total] = await Promise.all([
+            OfficePayment.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(Number(limit))
+                .lean(),
+            OfficePayment.countDocuments(filter)
+        ]);
+
+        // Enrich with company, plan, vendor names
+        const companyIds = [...new Set(payments.map(p => p.companyId).filter(Boolean))];
+        const planIds    = [...new Set(payments.map(p => p.subscriptionPlanId).filter(Boolean))];
+        const vendorIds  = [...new Set(payments.map(p => p.vendorId).filter(Boolean))];
+
+        const [companies, plans, vendors] = await Promise.all([
+            OfficeCompany.find({ _id: { $in: companyIds } }, 'legalName').lean(),
+            VendorSubscriptionPlan.find({ _id: { $in: planIds } }, 'name price duration').lean(),
+            FoodRestaurant.find({ _id: { $in: vendorIds } }, 'restaurantName').lean(),
+        ]);
+
+        const companyMap = Object.fromEntries(companies.map(c => [c._id.toString(), c]));
+        const planMap    = Object.fromEntries(plans.map(p => [p._id.toString(), p]));
+        const vendorMap  = Object.fromEntries(vendors.map(v => [v._id.toString(), v]));
+
+        const enriched = payments.map(p => ({
+            ...p,
+            company: companyMap[p.companyId?.toString()] || null,
+            plan: planMap[p.subscriptionPlanId?.toString()] || null,
+            vendor: vendorMap[p.vendorId?.toString()] || null,
+        }));
+
+        res.json({ success: true, data: enriched, total, page: Number(page), limit: Number(limit) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.patch('/foods/bulk-approve', requirePermission('foodManagement', 'edit'), foodApprovalController.bulkApproveFoodItemsController);
 router.patch('/foods/:id/approve', requirePermission('foodManagement', 'edit'), foodApprovalController.approveFoodItemController);
 router.patch('/foods/:id/reject', requirePermission('foodManagement', 'edit'), foodApprovalController.rejectFoodItemController);
@@ -321,5 +378,10 @@ router.get('/vendors/:id/subscribers/:subId', requirePermission('vendorManagemen
 
 // ----- Kitchen Partners -----
 router.use('/kitchen-partners', kitchenPartnerRoutes);
+
+// ----- Office Approvals -----
+router.get('/office-companies', requirePermission('dashboard', 'view'), officeCompanyApprovalController.getOfficeCompanies);
+router.put('/office-companies/:id/approve', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.approveOfficeCompany);
+router.put('/office-companies/:id/reject', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.rejectOfficeCompany);
 
 export default router;

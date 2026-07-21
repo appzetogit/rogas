@@ -30,6 +30,7 @@ import driverDmbRoutes from '../modules/dailymealbox/tracking/driver.routes.js';
 import vendorDmbRoutes from '../modules/dailymealbox/vendor/vendor.routes.js';
 import dmbPaymentRoutes from '../modules/dailymealbox/payment/dmb.payment.routes.js';
 import officeRoutes from '../modules/dailymealbox/office/routes/office.routes.js';
+import officeAuthRoutes from '../modules/dailymealbox/office/routes/officeAuth.routes.js';
 
 const router = express.Router();
 
@@ -63,9 +64,9 @@ router.use('/v1/uploads', uploadRoutes);
 router.get('/v1/food/admin/business-settings/public', businessSettingsController.getBusinessSettings);
 
 router.use('/v1/food/admin', authMiddleware, requireRoles('ADMIN'), restaurantAdminRoutes);
-router.use('/v1/food/user', authMiddleware, requireRoles('USER'), userRoutes);
+router.use('/v1/food/user', authMiddleware, requireRoles('USER', 'EMPLOYEE'), userRoutes);
 router.use('/v1/food/notifications', authMiddleware, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER'), notificationRoutes);
-router.use('/v1/food/orders', authMiddleware, requireRoles('USER'), orderUserRoutes);
+router.use('/v1/food/orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), orderUserRoutes);
 router.use('/v1/food/payments', authMiddleware, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);
 router.use('/v1/fcm-tokens', fcmRoutes);
@@ -81,6 +82,7 @@ router.use('/v1/dmb/vendor', vendorDmbRoutes);
 // DMB Payment routes (Razorpay)
 router.use('/v1/dmb/payments', dmbPaymentRoutes);
 // DMB Office routes
+router.use('/v1/dmb/office/auth', officeAuthRoutes);
 router.use('/v1/dmb/office', officeRoutes);
 
 // ─── Development Helper Routes ──────────────────────────────────────────────

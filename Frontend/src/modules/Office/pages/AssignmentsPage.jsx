@@ -47,20 +47,19 @@ export default function MealPlansTab({
 
   // Reactive Stats Overview
   const stats = useMemo(() => {
-    // We base on dynamic counts + realistic corporate scale offsets
-    const totalCount = 1240 + employees.length;
-    const assignedCount = 1100 + employees.filter((emp) => emp.assignedVendorId).length;
+    const totalCount = employees.length;
+    const assignedCount = employees.filter((emp) => emp.assignedVendorId).length;
     const unassignedCount = totalCount - assignedCount;
-    const percentage = Math.round((assignedCount / totalCount) * 100);
+    const percentage = totalCount > 0 ? Math.round((assignedCount / totalCount) * 100) : 0;
 
     return {
       total: totalCount,
       assigned: assignedCount,
       unassigned: unassignedCount,
       percent: percentage,
-      vendorsActive: 12,
+      vendorsActive: vendors.length,
     };
-  }, [employees]);
+  }, [employees, vendors]);
 
   // Paginated data
   const totalPages = Math.max(1, Math.ceil(filteredAssignments.length / itemsPerPage));

@@ -155,7 +155,21 @@ const subscriptionSchema = new mongoose.Schema(
         billingCycleStart: { type: Date, default: null },
 
         /** Last delivery generated from this subscription */
-        lastDeliveryDate: { type: Date, default: null }
+        lastDeliveryDate: { type: Date, default: null },
+
+        // ─── Office / B2B Fields ──────────────────────────────────────────────
+        /** Source of subscription: 'customer' (self-purchased) or 'office' (B2B assigned) */
+        source: {
+            type: String,
+            enum: ['customer', 'office'],
+            default: 'customer'
+        },
+        /** Office Company that assigned this subscription */
+        companyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'OfficeCompany',
+            default: null
+        }
     },
     {
         collection: 'dmb_subscriptions',

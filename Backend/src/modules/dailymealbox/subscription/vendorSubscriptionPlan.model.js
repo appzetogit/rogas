@@ -55,6 +55,10 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+        daysCount: {
+            type: Number,
+            default: 0
+        },
         status: {
             type: String,
             enum: ['active', 'inactive'],

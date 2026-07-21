@@ -253,7 +253,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
           <div className="space-y-5">
             {subscriptions.map((sub) => {
               const durationLabel = sub.duration ? sub.duration.charAt(0).toUpperCase() + sub.duration.slice(1) : "Weekly";
-              const mealList = sub.meals?.map(m => `${m.mealPlanId?.name || "Meal Plan"} x${m.quantity || 1}`).join(", ") || "Standard Plan";
+              const mealList = (sub.meals && sub.meals.length > 0) 
+                ? sub.meals.map(m => `${m.mealPlanId?.name || "Meal Plan"} x${m.quantity || 1}`).join(", ") 
+                : (sub.mealPlanId?.name || "Standard Plan");
 
               return (
                 <div key={sub._id} className="bg-white rounded-2xl p-5 shadow-sm border border-[#bec9c3]/20 space-y-4 hover:shadow-md transition-shadow">
