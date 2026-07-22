@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { UserCheck, RefreshCw, ArrowRight, HelpCircle } from 'lucide-react';
 
 export default function OtpVerifyPage() {
   const navigate = useNavigate();
@@ -69,9 +70,7 @@ export default function OtpVerifyPage() {
           
           {/* Icon */}
           <div className="mx-auto w-16 h-16 bg-[#E8F2F0] rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-[#287965] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              verified_user
-            </span>
+            <UserCheck className="text-[#287965] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }} />
           </div>
 
           {/* Text */}
@@ -107,11 +106,11 @@ export default function OtpVerifyPage() {
               type="submit"
             >
               {isVerifying ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
+                <RefreshCw className="animate-spin text-[20px]" />
               ) : (
                 <>
                   Verify & Continue
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <ArrowRight className="text-[18px]" />
                 </>
               )}
             </button>
@@ -136,7 +135,7 @@ export default function OtpVerifyPage() {
             href="#"
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#9EA3AE] hover:text-[#6C7278] uppercase tracking-wider transition-colors"
           >
-            <span className="material-symbols-outlined text-[16px]">help</span>
+            <HelpCircle className="text-[16px]" />
             Need help or use another method?
           </a>
 

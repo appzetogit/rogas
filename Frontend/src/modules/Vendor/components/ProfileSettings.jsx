@@ -8,6 +8,7 @@ import { restaurantAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, AlertTriangle, Info, Edit2, MapPin, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, ArrowRight, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, X, Send, AlertCircle, CheckCircle } from 'lucide-react';
 
 const mapContainerStyle = {
   width: '100%',
@@ -185,7 +186,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
     <div className="space-y-5 animate-fadeIn text-left">
       <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
         <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
-          <span className="material-symbols-outlined">arrow_back</span>
+          <ArrowLeft />
         </button>
         <h2 className="text-[16px] font-semibold">Location & Zone</h2>
         <div className="w-6"></div>
@@ -199,7 +200,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
             {/* Display Rejection Banner if rejected */}
             {profile?.zoneChangeStatus === 'rejected' && (
               <div className="bg-error/10 border border-error/25 rounded-xl p-3 flex items-start gap-2.5 text-error text-[12px] font-medium animate-fadeIn">
-                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">warning</span>
+                <AlertTriangle className="text-[18px] shrink-0 mt-0.5" />
                 <span>
                   Your recent zone change request was rejected. Reason: <strong>{profile.zoneChangeRejectionReason || 'Rejected by admin'}</strong>
                 </span>
@@ -209,7 +210,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
             {/* Display Pending Banner if pending */}
             {profile?.zoneChangeStatus === 'pending' && (
               <div className="bg-primary/10 border border-primary/25 rounded-xl p-3 flex items-start gap-2.5 text-primary text-[12px] font-medium animate-fadeIn">
-                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">info</span>
+                <Info className="text-[18px] shrink-0 mt-0.5" />
                 <span>
                   Your request to change zone to <strong>{zones.find(z => z._id === profile.pendingZoneId)?.name || 'New Zone'}</strong> is under review by the admin.
                 </span>
@@ -239,7 +240,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                   : 'border-primary text-primary active:scale-95'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">edit</span>
+              <Edit2 className="text-[18px]" />
               Change Location & Zone
             </button>
           </section>
@@ -276,14 +277,14 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                     onClick={() => setShowMap(!showMap)} 
                     className="flex-1 py-2.5 rounded-lg text-[13px] font-bold border border-primary text-primary flex items-center justify-center gap-2"
                   >
-                    <span className="material-symbols-outlined text-[18px]">location_on</span>
+                    <MapPin className="text-[18px]" />
                     {showMap ? 'Hide Map' : 'Set Pin on Map'}
                   </button>
                   <button 
                     onClick={handleLiveLocation} 
                     className="flex-1 py-2.5 rounded-lg text-[13px] font-bold bg-primary text-on-primary flex items-center justify-center gap-2"
                   >
-                    <span className="material-symbols-outlined text-[18px]">my_location</span>
+                    <Locate className="text-[18px]" />
                     Live Location
                   </button>
                 </div>
@@ -598,7 +599,7 @@ export default function ProfileSettings({
 
           {/* Kitchen Partner verified banner */}
           <div className="p-4 bg-primary/10 border border-primary/25 rounded-2xl flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-[22px]">verified_user</span>
+            <UserCheck className="text-primary text-[22px]" />
             <div>
               <p className="text-[9px] text-outline font-bold uppercase tracking-wider">Kitchen Partner (v3.0)</p>
               <p className="font-bold text-on-surface text-[13px]">{profile.partner}</p>
@@ -615,12 +616,10 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-outline">storefront</span>
+                  <Store className="text-outline" />
                   <span className="font-bold text-[13px]">Kitchen Name &amp; Bio</span>
                 </div>
-                <span className="material-symbols-outlined text-outline group-active:translate-x-0.5 transition-transform text-[18px]">
-                  chevron_right
-                </span>
+                <ChevronRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
 
               <button
@@ -628,12 +627,10 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-outline">location_on</span>
+                  <MapPin className="text-outline" />
                   <span className="font-bold text-[13px]">Location &amp; Zone</span>
                 </div>
-                <span className="material-symbols-outlined text-outline group-active:translate-x-0.5 transition-transform text-[18px]">
-                  chevron_right
-                </span>
+                <ChevronRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
 
               {/* EU food license Amber row warned of expiring dates */}
@@ -645,14 +642,12 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-secondary-container/10 hover:bg-secondary-container/15 transition-colors group text-on-secondary-container">
               
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-secondary">assignment_turned_in</span>
+                  <ClipboardCheck className="text-secondary" />
                   <span className="font-bold text-[13px]">
                     EU Food Licence <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'licence_food_pl_2026.pdf')})</span>
                   </span>
                 </div>
-                <span className="material-symbols-outlined text-secondary group-active:translate-x-0.5 transition-transform text-[18px]">
-                  chevron_right
-                </span>
+                <ChevronRight className="text-secondary group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
 
               <button
@@ -660,12 +655,10 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">airport_shuttle</span>
+                  <Truck className="text-primary" />
                   <span className="font-bold text-[13px] text-primary">Vacation Mode Setup</span>
                 </div>
-                <span className="material-symbols-outlined text-primary group-active:translate-x-0.5 transition-transform text-[18px]">
-                  chevron_right
-                </span>
+                <ChevronRight className="text-primary group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
 
               <button
@@ -673,12 +666,10 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">hourglass_empty</span>
+                  <Hourglass className="text-primary" />
                   <span className="font-bold text-[13px] text-primary">Cutoff &amp; Portions Settings</span>
                 </div>
-                <span className="material-symbols-outlined text-primary group-active:translate-x-0.5 transition-transform text-[18px]">
-                  chevron_right
-                </span>
+                <ChevronRight className="text-primary group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
             </div>
           </div>
@@ -692,12 +683,10 @@ export default function ProfileSettings({
                 className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
               >
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-outline">group</span>
+                  <Users className="text-outline" />
                   <span className="font-bold text-[13px]">My Subscribers</span>
                 </div>
-                <span className="material-symbols-outlined text-outline group-active:translate-x-0.5 transition-transform text-[18px]">
-                  arrow_forward
-                </span>
+                <ArrowRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
             </div>
           </div>
@@ -720,9 +709,7 @@ export default function ProfileSettings({
                     <span className="material-symbols-outlined text-outline">{item.icon}</span>
                     <span className="font-bold text-[13px]">{item.label}</span>
                   </div>
-                  <span className="material-symbols-outlined text-outline group-active:translate-x-0.5 transition-transform text-[18px]">
-                    arrow_forward
-                  </span>
+                  <ArrowRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
                 </button>
             )}
             </div>
@@ -737,13 +724,13 @@ export default function ProfileSettings({
                 className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
               >
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">support_agent</span>
+                  <Headset className="text-primary" />
                   <div className="text-left">
                     <span className="font-bold text-[13px] text-primary block">Help & Support</span>
                     <span className="text-[11px] text-outline">Submit tickets & track status</span>
                   </div>
                 </div>
-                <span className="material-symbols-outlined text-primary group-active:translate-x-0.5 transition-transform text-[18px]">chevron_right</span>
+                <ChevronRight className="text-primary group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
             </div>
           </div>
@@ -784,7 +771,7 @@ export default function ProfileSettings({
             onClick={() => setSubView('profile')}
             className="flex items-center active:scale-95 transition-transform">
             
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Vacation Mode</h2>
             <div className="w-6"></div>
@@ -916,7 +903,7 @@ export default function ProfileSettings({
             onClick={handleToggleVacation}
             className="w-full py-4 rounded-xl text-[14px] font-bold shadow-md active:scale-98 transition-all bg-secondary-container hover:brightness-105 text-white flex items-center justify-center gap-2 cursor-pointer">
             
-              <span className="material-symbols-outlined">airport_shuttle</span>
+              <Truck />
               {vacation.isKitchenOpen ? 'Activate Vacation Mode' : 'Deactivate Vacation Mode'}
             </button>
             <p className="text-center text-[12px] text-outline font-medium leading-tight">
@@ -935,7 +922,7 @@ export default function ProfileSettings({
             onClick={() => setSubView('profile')}
             className="flex items-center active:scale-95 transition-transform">
             
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Cutoff Settings</h2>
             <div className="w-6"></div>
@@ -979,7 +966,7 @@ export default function ProfileSettings({
                     <span className="font-extrabold text-[14px] text-primary">
                       {cutoffType === 'Same day 10am' ? '10:00 (10am)' : '20:00 (8pm)'}
                     </span>
-                    <span className="material-symbols-outlined text-primary text-[18px]">schedule</span>
+                    <Clock className="text-primary text-[18px]" />
                   </div>
                 </div>
               </div>
@@ -1031,7 +1018,7 @@ export default function ProfileSettings({
                 onClick={handleAddClosedDay}
                 className="flex items-center gap-1 text-primary font-bold text-[13px] hover:underline">
                 
-                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  <PlusCircle className="text-[18px]" />
                   Add closed day
                 </button>
               </div>
@@ -1039,7 +1026,7 @@ export default function ProfileSettings({
 
             {/* Dependencies calendar locks automatically banner info */}
             <div className="bg-primary/5 border-l-[4px] border-primary rounded-r-xl p-4 flex gap-3 items-start shadow-xs">
-              <span className="material-symbols-outlined text-primary text-[20px]">info</span>
+              <Info className="text-primary text-[20px]" />
               <div>
                 <p className="text-[13px] text-primary font-bold">When cutoff passes:</p>
                 <p className="text-[12px] text-on-surface-variant font-medium mt-0.5">
@@ -1065,14 +1052,14 @@ export default function ProfileSettings({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Help & Support</h2>
             <button
               onClick={() => setSubView('support-create')}
               className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-[12px] font-bold active:scale-95"
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
+              <Plus className="text-[16px]" />
               New
             </button>
           </div>
@@ -1084,13 +1071,13 @@ export default function ProfileSettings({
               className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-2xl shadow-md active:scale-95 transition-all"
             >
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">add_circle</span>
+                <PlusCircle className="text-[22px]" />
               </div>
               <div className="text-left">
                 <p className="font-bold text-[14px]">Raise New Ticket</p>
                 <p className="text-[12px] opacity-80">Get help from our support team</p>
               </div>
-              <span className="material-symbols-outlined ml-auto">arrow_forward</span>
+              <ArrowRight className="ml-auto" />
             </button>
 
             {/* Ticket list */}
@@ -1100,7 +1087,7 @@ export default function ProfileSettings({
               </div>
             ) : supportTickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="material-symbols-outlined text-[48px] text-outline/40 mb-3">inbox</span>
+                <Inbox className="text-[48px] text-outline/40 mb-3" />
                 <p className="font-bold text-[14px] text-on-surface-variant">No tickets yet</p>
                 <p className="text-[12px] text-outline mt-1">Raise a ticket to get support from our team</p>
               </div>
@@ -1120,7 +1107,7 @@ export default function ProfileSettings({
                       className="w-full bg-white rounded-xl border border-outline-variant/20 shadow-xs p-4 text-left flex items-start gap-3 active:scale-[0.98] transition-all"
                     >
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: scfg.bg }}>
-                        <span className="material-symbols-outlined text-[18px]" style={{ color: scfg.color }}>confirmation_number</span>
+                        <Ticket className="text-[18px]" style={{ color: scfg.color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1130,7 +1117,7 @@ export default function ProfileSettings({
                         <p className="text-[11px] text-outline mt-0.5">{catLabel} · {ticket.complaintRef || `#${String(ticket._id).slice(-6).toUpperCase()}`}</p>
                         <p className="text-[11px] text-outline/70 mt-0.5">{new Date(ticket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                       </div>
-                      <span className="material-symbols-outlined text-outline text-[18px] shrink-0 mt-1">chevron_right</span>
+                      <ChevronRight className="text-outline text-[18px] shrink-0 mt-1" />
                     </button>
                   );
                 })}
@@ -1146,7 +1133,7 @@ export default function ProfileSettings({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
             <button onClick={() => setSubView('support')} className="flex items-center active:scale-95 transition-transform">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Raise New Ticket</h2>
             <div className="w-8" />
@@ -1209,7 +1196,7 @@ export default function ProfileSettings({
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-outline-variant/40 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer active:bg-surface-container/10 transition-colors bg-white"
               >
-                <span className="material-symbols-outlined text-[32px] text-outline">add_photo_alternate</span>
+                <ImagePlus className="text-[32px] text-outline" />
                 <p className="text-[12px] text-outline font-medium">Tap to add screenshots (max 5)</p>
                 <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleAttachFiles} />
               </div>
@@ -1222,7 +1209,7 @@ export default function ProfileSettings({
                         onClick={() => removeAttachment(i)}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center shadow"
                       >
-                        <span className="material-symbols-outlined text-[12px]">close</span>
+                        <X className="text-[12px]" />
                       </button>
                     </div>
                   ))}
@@ -1239,7 +1226,7 @@ export default function ProfileSettings({
               {creating ? (
                 <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
               ) : (
-                <><span className="material-symbols-outlined">send</span> Submit Ticket</>
+                <><Send /> Submit Ticket</>
               )}
             </button>
           </div>
@@ -1252,7 +1239,7 @@ export default function ProfileSettings({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
             <button onClick={() => { setSelectedTicket(null); loadSupportTickets(); setSubView('support'); }} className="flex items-center active:scale-95 transition-transform">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Ticket Detail</h2>
             <div className="w-8" />
@@ -1265,7 +1252,7 @@ export default function ProfileSettings({
               </div>
             ) : !selectedTicket ? (
               <div className="flex flex-col items-center py-16 text-center">
-                <span className="material-symbols-outlined text-[40px] text-outline/40 mb-3">error_outline</span>
+                <AlertCircle className="text-[40px] text-outline/40 mb-3" />
                 <p className="font-bold text-on-surface-variant">Ticket not found</p>
               </div>
             ) : (() => {
@@ -1281,7 +1268,7 @@ export default function ProfileSettings({
                   <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: scfg.bg }}>
-                        <span className="material-symbols-outlined text-[20px]" style={{ color: scfg.color }}>confirmation_number</span>
+                        <Ticket className="text-[20px]" style={{ color: scfg.color }} />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1322,7 +1309,7 @@ export default function ProfileSettings({
                       {t.customerResponseSent && t.customerResponseMessage && (
                         <div className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-[16px]">support_agent</span>
+                            <Headset className="text-primary text-[16px]" />
                             <span className="text-[11px] font-bold text-primary">Support Team</span>
                             <span className="text-[10px] text-outline ml-auto">{t.customerResponseAt ? new Date(t.customerResponseAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
@@ -1333,7 +1320,7 @@ export default function ProfileSettings({
                       {(t.responses || []).map((r, i) => (
                         <div key={i} className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-[16px]">support_agent</span>
+                            <Headset className="text-primary text-[16px]" />
                             <span className="text-[11px] font-bold text-primary">{r.responderName || 'Support Team'}</span>
                             <span className="text-[10px] text-outline ml-auto">{r.at ? new Date(r.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
@@ -1343,7 +1330,7 @@ export default function ProfileSettings({
                     </div>
                   ) : (
                     <div className="bg-surface-container/50 rounded-2xl border border-outline-variant/15 p-4 flex items-center gap-3">
-                      <span className="material-symbols-outlined text-outline text-[22px]">schedule</span>
+                      <Clock className="text-outline text-[22px]" />
                       <div>
                         <p className="font-bold text-[13px] text-on-surface-variant">Awaiting Response</p>
                         <p className="text-[11px] text-outline mt-0.5">Our team will respond within 24 hours</p>
@@ -1385,7 +1372,7 @@ export default function ProfileSettings({
         showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
         }>
         
-        <span className="material-symbols-outlined text-primary-fixed text-green-400">check_circle</span>
+        <CheckCircle className="text-primary-fixed text-green-400" />
         <span className="font-bold text-[13px]">{toastMessage}</span>
       </div>
     </div>);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from "@food/api";
+import { ArrowLeft, PlusCircle, Loader2, Info } from 'lucide-react';
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -113,7 +114,7 @@ export function WalletScreen({ onBack, currentUser }) {
             {/* Top App Bar */}
             <header className="fixed top-0 w-full z-40 bg-[#F5F5F0] flex justify-between items-center px-4 h-14">
                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-start active:scale-90 transition-transform">
-                    <span className="material-symbols-outlined text-[#1b1c1c]">arrow_back</span>
+                    <ArrowLeft className="text-[#1b1c1c]" />
                 </button>
                 <h1 className="text-[20px] font-extrabold text-[#1b1c1c]">Wallet</h1>
                 <div className="w-10 h-10 rounded-full border-2 border-[#1f7a63]/20 overflow-hidden shadow-sm bg-[#1f7a63]/10 flex items-center justify-center font-bold text-[#1f7a63] text-[18px] relative">
@@ -144,7 +145,7 @@ export function WalletScreen({ onBack, currentUser }) {
                             onClick={() => setShowTopupModal(true)}
                             className="bg-[#1f7a63] hover:bg-[#155a49] text-white font-semibold text-[16px] py-3.5 rounded-lg w-full transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
                         >
-                            <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                            <PlusCircle className="text-[20px]" />
                             Top up wallet
                         </button>
                     </div>
@@ -158,7 +159,7 @@ export function WalletScreen({ onBack, currentUser }) {
                     </div>
                     {loading ? (
                         <div className="flex justify-center p-4">
-                            <span className="material-symbols-outlined animate-spin text-[#1f7a63]">progress_activity</span>
+                            <Loader2 className="animate-spin text-[#1f7a63]" />
                         </div>
                     ) : transactions.length === 0 ? (
                         <p className="text-center text-sm text-gray-500 py-4">No transactions yet.</p>
@@ -191,7 +192,7 @@ export function WalletScreen({ onBack, currentUser }) {
                 {/* Quick Tips / Promotions */}
                 <section className="mt-6 mb-8">
                     <div className="bg-[#fea619]/10 border border-[#fea619]/20 rounded-xl p-4 flex gap-4">
-                        <span className="material-symbols-outlined text-[#855300]">info</span>
+                        <Info className="text-[#855300]" />
                         <p className="font-normal text-[14px] text-[#684000]">
                             Use wallet funds to receive 2% cashback on every order.
                         </p>
@@ -224,7 +225,7 @@ export function WalletScreen({ onBack, currentUser }) {
                                 disabled={processing || !topupAmount}
                                 className="flex-1 py-3 bg-[#1f7a63] text-white font-bold rounded-lg active:scale-95 transition-transform disabled:opacity-50 flex justify-center items-center gap-2"
                             >
-                                {processing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : 'Proceed'}
+                                {processing ? <Loader2 className="animate-spin" /> : 'Proceed'}
                             </button>
                         </div>
                     </div>

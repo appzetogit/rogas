@@ -58,9 +58,9 @@ export default function VendorsTab({
     );
   }, [vendors, vendorSearch]);
 
-  // List of active employees for assignment
+  // List of active employees for assignment (only unassigned)
   const activeEmployees = useMemo(() => {
-    return employees.filter((emp) => emp.status === 'Active');
+    return employees.filter((emp) => emp.status === 'Active' && !emp.assignedVendorId);
   }, [employees]);
 
   // Filter employees inside the wizard search
@@ -78,7 +78,6 @@ export default function VendorsTab({
     setWizardSearch('');
     // Prefill with unassigned active employees, or empty
     const initiallySelected = activeEmployees
-      .filter((emp) => !emp.assignedVendorId)
       .slice(0, 3) // select first 3 unassigned by default to guide the user
       .map((emp) => emp.id);
     setSelectedEmployeeIds(initiallySelected);

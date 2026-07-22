@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { userAPI, uploadAPI } from "@food/api";
+import { X, Loader2, Camera, MessageCircle, ArrowLeft } from 'lucide-react';
 
 const ISSUE_TYPES = [
   "Delivery Delay",
@@ -138,9 +139,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32">
       {/* Top Header */}
       <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-          arrow_back
-        </button>
+        <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
         <h1 className="text-lg font-extrabold text-primary text-center">Help & Support</h1>
         <div className="w-8" />
       </header>
@@ -252,16 +251,16 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                         onClick={handleRemoveImage}
                         className="absolute -top-1.5 -right-1.5 bg-brand-red text-white w-5 h-5 rounded-full flex items-center justify-center cursor-pointer shadow-sm active:scale-90 transition-transform"
                       >
-                        <span className="material-symbols-outlined text-[12px] font-bold">close</span>
+                        <X className="text-[12px] font-bold" />
                       </button>
                     </div>
                   ) : (
                     <label className="w-20 h-20 rounded-xl border border-dashed border-[#bec9c3]/60 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
                       {uploading ? (
-                        <span className="material-symbols-outlined text-primary text-[24px] animate-spin">progress_activity</span>
+                        <Loader2 className="text-primary text-[24px] animate-spin" />
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-primary text-[24px]">add_a_photo</span>
+                          <Camera className="text-primary text-[24px]" />
                           <span className="text-[9px] font-bold text-on-surface-variant mt-1">Upload</span>
                         </>
                       )}
@@ -290,7 +289,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
             >
               {submitting ? (
                 <>
-                  <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <Loader2 className="text-sm animate-spin" />
                   <span>Submitting Complaint...</span>
                 </>
               ) : (
@@ -305,12 +304,12 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
           <div className="space-y-4">
             {loadingTickets ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <span className="material-symbols-outlined text-[36px] text-primary animate-spin">progress_activity</span>
+                <Loader2 className="text-[36px] text-primary animate-spin" />
                 <p className="text-xs text-on-surface-variant mt-2 font-medium">Loading history...</p>
               </div>
             ) : tickets.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 border border-[#bec9c3]/20 text-center">
-                <span className="material-symbols-outlined text-[48px] text-on-surface-variant/40">chat_bubble_outline</span>
+                <MessageCircle className="text-[48px] text-on-surface-variant/40" />
                 <h3 className="text-sm font-bold text-[#1a1c1a] mt-2">No complaints logged</h3>
                 <p className="text-xs text-on-surface-variant mt-1 font-medium">You haven't filed any support tickets yet.</p>
               </div>

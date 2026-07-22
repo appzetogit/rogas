@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
+import { ArrowLeft, Building, Inbox } from 'lucide-react';
 
 export default function ApprovedOffices() {
   const [requests, setRequests] = useState([]);
@@ -38,12 +39,12 @@ export default function ApprovedOffices() {
               className="mt-1 p-1 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
               title="Back to list"
             >
-              <span className="material-symbols-outlined text-xl">arrow_back</span>
+              <ArrowLeft className="text-xl" />
             </button>
           )}
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              {!selectedRequest && <span className="material-symbols-outlined text-primary text-[28px]">domain</span>}
+              {!selectedRequest && <Building className="text-primary text-[28px]" />}
               Approved Offices
             </h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -57,7 +58,7 @@ export default function ApprovedOffices() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {requests.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
-              <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">inbox</span>
+              <Inbox className="text-4xl mb-2 text-gray-300" />
               <p>No pending requests.</p>
             </div>
           ) : (
@@ -102,7 +103,7 @@ export default function ApprovedOffices() {
               onClick={() => setSelectedRequest(null)}
               className="text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
             >
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <ArrowLeft className="text-sm" />
               Back to list
             </button>
           </div>

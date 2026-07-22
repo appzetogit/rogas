@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { IMAGES } from "../types";
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
+import { ArrowLeft, Star, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
 
 export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder, socket }) {
   const [arrivingMin, setArrivingMin] = useState(8);
@@ -87,7 +88,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
       <header className="relative z-40 px-5 pt-3">
         <div className="flex items-center justify-between h-14 w-full">
           <button onClick={onGoBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform text-[#1b1c1c]">
-            <span className="material-symbols-outlined text-xl">arrow_back</span>
+            <ArrowLeft className="text-xl" />
           </button>
 
           <div className="flex-1 px-4">
@@ -103,9 +104,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-on-surface leading-tight">{driverName} · {driverVehicle}</span>
                   <div className="flex items-center gap-0.5 mt-0.5">
-                    <span className="material-symbols-outlined text-[13px] text-secondary font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      star
-                    </span>
+                    <Star className="text-[13px] text-secondary font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }} />
                     <span className="text-[11px] font-extrabold text-on-surface-variant">4.9</span>
                   </div>
                 </div>
@@ -142,7 +141,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                   </span>
                 </div>
                 <div className="w-11 h-11 bg-green-100 rounded-full flex items-center justify-center text-[#00604c] shadow-sm">
-                  <span className="material-symbols-outlined text-[24px]">check_circle</span>
+                  <CheckCircle className="text-[24px]" />
                 </div>
               </div>
 
@@ -173,7 +172,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                   </span>
                 </div>
                 <div className="w-11 h-11 bg-primary/10 rounded-full flex items-center justify-center text-primary shadow-sm hover:scale-105 active:scale-95 transition-all">
-                  <span className="material-symbols-outlined text-[24px]">notifications_active</span>
+                  <BellRing className="text-[24px]" />
                 </div>
               </div>
 
@@ -194,11 +193,11 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
 
               <div className="flex gap-3">
                 <button onClick={handleCall} className="flex-1 h-12 bg-primary-container hover:bg-[#155a49] rounded-xl flex items-center justify-center gap-2 text-white font-bold text-xs active:scale-[0.98] transition-transform shadow">
-                  <span className="material-symbols-outlined text-sm font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
+                  <Phone className="text-sm font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }} />
                   <span>Call Driver</span>
                 </button>
                 <button onClick={handleChat} className="w-12 h-12 bg-[#eae7e7] hover:bg-[#dcd9d9] text-[#1b1c1c] rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-sm" aria-label="chat driver">
-                  <span className="material-symbols-outlined text-lg">chat</span>
+                  <MessageSquare className="text-lg" />
                 </button>
               </div>
             </>

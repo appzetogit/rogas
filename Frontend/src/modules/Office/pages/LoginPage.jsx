@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
 import { getCompanyDetailsApi } from '../services/officeApi';
+import { Utensils, Mail, Lock, RefreshCw, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -83,9 +84,7 @@ export default function LoginPage() {
 
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-16">
-              <span className="material-symbols-outlined text-white text-2xl font-bold">
-                restaurant
-              </span>
+              <Utensils className="text-white text-2xl font-bold" />
               <span className="text-white font-bold text-xl tracking-tight">DailyMealBox</span>
             </div>
             
@@ -122,9 +121,7 @@ export default function LoginPage() {
             
             {/* Mobile Header */}
             <div className="md:hidden flex items-center gap-2 mb-8">
-              <span className="material-symbols-outlined text-[#287965] text-2xl font-bold">
-                restaurant
-              </span>
+              <Utensils className="text-[#287965] text-2xl font-bold" />
               <span className="text-[#287965] font-bold text-xl tracking-tight">DailyMealBox</span>
             </div>
 
@@ -149,9 +146,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[#4A4C56]">Email Address</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]">
-                    mail
-                  </span>
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]" />
                   <input
                     type="email"
                     required
@@ -172,9 +167,7 @@ export default function LoginPage() {
                   </a>
                 </div>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]">
-                    lock
-                  </span>
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
@@ -216,11 +209,11 @@ export default function LoginPage() {
                 className="w-full bg-[#287965] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#1f6050] transition-colors flex items-center justify-center gap-2 mt-2"
               >
                 {isSubmitting ? (
-                  <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
+                  <RefreshCw className="animate-spin text-[20px]" />
                 ) : (
                   <>
                     {isLogin ? 'Sign In' : 'Create Account'}
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    <ArrowRight className="text-[18px]" />
                   </>
                 )}
               </button>

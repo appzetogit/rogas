@@ -4,6 +4,7 @@ import { dmbVendorAPI, zoneAPI } from '../../../services/api/index';
 import { SUPPORTED_COUNTRIES } from '../../../config/countries';
 import CountrySelector from '../../../shared/components/CountrySelector';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { ArrowLeft, ShieldCheck, MoreVertical, Store, Phone, MapPin, Locate, Check, CheckCircle, Upload, Image, IdCard, Clock, ArrowRight, XCircle, FilePenLine, Hourglass, RefreshCcw } from 'lucide-react';
 
 const mapContainerStyle = {
   width: '100%',
@@ -33,7 +34,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
     <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
       <header className="px-5 h-14 flex items-center">
         <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
-          <span className="material-symbols-outlined text-primary">arrow_back</span>
+          <ArrowLeft className="text-primary" />
         </button>
       </header>
 
@@ -143,13 +144,13 @@ export function OtpScreen({ phone, onVerify, onBack }) {
     <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
       <header className="px-5 h-14 flex items-center">
         <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
-          <span className="material-symbols-outlined text-primary">arrow_back</span>
+          <ArrowLeft className="text-primary" />
         </button>
       </header>
 
       <main className="px-5 flex-1 flex flex-col items-center pt-8">
         <div className="w-20 h-20 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center mb-6 border-dashed">
-          <span className="material-symbols-outlined text-4xl text-primary">admin_panel_settings</span>
+          <ShieldCheck className="text-4xl text-primary" />
         </div>
 
         <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight mb-2">
@@ -466,7 +467,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
         <div className="flex items-center w-full justify-between">
           <div className="flex items-center gap-4">
             <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <div className="flex flex-col">
               <h1 className="text-[16px] font-semibold">Register</h1>
@@ -474,7 +475,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             </div>
           </div>
           <button className="active:scale-95 transition-transform hover:opacity-90">
-            <span className="material-symbols-outlined">more_vert</span>
+            <MoreVertical />
           </button>
         </div>
       </header>
@@ -502,7 +503,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                   onChange={(e) => setKitchenName(e.target.value)} />
 
                 <span className="absolute right-4 top-3 text-primary">
-                  <span className="material-symbols-outlined text-[20px]">storefront</span>
+                  <Store className="text-[20px]" />
                 </span>
               </div>
             </div>
@@ -519,7 +520,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 />
 
                 <span className="absolute right-4 top-3 text-outline">
-                  <span className="material-symbols-outlined text-[20px]">call</span>
+                  <Phone className="text-[20px]" />
                 </span>
               </div>
             </div>
@@ -591,7 +592,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     onClick={() => setShowMap(!showMap)} 
                     className="flex-1 h-9 rounded-lg text-[11px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                   >
-                    <span className="material-symbols-outlined text-[16px]">location_on</span>
+                    <MapPin className="text-[16px]" />
                     {showMap ? 'Hide Map' : 'Set Pin on Map'}
                   </button>
                   <button 
@@ -599,7 +600,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     onClick={handleLiveLocation} 
                     className="flex-1 h-9 rounded-lg text-[11px] font-bold bg-primary text-on-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                   >
-                    <span className="material-symbols-outlined text-[16px]">my_location</span>
+                    <Locate className="text-[16px]" />
                     Live Location
                   </button>
                 </div>
@@ -644,7 +645,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     onClick={() => setType(t)}
                     className={`h-10 rounded-full font-semibold text-[13px] flex items-center justify-center gap-2 transition-transform active:scale-95 ${type === t ? 'bg-primary text-on-primary' : 'border border-primary text-primary bg-white'}`}>
 
-                    {type === t && <span className="material-symbols-outlined text-[16px]">check</span>}
+                    {type === t && <Check className="text-[16px]" />}
                     {t}
                   </button>
                 )}
@@ -736,15 +737,13 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     </div>
                     <div className="flex items-center gap-1 text-primary">
                       <span className="text-[11px] font-bold">Uploaded</span>
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        check_circle
-                      </span>
+                      <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
                         Choose photo or PDF
                       </span>
@@ -781,22 +780,20 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 {bannerFileName ? (
                   <>
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="material-symbols-outlined text-primary">image</span>
+                      <Image className="text-primary" />
                       <span className="text-[13px] text-primary font-semibold truncate max-w-[180px]">
                         {bannerFileName}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-primary">
                       <span className="text-[11px] font-bold">Uploaded</span>
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        check_circle
-                      </span>
+                      <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
                         Choose banner photo
                       </span>
@@ -854,22 +851,20 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 {ownerIdFileName ? (
                   <>
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="material-symbols-outlined text-primary">badge</span>
+                      <IdCard className="text-primary" />
                       <span className="text-[13px] text-primary font-semibold truncate max-w-[180px]">
                         {ownerIdFileName}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-primary">
                       <span className="text-[11px] font-bold">Uploaded</span>
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        check_circle
-                      </span>
+                      <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-outline">upload_file</span>
+                      <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
                         Choose photo
                       </span>
@@ -884,7 +879,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             <div className="space-y-2 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[14px]">schedule</span>
+                <Clock className="text-[14px]" />
                 WHICH MEAL SLOTS WILL YOU OFFER?
               </label>
               <p className="text-[11px] text-outline">
@@ -935,7 +930,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               className="w-full h-14 bg-primary text-on-primary rounded-xl text-[16px] font-bold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
 
               Continue
-              <span className="material-symbols-outlined">arrow_forward</span>
+              <ArrowRight />
             </button>
             <p className="text-center text-[11px] text-outline mt-4 leading-relaxed">
               By continuing, you agree to our <span className="text-primary font-semibold">Vendor Terms of Service</span> and acknowledge your responsibilities as a licensed food provider.
@@ -1007,7 +1002,7 @@ export function UnderReviewScreen({ onApproved }) {
         <div className="flex items-center w-full justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/vendor/welcome')} className="active:scale-95 transition-transform hover:opacity-90">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <div className="flex flex-col">
               <h1 className="text-[16px] font-semibold">
@@ -1023,7 +1018,7 @@ export function UnderReviewScreen({ onApproved }) {
         {status === 'rejected' ? (
           <>
             <div className="w-20 h-20 rounded-full bg-red-100 border-2 border-red-500 border-dashed flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-4xl text-red-600">cancel</span>
+              <XCircle className="text-4xl text-red-600" />
             </div>
             <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Rejected</h2>
             {restaurantName && (
@@ -1044,14 +1039,14 @@ export function UnderReviewScreen({ onApproved }) {
               onClick={handleReApply}
               className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl active:scale-95 transition-all text-[14px] shadow-md flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">edit_note</span>
+              <FilePenLine className="text-[18px]" />
               Re-apply & Fill Form Again
             </button>
           </>
         ) : (
           <>
             <div className="w-20 h-20 rounded-full bg-secondary-container/10 border-2 border-secondary border-dashed flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-4xl text-secondary">pending_actions</span>
+              <Clock className="text-4xl text-secondary" />
             </div>
             <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Received</h2>
             {restaurantName && (
@@ -1063,15 +1058,15 @@ export function UnderReviewScreen({ onApproved }) {
 
             <div className="w-full p-4 bg-surface-container rounded-xl border border-outline-variant/30 text-left space-y-3 mb-8">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <CheckCircle className="text-primary" style={{ fontVariationSettings: "'FILL' 1" }} />
                 <span className="text-[13px] font-semibold text-on-surface">Details Submitted</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <CheckCircle className="text-primary" style={{ fontVariationSettings: "'FILL' 1" }} />
                 <span className="text-[13px] font-semibold text-on-surface">Documents Uploaded</span>
               </div>
               <div className="flex items-center gap-3 opacity-50">
-                <span className="material-symbols-outlined text-outline">hourglass_empty</span>
+                <Hourglass className="text-outline" />
                 <span className="text-[13px] font-semibold text-on-surface">Final Verification</span>
               </div>
             </div>
@@ -1092,7 +1087,7 @@ export function UnderReviewScreen({ onApproved }) {
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">refresh</span>
+                  <RefreshCcw className="text-[18px]" />
                   Check Approval Status
                 </>
               )}

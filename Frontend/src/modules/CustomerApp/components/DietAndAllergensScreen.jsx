@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ArrowLeft, Utensils, Loader2 } from 'lucide-react';
 
 export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
     const [selectedDiet, setSelectedDiet] = useState(initialPrefs?.dietType || 'No preference');
@@ -46,7 +47,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
             <header className="fixed top-0 w-full z-50 bg-[#F5F5F0] flex justify-between items-center px-4 h-14 border-none shadow-none max-w-[420px] mx-auto left-1/2 -translate-x-1/2">
                 <div className="flex items-center gap-4">
                     <button onClick={onBack} aria-label="Go back" className="p-2 -ml-2 rounded-full hover:bg-slate-200 transition-colors">
-                        <span className="material-symbols-outlined text-primary">arrow_back</span>
+                        <ArrowLeft className="text-primary" />
                     </button>
                     <h1 className="text-[20px] font-extrabold text-primary">Diet &amp; Allergens</h1>
                 </div>
@@ -60,7 +61,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                         <p className="text-white/80 text-[13px] mt-0.5 font-medium">We'll filter meals based on your needs.</p>
                     </div>
                     <div className="absolute right-[-20px] bottom-[-10px] opacity-20">
-                        <span className="material-symbols-outlined text-[80px]" style={{ fontVariationSettings: "'FILL' 1" }}>restaurant</span>
+                        <Utensils className="text-[80px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                 </div>
 
@@ -127,7 +128,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                     >
                         {isSaving ? (
                             <>
-                                <span className="material-symbols-outlined text-[20px] animate-spin mr-2">progress_activity</span>
+                                <Loader2 className="text-[20px] animate-spin mr-2" />
                                 Saving...
                             </>
                         ) : 'Save Changes'}

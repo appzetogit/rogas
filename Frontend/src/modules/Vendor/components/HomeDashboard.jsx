@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { dmbVendorAPI } from '../../../services/api';
+import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPin, ArrowRight, CheckCircle, BarChart } from 'lucide-react';
 
 export default function HomeDashboard({
   profile,
@@ -184,20 +185,20 @@ export default function HomeDashboard({
           className="bg-primary/95 text-white px-4 py-3 rounded-xl flex items-start justify-between shadow-sm">
           
             <div className="flex gap-3">
-              <span className="material-symbols-outlined text-[20px] text-on-primary-container">notifications</span>
+              <Bell className="text-[20px] text-on-primary-container" />
               <p className="text-[13px] leading-tight font-medium">App updated: New: Flash deals + Revenue forecast</p>
             </div>
             <button
             onClick={() => setShowOtaUpdate(false)}
             className="active:scale-90 transition-transform flex items-center h-full">
             
-              <span className="material-symbols-outlined text-[18px]">close</span>
+              <X className="text-[18px]" />
             </button>
           </div>
         }
 
         <div className="bg-secondary-container/95 text-on-secondary-container px-4 py-3 rounded-xl flex items-start gap-3 shadow-xs">
-          <span className="material-symbols-outlined text-[20px] text-secondary">warning</span>
+          <AlertTriangle className="text-[20px] text-secondary" />
           <p className="text-[13px] leading-tight font-medium">Flash deals disabled in your city. Admin will enable when ready.</p>
         </div>
       </div>
@@ -205,9 +206,7 @@ export default function HomeDashboard({
       {/* Stats Card (Traditional Green) */}
       <div className="bg-primary-container p-5 rounded-2xl text-on-primary shadow-sm flex flex-col gap-1 mt-4 relative overflow-hidden transition-all hover:scale-[1.01] duration-300">
         <div className="absolute -right-4 -top-4 opacity-10">
-          <span className="material-symbols-outlined !text-[90px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            monitoring
-          </span>
+          <Activity className="!text-[90px]" style={{ fontVariationSettings: "'FILL' 1" }} />
         </div>
         <div className="grid grid-cols-3 gap-2 text-center relative z-10">
           <div className="border-r border-white/20">
@@ -235,7 +234,7 @@ export default function HomeDashboard({
 
       {/* Amber alert card for cutoff */}
       <div className="bg-white rounded-xl border-l-[5px] border-secondary p-4 shadow-xs flex items-start gap-3 mt-4 transition-all hover:scale-[1.01]">
-        <span className="material-symbols-outlined text-secondary">schedule</span>
+        <Clock className="text-secondary" />
         <div className="text-left">
           <p className="font-bold text-[14px] text-on-surface">Lunch cutoff in 1h 24min</p>
           <p className="text-[13px] text-on-surface-variant mt-0.5">Close orders by 10:00am</p>
@@ -271,7 +270,7 @@ export default function HomeDashboard({
               <img alt="Driver" className="w-full h-full object-cover" src={displayBatch.driverPhoto} />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                <span className="material-symbols-outlined text-primary text-[24px]">person</span>
+                <User className="text-primary text-[24px]" />
               </div>
             )}
           </div>
@@ -297,7 +296,7 @@ export default function HomeDashboard({
                 href={`tel:${displayBatch.driverPhone}`}
                 className="text-[12px] text-primary font-semibold flex items-center gap-1 mt-0.5"
               >
-                <span className="material-symbols-outlined text-[14px]">call</span>
+                <Phone className="text-[14px]" />
                 {displayBatch.driverPhone}
               </a>
             )}
@@ -309,7 +308,7 @@ export default function HomeDashboard({
           {displayBatch?.status === 'collected' ? (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex justify-between items-center transition-all shadow-xs">
               <span className="text-[13px] text-blue-700 font-bold uppercase tracking-wider">OTP Confirmed</span>
-              <span className="material-symbols-outlined text-blue-600 text-[28px]">verified</span>
+              <BadgeCheck className="text-blue-600 text-[28px]" />
             </div>
           ) : (
             <div className="bg-[#e6f7ed] border border-[#c2f0d5] rounded-xl p-3.5 flex justify-between items-center transition-all shadow-xs">
@@ -334,7 +333,7 @@ export default function HomeDashboard({
                 disabled={isTrackingDriver}
                 className="text-[11px] text-primary font-bold flex items-center gap-1 hover:underline"
               >
-                <span className="material-symbols-outlined text-[14px]">location_on</span>
+                <MapPin className="text-[14px]" />
                 {isTrackingDriver ? 'Loading...' : 'Track Driver'}
               </button>
             )}
@@ -358,7 +357,7 @@ export default function HomeDashboard({
             className="text-primary font-bold text-[13px] flex items-center gap-0.5 hover:underline active:scale-95 transition-transform">
             
             Ingredient plan
-            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            <ArrowRight className="text-[16px]" />
           </button>
           
           <button
@@ -366,7 +365,7 @@ export default function HomeDashboard({
             className="text-primary font-bold text-[13px] flex items-center gap-0.5 hover:underline active:scale-95 transition-transform">
             
             Portion checklist
-            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            <ArrowRight className="text-[16px]" />
           </button>
         </div>
       </div>
@@ -379,9 +378,7 @@ export default function HomeDashboard({
             onClick={onMarkAllReady}
             className="bg-primary text-on-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-md hover:brightness-110 transition-all cursor-pointer">
             
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              check_circle
-            </span>
+            <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
             <span>Mark All Ready</span>
           </button>
 
@@ -389,7 +386,7 @@ export default function HomeDashboard({
             onClick={() => onNavigateToTab('Earn')}
             className="bg-white border border-primary text-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-xs hover:bg-primary/5 transition-all cursor-pointer">
             
-            <span className="material-symbols-outlined text-[18px]">bar_chart</span>
+            <BarChart className="text-[18px]" />
             <span>View Forecast</span>
           </button>
         </div>

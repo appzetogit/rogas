@@ -13,6 +13,7 @@ const VendorApp = lazy(() => import('../modules/Vendor/routes'))
 const OfficeApp = lazy(() => import('../modules/Office/routes'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
 import { applyDynamicTheme } from '../modules/Food/utils/themeSettings'
+import { Loader2 } from 'lucide-react';
 
 const PageLoader = () => <AppShellSkeleton />
 
@@ -34,7 +35,7 @@ const FoodAppWrapper = () => {
 
 const CustomerAppLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#F5F5F0]">
-    <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+    <Loader2 className="animate-spin text-primary text-3xl" />
   </div>
 );
 

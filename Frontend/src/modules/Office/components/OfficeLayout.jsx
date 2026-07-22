@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, Bell, Search, Settings, X, ShieldAlert } from 'lucide-react';
+import { Menu, Bell, Search, Settings, X, ShieldAlert, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import EmployeesTab from '../pages/EmployeesPage';
@@ -336,7 +336,7 @@ export default function App() {
         <main className="flex-1 p-6 md:p-8 space-y-6">
           {loading ? (
              <div className="flex items-center justify-center h-64">
-                <span className="material-symbols-outlined animate-spin text-4xl text-brand-primary">sync</span>
+                <RefreshCw className="animate-spin text-4xl text-brand-primary" />
              </div>
           ) : (
           <AnimatePresence mode="wait">

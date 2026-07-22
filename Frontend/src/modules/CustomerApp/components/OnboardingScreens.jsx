@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
+import { MapPin, ShoppingBag, Check, ArrowLeft, CheckCircle, Leaf, UtensilsCrossed, Navigation, Search } from 'lucide-react';
 
 export function WelcomeScreen({ onSignup, onLogin }) {
   return (<div className="relative min-h-screen flex flex-col bg-[#F5F5F0]">
@@ -20,7 +21,7 @@ export function WelcomeScreen({ onSignup, onLogin }) {
         {/* Location Badge */}
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-8">
           <span className="flex items-center gap-1 text-white font-semibold text-[12px]">
-            <span className="material-symbols-outlined text-[14px]">location_on</span>
+            <MapPin className="text-[14px]" />
             Warsaw, Poland detected
           </span>
         </div>
@@ -28,7 +29,7 @@ export function WelcomeScreen({ onSignup, onLogin }) {
         {/* Illustration Area */}
         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[280px] h-[220px] z-10">
           <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden p-3 rotate-[-2deg] transition-all hover:rotate-0 duration-300 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-            <span className="material-symbols-outlined text-[80px] text-primary/50">takeout_dining</span>
+            <ShoppingBag className="text-[80px] text-primary/50" />
           </div>
         </div>
       </section>
@@ -39,25 +40,25 @@ export function WelcomeScreen({ onSignup, onLogin }) {
         <div className="space-y-4 mb-8 flex-grow">
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
-              <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+              <Check className="text-white text-[16px] font-bold" />
             </div>
             <span className="text-[14px] text-[#3e4945] font-medium font-sans">From local home cooks near you</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
-              <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+              <Check className="text-white text-[16px] font-bold" />
             </div>
             <span className="text-[14px] text-[#3e4945] font-medium font-sans">Weekly subscription — order once</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
-              <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+              <Check className="text-white text-[16px] font-bold" />
             </div>
             <span className="text-[14px] text-[#3e4945] font-medium font-sans">Delivered fresh to your door</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
-              <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+              <Check className="text-white text-[16px] font-bold" />
             </div>
             <span className="text-[14px] text-[#3e4945] font-medium font-sans">Skip or pause anytime</span>
           </div>
@@ -92,7 +93,7 @@ export function GoalsScreen({ onBack, onNext }) {
 
     <header className="flex justify-between items-center w-full px-[20px] h-14 bg-transparent">
       <button onClick={onBack} className="w-10 h-10 flex items-center justify-start text-on-surface active:scale-95 transition-all text-primary">
-        <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+        <ArrowLeft className="text-[24px]" />
       </button>
       <h1 className="text-lg font-bold text-on-surface">DailyMealBox</h1>
       <div className="w-10"></div>
@@ -129,9 +130,7 @@ export function GoalsScreen({ onBack, onNext }) {
           </div>
           <span className="text-[14px] font-semibold text-on-surface">{g.label}</span>
           {selectedGoal === g.name && (<div className="absolute top-2 right-2">
-            <span className="material-symbols-outlined text-primary-container font-fill-1 text-[20px]">
-              check_circle
-            </span>
+            <CheckCircle className="text-primary-container font-fill-1 text-[20px]" />
           </div>)}
         </button>))}
       </div>
@@ -139,7 +138,7 @@ export function GoalsScreen({ onBack, onNext }) {
       {/* Cinematic Imagery */}
       <div className="mt-8 rounded-2xl overflow-hidden h-32 relative shadow-sm bg-gradient-to-tr from-primary/30 to-primary/10">
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="material-symbols-outlined text-[64px] text-primary/30">eco</span>
+          <Leaf className="text-[64px] text-primary/30" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         <div className="absolute bottom-3 left-4 text-white">
@@ -191,7 +190,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
 
     <header className="flex justify-between items-center w-full px-[20px] h-14 mt-1">
       <button onClick={onBack} className="p-2 -ml-2 active:scale-95 transition-all text-[#1b1c1c]">
-        <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+        <ArrowLeft className="text-[24px]" />
       </button>
       <div className="flex-1 px-4">
         <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
@@ -253,7 +252,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
       {/* visual context display card */}
       <section className="mt-8 relative rounded-2xl overflow-hidden aspect-[16/9] shadow-sm bg-gradient-to-tr from-primary/30 to-primary/10">
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="material-symbols-outlined text-[80px] text-primary/30">restaurant_menu</span>
+          <UtensilsCrossed className="text-[80px] text-primary/30" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-5">
           <p className="text-white font-bold text-base">Personalized Nutrition</p>
@@ -299,9 +298,7 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
       {/* Big target mark */}
       <div className="relative z-10 flex flex-col items-center">
         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-2xl transition-transform hover:scale-105 duration-300">
-          <span className="material-symbols-outlined text-primary text-[32px] font-fill-1 font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
-            location_on
-          </span>
+          <MapPin className="text-primary text-[32px] font-fill-1 font-bold" style={{ fontVariationSettings: "'FILL' 1" }} />
         </div>
       </div>
     </div>
@@ -316,7 +313,7 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
       {/* Modal content */}
       <div className="flex flex-col items-center text-center space-y-4">
         <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-1">
-          <span className="material-symbols-outlined text-primary-container text-[24px]">near_me</span>
+          <Navigation className="text-primary-container text-[24px]" />
         </div>
 
         <div className="space-y-2">
@@ -328,7 +325,7 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
 
         {/* Detected location label badge */}
         <div className="inline-flex items-center gap-2 bg-[#9ef3d7] px-4 py-2 rounded-full border border-primary/10 shadow-sm animate-pulse-subtle">
-          <span className="material-symbols-outlined text-[18px] text-[#002018]" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+          <MapPin className="text-[18px] text-[#002018]" style={{ fontVariationSettings: "'FILL' 1" }} />
           <span className="text-[13px] font-bold text-[#002018]">Mokotów, Warsaw detected</span>
         </div>
 
@@ -359,7 +356,7 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
     <div className="min-h-screen flex flex-col bg-[#F5F5F0] text-[#1b1c1c]">
       <header className="flex justify-between items-center w-full px-[20px] h-14 mt-1">
         <button onClick={onBack} className="p-2 -ml-2 active:scale-95 transition-all text-[#1b1c1c]">
-          <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+          <ArrowLeft className="text-[24px]" />
         </button>
         <div className="flex-1 px-4"></div>
         <div className="w-10"></div>
@@ -372,7 +369,7 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
         </p>
 
         <div className="mt-8 relative">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7a74]">search</span>
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7a74]" />
           <input 
             type="text" 
             value={address}

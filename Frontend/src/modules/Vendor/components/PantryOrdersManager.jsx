@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Receipt, MapPin, CheckCircle } from 'lucide-react';
 
 export default function PantryOrdersManager({ orders = [], onUpdateOrderStatus }) {
   const [activeTab, setActiveTab] = useState('pending');
@@ -41,7 +42,7 @@ export default function PantryOrdersManager({ orders = [], onUpdateOrderStatus }
         {displayOrders.length === 0 ? (
           <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[32px] text-primary">receipt_long</span>
+              <Receipt className="text-[32px] text-primary" />
             </div>
             <p className="text-[17px] text-[#1b1c1c] font-extrabold">No {activeTab} orders</p>
             <p className="text-[14px] text-[#6e7a74] mt-1 font-medium">You're all caught up!</p>
@@ -65,7 +66,7 @@ export default function PantryOrdersManager({ orders = [], onUpdateOrderStatus }
               <div className="py-4 border-t border-b border-[#f0f0f0] my-4 bg-slate-50/50 rounded-xl px-4">
                 <p className="text-[14px] font-bold text-[#1b1c1c]">{order.itemsName}</p>
                 <div className="flex items-center gap-1.5 mt-2 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[16px]">location_on</span>
+                  <MapPin className="text-[16px]" />
                   <p className="text-[13px] font-medium">{order.zone}</p>
                 </div>
               </div>
@@ -74,7 +75,7 @@ export default function PantryOrdersManager({ orders = [], onUpdateOrderStatus }
                   onClick={() => onUpdateOrderStatus && onUpdateOrderStatus(order.id, 'ready', order.deliverySlot)}
                   className="w-full py-3.5 rounded-xl bg-primary hover:bg-[#155a49] text-white font-extrabold text-[14px] active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  <CheckCircle className="text-[18px]" />
                   Mark as Ready
                 </button>
               )}

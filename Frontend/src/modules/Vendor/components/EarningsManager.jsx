@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
+import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle } from 'lucide-react';
 
 function fmt(n) {
   const num = Number(n) || 0;
@@ -107,7 +108,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
       {/* Error State */}
       {!loading && error && (
         <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-          <span className="material-symbols-outlined text-[48px] text-error/60">error_outline</span>
+          <AlertCircle className="text-[48px] text-error/60" />
           <p className="text-[13px] text-on-surface-variant font-medium">{error}</p>
           <button
             onClick={fetchEarnings}
@@ -124,15 +125,13 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           {/* Available Balance Card */}
           <div className="bg-primary-container text-on-primary rounded-xl p-5 shadow-sm relative overflow-hidden transition-all hover:scale-[1.01] duration-300">
             <div className="absolute -right-4 -top-4 opacity-10">
-              <span className="material-symbols-outlined !text-[100px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                account_balance_wallet
-              </span>
+              <Wallet className="!text-[100px]" style={{ fontVariationSettings: "'FILL' 1" }} />
             </div>
             <div className="relative z-10 text-left">
               <p className="text-[11px] uppercase tracking-wider text-white/80 font-bold">Available Balance</p>
               <div className="mt-2 text-3xl font-extrabold text-white">{fmt(availableBalance)}</div>
               <div className="mt-1 flex items-center text-[12px] text-white/85">
-                <span className="material-symbols-outlined text-[14px] mr-1">receipt_long</span>
+                <Receipt className="text-[14px] mr-1" />
                 {totalOrders} total delivered orders
               </div>
             </div>
@@ -161,7 +160,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-outline-variant/25 text-left">
             <div className="flex justify-between items-center mb-3 border-b border-outline-variant/15 pb-2">
               <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">Earnings Breakdown</h2>
-              <span className="material-symbols-outlined text-[16px] text-outline">info</span>
+              <Info className="text-[16px] text-outline" />
             </div>
 
             <div className="space-y-2.5 text-[13px] font-medium">
@@ -234,7 +233,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           {/* No earnings yet */}
           {totalOrders === 0 && (
             <div className="bg-white rounded-xl p-6 shadow-xs border border-outline-variant/15 text-center">
-              <span className="material-symbols-outlined text-[40px] text-outline/60">receipt_long</span>
+              <Receipt className="text-[40px] text-outline/60" />
               <p className="text-[13px] text-on-surface-variant font-medium mt-2">No completed orders yet.</p>
               <p className="text-[11px] text-outline mt-1">Earnings will appear here once orders are delivered.</p>
             </div>
@@ -253,7 +252,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
 
           {recentTx.length === 0 ? (
             <div className="bg-white rounded-xl p-6 text-center shadow-xs border border-outline-variant/15">
-              <span className="material-symbols-outlined text-[40px] text-outline/60">inbox</span>
+              <Inbox className="text-[40px] text-outline/60" />
               <p className="text-[13px] text-on-surface-variant font-medium mt-2">No transactions yet.</p>
             </div>
           ) : (
@@ -265,9 +264,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                   className="p-4 flex justify-between items-center active:bg-surface-container/10 hover:bg-surface-container/5 transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary">
-                      <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        local_shipping
-                      </span>
+                      <Truck className="text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                     <div className="flex flex-col text-left">
                       <span className="font-bold text-[13px] text-on-surface">
@@ -300,7 +297,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
         className={`fixed bottom-24 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 z-100 ${
           showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
         }`}>
-        <span className="material-symbols-outlined text-green-400">check_circle</span>
+        <CheckCircle className="text-green-400" />
         <span className="font-bold text-[13px]">{toastMessage}</span>
       </div>
     </div>

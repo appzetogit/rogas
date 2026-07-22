@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
+import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
 
 const SLOT_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 
@@ -284,7 +285,7 @@ export function HomeScreen({
             onClick={onGoToOrders}
             className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 active:scale-90 transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+            <ChevronRight className="text-on-surface-variant text-[20px]" />
           </button>
         </div>
 
@@ -307,11 +308,11 @@ export function HomeScreen({
 
         <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
           <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+            <Flame className="text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
             <span>{calories} kcal</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
+            <Timer className="text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
             <span>5 min prep</span>
           </div>
         </div>
@@ -429,14 +430,14 @@ export function HomeScreen({
         {showBanner && (
           <div className="bg-[#F59E0B] text-white p-4 rounded-xl flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+              <Sparkles className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               <p className="text-[13px] font-bold">Multi-meal subscriptions now available!</p>
             </div>
             <button
               onClick={() => setShowBanner(false)}
               className="p-1 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[18px]">close</span>
+              <X className="text-[18px]" />
             </button>
           </div>
         )}
@@ -466,7 +467,7 @@ export function HomeScreen({
                 </p>
                 <div className="flex items-center gap-2 text-primary font-bold text-[14px]">
                   <span>Browse Plans</span>
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <ArrowRight className="text-[18px]" />
                 </div>
               </section>
             )}
@@ -584,7 +585,7 @@ export function HomeScreen({
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
-                    <span className="material-symbols-outlined text-[36px] text-slate-300 mb-2">restaurant_menu</span>
+                    <UtensilsCrossed className="text-[36px] text-slate-300 mb-2" />
                     <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
                     <p className="text-[12px] text-slate-400 mt-1">Current selection will be kept.</p>
                   </div>
@@ -601,7 +602,7 @@ export function HomeScreen({
                             }`}
                         >
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"}`}>
-                            {isSelected && <span className="material-symbols-outlined text-white text-[12px]">check</span>}
+                            {isSelected && <Check className="text-white text-[12px]" />}
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>

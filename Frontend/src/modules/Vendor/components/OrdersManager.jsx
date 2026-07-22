@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
+import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check } from 'lucide-react';
 
 const SLOT_LABEL = { breakfast: 'Breakfast ☀️', lunch: 'Lunch 🌤️', dinner: 'Dinner 🌙' };
 const SLOT_EMOJI = { breakfast: '🌅', lunch: '🌤️', dinner: '🌙' };
@@ -364,7 +365,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               onClick={handleMarkAllReady}
               className="w-full bg-primary text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
             >
-              <span className="material-symbols-outlined text-[18px]">done_all</span>
+              <CheckCheck className="text-[18px]" />
               Mark All {pendingCount} {activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)} Orders as Ready
             </button>
           )}
@@ -372,7 +373,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           {/* Collection Status */}
           {pendingCount === 0 && readyCount > 0 && (
             <div className="w-full bg-[#1F7A63]/10 border border-[#1F7A63]/20 text-[#1F7A63] py-3.5 px-4 rounded-2xl font-bold text-[13px] flex items-center justify-center gap-2.5 shadow-sm animate-fadeIn">
-              <span className="material-symbols-outlined text-[18px] animate-pulse">local_shipping</span>
+              <Truck className="text-[18px] animate-pulse" />
               <span>Collection PIN Generated — Waiting for Delivery Partner</span>
             </div>
           )}
@@ -385,13 +386,13 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             </div>
           ) : dailyOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6">
-              <span className="material-symbols-outlined text-[40px] text-slate-300">inbox</span>
+              <Inbox className="text-[40px] text-slate-300" />
               <p className="text-[14px] text-slate-500 font-bold mt-2">No subscription orders {activeDate}</p>
               <p className="text-[12px] text-slate-400 mt-1">Orders appear when customers have active subscriptions</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6 animate-fadeIn">
-              <span className="material-symbols-outlined text-[40px] text-slate-300">inbox</span>
+              <Inbox className="text-[40px] text-slate-300" />
               <p className="text-[14px] text-slate-500 font-bold mt-2">No {activeSlot} orders {activeDate}</p>
               <p className="text-[12px] text-slate-400 mt-1">Select another slot or check back later</p>
             </div>
@@ -431,7 +432,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
                       {/* Order ID */}
                       <div className="flex items-center gap-1.5 mb-3 bg-slate-50 rounded-lg px-2 py-1 w-fit">
-                        <span className="material-symbols-outlined text-[12px] text-slate-400">tag</span>
+                        <Tag className="text-[12px] text-slate-400" />
                         <span className="text-[11px] font-mono font-semibold text-slate-500">{order.orderId || '—'}</span>
                       </div>
 
@@ -443,7 +444,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                               onClick={() => handleStatusChange(order._id, 'preparing', order.deliverySlot)}
                               className="flex-1 bg-amber-500 text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                             >
-                              <span className="material-symbols-outlined text-[16px]">soup_kitchen</span>
+                              <Soup className="text-[16px]" />
                               Start Preparing
                             </button>
                           )}
@@ -452,13 +453,13 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                               onClick={() => handleStatusChange(order._id, 'ready')}
                               className="flex-1 bg-primary text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                             >
-                              <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                              <CheckCircle className="text-[16px]" />
                               Mark Ready
                             </button>
                           )}
                           {order.status === 'ready' && (
                             <div className="flex-1 bg-green-100 text-green-700 py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1">
-                              <span className="material-symbols-outlined text-[16px]">done_all</span>
+                              <CheckCheck className="text-[16px]" />
                               Ready for Pickup
                             </div>
                           )}
@@ -481,7 +482,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
           {legacyOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6">
-              <span className="material-symbols-outlined text-[40px] text-slate-300">receipt_long</span>
+              <Receipt className="text-[40px] text-slate-300" />
               <p className="text-[14px] text-slate-500 font-bold mt-2">No one-time orders</p>
             </div>
           ) : (
@@ -511,21 +512,21 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                             isPreparing ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'
                           }`}
                         >
-                          <span className="material-symbols-outlined text-[16px]">microwave</span>
+                          <Microwave className="text-[16px]" />
                           {isPreparing ? 'Preparing…' : 'Start Preparing'}
                         </button>
                         <button
                           onClick={() => onUpdateOrderStatus(order.id, 'Ready')}
                           className="flex-1 bg-primary text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                         >
-                          <span className="material-symbols-outlined text-[16px]">check</span>
+                          <Check className="text-[16px]" />
                           Mark Ready
                         </button>
                       </div>
                     )}
                     {isReady && (
                       <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                        <span className="material-symbols-outlined text-green-600 text-[18px]">check_circle</span>
+                        <CheckCircle className="text-green-600 text-[18px]" />
                         <span className="text-[13px] font-bold text-green-700">Ready for Pickup</span>
                       </div>
                     )}

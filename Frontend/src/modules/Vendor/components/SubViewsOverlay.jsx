@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { ArrowLeft, Utensils, Flower2, ShoppingCart, Download, FileText, Plus, UtensilsCrossed, CheckCircle } from 'lucide-react';
 
 
 
@@ -60,7 +61,7 @@ export default function SubViewsOverlay({
           onClick={onClose}
           className="active:scale-95 transition-transform hover:opacity-90 flex items-center">
           
-          <span className="material-symbols-outlined">arrow_back</span>
+          <ArrowLeft />
         </button>
         <h1 className="flex-grow text-center font-semibold text-[16px] pr-8">
           {viewType === 'ingredientPlan' ? 'Ingredient Planner' : 'Food Forecast'}
@@ -85,7 +86,7 @@ export default function SubViewsOverlay({
             <div className="bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden border border-outline-variant/30">
               <div className="p-4 bg-surface-container-low border-b border-outline-variant/15 flex justify-between items-center text-left">
                 <h2 className="font-bold text-[14px] text-on-surface">Rosol z kurczaka — 14 portions</h2>
-                <span className="material-symbols-outlined text-primary text-[18px]">restaurant</span>
+                <Utensils className="text-primary text-[18px]" />
               </div>
               <div className="p-4 text-left">
                 <table className="w-full text-left border-separate border-spacing-y-2">
@@ -142,7 +143,7 @@ export default function SubViewsOverlay({
             <div className="bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden border border-outline-variant/30">
               <div className="p-4 bg-surface-container-low border-b border-outline-variant/15 flex justify-between items-center text-left">
                 <h2 className="font-bold text-[14px] text-on-surface">Pierogi ruskie — 10 portions</h2>
-                <span className="material-symbols-outlined text-primary text-[18px]">potted_plant</span>
+                <Flower2 className="text-primary text-[18px]" />
               </div>
               <div className="p-4 text-left">
                 <table className="w-full text-left border-separate border-spacing-y-2">
@@ -186,7 +187,7 @@ export default function SubViewsOverlay({
             {/* Shopping Summary green block Card */}
             <div className="bg-on-primary-container/10 p-5 rounded-xl border border-primary-container/20 relative overflow-hidden text-left">
               <div className="absolute -right-4 -top-4 opacity-10">
-                <span className="material-symbols-outlined text-[100px] text-primary">shopping_cart</span>
+                <ShoppingCart className="text-[100px] text-primary" />
               </div>
               <div className="relative z-10 space-y-3">
                 <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest">Shopping Summary</h3>
@@ -197,14 +198,14 @@ export default function SubViewsOverlay({
                   onClick={() => triggerToast('Successfully generated and downloaded Excel order layout! 🛒')}
                   className="w-full h-11 bg-primary text-on-primary rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform cursor-pointer">
                   
-                    <span className="material-symbols-outlined text-[18px]">download</span>
+                    <Download className="text-[18px]" />
                     Export consolidated list
                   </button>
                   <button
                   onClick={() => triggerToast('Compiled PDF invoice successfully queued to your default printer!')}
                   className="w-full h-11 bg-white text-primary border border-primary-container rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                   
-                    <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                    <FileText className="text-[18px]" />
                     Print consolidated PDF
                   </button>
                 </div>
@@ -339,7 +340,7 @@ export default function SubViewsOverlay({
               onClick={() => setIsAddingIngredient(true)}
               className="text-primary font-bold text-[13px] flex items-center gap-1 hover:underline active:scale-95 transition-transform">
               
-                  <span className="material-symbols-outlined text-[20px]">add</span>
+                  <Plus className="text-[20px]" />
                   Add custom ingredient
                 </button>
               </div> :
@@ -377,7 +378,7 @@ export default function SubViewsOverlay({
               onClick={() => triggerToast('PDF Production Plan compiled! AirPrint queue initiated. 📄')}
               className="w-full bg-primary-container text-on-primary font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-95 active:scale-[0.97] transition-all cursor-pointer text-[13px]">
               
-                <span className="material-symbols-outlined text-[20px]">file_download</span>
+                <Download className="text-[20px]" />
                 Export to PDF / Print Plan
               </button>
             </div>
@@ -385,7 +386,7 @@ export default function SubViewsOverlay({
             {/* Smart graphic disclaimer banner info */}
             <div className="bg-white rounded-2xl border border-outline-variant/20 p-4 flex gap-3 text-left relative mt-6 overflow-hidden max-w-[390px]">
               <div className="flex items-center gap-4">
-                <span className="material-symbols-outlined text-primary text-[32px]">restaurant_menu</span>
+                <UtensilsCrossed className="text-primary text-[32px]" />
                 <div>
                   <h4 className="text-[12px] font-extrabold uppercase text-outline">Plan smarter, waste less</h4>
                   <p className="text-[11px] text-on-surface-variant leading-normal mt-0.5">
@@ -405,7 +406,7 @@ export default function SubViewsOverlay({
         showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
         }>
         
-        <span className="material-symbols-outlined text-green-400">check_circle</span>
+        <CheckCircle className="text-green-400" />
         <span className="font-bold text-[13px]">{toastMsg}</span>
       </div>
     </div>);

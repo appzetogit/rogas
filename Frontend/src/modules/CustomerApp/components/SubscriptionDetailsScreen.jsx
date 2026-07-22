@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { dmbCustomerAPI } from "@food/api";
+import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -212,9 +213,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
       {/* Header */}
       <header className="bg-white flex justify-between items-center w-full px-5 h-14 sticky top-0 z-40 border-b border-[#bec9c3]/20 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-            arrow_back
-          </button>
+          <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-[18px] font-extrabold text-primary">My Subscriptions</h1>
         </div>
       </header>
@@ -234,7 +233,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         ) : subscriptions.length === 0 ? (
           <section className="bg-white rounded-3xl p-8 text-center border border-[#bec9c3]/20 shadow-sm max-w-sm mx-auto mt-8 space-y-6">
             <div className="w-16 h-16 bg-[#E8F3F0] text-primary rounded-full flex items-center justify-center mx-auto shadow-inner">
-              <span className="material-symbols-outlined text-[32px]">assignment</span>
+              <ClipboardList className="text-[32px]" />
             </div>
             <div className="space-y-2">
               <h2 className="text-lg font-extrabold text-on-surface">No Active Subscriptions</h2>
@@ -331,7 +330,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               }`}
                               disabled={actionLoading || getRemainingDays(sub) <= 1}
                             >
-                              <span className="material-symbols-outlined text-[16px]">pause_circle</span>
+                              <PauseCircle className="text-[16px]" />
                               Pause
                             </button>
                             <button
@@ -342,7 +341,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
                               disabled={actionLoading}
                             >
-                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              <XCircle className="text-[16px]" />
                               Cancel
                             </button>
                           </>
@@ -353,7 +352,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               className="flex-1 py-2.5 rounded-xl bg-primary text-white hover:bg-[#155a49] text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-md"
                               disabled={actionLoading}
                             >
-                              <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                              <PlayCircle className="text-[16px]" />
                               Resume Plan
                             </button>
                             <button
@@ -364,7 +363,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
                               disabled={actionLoading}
                             >
-                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              <XCircle className="text-[16px]" />
                               Cancel
                             </button>
                           </>
@@ -394,7 +393,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
           <form onSubmit={handlePause} className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
-              <span className="material-symbols-outlined">warning</span>
+              <AlertTriangle />
               Confirm Subscription Pause
             </h3>
 
@@ -467,7 +466,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform shadow-md flex items-center justify-center gap-1"
                 disabled={actionLoading}
               >
-                {actionLoading && <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>}
+                {actionLoading && <Loader2 className="text-xs animate-spin" />}
                 Confirm Pause
               </button>
             </div>
@@ -480,7 +479,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
           <form onSubmit={handleCancel} className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-brand-red flex items-center gap-2">
-              <span className="material-symbols-outlined">warning</span>
+              <AlertTriangle />
               Cancel Subscription?
             </h3>
 
@@ -517,7 +516,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 className="flex-1 bg-brand-red hover:bg-[#c93b3b] text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform shadow-md flex items-center justify-center gap-1"
                 disabled={actionLoading}
               >
-                {actionLoading && <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>}
+                {actionLoading && <Loader2 className="text-xs animate-spin" />}
                 Confirm Cancellation
               </button>
             </div>

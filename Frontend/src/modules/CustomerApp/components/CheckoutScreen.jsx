@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
+import { ArrowLeft, CheckCircle, Banknote, Lock } from 'lucide-react';
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
 
@@ -131,7 +132,7 @@ export function CheckoutScreen({
       {/* Top App Bar */}
       <header className="flex justify-between items-center w-full px-5 h-14 bg-white sticky top-0 z-40 border-b border-[#bec9c3]/20 shadow-sm">
         <button onClick={onGoBack} aria-label="Go back" className="flex items-center active:scale-95 transition-all text-primary">
-          <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+          <ArrowLeft className="text-[24px]" />
         </button>
         <h1 className="text-[17px] font-extrabold text-[#1b1c1c]">Checkout</h1>
         <div className="w-9 h-9 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[14px]">
@@ -252,7 +253,7 @@ export function CheckoutScreen({
                 }`}
             >
               {(invoicePrefs?.receiptType || "simple") === "simple" && (
-                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               )}
               <span>Simple Receipt</span>
             </button>
@@ -268,7 +269,7 @@ export function CheckoutScreen({
                 }`}
             >
               {invoicePrefs?.receiptType === "vat" && (
-                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               )}
               <span>GST Invoice (B2B)</span>
             </button>
@@ -280,7 +281,7 @@ export function CheckoutScreen({
           <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">Payment</h2>
           <div className="bg-white border border-[#e4e2e1]/30 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
             <div className="w-10 h-10 bg-primary/10 flex items-center justify-center rounded-xl">
-              <span className="material-symbols-outlined text-primary">payments</span>
+              <Banknote className="text-primary" />
             </div>
             <div>
               <p className="text-[14px] font-bold text-[#1b1c1c]">Razorpay</p>
@@ -306,7 +307,7 @@ export function CheckoutScreen({
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-[20px]">lock</span>
+                <Lock className="text-[20px]" />
                 Pay ₹{totalPrice} & Subscribe
               </>
             )}

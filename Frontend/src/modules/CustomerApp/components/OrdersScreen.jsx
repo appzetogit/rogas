@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { dmbCustomerAPI } from "@food/api";
-import { Star, Coins, X, Loader2 } from "lucide-react";
+import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
@@ -144,7 +144,7 @@ const OrderCard = memo(function OrderCard({
               className="text-red-500 hover:text-red-700 active:scale-90 transition-transform flex items-center p-0.5 rounded-full hover:bg-red-50"
               title="Raise Complaint"
             >
-              <span className="material-symbols-outlined text-[18px]">report</span>
+              <Flag className="text-[18px]" />
             </button>
           )}
           <span className={`font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-sans text-white ${badgeColor}`}>
@@ -163,7 +163,7 @@ const OrderCard = memo(function OrderCard({
 
       {/* Customer Name */}
       <div className="flex items-center gap-1.5 mb-4">
-        <span className="material-symbols-outlined text-[16px] text-[#5c6e68]">person</span>
+        <User className="text-[16px] text-[#5c6e68]" />
         <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || "Maria K."}</span>
       </div>
 
@@ -196,7 +196,7 @@ const OrderCard = memo(function OrderCard({
             onClick={() => onTrackLive(order)}
             className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
           >
-            Track Live <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            Track Live <ArrowRight className="text-[16px]" />
           </button>
         ) : isPast && order.status === "delivered" ? (
           <div className="flex gap-2">
@@ -598,10 +598,8 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button
           onClick={onGoBack}
-          className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"
-        >
-          arrow_back
-        </button>
+           className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"
+        ><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">My Orders</h1>
         <div className="w-8" />
       </header>
@@ -629,7 +627,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
           </section>
         ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-on-surface-variant">
-            <span className="material-symbols-outlined text-[56px] text-[#bec9c3]">receipt_long</span>
+            <Receipt className="text-[56px] text-[#bec9c3]" />
             <p className="text-[15px] font-semibold text-center">
               {isPast ? "No past orders yet" : "No upcoming deliveries"}
             </p>
@@ -689,13 +687,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     className="w-full flex items-center gap-4 p-4 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 active:scale-[0.98] transition-all"
                   >
                     <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-red-500 text-[22px]">cancel</span>
+                      <XCircle className="text-red-500 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-[14px] font-bold text-on-surface">Skip This Delivery</p>
                       <p className="text-[12px] text-on-surface-variant font-medium">Wallet credit will be applied</p>
                     </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+                    <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
 
                   <button
@@ -703,13 +701,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl hover:bg-blue-100 active:scale-[0.98] transition-all"
                   >
                     <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-blue-500 text-[22px]">swap_horiz</span>
+                      <ArrowRightLeft className="text-blue-500 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-[14px] font-bold text-on-surface">Change Meal</p>
                       <p className="text-[12px] text-on-surface-variant font-medium">Switch to a different meal option</p>
                     </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+                    <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
 
                   <button
@@ -717,13 +715,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     className="w-full flex items-center gap-4 p-4 bg-amber-50 border border-amber-100 rounded-2xl hover:bg-amber-100 active:scale-[0.98] transition-all"
                   >
                     <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-amber-600 text-[22px]">pause_circle</span>
+                      <PauseCircle className="text-amber-600 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-[14px] font-bold text-on-surface">Pause Subscription</p>
                       <p className="text-[12px] text-on-surface-variant font-medium">Pause for 1–2 days</p>
                     </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+                    <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
                 </div>
 
@@ -813,7 +811,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
-                    <span className="material-symbols-outlined text-[36px] text-slate-300 mb-2">restaurant_menu</span>
+                    <UtensilsCrossed className="text-[36px] text-slate-300 mb-2" />
                     <p className="text-[13px] text-slate-500 font-medium">
                       No alternate meals available from this vendor right now.
                     </p>
@@ -836,7 +834,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"
                             }`}>
                             {isSelected && (
-                              <span className="material-symbols-outlined text-white text-[12px]">check</span>
+                              <Check className="text-white text-[12px]" />
                             )}
                           </div>
                           <div>

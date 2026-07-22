@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from "@food/api";
+import { Loader2, Eye, X, PlusCircle, MinusCircle, RefreshCw, RefreshCcw } from 'lucide-react';
 
 export default function CustomerWalletScreen() {
     const [wallets, setWallets] = useState([]);
@@ -43,7 +44,7 @@ export default function CustomerWalletScreen() {
                     className="flex items-center gap-2 px-4 py-2 bg-white border rounded-md shadow-sm hover:bg-gray-50 text-gray-700 font-medium transition-colors"
                     disabled={loading}
                 >
-                    <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                    <RefreshCcw className={`${loading ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
@@ -60,7 +61,7 @@ export default function CustomerWalletScreen() {
 
             {loading ? (
                 <div className="flex justify-center p-10">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-[#1f7a63]">progress_activity</span>
+                    <Loader2 className="animate-spin text-4xl text-[#1f7a63]" />
                 </div>
             ) : (
                 <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -112,7 +113,7 @@ export default function CustomerWalletScreen() {
                                                     className="px-3 py-2 bg-[#1f7a63]/10 text-[#1f7a63] font-medium rounded-md hover:bg-[#1f7a63] hover:text-white transition-colors inline-flex items-center justify-center"
                                                     title="View Details"
                                                 >
-                                                    <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                    <Eye className="text-[20px]" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -142,7 +143,7 @@ export default function CustomerWalletScreen() {
                                 onClick={() => setSelectedWallet(null)}
                                 className="text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full p-2"
                             >
-                                <span className="material-symbols-outlined block">close</span>
+                                <X className="block" />
                             </button>
                         </div>
                         
@@ -166,11 +167,11 @@ export default function CustomerWalletScreen() {
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex items-center gap-2">
                                                     {tx.type === 'addition' ? (
-                                                        <span className="material-symbols-outlined text-green-600 bg-green-50 p-1 rounded">add_circle</span>
+                                                        <PlusCircle className="text-green-600 bg-green-50 p-1 rounded" />
                                                     ) : tx.type === 'deduction' ? (
-                                                        <span className="material-symbols-outlined text-red-600 bg-red-50 p-1 rounded">remove_circle</span>
+                                                        <MinusCircle className="text-red-600 bg-red-50 p-1 rounded" />
                                                     ) : (
-                                                        <span className="material-symbols-outlined text-blue-600 bg-blue-50 p-1 rounded">autorenew</span>
+                                                        <RefreshCw className="text-blue-600 bg-blue-50 p-1 rounded" />
                                                     )}
                                                     <span className="font-semibold capitalize text-gray-800">{tx.type}</span>
                                                 </div>

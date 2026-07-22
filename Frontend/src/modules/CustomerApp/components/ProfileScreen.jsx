@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
 import { useTranslation } from "../../../contexts/LanguageContext";
+import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft } from 'lucide-react';
 
 export function ProfileScreen({
   onGoBack,
@@ -176,11 +177,11 @@ export function ProfileScreen({
                 </div>
                 {imageUploading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full">
-                    <span className="material-symbols-outlined text-white text-[24px] animate-spin">progress_activity</span>
+                    <Loader2 className="text-white text-[24px] animate-spin" />
                   </div>
                 )}
                 <label className="absolute bottom-0 right-0 bg-primary text-white w-8 h-8 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors z-20 shadow-sm">
-                  <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                  <Camera className="text-[18px]" />
                   <input
                     type="file"
                     accept="image/*"
@@ -280,7 +281,7 @@ export function ProfileScreen({
               >
                 {formLoading ? (
                   <>
-                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    <Loader2 className="text-sm animate-spin" />
                     <span>Saving...</span>
                   </>
                 ) : (
@@ -299,9 +300,7 @@ export function ProfileScreen({
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
       {/* Top action context header */}
       <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-          arrow_back
-        </button>
+        <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">DailyMealBox</h1>
         <div className="w-8" />
       </header>
@@ -310,7 +309,7 @@ export function ProfileScreen({
         {/* Profile green banner */}
         <section className="bg-gradient-to-b from-[#1f7a63] to-[#175d4b] px-5 pt-8 pb-10 text-white rounded-b-[32px] shadow-lg relative overflow-hidden">
           <div className="absolute right-[-20px] top-[-10px] opacity-10 pointer-events-none">
-            <span className="material-symbols-outlined text-[130px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+            <User className="text-[130px]" style={{ fontVariationSettings: "'FILL' 1" }} />
           </div>
 
           <div className="relative z-10 flex items-center gap-4">
@@ -343,7 +342,7 @@ export function ProfileScreen({
           <div onClick={handleOpenEdit} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">person</span>
+                <User className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Customer Details</h3>
@@ -354,7 +353,7 @@ export function ProfileScreen({
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>View & Edit</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -363,7 +362,7 @@ export function ProfileScreen({
             <div className="flex items-center gap-3 w-full justify-between">
               <div className="flex items-center gap-3">
                 <div className="bg-[#1f7a63]/10 p-2 rounded-xl text-primary flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[22px]">language</span>
+                  <Globe className="text-[22px]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("change_lang", "Language")}</h3>
@@ -386,7 +385,7 @@ export function ProfileScreen({
           <div onClick={onGoToSubscription} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-[#1f7a63]/10 p-2 rounded-xl text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">assignment</span>
+                <ClipboardList className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">My Subscription</h3>
@@ -395,7 +394,7 @@ export function ProfileScreen({
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Manage</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -404,7 +403,7 @@ export function ProfileScreen({
             <div className="bg-[#1f7a63] text-white rounded-2xl p-4 shadow-md flex items-center justify-between hover:bg-[#155a49] transition-all cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-xl text-white flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[22px]">corporate_fare</span>
+                  <Building2 className="text-[22px]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-white">Office Meal Plan</h3>
@@ -414,7 +413,7 @@ export function ProfileScreen({
                 </div>
               </div>
               <button className="text-white hover:text-white/80 font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                <ArrowRight className="text-sm" />
               </button>
             </div>
           )}
@@ -423,7 +422,7 @@ export function ProfileScreen({
           <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">help_center</span>
+                <HelpCircle className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
@@ -431,7 +430,7 @@ export function ProfileScreen({
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -439,7 +438,7 @@ export function ProfileScreen({
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-[#fea619]/10 p-2 rounded-xl text-[#fea619] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>restaurant</span>
+                <Utensils className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Diet &amp; Allergens</h3>
@@ -450,7 +449,7 @@ export function ProfileScreen({
             </div>
             <button onClick={onGoToDietAndAllergens} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Edit</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -458,7 +457,7 @@ export function ProfileScreen({
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-[#e4e2e1] p-2 rounded-xl text-[#3e4945] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">receipt_long</span>
+                <Receipt className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Invoice Preferences</h3>
@@ -469,7 +468,7 @@ export function ProfileScreen({
             </div>
             <button onClick={onGoToInvoiceSettings} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Change</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -477,7 +476,7 @@ export function ProfileScreen({
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-xl text-[#1f7a63] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">credit_card</span>
+                <CreditCard className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Payment Methods</h3>
@@ -486,7 +485,7 @@ export function ProfileScreen({
             </div>
             <button onClick={() => onShowNotificationToast("Payment method settings are securely managed by Przelewy24.")} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Manage</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -494,7 +493,7 @@ export function ProfileScreen({
           <div onClick={onGoToWallet} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer group">
             <div className="flex items-center gap-3">
               <div className="bg-amber-100/35 p-2 rounded-xl text-brand-amber flex items-center justify-center group-active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[22px]">account_balance_wallet</span>
+                <Wallet className="text-[22px]" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Wallet balance</h3>
@@ -503,7 +502,7 @@ export function ProfileScreen({
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">
               {/* <span>View</span> */}
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              <ArrowRight className="text-[18px]" />
             </button>
           </div>
 
@@ -511,7 +510,7 @@ export function ProfileScreen({
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-red-50 p-2 rounded-xl text-brand-red flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                <Star className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Loyalty points</h3>
@@ -520,7 +519,7 @@ export function ProfileScreen({
             </div>
             <button onClick={() => onShowNotificationToast(`Total available rewards points: ${points} points.`)} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>View</span> */}
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="text-sm" />
             </button>
           </div>
 
@@ -528,7 +527,7 @@ export function ProfileScreen({
           <div className="bg-primary hover:bg-[#155a49] text-white rounded-2xl p-5 shadow-md flex items-center justify-between overflow-hidden relative transition-all duration-300">
             <div className="flex items-center gap-4 z-10">
               <div className="bg-white/20 p-2.5 rounded-xl">
-                <span className="material-symbols-outlined text-white text-[24px]">redeem</span>
+                <Gift className="text-white text-[24px]" />
               </div>
               <div className="space-y-0.5">
                 <h3 className="text-base font-bold text-white">Referral Programme</h3>
@@ -539,7 +538,7 @@ export function ProfileScreen({
               Share
             </button>
             <div className="absolute right-[-20px] top-[-10px] opacity-10 pointer-events-none">
-              <span className="material-symbols-outlined text-[120px]">redeem</span>
+              <Gift className="text-[120px]" />
             </div>
           </div>
 
@@ -551,11 +550,11 @@ export function ProfileScreen({
             </h4>
             <div className="bg-white rounded-2xl overflow-hidden border border-[#bec9c3]/20 shadow-sm divide-y divide-[#bec9c3]/20">
               <button onClick={onLogout} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left">
-                <span className="material-symbols-outlined text-primary">logout</span>
+                <LogOut className="text-primary" />
                 <span className="font-bold text-[13px] text-primary"> Logout</span>
               </button>
               <button onClick={() => setShowDangerDialog("Delete My Account")} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left shadow-inner">
-                <span className="material-symbols-outlined text-brand-red">delete</span>
+                <Trash2 className="text-brand-red" />
                 <span className="font-bold text-[13px] text-brand-red"> Delete My Account</span>
               </button>
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
+import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft } from 'lucide-react';
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -361,9 +362,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     return (
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
         <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-            arrow_back
-          </button>
+          <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
           <div className="w-8" />
         </header>
@@ -379,14 +378,12 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     return (
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
         <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-            arrow_back
-          </button>
+          <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
           <div className="w-8" />
         </header>
         <div className="flex flex-col items-center justify-center pt-40 px-6 text-center gap-4">
-          <span className="material-symbols-outlined text-6xl text-brand-red">error</span>
+          <AlertCircle className="text-6xl text-brand-red" />
           <p className="text-on-surface-variant font-bold text-base">{error}</p>
           <button
             onClick={loadOrders}
@@ -403,9 +400,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
       {/* Top App Bar */}
       <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-          arrow_back
-        </button>
+        <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
         <div className="w-8" />
       </header>
@@ -526,32 +521,32 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                               <p className="text-brand-red text-xs font-bold font-sans mt-0.5">Skipped</p>
                             ) : m.status === "preparing" ? (
                               <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5">
-                                <span className="material-symbols-outlined text-[14px]">soup_kitchen</span>
+                                <Soup className="text-[14px]" />
                                 <p>Preparing 🔥</p>
                               </div>
                             ) : m.status === "ready" ? (
                               <div className="flex items-center gap-1 text-blue-600 text-xs font-bold font-sans mt-0.5">
-                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                <CheckCircle className="text-[14px]" />
                                 <p>Ready ✓</p>
                               </div>
                             ) : m.status === "out_for_delivery" ? (
                               <div className="flex items-center gap-1 text-purple-600 text-xs font-bold font-sans mt-0.5">
-                                <span className="material-symbols-outlined text-[14px]">local_shipping</span>
+                                <Truck className="text-[14px]" />
                                 <p>On the Way 🛵</p>
                               </div>
                             ) : m.status === "delivered" ? (
                               <div className="flex items-center gap-1 text-green-600 text-xs font-bold font-sans mt-0.5">
-                                <span className="material-symbols-outlined text-[14px]">done_all</span>
+                                <CheckCheck className="text-[14px]" />
                                 <p>Delivered ✅</p>
                               </div>
                             ) : m.status === "failed" ? (
                               <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
-                                <span className="material-symbols-outlined text-[14px]">error</span>
+                                <AlertCircle className="text-[14px]" />
                                 <p>Failed </p>
                               </div>
                             ) : m.isLocked ? (
                               <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>
-                                <span className="material-symbols-outlined text-[14px]">lock</span>
+                                <Lock className="text-[14px]" />
                                 <p>Locked</p>
                               </div>
                             ) : (
@@ -575,7 +570,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                               )
                             ) : (m.status !== "scheduled" || m.isLocked) ? (
                               <button onClick={showLockedMessage} className="p-1.5 rounded-full hover:bg-amber-50 text-brand-amber transition-colors flex items-center justify-center cursor-pointer">
-                                <span className="material-symbols-outlined text-[20px]">info</span>
+                                <Info className="text-[20px]" />
                               </button>
                             ) : (
                               <button
@@ -600,7 +595,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         {/* Empty state banner when no active subscriptions exist */}
         {orders.length === 0 && (
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col items-center text-center gap-3">
-            <span className="material-symbols-outlined text-4xl text-primary">lunch_dining</span>
+            <Sandwich className="text-4xl text-primary" />
             <h3 className="text-base font-bold text-on-surface">No Active Subscription</h3>
             <p className="text-xs text-on-surface-variant leading-relaxed max-w-[280px]">
               Subscribe to a meal plan to start receiving fresh, healthy, home-cooked meals daily.
@@ -631,7 +626,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
           {/* Modal Content */}
           <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10">
             <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-brand-red text-[28px]">cancel</span>
+              <XCircle className="text-brand-red text-[28px]" />
             </div>
 
             <h3 className="text-lg font-extrabold text-on-surface mb-2">Skip Meal?</h3>
@@ -664,7 +659,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
           <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10 animate-slideUp">
             <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3 border-4 border-white shadow-sm -mt-10">
-              <span className="material-symbols-outlined text-green-500 text-[32px]">celebration</span>
+              <PartyPopper className="text-green-500 text-[32px]" />
             </div>
 
             <h3 className="text-xl font-black text-[#00604c] mb-1">Meal Delivered!</h3>
@@ -739,7 +734,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 className="w-full bg-[#00604c] text-white py-3.5 rounded-xl font-black text-sm hover:bg-[#1f7a63] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
               >
                 {loadingAction ? "Submitting..." : "Submit Rating"}
-                <span className="material-symbols-outlined text-[18px]">send</span>
+                <Send className="text-[18px]" />
               </button>
               <button
                 onClick={() => setRatingModalOrder(null)}

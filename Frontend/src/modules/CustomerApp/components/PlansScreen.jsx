@@ -9,6 +9,7 @@ const mapContainerStyle = {
 };
 import { restaurantAPI, dmbCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
+import { X, CheckCircle, CheckSquare, Calendar, MapPin, Locate, ShoppingCart, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft } from 'lucide-react';
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -71,7 +72,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
             <p className="text-[12px] text-[#6e7a74]">{vendorName}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f5f5f0] flex items-center justify-center active:scale-90 transition-transform">
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <X className="text-[20px]" />
           </button>
         </div>
 
@@ -382,7 +383,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
             <p className="text-[12px] text-[#6e7a74]">{vendorName}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f5f5f0] flex items-center justify-center active:scale-90 transition-transform">
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <X className="text-[20px]" />
           </button>
         </div>
 
@@ -439,7 +440,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                             <p className="text-[17px] font-extrabold text-primary">₹{plan.price}</p>
                             {isSelected && (
                               <div className="mt-2.5 flex items-center justify-end gap-1 text-primary">
-                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                                 <span className="text-[12px] font-bold">Selected</span>
                               </div>
                             )}
@@ -478,7 +479,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                           </div>
                         </div>
                         {isSlotSelected && (
-                          <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_box</span>
+                          <CheckSquare className="text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                         )}
                       </button>
                     );
@@ -491,7 +492,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Subscription Start Date</h3>
                 <div className="relative">
                   <div className="flex items-center gap-3 bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-3 focus-within:border-primary transition-colors">
-                    <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+                    <Calendar className="text-primary text-[20px]" />
                     <div className="flex-1">
                       <p className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-0.5">First Delivery Date</p>
                       <input
@@ -539,14 +540,14 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       onClick={() => setShowMap(!showMap)}
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 transition-colors active:bg-primary/5"
                     >
-                      <span className="material-symbols-outlined text-[16px]">location_on</span>
+                      <MapPin className="text-[16px]" />
                       {showMap ? 'Hide Map' : 'Set on Map'}
                     </button>
                     <button
                       onClick={handleLiveLocation}
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold bg-[#1F7A63]/10 text-[#1F7A63] flex items-center justify-center gap-1.5 transition-colors active:bg-[#1F7A63]/20"
                     >
-                      <span className="material-symbols-outlined text-[16px]">my_location</span>
+                      <Locate className="text-[16px]" />
                       Live Location
                     </button>
                   </div>
@@ -648,7 +649,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 disabled={selectedMealsList.length === 0 || !selectedZone || !address.trim()}
                 className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+                <ShoppingCart className="text-[20px]" />
                 Proceed to Checkout
               </button>
               <div className="h-4" />
@@ -661,7 +662,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[210] animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
-              <span className="material-symbols-outlined">warning</span>
+              <AlertTriangle />
               Active Subscription Exists
             </h3>
 
@@ -774,9 +775,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
       <div className="bg-[#F5F5F0] text-on-surface min-h-screen pb-32">
         {/* Top Header */}
         <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-            arrow_back
-          </button>
+          <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Meal Plans</h1>
           <div className="w-8" />
         </header>
@@ -803,7 +802,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
               {/* Search */}
               <div className="mb-4 space-y-3">
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]">search</span>
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]" />
                   <input
                     type="text"
                     placeholder="Search vendors, cuisines, location..."
@@ -813,7 +812,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                   />
                   {searchQuery && (
                     <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6e7a74]">
-                      <span className="material-symbols-outlined text-[20px]">close</span>
+                      <X className="text-[20px]" />
                     </button>
                   )}
                 </div>
@@ -913,7 +912,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
 
                     {/* Rating badge */}
                     <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow">
-                      <span className="material-symbols-outlined text-amber-400 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      <Star className="text-amber-400 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                       <span className="text-[12px] font-extrabold text-[#1b1c1c]">{plan.rating}</span>
                     </div>
 
@@ -944,7 +943,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                         onClick={() => setOpenMenuFor(plan)}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#f5f5f0] text-[#1b1c1c] border border-[#e4e2e1] py-3 rounded-xl text-[13px] font-bold active:scale-[0.97] transition-all hover:bg-[#eef0ec]"
                       >
-                        <span className="material-symbols-outlined text-[18px] text-primary">restaurant_menu</span>
+                        <UtensilsCrossed className="text-[18px] text-primary" />
                         View Menu
                       </button>
 
@@ -953,7 +952,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                         onClick={() => setOpenPlansFor(plan)}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#1F7A63] text-white py-3 rounded-xl text-[13px] font-bold active:scale-[0.97] transition-all hover:bg-[#155a49] shadow-sm"
                       >
-                        <span className="material-symbols-outlined text-[18px]">subscriptions</span>
+                        <Youtube className="text-[18px]" />
                         View Plans
                       </button>
                     </div>

@@ -33,6 +33,7 @@ import VendorSubscribers from '../Food/pages/restaurant/VendorSubscribers';
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
 import { dmbVendorAPI, authAPI } from '../../services/api/index';
+import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle } from 'lucide-react';
 
 export default function App() {
   const navigate = useNavigate();
@@ -697,7 +698,7 @@ export default function App() {
               onClick={() => triggerGlobalToast('Side drawer menu requires admin credentials.')}
               className="flex items-center justify-center p-2 hover:opacity-90 active:scale-95 transition-transform">
 
-              <span className="material-symbols-outlined">menu</span>
+              <Menu />
             </button>
             <h1 className="font-semibold text-[16px] tracking-tight">
               {getPageTitle()}
@@ -706,7 +707,7 @@ export default function App() {
               title="More Options"
               className="flex items-center justify-center p-2 hover:opacity-90 active:scale-95 transition-transform">
 
-              <span className="material-symbols-outlined font-normal">more_vert</span>
+              <MoreVertical className="font-normal" />
             </button>
           </div>
         </header>
@@ -740,7 +741,7 @@ export default function App() {
             onClick={() => navigate('/vendor/dashboard')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/dashboard') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
 
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname.includes('/dashboard') ? "'FILL' 1" : "'FILL' 0" }}>home</span>
+            <Home style={{ fontVariationSettings: location.pathname.includes('/dashboard') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
           </button>
 
@@ -748,7 +749,7 @@ export default function App() {
             onClick={() => navigate('/vendor/orders')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/orders') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
 
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname.includes('/orders') ? "'FILL' 1" : "'FILL' 0" }}>receipt_long</span>
+            <Receipt style={{ fontVariationSettings: location.pathname.includes('/orders') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Orders</span>
           </button>
 
@@ -756,7 +757,7 @@ export default function App() {
             onClick={() => navigate('/vendor/menu')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/menu') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
 
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname.includes('/menu') ? "'FILL' 1" : "'FILL' 0" }}>restaurant_menu</span>
+            <UtensilsCrossed style={{ fontVariationSettings: location.pathname.includes('/menu') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Menu</span>
           </button>
 
@@ -764,7 +765,7 @@ export default function App() {
             onClick={() => navigate('/vendor/earnings')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/earnings') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
 
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname.includes('/earnings') ? "'FILL' 1" : "'FILL' 0" }}>payments</span>
+            <Banknote style={{ fontVariationSettings: location.pathname.includes('/earnings') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Earn</span>
           </button>
 
@@ -772,7 +773,7 @@ export default function App() {
             onClick={() => navigate('/vendor/profile')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/profile') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
 
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname.includes('/profile') ? "'FILL' 1" : "'FILL' 0" }}>more_horiz</span>
+            <MoreHorizontal style={{ fontVariationSettings: location.pathname.includes('/profile') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">More</span>
           </button>
 
@@ -783,7 +784,7 @@ export default function App() {
           className={`fixed bottom-24 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full flex items-center gap-3 transition-all duration-300 shadow-xl z-[150] ${showGlobalToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
           }>
 
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+          <CheckCircle className="text-green-400" />
           <span className="font-bold text-[13px]">{toastText}</span>
         </div>
 

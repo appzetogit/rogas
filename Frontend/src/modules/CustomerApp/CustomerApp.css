@@ -63,8 +63,3 @@ body {
 }
 
 /* Material icon style configuration override */
-.material-symbols-outlined {
-  display: inline-block;
-  line-height: 1;
-  vertical-align: middle;
-}

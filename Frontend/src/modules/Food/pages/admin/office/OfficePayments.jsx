@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
+import { Receipt } from 'lucide-react';
 
 const STATUS_COLORS = {
   paid:     { bg: '#dcfce7', text: '#15803d', dot: '#16a34a', label: 'Paid' },
@@ -60,7 +61,7 @@ export default function OfficePayments() {
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#16a34a' }}>receipt_long</span>
+          <Receipt style={{ fontSize: '28px', color: '#16a34a' }} />
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Office Payment History</h1>
         </div>
         <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>All payments made by corporate office accounts for meal subscriptions.</p>
@@ -111,7 +112,7 @@ export default function OfficePayments() {
         <Loader />
       ) : payments.length === 0 ? (
         <div style={{ background: '#fff', border: '1px dashed #e2e8f0', borderRadius: '12px', padding: '60px', textAlign: 'center' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#cbd5e1' }}>receipt_long</span>
+          <Receipt style={{ fontSize: '48px', color: '#cbd5e1' }} />
           <p style={{ color: '#94a3b8', marginTop: '8px', fontSize: '14px' }}>No payment records found.</p>
         </div>
       ) : (

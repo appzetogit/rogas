@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
+import { ArrowLeft } from 'lucide-react';
 export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
     const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
     const [companyName, setCompanyName] = useState(initialSettings.companyName);
@@ -19,9 +20,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
       {/* Header element bar */}
       <header className="bg-white flex justify-between items-center w-full px-5 h-14 sticky top-0 z-40 border-b border-[#bec9c3]/20 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={onGoBack} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-            arrow_back
-          </button>
+          <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-[18px] font-extrabold text-primary">Invoice Settings</h1>
         </div>
         <div className="w-8 h-8 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[13px]">

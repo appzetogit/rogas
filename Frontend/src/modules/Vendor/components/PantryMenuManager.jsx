@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
+import { Plus, Edit2, Trash2, X, Camera } from 'lucide-react';
 
 export default function PantryMenuManager({ items, setItems }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,7 +111,7 @@ export default function PantryMenuManager({ items, setItems }) {
             onClick={openAddModal}
             className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center active:scale-95 transition-transform shadow-md hover:bg-[#155a49]"
           >
-            <span className="material-symbols-outlined">add</span>
+            <Plus />
           </button>
         </div>
         <p className="text-on-surface-variant text-[14px] mt-1 font-medium">Manage your pantry shop inventory.</p>
@@ -148,10 +149,10 @@ export default function PantryMenuManager({ items, setItems }) {
                     {item.isAvailable ? 'In Stock' : 'Out of Stock'}
                   </button>
                   <button onClick={() => openEditModal(item)} className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center active:scale-95 transition-transform">
-                    <span className="material-symbols-outlined text-[16px] text-primary">edit</span>
+                    <Edit2 className="text-[16px] text-primary" />
                   </button>
                   <button onClick={() => handleDelete(item)} className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center active:scale-95 transition-transform">
-                    <span className="material-symbols-outlined text-[16px] text-red-500">delete</span>
+                    <Trash2 className="text-[16px] text-red-500" />
                   </button>
                 </div>
               </div>
@@ -167,7 +168,7 @@ export default function PantryMenuManager({ items, setItems }) {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-[20px] font-extrabold text-primary">{editingItem ? 'Edit Pantry Item' : 'Add Pantry Item'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[20px] text-primary">close</span>
+                <X className="text-[20px] text-primary" />
               </button>
             </div>
 
@@ -179,7 +180,7 @@ export default function PantryMenuManager({ items, setItems }) {
                     <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-[#bec9c3] text-[32px] mb-2">add_a_photo</span>
+                      <Camera className="text-[#bec9c3] text-[32px] mb-2" />
                       <span className="text-[14px] font-bold text-on-surface-variant">Upload Photo</span>
                     </>
                   )}

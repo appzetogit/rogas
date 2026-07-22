@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
+import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight } from 'lucide-react';
 
 const toLocalDateStr = (d) => {
   if (!d) return "";
@@ -494,7 +495,7 @@ export default function MenuManager({
                     onClick={() => setSubView('surpriseBox')}
                     className="text-secondary font-bold text-[13px] flex items-center gap-0.5 hover:underline"
                   >
-                    <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                    <Sparkles className="text-[18px]" />
                     Boxes ({surpriseBoxes.filter((s) => s.status === 'Active').length})
                   </button>
                   <button
@@ -502,7 +503,7 @@ export default function MenuManager({
                     onClick={handleAddClick}
                     className="text-primary font-bold text-[13px] flex items-center gap-0.5 hover:underline"
                   >
-                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    <Plus className="text-[18px]" />
                     Add meal
                   </button>
                 </div>
@@ -512,7 +513,7 @@ export default function MenuManager({
               <div className="space-y-4">
                 {meals.filter((m) => m.status !== 'Removed').length === 0 ? (
                   <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/15 text-center flex flex-col items-center justify-center min-h-[220px] animate-fadeIn">
-                    <span className="material-symbols-outlined text-[48px] text-primary/40 mb-3">restaurant_menu</span>
+                    <UtensilsCrossed className="text-[48px] text-primary/40 mb-3" />
                     <p className="text-[14px] font-bold text-on-surface">No meals added yet</p>
                     <p className="text-[12px] text-outline mt-1 leading-relaxed max-w-[220px]">
                       Click the "Add meal" button above to publish your first subscription meal plan.
@@ -690,7 +691,7 @@ export default function MenuManager({
                                   }}
                                   className="text-amber-600 hover:text-amber-700 font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                                  <ArrowRightLeft className="text-[16px]" />
                                   Change
                                 </button>
                               ) : (
@@ -703,7 +704,7 @@ export default function MenuManager({
                                   }}
                                   className="text-primary hover:text-primary-dark font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                                  <PlusCircle className="text-[16px]" />
                                   Add Meal
                                 </button>
                               )}
@@ -723,7 +724,7 @@ export default function MenuManager({
                                       <img alt={existingDish.dishName || existingMeal?.name} className="w-full h-full object-cover" src={existingDish.photo || existingMeal.imageUrl} />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                                        <span className="material-symbols-outlined text-[24px] text-primary/40">restaurant</span>
+                                        <Utensils className="text-[24px] text-primary/40" />
                                       </div>
                                     )}
                                   </div>
@@ -766,7 +767,7 @@ export default function MenuManager({
                                     )}
                                     className="px-3 py-1.5 rounded-lg border border-primary text-primary font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                                   >
-                                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                                    <Edit2 className="text-[14px]" />
                                     Edit
                                   </button>
                                   <button
@@ -778,14 +779,14 @@ export default function MenuManager({
                                     )}
                                     className="px-3 py-1.5 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[11px] cursor-pointer flex items-center justify-center gap-0.5"
                                   >
-                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                    <Trash2 className="text-[14px]" />
                                     Remove
                                   </button>
                                 </div>
                               </div>
                             ) : (
                               <div className="text-center py-4 bg-slate-50 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined text-[18px] text-outline">restaurant_menu</span>
+                                <UtensilsCrossed className="text-[18px] text-outline" />
                                 <span className="text-[12px] font-semibold text-outline">No meal scheduled</span>
                               </div>
                             )}
@@ -811,7 +812,7 @@ export default function MenuManager({
             onClick={() => setSubView('list')}
             className="flex items-center active:scale-90 transition-transform">
             
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">{editingMeal ? 'Edit Meal' : 'Add Meal'}</h2>
             <div className="w-6"></div>
@@ -848,7 +849,7 @@ export default function MenuManager({
               <div className="space-y-1">
                 <label className="text-[10px] text-outline uppercase font-semibold">VAT Category</label>
                 <div className="flex items-center gap-1.5 bg-primary-container/10 border border-primary-container/20 rounded-lg px-3 py-2.5">
-                  <span className="material-symbols-outlined text-[18px] text-primary">info</span>
+                  <Info className="text-[18px] text-primary" />
                   <span className="text-[11px] leading-tight text-primary font-semibold truncate">8% — Restaurant</span>
                 </div>
               </div>
@@ -968,9 +969,7 @@ export default function MenuManager({
                     }>
                     
                       {isActive &&
-                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          check_circle
-                        </span>
+                    <CheckCircle className="text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     }
                       {allergen}
                     </button>);
@@ -1002,12 +1001,12 @@ export default function MenuManager({
               
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
-                    <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+                    <Loader2 className="text-[32px] animate-spin" />
                     <span className="font-bold text-[13px] mt-2 tracking-wider">Uploading Photo...</span>
                   </div>
                 ) : (
                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="material-symbols-outlined text-[32px]">photo_camera</span>
+                    <Camera className="text-[32px]" />
                     <span className="font-bold text-[13px] mt-1">Change Photo</span>
                   </div>
                 )}
@@ -1020,7 +1019,7 @@ export default function MenuManager({
               type="submit"
               className="w-full py-4 bg-primary text-on-primary font-bold text-[15px] rounded-xl shadow-lg active:scale-98 transition-transform flex items-center justify-center gap-2 cursor-pointer">
               
-                <span className="material-symbols-outlined leading-none text-[20px]">save</span>
+                <Save className="leading-none text-[20px]" />
                 Save Meal
               </button>
 
@@ -1047,7 +1046,7 @@ export default function MenuManager({
             onClick={() => setSubView('list')}
             className="flex items-center active:scale-90 transition-transform">
             
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[16px] font-semibold">Surprise Boxes</h2>
             <div className="w-6"></div>
@@ -1062,7 +1061,7 @@ export default function MenuManager({
               
               {surpriseBoxes.filter((s) => s.status === 'Active').length === 0 ?
             <div className="text-center py-6 bg-white rounded-xl border border-dashed border-outline-variant p-4">
-                  <span className="material-symbols-outlined text-[30px] text-outline">shopping_bag</span>
+                  <ShoppingBag className="text-[30px] text-outline" />
                   <p className="text-[13px] text-outline mt-1 font-bold">No active promotional surprise boxes</p>
                 </div> :
 
@@ -1087,7 +1086,7 @@ export default function MenuManager({
                       <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center gap-1.5 font-bold text-[13px]">
                           <span className="text-outline line-through">{box.originalPrice.toFixed(2)} PLN</span>
-                          <span className="material-symbols-outlined text-primary text-[14px]">arrow_forward</span>
+                          <ArrowRight className="text-primary text-[14px]" />
                           <span className="text-primary text-[15px]">{box.discountedPrice.toFixed(2)} PLN</span>
                         </div>
                         <button
@@ -1131,9 +1130,7 @@ export default function MenuManager({
                           </option>
                     )}
                     </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
-                      expand_more
-                    </span>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline" />
                   </div>
                 </div>
 
@@ -1178,7 +1175,7 @@ export default function MenuManager({
                         <span className="text-outline line-through">
                           {meals.find((m) => m.id === selectedMealId).price.toFixed(2)} PLN
                         </span>
-                        <span className="material-symbols-outlined text-[14px]">trending_flat</span>
+                        <ArrowRight className="text-[14px]" />
                         <span>
                           {(meals.find((m) => m.id === selectedMealId).price * (1 - discountPercent / 100)).toFixed(2)} PLN
                         </span>
@@ -1191,7 +1188,7 @@ export default function MenuManager({
                 <div className="flex justify-between items-center py-3 border-t border-outline-variant/20">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">CLOSES AT</label>
                   <div className="flex items-center gap-1.5 font-bold text-[13px] text-on-surface">
-                    <span className="material-symbols-outlined text-[#F59E0B] text-[18px]">schedule</span>
+                    <Clock className="text-[#F59E0B] text-[18px]" />
                     <span>14:00 today</span>
                   </div>
                 </div>
@@ -1201,7 +1198,7 @@ export default function MenuManager({
                 type="submit"
                 className="w-full bg-secondary-container h-12 rounded-xl flex items-center justify-center gap-2 font-bold text-white text-[15px] shadow-md hover:brightness-105 active:scale-95 transition-all cursor-pointer">
                 
-                  <span className="material-symbols-outlined">auto_awesome</span>
+                  <Sparkles />
                   Submit Surprise Box
                 </button>
               </div>
@@ -1219,7 +1216,7 @@ export default function MenuManager({
               onClick={() => setScheduleModalOpen(false)}
               className="flex items-center active:scale-90 transition-transform cursor-pointer"
             >
-              <span className="material-symbols-outlined">arrow_back</span>
+              <ArrowLeft />
             </button>
             <h2 className="text-[15px] font-semibold truncate max-w-[240px]">
               Schedule: {selectedDateForSchedule?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -1283,12 +1280,12 @@ export default function MenuManager({
                 />
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
-                    <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+                    <Loader2 className="text-[32px] animate-spin" />
                     <span className="font-bold text-[13px] mt-2 tracking-wider">Uploading Photo...</span>
                   </div>
                 ) : (
                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="material-symbols-outlined text-[32px]">photo_camera</span>
+                    <Camera className="text-[32px]" />
                     <span className="font-bold text-[13px] mt-1">Change Photo</span>
                   </div>
                 )}
@@ -1382,14 +1379,14 @@ export default function MenuManager({
                 onClick={() => setMealSelectorOpenPlan(null)}
                 className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-outline-variant/20 active:scale-90 transition-transform cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <X className="text-[18px]" />
               </button>
             </div>
 
             <div className="space-y-3 pt-2">
               {meals.filter(m => m.status === 'Active').length === 0 ? (
                 <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-outline-variant p-4">
-                  <span className="material-symbols-outlined text-[32px] text-outline">restaurant_menu</span>
+                  <UtensilsCrossed className="text-[32px] text-outline" />
                   <p className="text-[12px] text-outline mt-1 font-bold">No active meals found in your menu</p>
                   <p className="text-[11px] text-outline mt-0.5 px-4 font-medium leading-relaxed">
                     Create more active meals in your Menu first to select them here.
@@ -1415,7 +1412,7 @@ export default function MenuManager({
                           {meal.price.toFixed(2)} PLN <span className="font-medium text-outline">· {meal.calories}</span>
                         </p>
                       </div>
-                      <span className="material-symbols-outlined text-primary self-center text-[18px]">chevron_right</span>
+                      <ChevronRight className="text-primary self-center text-[18px]" />
                     </button>
                   ))
               )}
@@ -1440,13 +1437,13 @@ export default function MenuManager({
                 onClick={() => setAddMealSelectorOpen(false)}
                 className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-outline-variant/20 active:scale-90 transition-transform cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <X className="text-[18px]" />
               </button>
             </div>
 
             {/* Info banner */}
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <span className="material-symbols-outlined text-amber-600 text-[15px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+              <Info className="text-amber-600 text-[15px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }} />
               <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
                 Whichever meal you select will be scheduled for this slot and will update the customer's orders in real-time.
               </p>
@@ -1455,7 +1452,7 @@ export default function MenuManager({
             <div className="space-y-3 pt-1">
               {meals.filter(m => m.status === 'Active').length === 0 ? (
                 <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-outline-variant p-4">
-                  <span className="material-symbols-outlined text-[32px] text-outline">restaurant_menu</span>
+                  <UtensilsCrossed className="text-[32px] text-outline" />
                   <p className="text-[12px] text-outline mt-1 font-bold">No active meals in menu</p>
                   <p className="text-[11px] text-outline mt-0.5 px-4 font-medium leading-relaxed">
                     Add meals in the Menu tab first.
@@ -1484,7 +1481,7 @@ export default function MenuManager({
                           {meal.price.toFixed(2)} PLN <span className="font-medium text-outline">· {meal.calories}</span>
                         </p>
                       </div>
-                      <span className="material-symbols-outlined text-primary self-center text-[18px]">add_circle</span>
+                      <PlusCircle className="text-primary self-center text-[18px]" />
                     </button>
                   ))
               )}
@@ -1499,7 +1496,7 @@ export default function MenuManager({
         showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
         }>
         
-        <span className="material-symbols-outlined text-primary-fixed text-green-400">check_circle</span>
+        <CheckCircle className="text-primary-fixed text-green-400" />
         <span className="font-bold text-[13px]">{toastMessage}</span>
       </div>
     </div>);

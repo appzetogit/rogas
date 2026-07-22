@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from '@food/api';
 import { API_BASE_URL } from '@food/api/config';
+import { Plus } from 'lucide-react';
 
 export function PantryItemsList() {
   const [items, setItems] = useState([]);
@@ -66,7 +67,7 @@ export function PantryItemsList() {
             <div className="flex items-center justify-between mt-auto">
               <span className="font-extrabold text-[15px] text-[#1F7A63]">{item.price.toFixed(2)} PLN</span>
               <button className="w-7 h-7 rounded-full bg-[#1F7A63] text-white flex items-center justify-center active:scale-95 transition-transform hover:bg-[#155a49]">
-                <span className="material-symbols-outlined text-[18px]">add</span>
+                <Plus className="text-[18px]" />
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Clock } from 'lucide-react';
 
 export default function UnderReviewPage() {
     return (
@@ -7,9 +8,7 @@ export default function UnderReviewPage() {
                 
                 {/* Icon Background */}
                 <div style={{ width: '80px', height: '80px', backgroundColor: '#FEF9C3', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '40px', color: '#EAB308' }}>
-                        pending_actions
-                    </span>
+                    <Clock style={{ fontSize: '40px', color: '#EAB308' }} />
                 </div>
 
                 <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1A1C1E', marginBottom: '12px' }}>
