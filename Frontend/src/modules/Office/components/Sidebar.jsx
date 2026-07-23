@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Users, Handshake, Utensils, Building2, Receipt } from 'lucide-react';
+import { Users, Handshake, Utensils, Building2, Receipt, LogOut } from 'lucide-react';
 
 
 
@@ -57,9 +57,9 @@ export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
       </nav>
 
       {/* Admin details footer */}
-      <div className="px-6 mt-auto pt-6 border-t border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border border-white/20">
+      <div className="px-6 mt-auto pt-6 border-t border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border border-white/20 shrink-0">
             {profileImage ? (
               <img
                 className="w-full h-full object-cover"
@@ -73,11 +73,22 @@ export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
               </span>
             )}
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden pr-2">
             <p className="font-bold text-white text-sm truncate">{adminName}</p>
             <p className="text-xs text-white/60 truncate">{companyDetails?.legalName || 'Admin Portal'}</p>
           </div>
         </div>
+        
+        <button
+          onClick={() => {
+            localStorage.removeItem('office_token');
+            window.location.href = '/office/login';
+          }}
+          className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/70 hover:text-white shrink-0"
+          title="Logout"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
     </aside>
   );

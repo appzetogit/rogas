@@ -11,10 +11,12 @@ import EmployeesTab from '../pages/EmployeesPage';
 import VendorsTab from '../pages/VendorsPage';
 import MealPlansTab from '../pages/AssignmentsPage';
 import PaymentHistoryTab from '../pages/PaymentHistoryPage';
+import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
+import TermsAndConditionsPage from '../pages/TermsAndConditionsPage';
 import CompanyDetailsTab from '../pages/CompanyPage';
-import { 
-  getEmployeesApi, addEmployeeApi, updateEmployeeApi, deleteEmployeeApi, 
-  getVendorsApi, assignMealsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi 
+import {
+  getEmployeesApi, addEmployeeApi, updateEmployeeApi, deleteEmployeeApi,
+  getVendorsApi, assignMealsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi
 } from '../services/officeApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -27,6 +29,8 @@ export default function App() {
   if (path === 'VendorsAssign') activeTab = 'vendors';
   else if (path === 'AssignedMealPlans') activeTab = 'meal-plans';
   else if (path === 'PaymentHistory') activeTab = 'payment-history';
+  else if (path === 'PrivacyPolicy') activeTab = 'privacy-policy';
+  else if (path === 'TermsAndConditions') activeTab = 'terms-and-conditions';
   else if (path === 'CompanyDetails') activeTab = 'company';
   else activeTab = 'employees';
 
@@ -35,6 +39,8 @@ export default function App() {
     else if (tab === 'vendors') navigate('/office/VendorsAssign');
     else if (tab === 'meal-plans') navigate('/office/AssignedMealPlans');
     else if (tab === 'payment-history') navigate('/office/PaymentHistory');
+    else if (tab === 'privacy-policy') navigate('/office/PrivacyPolicy');
+    else if (tab === 'terms-and-conditions') navigate('/office/TermsAndConditions');
     else if (tab === 'company') navigate('/office/CompanyDetails');
   };
 
@@ -54,8 +60,8 @@ export default function App() {
         getCompanyDetailsApi()
       ]);
       const employeesData = (empRes.data.data.employees || []).map(emp => ({ ...emp, id: emp._id }));
-      const vendorsData = (venRes.data.data || []).map(v => ({ 
-        ...v, 
+      const vendorsData = (venRes.data.data || []).map(v => ({
+        ...v,
         id: v._id,
         name: v.restaurantName || v.name,
         tag: v.vendorType || '',
@@ -72,7 +78,7 @@ export default function App() {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (error.response?.status === 401) {
-         navigate('/office/login');
+        navigate('/office/login');
       }
     } finally {
       setLoading(false);
@@ -126,30 +132,30 @@ export default function App() {
 
       // Dev/mock bypass — backend returns isMock:true when Razorpay is not configured
       if (orderData.isMock || orderData.orderId.startsWith('mock_')) {
-          await assignMealsApi({
-             employeeIds,
-             vendorId,
-             mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
-             subscriptionPlanId,                                  // keep for reference
-             slots: deliverySlot,
-             razorpayOrderId: orderData.orderId,
-             razorpayPaymentId: 'mock_payment_' + Date.now(),
-             razorpaySignature: 'mock_signature'
-          });
-          fetchDashboardData();
-          alert(`Subscriptions assigned for ${employeeIds.length} employee(s). Deliveries scheduled for ${deliverySlot.join(', ')}.`);
-          return;
+        await assignMealsApi({
+          employeeIds,
+          vendorId,
+          mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
+          subscriptionPlanId,                                  // keep for reference
+          slots: deliverySlot,
+          razorpayOrderId: orderData.orderId,
+          razorpayPaymentId: 'mock_payment_' + Date.now(),
+          razorpaySignature: 'mock_signature'
+        });
+        fetchDashboardData();
+        alert(`Subscriptions assigned for ${employeeIds.length} employee(s). Deliveries scheduled for ${deliverySlot.join(', ')}.`);
+        return;
       }
 
       // Step 2: Load Razorpay Script dynamically if not already present
       if (!window.Razorpay) {
-         await new Promise((resolve, reject) => {
-             const script = document.createElement('script');
-             script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-             script.onload = resolve;
-             script.onerror = reject;
-             document.body.appendChild(script);
-         });
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
       }
 
       // Step 3: Open Razorpay Checkout using key returned from backend
@@ -159,40 +165,40 @@ export default function App() {
       }
 
       const options = {
-          key: rzpKey,
-          amount: orderData.amount,
-          currency: orderData.currency || 'INR',
-          name: "Rogas Meal Box",
-          description: "Office Meal Subscription",
-          order_id: orderData.orderId,
-          handler: async function (response) {
-              try {
-                  await assignMealsApi({
-                     employeeIds,
-                     vendorId,
-                     mealPlanId: vendorMealPlanId || subscriptionPlanId,
-                     subscriptionPlanId,
-                     slots: deliverySlot,
-                     razorpayOrderId: response.razorpay_order_id,
-                     razorpayPaymentId: response.razorpay_payment_id,
-                     razorpaySignature: response.razorpay_signature
-                  });
-                  fetchDashboardData();
-                  alert(`Payment successful! Subscriptions assigned for ${employeeIds.length} employee(s).`);
-              } catch (error) {
-                  alert(error.response?.data?.message || 'Payment verified but assignment failed. Please contact support.');
-              }
-          },
-          prefill: {
-              name: companyDetails?.legalName || "Office Admin",
-              email: companyDetails?.email || "admin@office.com",
-          },
-          theme: { color: "#088d5e" }
+        key: rzpKey,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: "Rogas Meal Box",
+        description: "Office Meal Subscription",
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          try {
+            await assignMealsApi({
+              employeeIds,
+              vendorId,
+              mealPlanId: vendorMealPlanId || subscriptionPlanId,
+              subscriptionPlanId,
+              slots: deliverySlot,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            fetchDashboardData();
+            alert(`Payment successful! Subscriptions assigned for ${employeeIds.length} employee(s).`);
+          } catch (error) {
+            alert(error.response?.data?.message || 'Payment verified but assignment failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: companyDetails?.legalName || "Office Admin",
+          email: companyDetails?.email || "admin@office.com",
+        },
+        theme: { color: "#088d5e" }
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response){
-          alert("Payment failed: " + response.error.description);
+      rzp.on('payment.failed', function (response) {
+        alert("Payment failed: " + response.error.description);
       });
       rzp.open();
     } catch (error) {
@@ -210,8 +216,8 @@ export default function App() {
       const assignments = res.data.data;
       const assignment = assignments.find(a => a.employeeId._id === id);
       if (assignment) {
-         await officeClient.delete(`/assignments/${assignment._id}`);
-         fetchDashboardData();
+        await officeClient.delete(`/assignments/${assignment._id}`);
+        fetchDashboardData();
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to unassign employee');
@@ -239,6 +245,10 @@ export default function App() {
         return 'Assigned Meal Plans';
       case 'payment-history':
         return 'Payment History';
+      case 'privacy-policy':
+        return 'Privacy Policy';
+      case 'terms-and-conditions':
+        return 'Terms and Conditions';
       case 'company':
         return 'Company Details';
       default:
@@ -299,7 +309,7 @@ export default function App() {
 
       {/* MAIN CONTAINER WRAPPER */}
       <div className="md:pl-[260px] flex flex-col min-h-screen">
-        
+
         {/* TOP SYSTEM HEADER */}
         <header className="h-16 w-full bg-brand-surface border-b border-brand-divider flex items-center justify-between px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
@@ -327,56 +337,64 @@ export default function App() {
 
         <main className="flex-1 p-6 md:p-8 space-y-6">
           {loading ? (
-             <div className="flex items-center justify-center h-64">
-                <RefreshCw className="animate-spin text-4xl text-brand-primary" />
-             </div>
+            <div className="flex items-center justify-center h-64">
+              <RefreshCw className="animate-spin text-4xl text-brand-primary" />
+            </div>
           ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.15 }}
-            >
-              {activeTab === 'employees' && (
-                <EmployeesTab
-                  employees={employees}
-                  onAddEmployee={handleAddEmployee}
-                  onUpdateEmployee={handleUpdateEmployee}
-                  onDeleteEmployee={handleDeleteEmployee}
-                />
-              )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.15 }}
+              >
+                {activeTab === 'employees' && (
+                  <EmployeesTab
+                    employees={employees}
+                    onAddEmployee={handleAddEmployee}
+                    onUpdateEmployee={handleUpdateEmployee}
+                    onDeleteEmployee={handleDeleteEmployee}
+                  />
+                )}
 
-              {activeTab === 'vendors' && (
-                <VendorsTab
-                  vendors={vendors}
-                  employees={employees}
-                  onAssignEmployees={handleAssignEmployees}
-                />
-              )}
+                {activeTab === 'vendors' && (
+                  <VendorsTab
+                    vendors={vendors}
+                    employees={employees}
+                    onAssignEmployees={handleAssignEmployees}
+                  />
+                )}
 
-              {activeTab === 'meal-plans' && (
-                <MealPlansTab
-                  employees={employees}
-                  vendors={vendors}
-                  onUnassignEmployee={handleUnassignEmployee}
-                  onSetTab={setActiveTab}
-                />
-              )}
+                {activeTab === 'meal-plans' && (
+                  <MealPlansTab
+                    employees={employees}
+                    vendors={vendors}
+                    onUnassignEmployee={handleUnassignEmployee}
+                    onSetTab={setActiveTab}
+                  />
+                )}
 
-              {activeTab === 'payment-history' && (
-                <PaymentHistoryTab />
-              )}
+                {activeTab === 'payment-history' && (
+                  <PaymentHistoryTab />
+                )}
 
-              {activeTab === 'company' && companyDetails && (
-                <CompanyDetailsTab
-                  details={companyDetails}
-                  onUpdateDetails={handleUpdateCompanyDetails}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+                {activeTab === 'privacy-policy' && (
+                  <PrivacyPolicyPage />
+                )}
+
+                {activeTab === 'terms-and-conditions' && (
+                  <TermsAndConditionsPage />
+                )}
+
+                {activeTab === 'company' && companyDetails && (
+                  <CompanyDetailsTab
+                    details={companyDetails}
+                    onUpdateDetails={handleUpdateCompanyDetails}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           )}
         </main>
 
@@ -384,11 +402,11 @@ export default function App() {
         <footer className="mt-auto px-8 py-5 border-t border-brand-divider text-brand-muted flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <p>© 2026 DailyMealBox Logistics Sp. z o.o. All rights reserved.</p>
           <div className="flex gap-4">
-            <button onClick={() => alert('Legal Agreement: Privacy Policy v2.4 (Effective 2026)')} className="hover:text-brand-primary underline cursor-pointer">
+            <button onClick={() => setActiveTab('privacy-policy')} className="hover:text-brand-primary underline cursor-pointer">
               Privacy Policy
             </button>
-            <button onClick={() => alert('Support Portal: Reach us at operations@dailymealbox.com')} className="hover:text-brand-primary underline cursor-pointer">
-              Support Center
+            <button onClick={() => setActiveTab('terms-and-conditions')} className="hover:text-brand-primary underline cursor-pointer">
+              Terms & Conditions
             </button>
           </div>
         </footer>

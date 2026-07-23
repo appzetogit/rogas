@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
 import { getCompanyDetailsApi } from '../services/officeApi';
 import { Utensils, Mail, Lock, RefreshCw, ArrowRight } from 'lucide-react';
@@ -12,9 +12,36 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  
+  // OTP States
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const inputRefs = React.useRef([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Strict email validation
+    const lowerEmail = email.toLowerCase();
+    const strictEmailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*)*\.[a-zA-Z]{2,6}$/;
+    
+    if (!strictEmailRegex.test(lowerEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    // Prevent common email domain typos
+    const forbiddenTlds = ['.co', '.comm', '.commm', '.con', '.c0m'];
+    if (forbiddenTlds.some(tld => lowerEmail.endsWith(tld))) {
+      setError('Please enter a valid email address. Typos like .co or .comm are not allowed.');
+      return;
+    }
+
+    if (!isLogin && otpValues.some(v => !v)) {
+      setError('Please enter the 6-digit OTP.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     try {
@@ -44,6 +71,10 @@ export default function LoginPage() {
             navigate('/office/under-review');
           } else if (company.status === 'rejected') {
             setError('Your application was rejected. Please contact support.');
+            localStorage.removeItem('office_token');
+          } else if (company.status === 'deactivated') {
+            setError('Your account has been deactivated. Please contact support.');
+            localStorage.removeItem('office_token');
           } else {
             navigate('/office/dashboard');
           }
@@ -61,6 +92,32 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleOtpInput = (e, index) => {
+    const value = e.target.value;
+    if (!/^[0-9]*$/.test(value)) return;
+    const newOtp = [...otpValues];
+    newOtp[index] = value;
+    setOtpValues(newOtp);
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleSendOtp = () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError(null);
+    // Simulate sending OTP
+    setIsOtpSent(true);
+    alert(`OTP sent to ${email}`);
   };
 
   return (
@@ -134,14 +191,15 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 border border-red-100 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-100">
-                  {error}
-                </div>
-              )}
-
               {/* Email */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[#4A4C56]">Email Address</label>
@@ -187,6 +245,36 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* OTP Section for Sign Up */}
+              {!isLogin && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-[#4A4C56]">OTP Verification</label>
+                    <button 
+                      type="button" 
+                      onClick={handleSendOtp}
+                      className="text-sm font-bold text-[#287965] hover:underline"
+                    >
+                      {isOtpSent ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  </div>
+                  <div className="flex gap-2 justify-between pt-1">
+                    {otpValues.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => (inputRefs.current[index] = el)}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpInput(e, index)}
+                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                        className="w-11 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-[#1A1C1E] focus:outline-none focus:border-[#287965] focus:ring-1 focus:ring-[#287965] transition-colors"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Remember Me (Login only) */}
               {isLogin && (
@@ -240,6 +328,20 @@ export default function LoginPage() {
                 >
                   {isLogin ? "Sign up" : "Sign in"}
                 </button>
+              </p>
+            </div>
+
+            {/* Terms and Privacy Policy Links */}
+            <div className="text-center mt-8 pb-4">
+              <p className="text-xs text-[#9EA3AE]">
+                By proceeding, you agree to our{' '}
+                <Link to="/office/public-terms" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors">
+                  Terms & Conditions
+                </Link>
+                {' '}and{' '}
+                <Link to="/office/public-privacy" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors">
+                  Privacy Policy
+                </Link>
               </p>
             </div>
 

@@ -16,7 +16,8 @@ import {
     startOnboarding,
     updateOnboardingStep,
     completeOnboarding,
-    getPayments
+    getPayments,
+    deactivateCompanyAccount
 } from '../controllers/office.controller.js';
 
 const router = express.Router();
@@ -43,6 +44,7 @@ router.get('/payments', getPayments);
 // Company Details
 router.get('/company', getCompanyDetails);
 router.put('/company', updateCompanyDetails);
+router.put('/company/deactivate', deactivateCompanyAccount);
 
 // Onboarding
 router.get('/onboarding/status', getOnboardingStatus);

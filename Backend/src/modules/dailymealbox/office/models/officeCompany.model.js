@@ -101,7 +101,7 @@ const officeCompanySchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['under_review', 'approved', 'rejected'],
+            enum: ['under_review', 'approved', 'rejected', 'deactivated'],
             default: 'under_review',
             index: true
         }

@@ -80,10 +80,70 @@ export default function MealPlansTab({
   // Export List feature
   const handleExport = () => {
     setExportSuccess(true);
-    setTimeout(() => {
+    try {
+      // 1. Define CSV headers
+      const headers = [
+        'Employee ID',
+        'Employee Name',
+        'Department',
+        'Phone',
+        'Email',
+        'Assigned Partner',
+        'Delivery Window',
+        'Status'
+      ];
+      
+      // 2. Format rows
+      const rows = employees.map((emp) => {
+        const vendorName = getVendorName(emp.assignedVendorId);
+        const isAssigned = !!emp.assignedVendorId;
+        const status = isAssigned ? 'Assigned' : 'Unassigned';
+        
+        return [
+          emp.id || emp._id || '',
+          emp.name || '',
+          emp.department || '',
+          emp.phone || '',
+          emp.email || '',
+          isAssigned ? vendorName : '—',
+          isAssigned ? (emp.deliverySlot || '—') : '—',
+          status
+        ];
+      });
+      
+      // 3. Construct CSV Content
+      const escapeCSVField = (field) => {
+        const stringVal = String(field);
+        if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
+          return `"${stringVal.replace(/"/g, '""')}"`;
+        }
+        return stringVal;
+      };
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+      ].join('\r\n');
+      
+      // 4. Create Blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `meal_assignments_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => {
+        setExportSuccess(false);
+      }, 800);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
       setExportSuccess(false);
-      alert('CSV file of employee meal plan schedules has been compiled and downloaded successfully.');
-    }, 800);
+      alert('Failed to export CSV file.');
+    }
   };
 
   return (
@@ -257,7 +317,7 @@ export default function MealPlansTab({
                         {isAssigned ? (
                           <div className="flex items-center gap-2 text-xs text-brand-muted font-medium">
                             <span className={`w-2 h-2 rounded-full ${slotColor}`}></span>
-                            {slotLabel} (Slot: {emp.preferredSlot})
+                            {slotLabel}
                           </div>
                         ) : (
                           <span className="italic text-brand-muted/70 text-xs">—</span>

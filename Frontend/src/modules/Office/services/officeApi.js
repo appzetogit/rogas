@@ -49,6 +49,7 @@ export const getSubscriptionPlansApi = () => axios.get(`${baseURL}/dmb/subscript
 // Company
 export const getCompanyDetailsApi = () => officeClient.get('/company');
 export const updateCompanyDetailsApi = (data) => officeClient.put('/company', data);
+export const deactivateCompanyAccountApi = () => officeClient.put('/company/deactivate');
 
 // Onboarding
 export const getOnboardingStatusApi = () => officeClient.get('/onboarding/status');

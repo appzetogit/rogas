@@ -185,6 +185,8 @@ router.get('/foods/pending-approvals', requirePermission('foodManagement', 'view
 router.get('/office-companies', requirePermission('vendorManagement', 'view'), officeCompanyApprovalController.getOfficeCompanies);
 router.patch('/office-companies/:id/approve', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.approveOfficeCompany);
 router.patch('/office-companies/:id/reject', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.rejectOfficeCompany);
+router.patch('/office-companies/:id/deactivate', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.deactivateOfficeCompany);
+router.patch('/office-companies/:id/activate', requirePermission('vendorManagement', 'edit'), officeCompanyApprovalController.activateOfficeCompany);
 
 // ----- Office Payments (admin view) -----
 router.get('/office-payments', requirePermission('vendorManagement', 'view'), async (req, res) => {
@@ -383,5 +385,7 @@ router.use('/kitchen-partners', kitchenPartnerRoutes);
 router.get('/office-companies', requirePermission('dashboard', 'view'), officeCompanyApprovalController.getOfficeCompanies);
 router.put('/office-companies/:id/approve', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.approveOfficeCompany);
 router.put('/office-companies/:id/reject', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.rejectOfficeCompany);
+router.put('/office-companies/:id/deactivate', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.deactivateOfficeCompany);
+router.put('/office-companies/:id/activate', requirePermission('dashboard', 'edit'), officeCompanyApprovalController.activateOfficeCompany);
 
 export default router;

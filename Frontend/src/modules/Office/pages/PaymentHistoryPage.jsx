@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getPaymentsApi } from '../services/officeApi';
-import { Search, Receipt, CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { Search, Receipt, CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight, RefreshCw, X, Download } from 'lucide-react';
 
 export default function PaymentHistoryPage() {
   const [payments, setPayments] = useState([]);
@@ -8,10 +8,81 @@ export default function PaymentHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
+  const [exportSuccess, setExportSuccess] = useState(false);
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  const handleExport = () => {
+    setExportSuccess(true);
+    try {
+      // 1. Define CSV headers
+      const headers = [
+        'Payment Date',
+        'Order ID',
+        'Vendor Name',
+        'Plan Name',
+        'Employees Count',
+        'Amount',
+        'Currency',
+        'Status'
+      ];
+      
+      // 2. Format rows
+      const rows = filteredPayments.map((payment) => {
+        const paymentDate = payment.createdAt 
+          ? new Date(payment.createdAt).toLocaleDateString('en-GB', {
+              day: 'numeric', month: 'short', year: 'numeric'
+            })
+          : '—';
+        
+        return [
+          paymentDate,
+          payment.razorpayOrderId || '',
+          payment.vendorId?.restaurantName || payment.vendorId?.name || 'Unknown Vendor',
+          payment.subscriptionPlanId?.name || 'Custom Plan',
+          payment.employeeIds?.length || 0,
+          payment.amount || 0,
+          payment.currency || 'INR',
+          payment.status || ''
+        ];
+      });
+      
+      // 3. Construct CSV Content
+      const escapeCSVField = (field) => {
+        const stringVal = String(field);
+        if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
+          return `"${stringVal.replace(/"/g, '""')}"`;
+        }
+        return stringVal;
+      };
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+      ].join('\r\n');
+      
+      // 4. Create Blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `payments_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => {
+        setExportSuccess(false);
+      }, 800);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      setExportSuccess(false);
+      alert('Failed to export CSV file.');
+    }
+  };
 
   const fetchPayments = async () => {
     try {
@@ -101,7 +172,7 @@ export default function PaymentHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header & Stats */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-brand-primary flex items-center gap-2">
             <Receipt className="w-6 h-6" />
@@ -111,6 +182,13 @@ export default function PaymentHistoryPage() {
             Track and manage your meal subscription orders and payments.
           </p>
         </div>
+        <button
+          onClick={handleExport}
+          className="px-4 py-2.5 text-sm font-semibold border border-brand-primary text-brand-primary rounded-lg hover:bg-brand-primary/5 transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
+        >
+          <Download className="w-4 h-4" />
+          {exportSuccess ? 'Exporting...' : 'Export List'}
+        </button>
       </div>
 
       {/* Controls */}

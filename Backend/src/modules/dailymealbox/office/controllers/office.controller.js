@@ -725,3 +725,20 @@ export const completeOnboarding = async (req, res) => {
         return sendError(res, 500, error.message);
     }
 };
+
+export const deactivateCompanyAccount = async (req, res) => {
+    try {
+        const accountId = req.user.accountId;
+        const company = await OfficeCompany.findOne({ accountId });
+        if (!company) {
+            return sendError(res, 404, 'Company details not found');
+        }
+        
+        company.status = 'deactivated';
+        await company.save();
+        
+        return sendResponse(res, 200, 'Company account deactivated successfully', company);
+    } catch (error) {
+        return sendError(res, 500, error.message);
+    }
+};

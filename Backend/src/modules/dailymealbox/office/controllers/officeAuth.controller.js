@@ -48,6 +48,11 @@ export const loginOfficeAccount = async (req, res) => {
             return sendError(res, 403, 'Your account is blocked');
         }
 
+        const company = await OfficeCompany.findOne({ accountId: account._id });
+        if (company && company.status === 'deactivated') {
+            return sendError(res, 403, 'Your account has been deactivated. Please contact support.');
+        }
+
         const isMatch = await account.comparePassword(password);
         if (!isMatch) {
             return sendError(res, 401, 'Invalid email or password');

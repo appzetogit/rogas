@@ -6,7 +6,13 @@ export const getOfficeCompanies = async (req, res) => {
     try {
         const { status } = req.query;
         let query = {};
-        if (status) query.status = status;
+        if (status) {
+            if (status.includes(',')) {
+                query.status = { $in: status.split(',') };
+            } else {
+                query.status = status;
+            }
+        }
 
         const companies = await OfficeCompany.find(query)
             .populate('accountId', 'email')
@@ -58,6 +64,36 @@ export const rejectOfficeCompany = async (req, res) => {
         }
 
         return sendResponse(res, 200, 'Office company rejected successfully', company);
+    } catch (error) {
+        return sendError(res, 500, error.message);
+    }
+};
+
+export const deactivateOfficeCompany = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const company = await OfficeCompany.findByIdAndUpdate(
+            id,
+            { status: 'deactivated' },
+            { new: true }
+        );
+        if (!company) return sendError(res, 404, 'Office company not found');
+        return sendResponse(res, 200, 'Office company deactivated successfully', company);
+    } catch (error) {
+        return sendError(res, 500, error.message);
+    }
+};
+
+export const activateOfficeCompany = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const company = await OfficeCompany.findByIdAndUpdate(
+            id,
+            { status: 'approved' },
+            { new: true }
+        );
+        if (!company) return sendError(res, 404, 'Office company not found');
+        return sendResponse(res, 200, 'Office company activated successfully', company);
     } catch (error) {
         return sendError(res, 500, error.message);
     }

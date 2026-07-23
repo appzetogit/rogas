@@ -8,7 +8,7 @@ export default function TermsAndCondition() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState("edit"); // "edit" | "preview"
-  const [activeRole, setActiveRole] = useState("user"); // "user" | "restaurant" | "delivery"
+  const [activeRole, setActiveRole] = useState("user"); // "user" | "restaurant" | "delivery" | "office"
   const [termsData, setTermsData] = useState({
     title: "Terms and Conditions",
     content: "",
@@ -90,7 +90,7 @@ export default function TermsAndCondition() {
           </div>
 
           <div className="inline-flex p-1 bg-white border border-slate-200 rounded-xl shadow-sm">
-            {["user", "restaurant", "delivery"].map((role) => (
+            {["user", "restaurant", "delivery", "office"].map((role) => (
               <button
                 key={role}
                 onClick={() => setActiveRole(role)}

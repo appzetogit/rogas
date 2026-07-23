@@ -48,8 +48,8 @@ export const getAdminPageByKey = async (key) => getPublicPageByKey(key);
 export const upsertLegalPage = async (key, payload, updatedBy) => {
     const k = normalizeKey(key);
     const allowedKeys = [
-        'terms', 'terms_user', 'terms_restaurant', 'terms_delivery',
-        'privacy', 'privacy_user', 'privacy_restaurant', 'privacy_delivery',
+        'terms', 'terms_user', 'terms_restaurant', 'terms_delivery', 'terms_office',
+        'privacy', 'privacy_user', 'privacy_restaurant', 'privacy_delivery', 'privacy_office',
         'refund', 'shipping', 'cancellation'
     ];
     if (!allowedKeys.includes(k)) {

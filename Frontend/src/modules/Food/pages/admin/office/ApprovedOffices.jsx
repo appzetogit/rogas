@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
-import { ArrowLeft, Building, Inbox } from 'lucide-react';
+import { ArrowLeft, Building, Inbox, MoreVertical, Eye, CheckCircle, XCircle } from 'lucide-react';
 
 export default function ApprovedOffices() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchRequests();
@@ -15,13 +23,25 @@ export default function ApprovedOffices() {
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
-      const res = await adminAPI.get('/food/admin/office-companies?status=approved');
+      const res = await adminAPI.get('/food/admin/office-companies?status=approved,deactivated');
       setRequests(res.data?.data || []);
     } catch (err) {
       console.error(err);
       alert('Failed to load approved offices');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (id, currentStatus) => {
+    try {
+      const isDeactivating = currentStatus === 'approved';
+      const action = isDeactivating ? 'deactivate' : 'activate';
+      await adminAPI.patch(`/food/admin/office-companies/${id}/${action}`);
+      fetchRequests(); // Refresh list
+    } catch (err) {
+      console.error(err);
+      alert('Failed to change status');
     }
   };
 
@@ -55,14 +75,14 @@ export default function ApprovedOffices() {
       </div>
 
       {!selectedRequest ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 pb-16">
           {requests.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Inbox className="text-4xl mb-2 text-gray-300" />
               <p>No pending requests.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="w-full">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
                   <tr>
@@ -70,6 +90,7 @@ export default function ApprovedOffices() {
                     <th className="px-6 py-4 font-medium">Contact Person</th>
                     <th className="px-6 py-4 font-medium">Email</th>
                     <th className="px-6 py-4 font-medium">Date Applied</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
                     <th className="px-6 py-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -80,13 +101,57 @@ export default function ApprovedOffices() {
                       <td className="px-6 py-4 text-gray-600">{req.contactName}</td>
                       <td className="px-6 py-4 text-gray-600">{req.contactEmail}</td>
                       <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          req.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {req.status === 'approved' ? 'Active' : 'Deactivated'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right relative">
                         <button
-                          onClick={() => setSelectedRequest(req)}
-                          className="text-primary hover:text-primary/80 font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdown(activeDropdown === req._id ? null : req._id);
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded-full transition-colors inline-flex items-center justify-center text-gray-500"
                         >
-                          Review
+                          <MoreVertical className="w-5 h-5" />
                         </button>
+
+                        {activeDropdown === req._id && (
+                          <div className="absolute right-10 top-10 w-40 bg-white border border-gray-100 shadow-xl rounded-xl z-50 py-1 text-left">
+                            <button
+                              onClick={() => {
+                                setSelectedRequest(req);
+                                setActiveDropdown(null);
+                              }}
+                              className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <Eye className="w-4 h-4 text-gray-400" />
+                              View
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleToggleStatus(req._id, req.status);
+                                setActiveDropdown(null);
+                              }}
+                              className={`w-full px-4 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 ${
+                                req.status === 'approved' ? 'text-red-600' : 'text-green-600'
+                              }`}
+                            >
+                              {req.status === 'approved' ? (
+                                <>
+                                  <XCircle className="w-4 h-4" /> Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4" /> Activate
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

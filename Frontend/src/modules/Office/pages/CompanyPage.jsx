@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check, MapPin, Navigation, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check, MapPin, Navigation, Image as ImageIcon, Upload, Loader2, LogOut, Trash2 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
-import { uploadDocumentApi } from '../services/officeApi';
+import { uploadDocumentApi, deactivateCompanyAccountApi } from '../services/officeApi';
 
 const mapContainerStyle = {
   width: '100%',
@@ -24,6 +24,8 @@ export default function CompanyDetailsTab({
   onUpdateDetails,
 }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form Field State
   const [legalName, setLegalName] = useState(details.legalName);
@@ -131,6 +133,19 @@ export default function CompanyDetailsTab({
       );
     } else {
       alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  const handleDeactivateAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deactivateCompanyAccountApi();
+      localStorage.removeItem('office_token');
+      window.location.href = '/office/login';
+    } catch (error) {
+      console.error('Failed to deactivate account:', error);
+      alert('Failed to deactivate account. Please try again later.');
+      setIsDeleting(false);
     }
   };
 
@@ -366,6 +381,30 @@ export default function CompanyDetailsTab({
         </div>
       </div>
 
+      {/* Account Actions: Logout & Delete Account placed at the very bottom */}
+      <div className="flex items-center justify-center gap-3 sm:gap-4 pt-4 border-t border-brand-divider">
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.removeItem('office_token');
+            window.location.href = '/office/login';
+          }}
+          className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+        >
+          <LogOut className="w-4 h-4 text-gray-500" />
+          Logout
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsDeleteModalOpen(true)}
+          className="px-5 py-2.5 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100/80 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+        >
+          <Trash2 className="w-4 h-4 text-red-500" />
+          Delete Account
+        </button>
+      </div>
+
       {/* Edit Details Modal */}
       <AnimatePresence>
         {isEditModalOpen && (
@@ -599,6 +638,55 @@ export default function CompanyDetailsTab({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Account Modal (Clean implementation without framer-motion to prevent layout bugs) */}
+      {isDeleteModalOpen && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4 sm:p-6" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 }}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl flex flex-col relative"
+            style={{ width: '100%', maxWidth: '28rem' }}
+          >
+            <div className="px-6 py-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4 mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Company Account?</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?
+              </p>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-center gap-8 rounded-b-xl">
+              <button
+                type="button"
+                onClick={handleDeactivateAccount}
+                disabled={isDeleting}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Yes, Delete Account'
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

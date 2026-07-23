@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronDown, Filter, Edit, Trash2, Plus, X, TriangleAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, Filter, Edit, Trash2, Plus, X, TriangleAlert, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,6 +20,67 @@ export default function EmployeesTab({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+  const [exportSuccess, setExportSuccess] = useState(false);
+
+  const handleExport = () => {
+    setExportSuccess(true);
+    try {
+      // 1. Define CSV headers
+      const headers = [
+        'Employee ID',
+        'Full Name',
+        'Email',
+        'Phone Number',
+        'Department',
+        'Status'
+      ];
+      
+      // 2. Format rows
+      const rows = filteredEmployees.map((emp) => {
+        return [
+          emp.id || emp._id || '',
+          emp.name || '',
+          emp.email || '',
+          emp.phone || '',
+          emp.department || '',
+          emp.status || ''
+        ];
+      });
+      
+      // 3. Construct CSV Content
+      const escapeCSVField = (field) => {
+        const stringVal = String(field);
+        if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
+          return `"${stringVal.replace(/"/g, '""')}"`;
+        }
+        return stringVal;
+      };
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+      ].join('\r\n');
+      
+      // 4. Create Blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `employees_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => {
+        setExportSuccess(false);
+      }, 800);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      setExportSuccess(false);
+      alert('Failed to export CSV file.');
+    }
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,7 +98,6 @@ export default function EmployeesTab({
   const [formPhone, setFormPhone] = useState('');
   const [formDept, setFormDept] = useState('Engineering');
   const [formBudget, setFormBudget] = useState('200');
-  const [formSlot, setFormSlot] = useState('12:30 PM - 1:30 PM');
   const [formStatus, setFormStatus] = useState('Active');
 
   // Available unique departments from current dataset
@@ -150,14 +210,23 @@ export default function EmployeesTab({
           <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">Employees Directory</h3>
           <p className="text-xs text-brand-muted mt-1">Manage personnel records, budgets, and meal delivery configurations.</p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="bg-brand-primary hover:bg-brand-primary-dark text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-semibold transition-all duration-200 active:scale-[0.98] cursor-pointer text-sm shadow-sm"
-          id="btn-add-employee"
-        >
-          <Plus className="w-4 h-4" />
-          Add Employee
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2.5 text-sm font-semibold border border-brand-primary text-brand-primary rounded-lg hover:bg-brand-primary/5 transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            {exportSuccess ? 'Exporting...' : 'Export List'}
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="bg-brand-primary hover:bg-brand-primary-dark text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-semibold transition-all duration-200 active:scale-[0.98] cursor-pointer text-sm shadow-sm"
+            id="btn-add-employee"
+          >
+            <Plus className="w-4 h-4" />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar Card */}
