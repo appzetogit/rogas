@@ -41,6 +41,7 @@ export const createAssignmentOrderApi = (data) => officeClient.post('/assignment
 export const assignMealsApi = (data) => officeClient.post('/assignments', data);
 export const getAssignmentsApi = () => officeClient.get('/assignments');
 export const deleteAssignmentApi = (id) => officeClient.delete(`/assignments/${id}`);
+export const getPaymentsApi = () => officeClient.get('/payments');
 
 // Subscription Plans
 export const getSubscriptionPlansApi = () => axios.get(`${baseURL}/dmb/subscriptions/plans`);

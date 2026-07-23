@@ -17,6 +17,7 @@ const OfficeRoutes = () => {
             <Route path="/dashboard" element={<OfficeLayout />} />
             <Route path="/VendorsAssign" element={<OfficeLayout />} />
             <Route path="/AssignedMealPlans" element={<OfficeLayout />} />
+            <Route path="/PaymentHistory" element={<OfficeLayout />} />
             <Route path="/CompanyDetails" element={<OfficeLayout />} />
             <Route path="/" element={<Navigate to="/office/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/office/login" replace />} />

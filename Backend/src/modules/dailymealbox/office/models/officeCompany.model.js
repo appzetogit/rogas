@@ -13,6 +13,10 @@ const officeCompanySchema = new mongoose.Schema(
             required: true,
             trim: true
         },
+        profileImage: {
+            type: String,
+            default: ''
+        },
         nip: {
             type: String,
             required: true,

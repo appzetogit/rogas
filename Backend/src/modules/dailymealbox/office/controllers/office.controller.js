@@ -300,7 +300,7 @@ export const createAssignmentOrder = async (req, res) => {
 export const assignMealPlan = async (req, res) => {
     try {
         const accountId = req.user.accountId;
-        const { employeeIds, vendorId, mealPlanId, startDate, slots, planType, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+        const { employeeIds, vendorId, mealPlanId, subscriptionPlanId, startDate, slots, planType, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
         if (!employeeIds || employeeIds.length === 0 || !vendorId || !mealPlanId || !slots || slots.length === 0) {
             return sendError(res, 400, 'Missing required assignment fields');
@@ -323,6 +323,25 @@ export const assignMealPlan = async (req, res) => {
         const mealPlan = await DMBMealPlan.findById(mealPlanId);
         const pricePerDay = mealPlan ? Number(mealPlan.pricePerDay || 0) : 0;
         const normalizedSlots = Array.isArray(slots) ? slots.map(s => s.toLowerCase()) : [slots.toLowerCase()];
+
+        // ── Fetch the VendorSubscriptionPlan to get the correct duration ─────────
+        // The frontend always sends subscriptionPlanId; planType in the body is NOT
+        // reliably sent and must NOT be used as a fallback for plan duration logic.
+        let resolvedPlanDuration = 'month'; // safe default
+        let resolvedDeliveryDays = 'full_week';
+        let resolvedDaysCount = 0;
+
+        if (subscriptionPlanId) {
+            const vendorSubPlan = await VendorSubscriptionPlan.findById(subscriptionPlanId);
+            if (vendorSubPlan) {
+                resolvedPlanDuration = vendorSubPlan.duration || 'month';   // 'day' | 'week' | 'month'
+                resolvedDeliveryDays = vendorSubPlan.deliveryDays || 'full_week'; // 'mon_fri' | 'full_week'
+                resolvedDaysCount = vendorSubPlan.daysCount || 0;
+            }
+        } else if (planType) {
+            // Fallback: honour an explicitly provided planType if subscriptionPlanId is missing
+            resolvedPlanDuration = planType.toLowerCase();
+        }
 
         // ── Parse company delivery address into structured fields ───────────────
         // The company stores address as a single string; we try to extract parts.
@@ -387,22 +406,28 @@ export const assignMealPlan = async (req, res) => {
                     { status: 'cancelled', cancelledAt: new Date(), cancellationReason: 'Replaced by new office assignment' }
                 );
 
-                // Calculate end date and pricing based on planType
+                // Calculate end date and working days based on the resolved plan from VendorSubscriptionPlan
                 const subscriptionStartDate = startDate ? new Date(startDate) : new Date();
                 const subscriptionEndDate = new Date(subscriptionStartDate);
-                const finalPlanType = (planType || 'monthly').toLowerCase();
-                
-                let workingDays = 22; // default for monthly
-                
-                if (finalPlanType === 'weekly') {
+
+                let workingDays;
+
+                if (resolvedPlanDuration === 'day') {
+                    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 1);
+                    workingDays = 1;
+                } else if (resolvedPlanDuration === 'week') {
                     subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7);
-                    workingDays = 5;
-                } else if (finalPlanType === 'yearly') {
-                    subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
-                    workingDays = 264; // 22 * 12
+                    // mon_fri = 5 delivery days, full_week = 7 delivery days
+                    workingDays = resolvedDeliveryDays === 'mon_fri' ? 5 : 7;
                 } else {
+                    // 'month' — use resolvedDeliveryDays to determine working days
                     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
-                    workingDays = 22;
+                    workingDays = resolvedDeliveryDays === 'mon_fri' ? 22 : 30;
+                }
+
+                // If the admin has explicitly stored a daysCount on the plan, prefer that
+                if (resolvedDaysCount > 0) {
+                    workingDays = resolvedDaysCount;
                 }
 
                 const calculatedTotalPrice = pricePerDay * workingDays;
@@ -415,10 +440,10 @@ export const assignMealPlan = async (req, res) => {
                     status: 'active',
                     startDate: subscriptionStartDate,
                     endDate: subscriptionEndDate,
-                    duration: finalPlanType,
+                    duration: resolvedPlanDuration,
                     deliverySlot: normalizedSlots[0],
                     deliverySlots: normalizedSlots,
-                    deliveryDays: 'mon_fri',
+                    deliveryDays: resolvedDeliveryDays,
                     deliveryAddress: companyDeliveryAddress,
                     pricing: {
                         basePricePerDay: pricePerDay,
@@ -509,7 +534,7 @@ export const deleteAssignment = async (req, res) => {
         // Clear employee record
         await OfficeEmployee.findByIdAndUpdate(assignment.employeeId, {
             $unset: { assignedVendorId: 1, assignedMealPlanId: 1, deliverySlot: 1 },
-            subscriptionStatus: 'none'
+            subscriptionStatus: 'cancelled'
         });
 
         return sendResponse(res, 200, 'Assignment deleted successfully');
@@ -518,15 +543,62 @@ export const deleteAssignment = async (req, res) => {
     }
 }
 
+// ─── Payment Controllers ──────────────────────────────────────────────
+
+export const getPayments = async (req, res) => {
+    try {
+        const accountId = req.user.accountId;
+        
+        const payments = await OfficePayment.find({ accountId })
+            .populate('vendorId', 'restaurantName profileImage')
+            .populate('subscriptionPlanId', 'name duration deliveryDays')
+            .populate('employeeIds', 'name email department')
+            .sort('-createdAt');
+
+        return sendResponse(res, 200, 'Payments retrieved successfully', payments);
+    } catch (error) {
+        return sendError(res, 500, error.message);
+    }
+};
+
 // ─── Company & Onboarding Controllers ────────────────────────────────────────
 
 export const getCompanyDetails = async (req, res) => {
     try {
         const accountId = req.user.accountId;
-        const company = await OfficeCompany.findOne({ accountId });
+        const company = await OfficeCompany.findOne({ accountId }).lean();
         if (!company) {
             return sendError(res, 404, 'Company details not found');
         }
+
+        // Calculate budget utilized this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const endOfMonth = new Date();
+        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+        endOfMonth.setDate(0);
+        endOfMonth.setHours(23, 59, 59, 999);
+
+        const paymentsThisMonth = await OfficePayment.find({
+            accountId,
+            status: 'paid',
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        });
+
+        const totalUtilized = paymentsThisMonth.reduce((sum, p) => sum + (p.amount || 0), 0);
+        company.budgetUtilized = totalUtilized;
+
+        // Calculate active vendors count
+        const activeVendors = await OfficeMealAssignment.distinct('vendorId', {
+            accountId,
+            status: 'active'
+        });
+        company.activeVendorsCount = activeVendors.length;
+
+        // Optionally, calculate total employees if needed dynamically, but we'll leave it as is if it's fine.
+        
         return sendResponse(res, 200, 'Company details retrieved successfully', company);
     } catch (error) {
         return sendError(res, 500, error.message);

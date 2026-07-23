@@ -53,9 +53,9 @@ export default function EmployeesTab({
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
       const matchesSearch =
-        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.id.toLowerCase().includes(searchTerm.toLowerCase());
+        (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.id || emp._id || '').toString().toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesDept =
         selectedDept === 'All Departments' || emp.department === selectedDept;
@@ -163,7 +163,7 @@ export default function EmployeesTab({
       {/* Filter and Search Bar Card */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl card-shadow">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-[300px] w-full lg:max-w-3xl">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
           <input
             type="text"
@@ -236,6 +236,7 @@ export default function EmployeesTab({
               <tr className="bg-transparent border-b border-brand-divider">
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Employee</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Department</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Phone Number</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -243,7 +244,7 @@ export default function EmployeesTab({
             <tbody className="divide-y divide-brand-divider">
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-brand-muted">
+                  <td colSpan={5} className="px-6 py-12 text-center text-brand-muted">
                     No employees match your active filters or search terms.
                   </td>
                 </tr>
@@ -273,6 +274,7 @@ export default function EmployeesTab({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-brand-muted">{emp.department}</td>
+                    <td className="px-6 py-4 text-sm text-brand-text">{emp.phone || <span className="text-brand-muted italic">N/A</span>}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${

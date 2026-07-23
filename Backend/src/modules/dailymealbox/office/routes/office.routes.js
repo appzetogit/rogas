@@ -15,7 +15,8 @@ import {
     getOnboardingStatus,
     startOnboarding,
     updateOnboardingStep,
-    completeOnboarding
+    completeOnboarding,
+    getPayments
 } from '../controllers/office.controller.js';
 
 const router = express.Router();
@@ -35,6 +36,9 @@ router.get('/assignments', getAssignments);
 router.post('/assignments/create-order', createAssignmentOrder);
 router.post('/assignments', assignMealPlan);
 router.delete('/assignments/:id', deleteAssignment);
+
+// Payments
+router.get('/payments', getPayments);
 
 // Company Details
 router.get('/company', getCompanyDetails);

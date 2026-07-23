@@ -4,10 +4,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check, MapPin, Navigation } from 'lucide-react';
+import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users, Store, X, Check, MapPin, Navigation, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
+import { uploadDocumentApi } from '../services/officeApi';
 
 const mapContainerStyle = {
   width: '100%',
@@ -36,6 +37,8 @@ export default function CompanyDetailsTab({
   const [contactEmail, setContactEmail] = useState(details.contactEmail);
   const [contactPhone, setContactPhone] = useState(details.contactPhone);
   const [locationCoords, setLocationCoords] = useState(details.location || defaultCenter);
+  const [profileImage, setProfileImage] = useState(details.profileImage || '');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
@@ -53,6 +56,7 @@ export default function CompanyDetailsTab({
     setContactEmail(details.contactEmail);
     setContactPhone(details.contactPhone);
     setLocationCoords(details.location || defaultCenter);
+    setProfileImage(details.profileImage || '');
     setIsEditModalOpen(true);
   };
 
@@ -69,7 +73,8 @@ export default function CompanyDetailsTab({
       contactRole,
       contactEmail,
       contactPhone,
-      location: locationCoords
+      location: locationCoords,
+      profileImage
     });
     setIsEditModalOpen(false);
     alert('Company details have been updated successfully.');
@@ -95,6 +100,24 @@ export default function CompanyDetailsTab({
     fetchAddress(lat, lng);
   }, []);
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingImage(true);
+      const res = await uploadDocumentApi(file);
+      if (res.data?.success && res.data?.data?.url) {
+        setProfileImage(res.data.data.url);
+      }
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleLiveLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -112,11 +135,18 @@ export default function CompanyDetailsTab({
   };
 
   // Helper to render budget cap nicely
-  const formattedBudgetCap = new Intl.NumberFormat('de-DE', {
+  const formattedBudgetCap = new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'EUR',
+    currency: 'INR',
     minimumFractionDigits: 2,
-  }).format(details.monthlyBudgetCap);
+  }).format(details.monthlyBudgetCap || 0);
+
+  // Format contract start date
+  const formattedStartDate = details.contractStartDate 
+    ? new Date(details.contractStartDate).toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric'
+      })
+    : 'N/A';
 
   // Utilization calculation
   const utilPercent = Math.min(100, Math.round((details.budgetUtilized / details.monthlyBudgetCap) * 100));
@@ -221,15 +251,24 @@ export default function CompanyDetailsTab({
                     style={{ width: `${utilPercent}%` }}
                   ></div>
                 </div>
-                <p className="text-[9px] text-brand-muted font-semibold">
-                  {utilPercent}% of budget utilized this month
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[9px] text-brand-muted font-semibold">
+                    {utilPercent}% of budget utilized this month
+                  </p>
+                  <p className="text-[10px] font-bold text-brand-primary">
+                    {new Intl.NumberFormat('en-IN', {
+                      style: 'currency',
+                      currency: 'INR',
+                      minimumFractionDigits: 2,
+                    }).format(details.budgetUtilized || 0)} Paid
+                  </p>
+                </div>
               </div>
             </div>
 
             <div>
               <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Contract Start Date</p>
-              <p className="text-xs text-brand-muted mt-0.5">{details.contractStartDate}</p>
+              <p className="text-xs text-brand-muted mt-0.5">{formattedStartDate}</p>
             </div>
           </div>
         </div>
@@ -246,8 +285,12 @@ export default function CompanyDetailsTab({
 
             {/* Profile circular visual block */}
             <div className="flex flex-col items-center py-2 text-center">
-              <div className="w-16 h-16 rounded-full bg-brand-primary-light text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-lg shadow-inner">
-                {details.contactName.split(' ').map((n) => n[0]).join('')}
+              <div className="w-16 h-16 rounded-full bg-brand-primary-light text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-lg shadow-inner overflow-hidden">
+                {details.profileImage ? (
+                  <img src={details.profileImage} alt={details.contactName} className="w-full h-full object-cover" />
+                ) : (
+                  details.contactName.split(' ').map((n) => n[0]).join('')
+                )}
               </div>
               <h5 className="font-bold text-sm text-brand-text mt-3">{details.contactName}</h5>
               <p className="text-[11px] text-brand-primary font-semibold mt-0.5">{details.contactRole}</p>
@@ -348,6 +391,41 @@ export default function CompanyDetailsTab({
               <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        Company Profile Image
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-300 relative group">
+                          {isUploadingImage ? (
+                            <Loader2 className="w-6 h-6 text-brand-primary animate-spin" />
+                          ) : profileImage ? (
+                            <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-gray-400" />
+                          )}
+                          <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center pointer-events-none transition-all">
+                            <Upload className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Upload className="w-4 h-4" />
+                            Upload New Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleImageUpload}
+                              disabled={isUploadingImage}
+                            />
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">Recommended size: 256x256px. Max 2MB.</p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="col-span-1 md:col-span-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                         Company Legal Name

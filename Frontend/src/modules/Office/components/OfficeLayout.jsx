@@ -10,6 +10,7 @@ import Sidebar from './Sidebar';
 import EmployeesTab from '../pages/EmployeesPage';
 import VendorsTab from '../pages/VendorsPage';
 import MealPlansTab from '../pages/AssignmentsPage';
+import PaymentHistoryTab from '../pages/PaymentHistoryPage';
 import CompanyDetailsTab from '../pages/CompanyPage';
 import { 
   getEmployeesApi, addEmployeeApi, updateEmployeeApi, deleteEmployeeApi, 
@@ -25,6 +26,7 @@ export default function App() {
   let activeTab = 'employees';
   if (path === 'VendorsAssign') activeTab = 'vendors';
   else if (path === 'AssignedMealPlans') activeTab = 'meal-plans';
+  else if (path === 'PaymentHistory') activeTab = 'payment-history';
   else if (path === 'CompanyDetails') activeTab = 'company';
   else activeTab = 'employees';
 
@@ -32,6 +34,7 @@ export default function App() {
     if (tab === 'employees') navigate('/office/dashboard');
     else if (tab === 'vendors') navigate('/office/VendorsAssign');
     else if (tab === 'meal-plans') navigate('/office/AssignedMealPlans');
+    else if (tab === 'payment-history') navigate('/office/PaymentHistory');
     else if (tab === 'company') navigate('/office/CompanyDetails');
   };
 
@@ -234,6 +237,8 @@ export default function App() {
         return 'Vendors & Assign';
       case 'meal-plans':
         return 'Assigned Meal Plans';
+      case 'payment-history':
+        return 'Payment History';
       case 'company':
         return 'Company Details';
       default:
@@ -250,7 +255,7 @@ export default function App() {
     <div className="bg-brand-bg text-brand-text font-sans min-h-screen antialiased">
       {/* PERSISTENT SIDEBAR - Hidden on mobile, persistently fixed on desktop */}
       <div className="hidden md:block">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} companyDetails={companyDetails} />
       </div>
 
       {/* MOBILE HEADER & SIDEBAR SYSTEM */}
@@ -285,6 +290,7 @@ export default function App() {
                   setActiveTab(tab);
                   setIsMobileSidebarOpen(false);
                 }}
+                companyDetails={companyDetails}
               />
             </motion.div>
           </div>
@@ -309,26 +315,12 @@ export default function App() {
           {/* Quick global widgets */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => alert('Search functionality initialized. Use inline search bars for deeper record filtering.')}
-              className="p-2 text-brand-muted hover:bg-brand-bg rounded-full transition-colors cursor-pointer"
-              title="Global Search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-            <button
               onClick={handleTriggerNotificationAlert}
               className="p-2 text-brand-muted hover:bg-brand-bg rounded-full transition-colors cursor-pointer relative"
               title="System Alerts"
             >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-error-text rounded-full animate-pulse"></span>
-            </button>
-            <button
-              onClick={() => alert('DailyMealBox Settings is currently restricted to Admin Portal permissions.')}
-              className="p-2 text-brand-muted hover:bg-brand-bg rounded-full transition-colors cursor-pointer"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4" />
             </button>
           </div>
         </header>
@@ -371,6 +363,10 @@ export default function App() {
                   onUnassignEmployee={handleUnassignEmployee}
                   onSetTab={setActiveTab}
                 />
+              )}
+
+              {activeTab === 'payment-history' && (
+                <PaymentHistoryTab />
               )}
 
               {activeTab === 'company' && companyDetails && (

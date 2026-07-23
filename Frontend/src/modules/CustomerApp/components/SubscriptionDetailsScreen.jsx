@@ -305,7 +305,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                     <div className="space-y-0.5 text-right">
                       <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Amount Paid</span>
                       <span className="text-lg font-extrabold text-primary block mt-1">
-                        {sub.pricing?.totalPrice || "0"} {sub.pricing?.currency || "PLN"}
+                        {sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice).toFixed(2) : "0.00"} {sub.pricing?.currency || "PLN"}
                       </span>
                     </div>
                   </div>
