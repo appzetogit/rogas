@@ -30,6 +30,21 @@ const appConfigSchema = new mongoose.Schema({
     textColor: {
         type: String,
         default: '#0f172a'
+    },
+    // ─── Delivery Slot Time Windows (IST hours, 24h format) ───────────────────
+    slotTimings: {
+        breakfast: {
+            startHour: { type: Number, default: 6 },
+            endHour:   { type: Number, default: 11 }
+        },
+        lunch: {
+            startHour: { type: Number, default: 11 },
+            endHour:   { type: Number, default: 16 }
+        },
+        dinner: {
+            startHour: { type: Number, default: 16 },
+            endHour:   { type: Number, default: 23 }
+        }
     }
 }, { timestamps: true });
 

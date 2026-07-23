@@ -128,6 +128,19 @@ export const createSubscription = async ({
         : (deliverySlot ? [deliverySlot] : []);
     const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
 
+    // Fetch user to check role — for EMPLOYEE, always use company's central delivery address
+    const user = await FoodUser.findById(userId).lean();
+    if (user?.role === 'EMPLOYEE' && user?.deliveryAddress) {
+        // Always override with the company-set central delivery address, regardless of what frontend sent
+        finalAddress = {
+            street: user.deliveryAddress,
+            city: user.city || 'Local',
+            state: 'Local',
+            label: 'Office',
+            ...(finalAddress?.location ? { location: finalAddress.location } : {})
+        };
+    }
+
     const finalPricing = {
         basePricePerDay: pricing?.basePricePerDay || 0,
         deliveryFeePerDay: pricing?.deliveryFeePerDay || 0,

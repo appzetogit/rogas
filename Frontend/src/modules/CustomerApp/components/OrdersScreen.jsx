@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
-import { dmbCustomerAPI } from "@food/api";
+import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
 
@@ -41,6 +41,41 @@ function getUTCFormatDateStr(dateInput) {
 function getISTDateStr(offsetDays = 0) {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
   return IST_FORMATTER.format(d);
+}
+
+// ─── Slot timings cache — fetched once from backend, fallback to defaults ────────
+let _slotTimings = {
+  breakfast: { startHour: 6,  endHour: 11 },
+  lunch:     { startHour: 11, endHour: 16 },
+  dinner:    { startHour: 16, endHour: 23 },
+};
+let _slotTimingsFetched = false;
+
+async function ensureSlotTimings() {
+  if (_slotTimingsFetched) return;
+  _slotTimingsFetched = true;
+  try {
+    const res = await publicGetOnce('/app-config/slot-timings');
+    const timings = res?.data?.data?.slotTimings;
+    if (timings) _slotTimings = { ..._slotTimings, ...timings };
+  } catch (_) { /* use defaults */ }
+}
+
+// ─── Returns true if the order's slot is the currently active delivery window ─
+// Uses dynamic timings from backend (admin-configurable), falls back to defaults
+function isCurrentActiveSlot(order) {
+  const orderDateStr = getUTCFormatDateStr(order.deliveryDate);
+  if (orderDateStr !== getISTDateStr(0)) return false; // only today's orders
+
+  const slot = (order.deliverySlot || 'lunch').toLowerCase();
+  const nowIST = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+  );
+  const h = nowIST.getHours();
+
+  const cfg = _slotTimings[slot];
+  if (!cfg) return false;
+  return h >= cfg.startHour && h < cfg.endHour;
 }
 
 // ─── Module-level cache (survives tab switches within a session) ──────────────
@@ -116,6 +151,7 @@ const OrderCard = memo(function OrderCard({
   const slotStr = (order.deliverySlot || "LUNCH").toUpperCase();
   const isTerminal = TERMINAL_STATUSES.has(order.status);
   const isInactive = INACTIVE_STATUSES.has(order.status);
+  const isActive = !isPast && !isInactive && isCurrentActiveSlot(order);
 
   const badgeColor =
     order.status === "skipped" || order.status === "failed"
@@ -131,12 +167,26 @@ const OrderCard = memo(function OrderCard({
           order.status === "scheduled" ? "SCHEDULED" : "ACTIVE";
 
   return (
-    <div className="bg-white rounded-[20px] p-4 shadow-sm mb-3 border border-[#f0eded]">
-      {/* Top: Date + Status Badge */}
+    <div className={`rounded-[20px] p-4 mb-3 border transition-all duration-300 ${
+      isActive
+        ? "bg-gradient-to-br from-[#e8f7f3] to-[#f0faf7] border-[#006a5c] shadow-[0_0_0_2px_rgba(0,106,92,0.15),0_4px_16px_rgba(0,106,92,0.12)]"
+        : "bg-white border-[#f0eded] shadow-sm"
+    }`}>
+      {/* Top: Date + Slot + Active Badge */}
       <div className="flex justify-between items-start mb-1">
-        <p className="text-[12px] font-bold text-[#5c6e68] tracking-wider uppercase font-sans">
-          {dateStr} · {slotStr}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className={`text-[12px] font-bold tracking-wider uppercase font-sans ${
+            isActive ? "text-[#006a5c]" : "text-[#5c6e68]"
+          }`}>
+            {dateStr} · {slotStr}
+          </p>
+          {isActive && (
+            <span className="flex items-center gap-1 bg-[#006a5c] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse inline-block" />
+              Live
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {isPast && onRaiseComplaint && (
             <button
@@ -191,7 +241,7 @@ const OrderCard = memo(function OrderCard({
           </div>
         )}
 
-        {!isPast && !isInactive ? (
+        {!isPast && !isInactive && isCurrentActiveSlot(order) ? (
           <button
             onClick={() => onTrackLive(order)}
             className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
@@ -256,6 +306,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   // Keep latest activeTab accessible in stable callbacks without re-binding
   const activeTabRef = useRef(activeTab);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  // Fetch slot timings from backend on mount (so admin changes are reflected)
+  useEffect(() => { ensureSlotTimings(); }, []);
 
   // ─── loadOrders — stale-proof via type argument + ref check ──────────────
   const loadOrders = useCallback(async (type, { bustCache = false } = {}) => {
