@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
 import { ArrowLeft } from 'lucide-react';
-export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { dmbCustomerAPI } from "@food/api";
+export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, currentUser, selectedPlanDetails }) {
     const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
-    const [companyName, setCompanyName] = useState(initialSettings.companyName);
-    const [nipVat, setNipVat] = useState(initialSettings.nipVat);
-    const [companyAddress, setCompanyAddress] = useState(initialSettings.companyAddress);
-    const [billingEmail, setBillingEmail] = useState(initialSettings.billingEmail);
+    const [companyName, setCompanyName] = useState(initialSettings.companyName || currentUser?.companyName || '');
+    const [nipVat, setNipVat] = useState(initialSettings.nipVat || currentUser?.companyNip || '');
+    const [companyAddress, setCompanyAddress] = useState(initialSettings.companyAddress || currentUser?.registeredAddress || '');
+    const [billingEmail, setBillingEmail] = useState(initialSettings.billingEmail || currentUser?.billingEmail || currentUser?.email || '');
     const handleSave = () => {
         onSave({
             receiptType,
@@ -15,6 +18,123 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
             companyAddress,
             billingEmail
         });
+    };
+
+    const handleDownload = async () => {
+        // Also save preference first
+        handleSave();
+        
+        // Try to fetch actual active subscription if selectedPlanDetails is missing (e.g. accessed from Profile)
+        let planData = selectedPlanDetails;
+        if (!planData) {
+            try {
+                const res = await dmbCustomerAPI.getMySubscriptions();
+                if (res.data?.success && res.data.subscriptions?.length > 0) {
+                    const activeSub = res.data.subscriptions.find(s => s.status === 'active') || res.data.subscriptions[0];
+                    // Map it to match the expected structure
+                    planData = {
+                        mealPlan: { 
+                            name: activeSub.meals?.[0]?.mealPlanName || "Standard Box Plan",
+                            type: activeSub.duration || "Weekly"
+                        },
+                        startDate: activeSub.startDate,
+                        endDate: activeSub.expiryDate,
+                        days: activeSub.deliveryDays === 'full_week' ? 7 : 5,
+                        pricing: {
+                            totalPrice: activeSub.amountPaid || activeSub.pricing?.totalPrice || 150.00
+                        }
+                    };
+                }
+            } catch (err) {
+                console.error("Failed to fetch active subscription for receipt", err);
+            }
+        }
+
+        // Generate PDF using jsPDF
+        const doc = new jsPDF();
+        const invoiceNumber = `INV-DMB-SUB-${Math.floor(Math.random() * 1000000000)}`;
+        
+        // 1. Title & Header
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text(receiptType === 'vat' ? "VAT INVOICE" : "SUBSCRIPTION RECEIPT", 14, 22);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Invoice Number: ${invoiceNumber}`, 14, 30);
+        doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 35);
+        
+        // 2. Vendor & Customer Details Table (Side by Side layout)
+        const finalCustName = currentUser?.name || 'Customer Name';
+        const finalCustEmail = currentUser?.email || 'customer@example.com';
+        
+        let customerLines = [];
+        if (receiptType === 'vat') {
+             customerLines = [
+                 `Customer Name: ${finalCustName}`,
+                 `Company Name: ${companyName || 'Not Provided'}`,
+                 `NIP/VAT: ${nipVat || 'Not Provided'}`,
+                 `Email: ${billingEmail || 'Not Provided'}`,
+                 `Address: ${companyAddress || 'Not Provided'}`
+             ];
+        } else {
+             customerLines = [
+                 `Name: ${finalCustName}`,
+                 `Email: ${finalCustEmail}`
+             ];
+        }
+
+        autoTable(doc, {
+            startY: 45,
+            theme: 'plain',
+            head: [['Vendor Details', receiptType === 'vat' ? 'Company Details' : 'Customer Details']],
+            body: [[
+                "Test home6\nContact: +48987654321\nAddress: Corporate House, 103,\nFilm Colony Rd, Flim Colony,\nChhoti Gwaltoli, Indore,\nMadhya Pradesh 452001, India",
+                customerLines.join('\n')
+            ]],
+            headStyles: { fillColor: false, textColor: [40, 121, 101], fontStyle: 'bold', fontSize: 12 },
+            styles: { cellPadding: 1, fontSize: 10, valign: 'top' },
+            columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } }
+        });
+
+        // 3. Subscription Details Table
+        const planName = planData?.mealPlan?.name || "Standard Box Plan";
+        const planType = planData?.mealPlan?.type || "Weekly";
+        const startDate = planData?.startDate ? new Date(planData.startDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+        const endDate = planData?.endDate ? new Date(planData.endDate).toLocaleDateString('en-GB') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB');
+        const validityDays = planData?.days || 7;
+        const totalPrice = planData?.pricing?.totalPrice || 150.00;
+
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 15,
+            theme: 'striped',
+            head: [['Plan Name', 'Type', 'Start Date', 'End Date', 'Validity', 'Status']],
+            body: [
+                [planName, planType, startDate, endDate, `${validityDays} days`, "Active"]
+            ],
+            headStyles: { fillColor: [40, 121, 101] }, // Brand primary color
+        });
+
+        // 4. Billing Details Table
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 15,
+            theme: 'grid',
+            head: [['Description', 'Payment Method', 'Amount']],
+            body: [
+                ['Subscription Amount', 'Prepaid/Wallet', `INR ${totalPrice.toFixed(2)}`]
+            ],
+            foot: [['Total Paid Amount', '', `INR ${totalPrice.toFixed(2)}`]],
+            headStyles: { fillColor: [40, 121, 101] },
+            footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
+        });
+
+        // Footer Message
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "italic");
+        doc.text("Thank you for choosing DailyMealBox!", 14, doc.lastAutoTable.finalY + 20);
+
+        // Save the PDF
+        doc.save(`${invoiceNumber}.pdf`);
     };
     return (<div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
       {/* Header element bar */}
@@ -76,50 +196,53 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings }) {
         </section>
 
         {/* COMPANY DETAILS SPECIFICATIONS */}
-        <section className="space-y-4">
-          <h3 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-sans">
-            COMPANY DETAILS
-          </h3>
-          
-          <div className="space-y-4">
-            {/* Input 1 */}
-            <div className="space-y-1.5 focus-within:text-primary">
-              <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Company Name
-              </label>
-              <input type="text" disabled={receiptType === "simple"} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Corp Sp. z o.o." className="w-full h-12 px-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none disabled:opacity-55"/>
-            </div>
+        {receiptType === 'vat' && (
+          <section className="space-y-4">
+            <h3 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-sans">
+              COMPANY DETAILS
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Input 1 */}
+              <div className="space-y-1.5 focus-within:text-primary">
+                <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
+                  Company Name
+                </label>
+                <input type="text" readOnly value={companyName} placeholder="Acme Corp Sp. z o.o." className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none"/>
+              </div>
 
-            {/* Input 2 */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                NIP VAT Number
-              </label>
-              <input type="text" disabled={receiptType === "simple"} value={nipVat} onChange={(e) => setNipVat(e.target.value)} placeholder="123-456-78-90" className="w-full h-12 px-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none disabled:opacity-55"/>
-            </div>
+              {/* Input 2 */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
+                  NIP VAT Number
+                </label>
+                <input type="text" readOnly value={nipVat} placeholder="123-456-78-90" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none"/>
+              </div>
 
-            {/* Input 3 */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Company Address
-              </label>
-              <input type="text" disabled={receiptType === "simple"} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="ul. Wiejska 10, Warsaw" className="w-full h-12 px-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none disabled:opacity-55"/>
-            </div>
+              {/* Input 3 */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
+                  Company Address
+                </label>
+                <input type="text" readOnly value={companyAddress} placeholder="ul. Wiejska 10, Warsaw" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none"/>
+              </div>
 
-            {/* Input 4 */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Billing Email
-              </label>
-              <input type="email" disabled={receiptType === "simple"} value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} placeholder="accounting@acmecorp.pl" className="w-full h-12 px-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none disabled:opacity-55"/>
+              {/* Input 4 */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
+                  Billing Email
+                </label>
+                <input type="email" readOnly value={billingEmail} placeholder="accounting@acmecorp.pl" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none"/>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Buttons Action bar */}
         <div className="pt-4">
-          <button onClick={handleSave} className="w-full bg-primary-container hover:bg-[#155a49] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm">
-            Save Preferences
+          <button onClick={handleDownload} className="w-full bg-[#287965] hover:bg-[#1f6050] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-[20px]">download</span>
+            {receiptType === 'simple' ? 'Download Subscription Receipt' : 'Download VAT Invoice'}
           </button>
         </div>
       </main>

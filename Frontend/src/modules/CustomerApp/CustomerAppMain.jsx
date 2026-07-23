@@ -535,7 +535,7 @@ export default function CustomerAppMain() {
             <ProfileScreen
               onGoBack={() => navigate("/user/home")}
               onGoToDietAndAllergens={() => navigate("/user/diet-allergens")}
-              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
+              onGoToInvoiceSettings={() => navigate("/user/invoice-settings", { state: { from: 'profile' } })}
               onGoToCheckout={() => navigate("/user/checkout")}
               onGoToSubscription={() => navigate("/user/subscription")}
               onGoToWallet={() => navigate("/user/wallet")}
@@ -577,7 +577,7 @@ export default function CustomerAppMain() {
           <Route path="checkout" element={
             <CheckoutScreen
               onGoBack={() => navigate("/user/plans")}
-              onGoToInvoiceSettings={() => navigate("/user/invoice-settings")}
+              onGoToInvoiceSettings={() => navigate("/user/invoice-settings", { state: { from: 'checkout' } })}
               onShowNotificationToast={showToast}
               invoicePrefs={invoicePrefs}
               setInvoicePrefs={setInvoicePrefs}
@@ -588,9 +588,11 @@ export default function CustomerAppMain() {
 
           <Route path="invoice-settings" element={
             <InvoiceSettingsScreen
-              onGoBack={() => navigate(onboardingCompleted ? "/user/profile" : "/user/checkout")}
+              onGoBack={() => navigate(location.state?.from === 'checkout' ? "/user/checkout" : "/user/profile")}
               initialSettings={invoicePrefs}
               onSave={handleInvoiceSettingsSave}
+              currentUser={currentUser}
+              selectedPlanDetails={selectedPlanDetails}
             />
           } />
 
