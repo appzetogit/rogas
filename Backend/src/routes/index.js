@@ -29,6 +29,7 @@ import subscriptionRoutes from '../modules/dailymealbox/subscription/subscriptio
 import driverDmbRoutes from '../modules/dailymealbox/tracking/driver.routes.js';
 import vendorDmbRoutes from '../modules/dailymealbox/vendor/vendor.routes.js';
 import dmbPaymentRoutes from '../modules/dailymealbox/payment/dmb.payment.routes.js';
+import pantryOrderRoutes from '../modules/dailymealbox/vendor/pantryOrder.routes.js';
 import officeRoutes from '../modules/dailymealbox/office/routes/office.routes.js';
 import officeAuthRoutes from '../modules/dailymealbox/office/routes/officeAuth.routes.js';
 
@@ -79,6 +80,8 @@ router.use('/v1/dmb/subscriptions', subscriptionRoutes);
 router.use('/v1/dmb/driver', authMiddleware, driverDmbRoutes);
 // Public vendor routes (menu, plans) — no auth needed for browsing
 router.use('/v1/dmb/vendor', vendorDmbRoutes);
+// Pantry Orders routes
+router.use('/v1/dmb/pantry-orders', pantryOrderRoutes);
 // DMB Payment routes (Razorpay)
 router.use('/v1/dmb/payments', dmbPaymentRoutes);
 // DMB Office routes

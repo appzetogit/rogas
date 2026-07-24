@@ -4,6 +4,8 @@ import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
   const [subscriptions, setSubscriptions] = useState([]);
+  const [pantryOrders, setPantryOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState("meals");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,11 +24,19 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
     setLoading(true);
     setError("");
     try {
-      const res = await dmbCustomerAPI.getMySubscriptions();
-      if (res.data?.success) {
-        setSubscriptions(res.data.subscriptions || []);
+      const [subsRes, pantryRes] = await Promise.all([
+        dmbCustomerAPI.getMySubscriptions().catch(err => { throw err; }),
+        dmbCustomerAPI.getMyPantryOrders().catch(() => ({ data: { success: false } }))
+      ]);
+
+      if (subsRes.data?.success) {
+        setSubscriptions(subsRes.data.subscriptions || []);
       } else {
         setError("Failed to load subscription details.");
+      }
+
+      if (pantryRes?.data?.success) {
+        setPantryOrders(pantryRes.data.orders || []);
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Failed to load subscriptions.");
@@ -219,6 +229,22 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
       </header>
 
       <main className="px-5 pb-12 pt-6 space-y-6">
+        {/* Tabs */}
+        <section className="flex bg-white rounded-full p-1 shadow-sm border border-[#e4e2e1]/30">
+          <button 
+            onClick={() => setActiveTab('meals')}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'meals' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
+          >
+            Meal Box
+          </button>
+          <button 
+            onClick={() => setActiveTab('pantry')}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'pantry' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
+          >
+            Pantry
+          </button>
+        </section>
+
         {error && (
           <div className="p-3 bg-red-50 text-brand-red rounded-xl text-xs font-semibold border border-red-100">
             {error}
@@ -230,8 +256,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-xs font-bold uppercase tracking-wider">Loading subscriptions...</p>
           </div>
-        ) : subscriptions.length === 0 ? (
-          <section className="bg-white rounded-3xl p-8 text-center border border-[#bec9c3]/20 shadow-sm max-w-sm mx-auto mt-8 space-y-6">
+        ) : activeTab === "meals" ? (
+          subscriptions.length === 0 ? (
+            <section className="bg-white rounded-3xl p-8 text-center border border-[#bec9c3]/20 shadow-sm max-w-sm mx-auto mt-8 space-y-6">
             <div className="w-16 h-16 bg-[#E8F3F0] text-primary rounded-full flex items-center justify-center mx-auto shadow-inner">
               <ClipboardList className="text-[32px]" />
             </div>
@@ -385,6 +412,69 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               );
             })}
           </div>
+          )
+        ) : (
+          pantryOrders.length === 0 ? (
+            <section className="bg-white rounded-3xl p-8 text-center border border-[#bec9c3]/20 shadow-sm max-w-sm mx-auto mt-8 space-y-6">
+              <div className="w-16 h-16 bg-[#E8F3F0] text-primary rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <ClipboardList className="text-[32px]" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-lg font-extrabold text-on-surface">No Pantry Subscriptions</h2>
+                <p className="text-xs text-[#6e7a74] leading-relaxed">
+                  You haven't subscribed to any pantry items yet.
+                </p>
+              </div>
+            </section>
+          ) : (
+            <div className="space-y-5">
+              {pantryOrders.map((po, idx) => (
+                <div key={po._id || po.orderId || idx} className="bg-white rounded-2xl p-5 shadow-sm border border-[#bec9c3]/20 space-y-4 hover:shadow-md transition-shadow">
+                  {/* Card Top / Header */}
+                  <div className="flex justify-between items-start gap-2 border-b border-[#f2eff0] pb-3">
+                    <div>
+                      <h2 className="text-base font-extrabold text-on-surface">
+                        {po.vendorId?.restaurantName || "Pantry Vendor"}
+                      </h2>
+                      <span className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider">
+                        ORDER ID: {po.orderId || "N/A"}
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-slate-100 text-slate-600 border-slate-200 capitalize">
+                      {po.status || 'Active'}
+                    </span>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-medium">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Items</span>
+                      {po.items?.map((item, i) => (
+                        <div key={i} className="text-[#1b1c1c] block">
+                          {item.quantity}x {item.title}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Dates</span>
+                      <div className="text-[11px] text-on-surface-variant space-y-0.5">
+                        <div>Delivery: <span className="text-[#1b1c1c] font-bold">{po.deliveryDates?.join(", ")}</span></div>
+                        <div>Slots: <span className="text-[#1b1c1c] font-bold capitalize">{po.deliverySlots?.join(", ")}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-0.5 mt-2">
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Total Amount</span>
+                      <span className="text-lg font-extrabold text-primary block mt-1">
+                        {po.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)} PLN
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </main>
 

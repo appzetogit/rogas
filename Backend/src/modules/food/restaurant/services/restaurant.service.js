@@ -1551,19 +1551,33 @@ export async function getVendorSubscribers(vendorId, options = {}) {
         ];
     }
 
-    const skip = (page - 1) * limit;
-    const [docs, total] = await Promise.all([
+    let fetchPantry = true;
+    if (planType || mealType || (status && status !== 'active')) {
+        fetchPantry = false;
+    }
+    let pantryQuery = { vendorId: new mongoose.Types.ObjectId(vendorId), status: 'paid' };
+    if (search) {
+        pantryQuery.$or = [
+            { orderId: { $regex: search, $options: 'i' } },
+            { userId: { $in: userIds } }
+        ];
+    }
+
+    const { PantryOrder } = await import('../models/pantryOrder.model.js');
+
+    const [dmbDocs, pantryDocs] = await Promise.all([
         DMBSubscription.find(query)
             .populate('userId', 'name phone email profileImage')
             .populate('mealPlanId', 'name')
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(parseInt(limit, 10))
             .lean(),
-        DMBSubscription.countDocuments(query)
+        fetchPantry ? PantryOrder.find(pantryQuery)
+            .populate('userId', 'name firstName lastName phone email profileImage')
+            .sort({ createdAt: -1 })
+            .lean() : Promise.resolve([])
     ]);
 
-    const subscribers = docs.map(doc => {
+    const mappedDmb = dmbDocs.map(doc => {
         const user = doc.userId || {};
         const mealPlan = doc.mealPlanId || {};
         let remainingDays = 0;
@@ -1585,11 +1599,42 @@ export async function getVendorSubscribers(vendorId, options = {}) {
             startDate: doc.startDate,
             endDate: doc.endDate,
             remainingDays,
-            status: doc.status
+            status: doc.status,
+            createdAt: doc.createdAt
         };
     });
 
-    return { subscribers, total, page: parseInt(page, 10), pages: Math.ceil(total / limit) || 1 };
+    const mappedPantry = pantryDocs.map(po => {
+        const user = po.userId || {};
+        return {
+            _id: po._id,
+            subscriptionId: po.orderId,
+            customerName: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown',
+            customerPhone: user.phone || 'N/A',
+            customerEmail: user.email || 'N/A',
+            planName: 'Pantry items: ' + (po.items || []).map(i => `${i.quantity}x ${i.title}`).join(', '),
+            planType: 'one-time',
+            mealTypes: 'Pantry',
+            deliveryDays: 'Custom',
+            startDate: po.createdAt,
+            endDate: po.createdAt,
+            remainingDays: 0,
+            status: po.status === 'paid' ? 'active' : po.status,
+            createdAt: po.createdAt
+        };
+    });
+
+    const allSubscribers = [...mappedDmb, ...mappedPantry].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const skip = (page - 1) * limit;
+    const paginatedSubscribers = allSubscribers.slice(skip, skip + parseInt(limit, 10));
+
+    return { 
+        subscribers: paginatedSubscribers, 
+        total: allSubscribers.length, 
+        page: parseInt(page, 10), 
+        pages: Math.ceil(allSubscribers.length / limit) || 1 
+    };
 }
 
 export async function getVendorProductionSummary(vendorId) {

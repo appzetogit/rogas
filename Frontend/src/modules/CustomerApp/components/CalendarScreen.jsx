@@ -51,6 +51,8 @@ const SLOT_ORDER = {
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
   const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
   const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState("meals");
+  const [pantryOrders, setPantryOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -74,11 +76,16 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         setOrders([]);
         return;
       }
-      const [upcomingRes, pastRes, activeSubsRes] = await Promise.all([
+      const [upcomingRes, pastRes, activeSubsRes, pantryRes] = await Promise.all([
         dmbCustomerAPI.getMyOrders("upcoming"),
         dmbCustomerAPI.getMyOrders("past"),
-        dmbCustomerAPI.getMySubscriptions("active")
+        dmbCustomerAPI.getMySubscriptions("active"),
+        dmbCustomerAPI.getMyPantryOrders().catch(() => ({ data: { success: false } }))
       ]);
+
+      if (pantryRes?.data?.success) {
+        setPantryOrders(pantryRes.data.orders || []);
+      }
 
       let combined = [];
       if (upcomingRes.data?.success) {
@@ -431,7 +438,25 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
           </div>
         </section>
 
-        {/* Selected date heading */}
+        {/* Tabs */}
+        <section className="flex bg-white rounded-full p-1 shadow-sm border border-[#e4e2e1]/30">
+          <button 
+            onClick={() => setActiveTab('meals')}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'meals' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
+          >
+            Meals
+          </button>
+          <button 
+            onClick={() => setActiveTab('pantry')}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'pantry' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
+          >
+            Pantry
+          </button>
+        </section>
+
+        {activeTab === 'meals' ? (
+          <>
+            {/* Selected date heading */}
         <section className="flex justify-between items-center">
           <h2 className="text-[20px] font-extrabold text-on-surface">
             {getSelectedDateHeading()}
@@ -606,6 +631,37 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             >
               Explore Plans
             </button>
+          </section>
+        )}
+          </>
+        ) : (
+          <section className="flex flex-col gap-4">
+            {pantryOrders
+              .filter((po) => po.deliveryDates?.includes(selectedDateStr))
+              .map((po, idx) => (
+                <div key={po._id || po.orderId || idx} className="bg-white rounded-2xl p-4 shadow-sm flex flex-col border border-primary-container">
+                  <div className="flex justify-between items-start mb-2 border-b border-[#bec9c3]/20 pb-2">
+                    <h3 className="text-[16px] font-bold text-on-surface">Pantry Order #{po.orderId?.slice(-6) || 'N/A'}</h3>
+                    <span className="text-[12px] font-bold text-primary bg-primary-container/20 px-2 py-1 rounded-md capitalize">
+                      {po.status || 'Scheduled'}
+                    </span>
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    {po.items?.map((item, i) => (
+                      <div key={i} className="flex justify-between text-[14px]">
+                        <span className="text-on-surface-variant font-medium">{item.quantity}x {item.title}</span>
+                        <span className="font-bold text-[#1b1c1c]">₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            {pantryOrders.filter((po) => po.deliveryDates?.includes(selectedDateStr)).length === 0 && (
+              <div className="bg-white p-6 rounded-2xl border border-primary/20 flex flex-col items-center text-center gap-3">
+                <h3 className="text-base font-bold text-on-surface">No Pantry Deliveries</h3>
+                <p className="text-xs text-on-surface-variant">You have no pantry items scheduled for this day.</p>
+              </div>
+            )}
           </section>
         )}
 

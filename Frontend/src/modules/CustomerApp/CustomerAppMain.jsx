@@ -12,11 +12,13 @@ import { OrdersScreen, clearOrdersCache } from "./components/OrdersScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { WalletScreen } from "./components/WalletScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
+import { PantryCheckoutScreen } from "./components/PantryCheckoutScreen";
 import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
 import { SupportScreen } from "./components/SupportScreen";
 import { DietAndAllergensScreen } from "./components/DietAndAllergensScreen";
+import { PantryCartProvider } from "./components/PantryCartContext";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
@@ -313,11 +315,12 @@ export default function CustomerAppMain() {
   const showNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
 
   return (
-    <div className="relative max-w-[420px] mx-auto min-h-screen bg-slate-50 shadow-2xl border-x border-[#bec9c3]/30 overflow-x-hidden flex flex-col font-sans transition-all duration-300">
-      {/* Screen Routes */}
-      <div className="flex-1 w-full relative">
-        <Routes>
-          <Route path="welcome" element={
+    <PantryCartProvider>
+      <div className="relative max-w-[420px] mx-auto min-h-screen bg-slate-50 shadow-2xl border-x border-[#bec9c3]/30 overflow-x-hidden flex flex-col font-sans transition-all duration-300">
+        {/* Screen Routes */}
+        <div className="flex-1 w-full relative">
+          <Routes>
+            <Route path="welcome" element={
             <WelcomeScreen
               onSignup={() => navigate("/user/auth/signup")}
               onLogin={() => navigate("/user/auth/login")}
@@ -585,6 +588,10 @@ export default function CustomerAppMain() {
               selectedPlanDetails={selectedPlanDetails}
             />
           } />
+          
+          <Route path="pantry-checkout" element={
+            <PantryCheckoutScreen />
+          } />
 
           <Route path="invoice-settings" element={
             <InvoiceSettingsScreen
@@ -613,7 +620,7 @@ export default function CustomerAppMain() {
             />
           } />
 
-          <Route path="*" element={<Navigate to="/user/welcome" replace />} />
+          <Route path="*" element={<Navigate to={isLoggedIn ? "home" : "welcome"} replace />} />
         </Routes>
       </div>
 
@@ -645,5 +652,7 @@ export default function CustomerAppMain() {
         </nav>
       )}
     </div>
+    </PantryCartProvider>
   );
 }
+

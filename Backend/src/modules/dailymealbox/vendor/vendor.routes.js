@@ -17,6 +17,7 @@ import {
     markAllOrdersReady
 } from '../subscription/dmb.dailyOrder.service.js';
 import { PantryItem } from '../../food/restaurant/models/pantryItem.model.js';
+import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { uploadImageBuffer } from '../../../services/cloudinary.service.js';
 import { upload } from '../../../middleware/upload.js';
 
@@ -445,10 +446,29 @@ router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, 
 router.get('/subscribers', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         const subs = await DMBSubscription.find({ vendorId: req.user.userId, status: 'active' })
-            .populate('userId', 'name city deliverySlot')
+            .populate('userId', 'name firstName lastName city deliverySlot phone')
             .populate('mealPlanId', 'name')
-            .sort({ createdAt: -1 });
-        res.json({ success: true, count: subs.length, subscribers: subs });
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const pantrySubs = await PantryOrder.find({ vendorId: req.user.userId, status: 'paid' })
+            .populate('userId', 'name firstName lastName city phone')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const formattedPantrySubs = pantrySubs.map(po => ({
+            _id: po._id,
+            userId: po.userId,
+            status: po.status === 'paid' ? 'active' : po.status,
+            createdAt: po.createdAt,
+            startDate: po.createdAt,
+            mealPlanId: { name: 'Pantry items: ' + po.items.map(i => `${i.quantity}x ${i.title}`).join(', ') },
+            isPantry: true
+        }));
+
+        const allSubs = [...subs, ...formattedPantrySubs].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({ success: true, count: allSubs.length, subscribers: allSubs });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -649,11 +669,17 @@ router.put('/meal-plans/:planId/toggle-status', authMiddleware, requireRoles('RE
 // ─── Active Subscribers Count ─────────────────────────────────────────────
 router.get('/subscriber-stats', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
-        const [total, active, paused] = await Promise.all([
+        const [totalDMB, activeDMB, pausedDMB, pantrySubs] = await Promise.all([
             DMBSubscription.countDocuments({ vendorId: req.user.userId }),
             DMBSubscription.countDocuments({ vendorId: req.user.userId, status: 'active' }),
             DMBSubscription.countDocuments({ vendorId: req.user.userId, status: 'paused' }),
+            PantryOrder.countDocuments({ vendorId: req.user.userId, status: 'paid' })
         ]);
+        
+        const total = totalDMB + pantrySubs;
+        const active = activeDMB + pantrySubs;
+        const paused = pausedDMB;
+        
         res.json({ success: true, stats: { total, active, paused } });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });

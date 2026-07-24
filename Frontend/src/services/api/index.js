@@ -2072,6 +2072,10 @@ export const dmbVendorAPI = {
     });
   },
   deletePantryItem: (itemId) => restaurantClient.delete(`/dmb/vendor/pantry-items/${itemId}`),
+  // Vendor Pantry Orders
+  getVendorPantryOrders: (params) => restaurantClient.get('/dmb/pantry-orders/vendor', { params }),
+  updatePantryOrderStatus: (id, status) => restaurantClient.patch(`/dmb/pantry-orders/${id}/status`, { status }),
+  updateDailyPantryStatus: (id, deliveryId, status) => restaurantClient.patch(`/dmb/pantry-orders/${id}/daily-status`, { deliveryId, status }),
 };
 
 
@@ -2089,6 +2093,10 @@ export const dmbCustomerAPI = {
   createSubscriptionOrder: (data) => userClient.post("/dmb/payments/create-order", data),
   /** Verify Razorpay payment + activate subscription (auth: USER) */
   verifySubscriptionPayment: (data) => userClient.post("/dmb/payments/verify-payment", data),
+  // Pantry Orders (USER)
+  createPantryOrder: (data) => userClient.post("/dmb/pantry-orders/create-order", data),
+  verifyPantryPayment: (data) => userClient.post("/dmb/pantry-orders/verify-payment", data),
+  getMyPantryOrders: () => userClient.get("/dmb/pantry-orders/my-orders"),
   /** Get my subscriptions (auth: USER) */
   getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
   /** Get active duration plans (public) */
