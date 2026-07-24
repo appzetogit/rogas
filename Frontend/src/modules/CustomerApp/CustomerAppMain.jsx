@@ -14,6 +14,7 @@ import { ProfileScreen } from "./components/ProfileScreen";
 import { WalletScreen } from "./components/WalletScreen";
 import { CheckoutScreen } from "./components/CheckoutScreen";
 import { PantryCheckoutScreen } from "./components/PantryCheckoutScreen";
+import { PantryItemDetails } from "./components/PantryItemDetails";
 import { SubscriptionDetailsScreen } from "./components/SubscriptionDetailsScreen";
 import { InvoiceSettingsScreen } from "./components/InvoiceSettingsScreen";
 import { TrackerScreen } from "./components/TrackerScreen";
@@ -627,6 +628,9 @@ export default function CustomerAppMain() {
           <Route path="termsandcondition" element={<CustomerLegalPage pageType="terms" />} />
           <Route path="privacy" element={<CustomerLegalPage pageType="privacy" />} />
           <Route path="about" element={<CustomerLegalPage pageType="about" />} />
+
+          {/* Pantry Item Details */}
+          <Route path="pantry-item/:id" element={<PantryItemDetails />} />
 
           <Route path="*" element={<Navigate to={isLoggedIn ? "home" : "welcome"} replace />} />
         </Routes>

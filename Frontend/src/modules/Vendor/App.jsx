@@ -33,7 +33,7 @@ import { VendorLegalPage } from './components/VendorLegalPage';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
-import { dmbVendorAPI, authAPI } from '../../services/api/index';
+import { dmbVendorAPI, authAPI, restaurantAPI } from '../../services/api/index';
 import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle } from 'lucide-react';
 
 export default function App() {
@@ -168,11 +168,17 @@ export default function App() {
           dmbVendorAPI.getMealPlans(),
           dmbVendorAPI.getEarnings(),
           dmbVendorAPI.getSubscriberStats().catch(() => ({ data: { stats: { active: 0 } } })),
-          profile.vendorType === 'pantry_shop' ? dmbVendorAPI.getPantryItems().catch(() => ({ data: { items: [] } })) : Promise.resolve({ data: { items: [] } })
+          profile.vendorType === 'pantry_shop' ? restaurantAPI.getMenu().catch(() => ({ data: { data: { menu: { sections: [] } } } })) : Promise.resolve({ data: { items: [] } })
         ]);
 
-        if (pantryRes.data?.items) {
-          setPantryItems(pantryRes.data.items);
+        if (profile.vendorType === 'pantry_shop' && pantryRes.data?.data?.menu?.sections) {
+          const allItems = [];
+          pantryRes.data.data.menu.sections.forEach(section => {
+            if (section.items && Array.isArray(section.items)) {
+              allItems.push(...section.items);
+            }
+          });
+          setPantryItems(allItems);
         }
 
         if (ordersRes.data?.orders) {

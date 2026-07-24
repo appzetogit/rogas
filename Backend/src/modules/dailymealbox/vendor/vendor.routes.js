@@ -17,8 +17,8 @@ import {
     markAllOrdersReady
 } from '../subscription/dmb.dailyOrder.service.js';
 import { PantryItem } from '../../food/restaurant/models/pantryItem.model.js';
+import { FoodItem } from '../../food/admin/models/food.model.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
-import { uploadImageBuffer } from '../../../services/cloudinary.service.js';
 import { upload } from '../../../middleware/upload.js';
 
 const router = express.Router();
@@ -521,9 +521,30 @@ router.get('/:vendorId/menu', async (req, res) => {
 // ─── PUBLIC: Get All Pantry Items ──────────────────────────────────────────
 router.get('/pantry-items/all', async (req, res) => {
     try {
-        const items = await PantryItem.find({ isAvailable: true })
-            .populate('vendorId', 'restaurantName city')
-            .sort({ createdAt: -1 });
+        const pantryVendors = await FoodRestaurant.find({ vendorType: 'pantry_shop', status: 'approved' }).select('_id');
+        const vendorIds = pantryVendors.map(v => v._id);
+
+        const foods = await FoodItem.find({ 
+            restaurantId: { $in: vendorIds },
+            isAvailable: true,
+            approvalStatus: 'approved'
+        })
+        .populate('restaurantId', 'restaurantName city')
+        .sort({ createdAt: -1 });
+
+        const items = foods.map(food => ({
+            _id: food._id,
+            title: food.name,
+            price: food.price || (food.variants && food.variants.length > 0 ? food.variants[0].price : 0),
+            image: food.image,
+            isAvailable: food.isAvailable,
+            vendorId: food.restaurantId,
+            variants: food.variants,
+            description: food.description,
+            categoryId: food.categoryId,
+            categoryName: food.categoryName,
+        }));
+
         res.json({ success: true, items });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });

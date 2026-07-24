@@ -2,7 +2,7 @@ import express from 'express';
 import { authMiddleware } from '../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
-import { PantryItem } from '../../food/restaurant/models/pantryItem.model.js';
+import { FoodItem } from '../../food/admin/models/food.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { createRazorpayOrder, verifyPaymentSignature, isRazorpayConfigured, getRazorpayKeyId } from '../../food/orders/helpers/razorpay.helper.js';
 
@@ -57,18 +57,19 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
         let dailyItemsTotal = 0;
         const processedItems = [];
         for (const item of items) {
-            const pItem = await PantryItem.findById(item.pantryItemId);
-            if (!pItem || pItem.vendorId.toString() !== vendorId) {
+            const pItem = await FoodItem.findById(item.pantryItemId);
+            if (!pItem || pItem.restaurantId.toString() !== vendorId) {
                 return res.status(400).json({ success: false, message: `Invalid pantry item: ${item.title}` });
             }
             if (!pItem.isAvailable) {
                 return res.status(400).json({ success: false, message: `Item out of stock: ${item.title}` });
             }
-            dailyItemsTotal += pItem.price * item.quantity;
+            const itemPrice = pItem.price || (pItem.variants && pItem.variants.length > 0 ? pItem.variants[0].price : 0);
+            dailyItemsTotal += itemPrice * item.quantity;
             processedItems.push({
                 pantryItemId: pItem._id,
-                title: pItem.title,
-                price: pItem.price,
+                title: pItem.name,
+                price: itemPrice,
                 quantity: item.quantity
             });
         }

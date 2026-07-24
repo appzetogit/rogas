@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from '@food/api';
 import { API_BASE_URL } from '@food/api/config';
-import { Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, Package, ChevronRight } from 'lucide-react';
 import { usePantryCart } from './PantryCartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -72,7 +72,11 @@ export function PantryItemsList() {
         {items.map((item) => {
           const qty = getItemQuantity(item._id);
           return (
-            <div key={item._id} className="bg-white rounded-2xl p-2.5 shadow-sm flex flex-col h-full border border-transparent hover:border-primary/20 transition-all">
+            <div 
+              key={item._id} 
+              onClick={() => navigate(`/user/pantry-item/${item._id}`, { state: { item } })}
+              className="bg-white rounded-2xl p-2.5 shadow-sm flex flex-col h-full border border-transparent hover:border-primary/20 transition-all cursor-pointer"
+            >
               <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#e4e2e1] mb-3">
                 <img src={normalizeImageUrl(item.image)} alt={item.title} className="w-full h-full object-cover" />
               </div>
@@ -86,7 +90,7 @@ export function PantryItemsList() {
                   
                   {qty === 0 ? (
                     <button 
-                      onClick={() => handleAddItem(item)}
+                      onClick={(e) => { e.stopPropagation(); handleAddItem(item); }}
                       className="w-7 h-7 rounded-full bg-[#1F7A63] text-white flex items-center justify-center active:scale-95 transition-transform hover:bg-[#155a49]"
                     >
                       <Plus className="text-[18px]" />
@@ -94,14 +98,14 @@ export function PantryItemsList() {
                   ) : (
                     <div className="flex items-center gap-2 bg-[#eef0ec] rounded-full p-1">
                       <button 
-                        onClick={() => removeItem(item._id)}
+                        onClick={(e) => { e.stopPropagation(); removeItem(item._id); }}
                         className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-primary active:scale-95"
                       >
                         <Minus className="text-[14px]" />
                       </button>
                       <span className="text-[13px] font-bold min-w-[12px] text-center">{qty}</span>
                       <button 
-                        onClick={() => handleAddItem(item)}
+                        onClick={(e) => { e.stopPropagation(); handleAddItem(item); }}
                         className="w-6 h-6 rounded-full bg-primary shadow-sm flex items-center justify-center text-white active:scale-95"
                       >
                         <Plus className="text-[14px]" />
