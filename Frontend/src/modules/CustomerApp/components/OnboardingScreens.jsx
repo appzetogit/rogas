@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { IMAGES } from "../types";
 import { MapPin, ShoppingBag, Check, ArrowLeft, CheckCircle, Leaf, UtensilsCrossed, Navigation, Search } from 'lucide-react';
 
@@ -6,31 +7,26 @@ export function WelcomeScreen({ onSignup, onLogin }) {
   return (<div className="relative min-h-screen flex flex-col bg-[#F5F5F0]">
     <main className="relative min-h-screen flex flex-col">
       {/* Top Green Section */}
-      <section className="h-[52vh] bg-primary relative px-6 pt-14 pb-8 flex flex-col items-center rounded-b-[40px]">
-        {/* Progress Indicator */}
-        <div className="flex gap-2 mb-10">
-          <div className="w-6 h-2 rounded-full bg-white transition-all duration-300"></div>
-          <div className="w-2 h-2 rounded-full bg-white/35"></div>
-          <div className="w-2 h-2 rounded-full bg-white/35"></div>
-          <div className="w-2 h-2 rounded-full bg-white/35"></div>
-        </div>
+      <section className="h-[52vh] bg-primary relative px-6 pt-28 pb-8 flex flex-col items-center rounded-b-[40px]">
         {/* Headline */}
         <h1 className="text-white text-[32px] font-extrabold text-center leading-tight mb-4 max-w-[280px] tracking-tight">
           Your weekly food, automated.
         </h1>
-        {/* Location Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-8">
-          <span className="flex items-center gap-1 text-white font-semibold text-[12px]">
-            <MapPin className="text-[14px]" />
-            Warsaw, Poland detected
-          </span>
-        </div>
+
 
         {/* Illustration Area */}
         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[280px] h-[220px] z-10">
-          <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden p-3 rotate-[-2deg] transition-all hover:rotate-0 duration-300 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-            <ShoppingBag className="text-[80px] text-primary/50" />
-          </div>
+          {localStorage.getItem('user_app_logo') ? (
+            <img 
+              src={localStorage.getItem('user_app_logo')} 
+              alt="App Logo" 
+              className="w-full h-full object-contain bg-white p-4 rounded-[32px] shadow-xl rotate-[-2deg] transition-all hover:rotate-0 duration-300" 
+            />
+          ) : (
+            <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden rotate-[-2deg] transition-all hover:rotate-0 duration-300 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+              <ShoppingBag className="text-[80px] text-primary/50" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -66,13 +62,15 @@ export function WelcomeScreen({ onSignup, onLogin }) {
 
         {/* Action Area */}
         <div className="flex flex-col items-center gap-4 mt-auto">
-          <button onClick={onSignup} className="w-full bg-primary-container hover:bg-[#1b6b55] text-white font-bold h-14 rounded-2xl active:scale-[0.98] transition-all shadow-md text-base">
+          <button onClick={onLogin} className="w-full bg-primary-container hover:bg-[#1b6b55] text-white font-bold h-14 rounded-2xl active:scale-[0.98] transition-all shadow-md text-base">
             Get Started
           </button>
-          <button onClick={onLogin} className="flex items-center gap-1 py-1 text-[13px] hover:opacity-80 transition-opacity">
-            <span className="text-[#3e4945]">Already have an account?</span>
-            <span className="font-semibold text-primary">Log in</span>
-          </button>
+          
+          <div className="flex items-center gap-3 text-[11px] text-[#8e9894] mt-2 mb-2 font-medium">
+            <Link to="/user/termsandcondition" className="hover:text-primary hover:underline transition-colors">Terms & Conditions</Link>
+            <span>&bull;</span>
+            <Link to="/user/privacy" className="hover:text-primary hover:underline transition-colors">Privacy Policy</Link>
+          </div>
         </div>
       </section>
     </main>
@@ -370,11 +368,11 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
 
         <div className="mt-8 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7a74]" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Search your street or building..." 
+            placeholder="Search your street or building..."
             className="w-full bg-white h-14 rounded-2xl pl-12 pr-4 text-[15px] shadow-sm border border-[#bec9c3]/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             autoFocus
           />
@@ -382,8 +380,8 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
       </main>
 
       <footer className="mt-auto bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
-        <button 
-          onClick={() => onConfirm(address)} 
+        <button
+          onClick={() => onConfirm(address)}
           disabled={!address.trim()}
           className="w-full bg-primary-container disabled:opacity-50 disabled:active:scale-100 text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all"
         >

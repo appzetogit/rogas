@@ -3,6 +3,7 @@ import { IMAGES } from "../types";
 import { SUPPORTED_COUNTRIES } from "../../../config/countries";
 import CountrySelector from "../../../shared/components/CountrySelector";
 import { ArrowLeft, Utensils, ShieldCheck, Lock, Leaf, Mail, ArrowRight } from 'lucide-react';
+import { Link } from "react-router-dom";
 
 export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
   const [selectedCountry, setSelectedCountry] = useState(() => {
@@ -28,11 +29,19 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
       </header>
 
       <main className="px-5 flex-1 flex flex-col pb-6">
-        <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
-          <div className="w-full h-full bg-gradient-to-tr from-primary/30 to-primary/10 flex items-center justify-center">
-            <Utensils className="text-[64px] text-primary/40" />
+        {localStorage.getItem('user_app_logo') ? (
+          <img 
+            src={localStorage.getItem('user_app_logo')} 
+            alt="App Logo" 
+            className="w-full h-56 rounded-2xl shadow-sm object-contain bg-white p-4 mb-6" 
+          />
+        ) : (
+          <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
+            <div className="w-full h-full bg-gradient-to-tr from-primary/30 to-primary/10 flex items-center justify-center">
+              <Utensils className="text-[64px] text-primary/40" />
+            </div>
           </div>
-        </div>
+        )}
 
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight">
           {isLogin ? "Welcome back!" : "Create an account"}
@@ -90,7 +99,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
             </button>
 
             <p className="text-[10px] text-center text-[#6e7a74] px-4 mt-2">
-              By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+              By continuing, you agree to our <Link to="/user/termsandcondition" state={{ backTo: "/user/auth/login" }} className="underline">Terms of Service</Link> and <Link to="/user/privacy" state={{ backTo: "/user/auth/login" }} className="underline">Privacy Policy</Link>.
             </p>
           </div>
         </form>

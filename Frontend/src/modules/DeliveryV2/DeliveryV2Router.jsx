@@ -9,6 +9,7 @@ const SignIn = lazy(() => import("./pages/auth/SignIn"))
 const OTP = lazy(() => import("./pages/auth/OTP"))
 const SignupStep1 = lazy(() => import("./pages/auth/SignupStep1"))
 const SignupStep2 = lazy(() => import("./pages/auth/SignupStep2"))
+const SupportInfo = lazy(() => import("./pages/auth/SupportInfo"))
 
 // V2 Pages
 import NewDeliveryDashboard from './newUI/NewDeliveryDashboard';
@@ -40,6 +41,7 @@ const DeliveryV2Router = () => {
         <Route path="welcome" element={<Welcome />} />
         <Route path="login" element={<SignIn />} />
         <Route path="otp" element={<OTP />} />
+        <Route path="support" element={<SupportInfo />} />
         <Route path="signup" element={<Navigate to="/food/delivery/login" replace />} />
         <Route path="signup/details" element={<SignupStep1 />} />
         <Route path="signup/documents" element={<SignupStep2 />} />

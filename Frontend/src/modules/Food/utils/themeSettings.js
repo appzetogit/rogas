@@ -23,7 +23,7 @@ const applyLoadedConfigs = (configs, currentAppType) => {
       if (activeConfig.logoUrl) {
         localStorage.setItem('user_app_logo', activeConfig.logoUrl);
       }
-    } 
+    }
     else if (appType === 'restaurant_app') {
       if (activeConfig.primaryColor) {
         root.style.setProperty('--rt-primary', activeConfig.primaryColor);
@@ -53,7 +53,7 @@ const applyLoadedConfigs = (configs, currentAppType) => {
       if (activeConfig.secondaryColor) {
         root.style.setProperty('--ad-primary-strong', activeConfig.secondaryColor);
       }
-      
+
       const bg = activeConfig.backgroundColor || '#f8fafc';
       const txt = activeConfig.textColor || '#0f172a';
       root.style.setProperty('--ad-background', bg);
@@ -96,7 +96,7 @@ const applyLoadedConfigs = (configs, currentAppType) => {
         localStorage.setItem('admin_app_logo', activeConfig.logoUrl);
       }
     }
-    
+
     // Apply font-family based on the current active app context
     if (activeConfig.fontFamily && appType === currentAppType) {
       root.style.setProperty('--main-font-family', activeConfig.fontFamily);
@@ -108,7 +108,7 @@ export const applyDynamicTheme = async (forceRefetch = false) => {
   try {
     const path = window.location.pathname;
     let currentAppType = 'user_app';
-    if (path.includes('/restaurant')) currentAppType = 'restaurant_app';
+    if (path.includes('/vendor')) currentAppType = 'restaurant_app';
     else if (path.includes('/delivery')) currentAppType = 'delivery_app';
     else if (path.includes('/admin')) currentAppType = 'admin_app';
 
@@ -126,16 +126,17 @@ export const applyDynamicTheme = async (forceRefetch = false) => {
       return;
     }
 
-    const apps = ['user_app', 'restaurant_app', 'delivery_app', 'admin_app'];
-    
+    // const apps = ['user_app', 'restaurant_app', 'delivery_app', 'admin_app'];
+    const apps = [currentAppType || 'user_app'];
+
     // Fetch all configurations simultaneously using the public endpoint
-    const promises = apps.map(appType => 
+    const promises = apps.map(appType =>
       publicGetOnce(`/app-config/${appType}`, { noCache: true }).catch(() => null)
     );
-    
+
     const results = await Promise.all(promises);
     const fetchedConfigs = {};
-    
+
     results.forEach((response, index) => {
       const activeConfig = response?.data?.data || response?.data;
       if (activeConfig) {

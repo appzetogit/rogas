@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { dmbVendorAPI, zoneAPI } from '../../../services/api/index';
 import { SUPPORTED_COUNTRIES } from '../../../config/countries';
 import CountrySelector from '../../../shared/components/CountrySelector';
@@ -14,6 +14,7 @@ const mapContainerStyle = {
 
 
 export function PhoneScreen({ mode, onBack, onSendOtp }) {
+  const location = useLocation();
   const [selectedCountry, setSelectedCountry] = useState(() => {
     return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
   });
@@ -93,7 +94,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
               Send OTP
             </button>
             <p className="text-[10px] text-center text-outline px-4 mt-2">
-              By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+              By continuing, you agree to our <Link to="/vendor/termsandcondition" state={{ backTo: location.pathname }} className="underline">Terms of Service</Link> and <Link to="/vendor/privacy" state={{ backTo: location.pathname }} className="underline">Privacy Policy</Link>.
             </p>
           </div>
         </form>

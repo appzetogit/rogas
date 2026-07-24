@@ -29,6 +29,7 @@ import EarningsManager from './components/EarningsManager';
 import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
 import VendorSubscribers from '../Food/pages/restaurant/VendorSubscribers';
+import { VendorLegalPage } from './components/VendorLegalPage';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
@@ -136,7 +137,7 @@ export default function App() {
 
   // Check auth route redirection
   useEffect(() => {
-    const isAuthRoute = location.pathname.includes('/auth') || location.pathname.includes('/welcome');
+    const isAuthRoute = location.pathname.includes('/auth') || location.pathname.includes('/welcome') || location.pathname.includes('/termsandcondition') || location.pathname.includes('/privacy');
     if (!profile.isRegistered && !isAuthRoute && location.pathname !== '/') {
       navigate('/vendor/welcome');
     } else if (profile.isRegistered && isAuthRoute) {
@@ -490,12 +491,14 @@ export default function App() {
     return <SubViewsOverlay viewType={showSubView} onClose={() => setShowSubView(null)} />;
   }
 
-  const isAuthView = location.pathname.includes('/auth') || location.pathname.includes('/welcome');
+  const isAuthView = location.pathname.includes('/auth') || location.pathname.includes('/welcome') || location.pathname.includes('/termsandcondition') || location.pathname.includes('/privacy');
 
   if (isAuthView) {
     return (
       <div className="vendor-app-container">
         <Routes>
+          <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
+          <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
           <Route path="/welcome" element={<VendorWelcomeScreen />} />
           <Route path="/auth/login-phone" element={
             <PhoneScreen mode="login" onBack={() => navigate('/vendor/welcome')} onSendOtp={async (p) => {
@@ -729,6 +732,8 @@ export default function App() {
             <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
             <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
             <Route path="/subscribers" element={<VendorSubscribers />} />
+            <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
+            <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
             <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
             <Route path="*" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
           </Routes>

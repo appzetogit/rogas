@@ -6,7 +6,7 @@ export default function ProtectedRoute({ children }) {
   const isAuthenticated = isModuleAuthenticated("delivery")
 
   if (!isAuthenticated) {
-    return <Navigate to="/food/delivery/login" state={{ from: location.pathname }} replace />
+    return <Navigate to="/food/delivery/welcome" state={{ from: location.pathname }} replace />
   }
 
   return children

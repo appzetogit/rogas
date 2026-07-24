@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
 import { useTranslation } from "../../../contexts/LanguageContext";
-import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info } from 'lucide-react';
 
 export function ProfileScreen({
   onGoBack,
@@ -22,6 +23,7 @@ export function ProfileScreen({
   onUpdateProfileState
 }) {
   const { lang, changeLanguage, t } = useTranslation();
+  const navigate = useNavigate();
   const [walletCredits, setWalletCredits] = useState(0);
 
   // Fetch wallet balance on mount
@@ -300,7 +302,7 @@ export function ProfileScreen({
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
       {/* Top action context header */}
       <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
+        <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">DailyMealBox</h1>
         <div className="w-8" />
       </header>
@@ -354,6 +356,23 @@ export function ProfileScreen({
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>View & Edit</span> */}
               <ArrowRight className="text-sm" />
+            </button>
+          </div>
+
+          {/* Wallet credit list */}
+          <div onClick={onGoToWallet} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer group">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-100/35 p-2 rounded-xl text-brand-amber flex items-center justify-center group-active:scale-95 transition-transform">
+                <Wallet className="text-[22px]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Wallet balance</h3>
+                <p className="text-xs text-on-surface-variant font-medium">PLN {walletCredits.toFixed(2)} active credits</p>
+              </div>
+            </div>
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">
+              {/* <span>View</span> */}
+              <ArrowRight className="text-[18px]" />
             </button>
           </div>
 
@@ -418,22 +437,6 @@ export function ProfileScreen({
             </div>
           )}
 
-          {/* Help & Support / Complaints */}
-          <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
-                <HelpCircle className="text-[22px]" />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Raise complaints or view tickets</p>
-              </div>
-            </div>
-            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-              <ArrowRight className="text-sm" />
-            </button>
-          </div>
-
           {/* Diet preferences */}
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
@@ -472,59 +475,77 @@ export function ProfileScreen({
             </button>
           </div>
 
-          {/* Payment card list */}
-          {false && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+
+          {/* Help & Support / Complaints */}
+          <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-xl text-[#1f7a63] flex items-center justify-center">
-                <CreditCard className="text-[22px]" />
+              <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
+                <HelpCircle className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Payment Methods</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Przelewy24 / BLIK</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Raise complaints or view tickets</p>
               </div>
             </div>
-            <button onClick={() => onShowNotificationToast("Payment method settings are securely managed by Przelewy24.")} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-              {/* <span>Manage</span> */}
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               <ArrowRight className="text-sm" />
             </button>
           </div>
-          )}
 
-          {/* Wallet credit list */}
-          <div onClick={onGoToWallet} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer group">
+          {/* About Us */}
+          <div onClick={() => navigate("/user/about", { state: { backTo: "/user/profile" } })} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
-              <div className="bg-amber-100/35 p-2 rounded-xl text-brand-amber flex items-center justify-center group-active:scale-95 transition-transform">
-                <Wallet className="text-[22px]" />
+              <div className="bg-blue-50 p-2 rounded-xl text-blue-500 flex items-center justify-center">
+                <Info className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Wallet balance</h3>
-                <p className="text-xs text-on-surface-variant font-medium">PLN {walletCredits.toFixed(2)} active credits</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">About Us</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Learn more about our mission</p>
               </div>
             </div>
-            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">
-              {/* <span>View</span> */}
-              <ArrowRight className="text-[18px]" />
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+              <ArrowRight className="text-sm" />
             </button>
           </div>
+
+          {/* Payment card list */}
+          {false && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-2 rounded-xl text-[#1f7a63] flex items-center justify-center">
+                  <CreditCard className="text-[22px]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">Payment Methods</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">Przelewy24 / BLIK</p>
+                </div>
+              </div>
+              <button onClick={() => onShowNotificationToast("Payment method settings are securely managed by Przelewy24.")} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+                {/* <span>Manage</span> */}
+                <ArrowRight className="text-sm" />
+              </button>
+            </div>
+          )}
+
+
 
           {/* Loyalty points card */}
           {false && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-50 p-2 rounded-xl text-brand-red flex items-center justify-center">
-                <Star className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
+            <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-50 p-2 rounded-xl text-brand-red flex items-center justify-center">
+                  <Star className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">Loyalty points</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">{points} reward pts accumulation</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Loyalty points</h3>
-                <p className="text-xs text-on-surface-variant font-medium">{points} reward pts accumulation</p>
-              </div>
+              <button onClick={() => onShowNotificationToast(`Total available rewards points: ${points} points.`)} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+                {/* <span>View</span> */}
+                <ArrowRight className="text-sm" />
+              </button>
             </div>
-            <button onClick={() => onShowNotificationToast(`Total available rewards points: ${points} points.`)} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-              {/* <span>View</span> */}
-              <ArrowRight className="text-sm" />
-            </button>
-          </div>
           )}
 
           {/* Referral Card */}

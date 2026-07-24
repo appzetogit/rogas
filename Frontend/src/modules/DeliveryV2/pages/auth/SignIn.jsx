@@ -80,7 +80,7 @@ export default function DeliverySignIn() {
       try {
         const data = JSON.parse(stored);
         if (data.phone) return matchCountryFromPhone(data.phone);
-      } catch (e) {}
+      } catch (e) { }
     }
     return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
   });
@@ -93,7 +93,7 @@ export default function DeliverySignIn() {
         try {
           const data = JSON.parse(stored);
           if (data.phone) draft = data.phone;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     const country = matchCountryFromPhone(draft);
@@ -290,7 +290,7 @@ export default function DeliverySignIn() {
                   margin: 0,
                 }}
               >
-                {t("welcome", "Welcome Back")}
+                {t("welcome_heading", "Welcome")}
               </h2>
               <p
                 style={{
@@ -441,32 +441,10 @@ export default function DeliverySignIn() {
                 borderTop: `1px solid ${COLORS.outlineVariant}`,
               }}
             >
-              <button
-                onClick={() => navigate("/food/delivery/signup/details")}
-                style={{
-                  width: "100%",
-                  padding: "12px 0",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  lineHeight: "16px",
-                  letterSpacing: "0.05em",
-                  fontWeight: 600,
-                  color: COLORS.primary,
-                  textTransform: "uppercase",
-                  borderRadius: "8px",
-                  transition: "background 0.15s",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.surfaceContainerLow)}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-              >
-                New courier? Apply Now
-              </button>
               <div style={{ display: "flex", justifyContent: "center", gap: "24px" }}>
                 <Link
                   to="/food/delivery/profile/terms"
+                  state={{ backTo: "/food/delivery/login" }}
                   style={{
                     fontSize: "10px",
                     lineHeight: "14px",
@@ -481,6 +459,7 @@ export default function DeliverySignIn() {
                 </Link>
                 <Link
                   to="/food/delivery/profile/privacy"
+                  state={{ backTo: "/food/delivery/login" }}
                   style={{
                     fontSize: "10px",
                     lineHeight: "14px",
@@ -509,7 +488,7 @@ export default function DeliverySignIn() {
             >
               Having trouble?{" "}
               <span
-                onClick={() => toast.info("Support contact: support@dailymealbox.com")}
+                onClick={() => navigate("/food/delivery/support", { state: { backTo: "/food/delivery/login" } })}
                 style={{
                   color: COLORS.primary,
                   fontWeight: 600,

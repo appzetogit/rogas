@@ -4,6 +4,7 @@ import { ChefHat, Check } from 'lucide-react';
 
 export function VendorWelcomeScreen() {
   const navigate = useNavigate();
+  const logoUrl = localStorage.getItem('restaurant_app_logo');
 
   return (
     <div className="bg-primary-container text-on-primary min-h-screen flex flex-col items-center justify-between overflow-hidden">
@@ -13,15 +14,23 @@ export function VendorWelcomeScreen() {
       <main className="w-full max-w-[390px] flex-1 flex flex-col items-center px-4 pt-12 animate-fade-in z-10">
         {/* Brand Identity Section */}
         <div className="flex flex-col items-center text-center space-y-4">
-          {/* Avatar Icon */}
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white to-[#f0fdf4] flex items-center justify-center shadow-lg border-4 border-white/20">
-            <ChefHat className="text-primary-container text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-          </div>
+          {/* Avatar Icon / Logo */}
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="App Logo"
+              className="w-auto h-24 rounded-2xl object-contain shadow-md"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-white to-[#f0fdf4] flex items-center justify-center shadow-lg border-4 border-white/20 overflow-hidden">
+              <ChefHat className="text-primary-container text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }} />
+            </div>
+          )}
           <div className="space-y-1">
             <h1 className="font-sans text-[32px] font-bold text-white tracking-tight">DailyMealBox</h1>
             <p className="font-sans text-[16px] text-white/90 font-normal">Vendor Partner</p>
           </div>
-          <p className="font-sans text-[20px] leading-tight text-white max-w-[280px] pt-4 font-bold">
+          <p className="font-sans text-[20px] leading-tight text-white max-w-[280px] mt-16 font-bold">
             Reach 100s of subscribers in your neighbourhood.
           </p>
         </div>
@@ -31,13 +40,13 @@ export function VendorWelcomeScreen() {
           <button
             onClick={() => navigate('/vendor/auth/register-phone')}
             className="w-full bg-white text-primary-container font-sans font-bold text-[16px] py-4 rounded-xl shadow-xl hover:bg-surface-container-lowest transition-all active:scale-[0.98]">
-            
+
             Register as Vendor
           </button>
           <button
             onClick={() => navigate('/vendor/auth/login-phone')}
             className="font-sans font-bold text-[13px] text-white underline underline-offset-4 hover:text-white/80 transition-colors">
-            
+
             I already have an account
           </button>
         </div>

@@ -63,18 +63,6 @@ const VehicleCard = ({ icon, label, rate, selected, onClick }) => (
       }}
     />
     <span style={{ fontWeight: 700, fontSize: "14px", lineHeight: "20px" }}>{label}</span>
-    <span
-      style={{
-        fontSize: "12px",
-        lineHeight: "16px",
-        letterSpacing: "0.05em",
-        opacity: selected ? 0.8 : undefined,
-        color: selected ? undefined : COLORS.onSurfaceVariant,
-        fontWeight: 600,
-      }}
-    >
-      {rate}
-    </span>
   </button>
 );
 
@@ -198,24 +186,41 @@ export default function DeliveryWelcome() {
             }}
           >
             {/* App Icon */}
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                background: COLORS.primaryContainer,
-                borderRadius: "16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "24px",
-                boxShadow: "0 8px 24px rgba(0,96,76,0.3)",
-              }}
-            >
-              <MaterialIcon
-                name="delivery_dining"
-                style={{ color: COLORS.onPrimaryContainer, fontSize: "40px" }}
+            {localStorage.getItem('delivery_app_logo') ? (
+              <img 
+                src={localStorage.getItem('delivery_app_logo')} 
+                alt="Delivery App Logo" 
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "16px",
+                  objectFit: "contain",
+                  background: "#ffffff",
+                  marginBottom: "24px",
+                  boxShadow: "0 8px 24px rgba(0,96,76,0.3)",
+                  padding: "4px"
+                }}
               />
-            </div>
+            ) : (
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  background: COLORS.primaryContainer,
+                  borderRadius: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "24px",
+                  boxShadow: "0 8px 24px rgba(0,96,76,0.3)",
+                }}
+              >
+                <MaterialIcon
+                  name="delivery_dining"
+                  style={{ color: COLORS.onPrimaryContainer, fontSize: "40px" }}
+                />
+              </div>
+            )}
 
             <h1
               style={{
@@ -240,24 +245,6 @@ export default function DeliveryWelcome() {
             >
               Delivery Partner
             </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                color: COLORS.outline,
-                fontSize: "12px",
-                lineHeight: "16px",
-                letterSpacing: "0.05em",
-                fontWeight: 600,
-                textTransform: "uppercase",
-              }}
-            >
-              <span>Warsaw</span>
-              <span>•</span>
-              <span>Berlin</span>
-              <span>•</span>
-              <span>Paris</span>
-            </div>
           </div>
 
           {/* Vehicle Selection */}
@@ -306,28 +293,6 @@ export default function DeliveryWelcome() {
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
             Join as Delivery Partner
-          </button>
-          <button
-            onClick={() => navigate("/food/delivery/login")}
-            style={{
-              width: "100%",
-              height: "52px",
-              background: COLORS.surfaceContainer,
-              color: COLORS.primary,
-              fontSize: "16px",
-              lineHeight: "24px",
-              fontWeight: 500,
-              borderRadius: "12px",
-              border: `1px solid ${COLORS.outlineVariant}`,
-              cursor: "pointer",
-              transition: "transform 0.15s ease",
-              fontFamily: "inherit",
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
-            onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          >
-            I already have an account
           </button>
         </section>
 

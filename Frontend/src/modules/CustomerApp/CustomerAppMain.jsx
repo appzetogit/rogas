@@ -20,6 +20,7 @@ import { TrackerScreen } from "./components/TrackerScreen";
 import { SupportScreen } from "./components/SupportScreen";
 import { DietAndAllergensScreen } from "./components/DietAndAllergensScreen";
 import { PantryCartProvider } from "./components/PantryCartContext";
+import { CustomerLegalPage } from "./components/CustomerLegalPage";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
@@ -93,7 +94,9 @@ export default function CustomerAppMain() {
       "/user/welcome",
       "/user/auth/login",
       "/user/auth/signup",
-      "/user/otp"
+      "/user/otp",
+      "/user/termsandcondition",
+      "/user/privacy"
     ];
     const token = localStorage.getItem("user_accessToken");
     if (!token && !publicPaths.includes(location.pathname)) {
@@ -620,6 +623,10 @@ export default function CustomerAppMain() {
               onShowNotificationToast={showToast}
             />
           } />
+
+          <Route path="termsandcondition" element={<CustomerLegalPage pageType="terms" />} />
+          <Route path="privacy" element={<CustomerLegalPage pageType="privacy" />} />
+          <Route path="about" element={<CustomerLegalPage pageType="about" />} />
 
           <Route path="*" element={<Navigate to={isLoggedIn ? "home" : "welcome"} replace />} />
         </Routes>
