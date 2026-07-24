@@ -41,6 +41,7 @@ export default function FoodsList() {
   const [selectedFood, setSelectedFood] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showFoodFormModal, setShowFoodFormModal] = useState(false)
+  const [selectedFoods, setSelectedFoods] = useState([])
   const [foodFormMode, setFoodFormMode] = useState("add")
   const [foodForm, setFoodForm] = useState(createFoodForm())
   const [editingFood, setEditingFood] = useState(null)
@@ -445,6 +446,7 @@ export default function FoodsList() {
       setDeleting(true)
       await adminAPI.deleteFood(food?._id || food?.id)
       setFoods((prev) => prev.filter((f) => String(f.id) !== String(id)))
+      setSelectedFoods((prev) => prev.filter((selectedId) => String(selectedId) !== String(id)))
       toast.success("Food item deleted successfully")
     } catch (error) {
       debugError("Error deleting food:", error)
@@ -453,6 +455,49 @@ export default function FoodsList() {
       setDeleting(false)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (!selectedFoods.length) return
+    if (!window.confirm(`Are you sure you want to delete ${selectedFoods.length} selected items? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeleting(true)
+      await Promise.all(
+        selectedFoods.map(async (id) => {
+          const food = foods.find(f => f.id === id)
+          if (food) await adminAPI.deleteFood(food?._id || food?.id)
+        })
+      )
+      
+      setFoods((prev) => prev.filter((f) => !selectedFoods.includes(f.id)))
+      setSelectedFoods([])
+      toast.success("Selected food items deleted successfully")
+    } catch (error) {
+      debugError("Error bulk deleting foods:", error)
+      toast.error("Failed to delete some food items")
+      // Fetch foods again just in case some were deleted and others weren't
+      await fetchAllFoods()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedFoods(paginatedFoods.map((f) => f.id))
+    } else {
+      setSelectedFoods([])
+    }
+  }
+
+  const handleSelectFood = (id) => {
+    setSelectedFoods((prev) => 
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
 
   const handleViewDetails = (food) => {
     setSelectedFood(food)
@@ -484,6 +529,17 @@ export default function FoodsList() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
+            {selectedFoods.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 inline-flex items-center gap-2 disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>Delete ({selectedFoods.length})</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={openAddFoodModal}
@@ -524,7 +580,15 @@ export default function FoodsList() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider w-10">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    checked={paginatedFoods.length > 0 && selectedFoods.length === paginatedFoods.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+                <th className="px-4 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   SL
                 </th>
                 <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
@@ -547,7 +611,7 @@ export default function FoodsList() {
             <tbody className="bg-white divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
+                  <td colSpan={7} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
                       <p className="text-sm text-slate-500">Loading foods...</p>
@@ -556,7 +620,7 @@ export default function FoodsList() {
                 </tr>
               ) : filteredFoods.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
+                  <td colSpan={7} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                       <p className="text-sm text-slate-500">No food items match your search or restaurant filter</p>
@@ -570,6 +634,14 @@ export default function FoodsList() {
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                        checked={selectedFoods.includes(food.id)}
+                        onChange={() => handleSelectFood(food.id)}
+                      />
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

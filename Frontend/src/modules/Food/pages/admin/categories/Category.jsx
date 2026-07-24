@@ -23,9 +23,7 @@ const defaultFormData = {
   name: "",
   image: "",
   status: true,
-  type: "",
   zoneId: "global",
-  foodTypeScope: "Both",
 }
 
 const approvalBadgeClass = (status) => {
@@ -33,12 +31,6 @@ const approvalBadgeClass = (status) => {
   if (value === "approved") return "bg-emerald-50 text-emerald-700 border-emerald-200"
   if (value === "rejected") return "bg-rose-50 text-rose-700 border-rose-200"
   return "bg-amber-50 text-amber-700 border-amber-200"
-}
-
-const scopeBadgeClass = (scope) => {
-  if (scope === "Veg") return "bg-green-50 text-green-700 border-green-200"
-  if (scope === "Non-Veg") return "bg-red-50 text-red-700 border-red-200"
-  return "bg-slate-100 text-slate-700 border-slate-200"
 }
 
 const zoneLabel = (zone) => {
@@ -62,7 +54,12 @@ export default function Category() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
-  const [formData, setFormData] = useState(defaultFormData)
+  const [formData, setFormData] = useState({
+    name: "",
+    status: true,
+    image: "",
+    zoneId: "",
+  })
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -117,7 +114,6 @@ export default function Category() {
       const creator = category?.createdByRestaurant?.name || category?.restaurant?.name || ""
       return (
         String(category?.name || "").toLowerCase().includes(query) ||
-        String(category?.foodTypeScope || "").toLowerCase().includes(query) ||
         String(creator || "").toLowerCase().includes(query) ||
         String(category?.id || "").toLowerCase().includes(query)
       )
@@ -180,12 +176,10 @@ export default function Category() {
         : category?.zoneId?._id || category?.zoneId?.id || "global"
 
     setFormData({
-      name: category?.name || "",
-      image: category?.image || "",
-      status: category?.status !== false,
-      type: category?.type || "",
-      zoneId: zoneIdValue || "global",
-      foodTypeScope: category?.foodTypeScope || "Both",
+      name: category.name || "",
+      status: category.status !== false,
+      image: category.image || "",
+      zoneId: category.zoneId || "",
     })
     setSelectedImageFile(null)
     setImagePreview(category?.image || null)
@@ -299,7 +293,6 @@ export default function Category() {
       const tableData = filteredCategories.map((category, index) => [
         index + 1,
         category?.name || "N/A",
-        category?.foodTypeScope || "Both",
         category?.isGlobal ? "Global" : "Private",
         zoneLabel(category?.zoneId),
         category?.approvalStatus || "pending",
@@ -307,7 +300,7 @@ export default function Category() {
 
       autoTable(doc, {
         startY: 35,
-        head: [["SL", "Category", "Diet Scope", "Visibility", "Zone", "Approval"]],
+        head: [["SL", "Category", "Visibility", "Zone", "Approval"]],
         body: tableData,
         theme: "striped",
         headStyles: {
@@ -344,11 +337,9 @@ export default function Category() {
 
       const payload = {
         name: String(formData.name || "").trim(),
-        type: String(formData.type || "").trim(),
         status: Boolean(formData.status),
         image: imageUrl || undefined,
         zoneId: formData.zoneId || "global",
-        foodTypeScope: formData.foodTypeScope,
       }
 
       if (editingCategory) {
@@ -441,7 +432,6 @@ export default function Category() {
                 <th className="w-[25%] px-5 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-slate-600">Category</th>
                 <th className="w-[17%] px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-slate-600">Owner</th>
                 <th className="w-[15%] px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-slate-600">Zone</th>
-                <th className="w-[10%] px-4 py-4 text-center text-[11px] font-bold uppercase tracking-wider text-slate-600">Diet</th>
                 <th className="w-[10%] px-4 py-4 text-center text-[11px] font-bold uppercase tracking-wider text-slate-600">Status</th>
                 <th className="w-[13%] px-4 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-slate-600">Approval</th>
                 <th className="w-[20%] px-5 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">Actions</th>
@@ -450,14 +440,14 @@ export default function Category() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
+                  <td colSpan={6} className="px-6 py-20 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
                     <p className="mt-2 text-sm text-slate-500">Loading categories...</p>
                   </td>
                 </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
+                  <td colSpan={6} className="px-6 py-20 text-center">
                     <p className="text-lg font-semibold text-slate-700">No categories found</p>
                     <p className="mt-1 text-sm text-slate-500">Try a different search or create a new category.</p>
                   </td>
@@ -516,11 +506,6 @@ export default function Category() {
                             {zoneText}
                           </p>
                         </div>
-                      </td>
-                      <td className="px-4 py-5 text-center">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${scopeBadgeClass(category?.foodTypeScope)}`}>
-                          {category?.foodTypeScope || "Both"}
-                        </span>
                       </td>
                       <td className="px-4 py-5 text-center">
                         <button
@@ -697,30 +682,6 @@ export default function Category() {
                               )
                             })}
                           </select>
-                        </div>
-
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700">Diet Scope</label>
-                          <select
-                            value={formData.foodTypeScope}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, foodTypeScope: event.target.value }))}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-900"
-                          >
-                            <option value="Veg">Veg</option>
-                            <option value="Non-Veg">Non-Veg</option>
-                            <option value="Both">Both</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700">Category Type</label>
-                          <input
-                            type="text"
-                            value={formData.type}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, type: event.target.value }))}
-                            className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
-                            placeholder="Examples: Starters, Desserts, Drinks"
-                          />
                         </div>
 
                         <div>

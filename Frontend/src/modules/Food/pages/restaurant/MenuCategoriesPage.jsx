@@ -23,11 +23,9 @@ import { isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
 
 const defaultFormData = {
   name: "",
-  type: "",
   image: "",
   isActive: true,
   sortOrder: 0,
-  foodTypeScope: "Veg",
 }
 
 const approvalBadgeClass = (status) => {
@@ -169,11 +167,9 @@ export default function MenuCategoriesPage() {
 
       const payload = {
         name: String(formData.name || "").trim(),
-        type: String(formData.type || "").trim(),
         image: imageUrl,
         isActive: formData.isActive !== false,
         sortOrder: Number.isFinite(Number(formData.sortOrder)) ? Number(formData.sortOrder) : 0,
-        foodTypeScope: formData.foodTypeScope,
       }
 
       if (editingCategory) {
@@ -380,7 +376,7 @@ export default function MenuCategoriesPage() {
                   <p className="text-xs text-slate-500">
                     {editingCategory
                       ? "Any edit sends this category back for admin approval."
-                      : "Choose the diet scope carefully before sending it for approval."}
+                      : "Submit a new category for admin approval."}
                   </p>
                 </div>
                 <button onClick={resetModal}>
@@ -400,29 +396,7 @@ export default function MenuCategoriesPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Diet Scope</label>
-                  <select
-                    value={formData.foodTypeScope}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, foodTypeScope: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
-                  >
-                    <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
-                    <option value="Both">Both</option>
-                  </select>
-                </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Optional Type Label</label>
-                  <input
-                    type="text"
-                    value={formData.type}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
-                    placeholder="Examples: Starters, Desserts, Drinks"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
-                  />
-                </div>
 
                 <div className="flex items-center gap-3">
                   {(imagePreview || formData.image) && (
