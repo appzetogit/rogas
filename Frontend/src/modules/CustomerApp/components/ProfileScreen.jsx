@@ -473,6 +473,7 @@ export function ProfileScreen({
           </div>
 
           {/* Payment card list */}
+          {false && (
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-xl text-[#1f7a63] flex items-center justify-center">
@@ -488,6 +489,7 @@ export function ProfileScreen({
               <ArrowRight className="text-sm" />
             </button>
           </div>
+          )}
 
           {/* Wallet credit list */}
           <div onClick={onGoToWallet} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer group">
@@ -507,6 +509,7 @@ export function ProfileScreen({
           </div>
 
           {/* Loyalty points card */}
+          {false && (
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
             <div className="flex items-center gap-3">
               <div className="bg-red-50 p-2 rounded-xl text-brand-red flex items-center justify-center">
@@ -522,6 +525,7 @@ export function ProfileScreen({
               <ArrowRight className="text-sm" />
             </button>
           </div>
+          )}
 
           {/* Referral Card */}
           <div className="bg-primary hover:bg-[#155a49] text-white rounded-2xl p-5 shadow-md flex items-center justify-between overflow-hidden relative transition-all duration-300">

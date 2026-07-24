@@ -640,11 +640,12 @@ export default function CustomerAppMain() {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex flex-col items-center justify-center transition-all duration-200 ${active ? "text-primary scale-105" : "text-on-surface-variant hover:text-primary"}`}
+                className={`flex flex-col items-center justify-center transition-all duration-200 ${active ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
               >
-                <IconComp className={`w-[22px] h-[22px] ${active ? 'fill-current' : ''}`} />
-                <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{label}</span>
-                {active && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse" />}
+                <div className={`flex items-center justify-center w-[52px] h-8 rounded-full transition-all duration-300 ${active ? "bg-[#1F7A63]/15" : "bg-transparent"}`}>
+                  <IconComp className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${active ? "opacity-100" : "opacity-80"}`}>{label}</span>
               </button>
             );
           })}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dmbCustomerAPI } from "@food/api";

@@ -284,7 +284,7 @@ const OrderCard = memo(function OrderCard({
   );
 });
 
-const PantryOrderCard = ({ order }) => {
+const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
   return (
     <div className="bg-white rounded-[16px] p-4 shadow-sm border border-[#f0f0f0] mb-4">
       <div className="flex justify-between items-start mb-3">
@@ -324,11 +324,21 @@ const PantryOrderCard = ({ order }) => {
       </div>
       
       <div className="mt-3 pt-3 border-t border-dashed border-[#f0f0f0]">
-        <div className="space-y-0.5 mt-2">
-          <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Total Amount</span>
-          <span className="text-[14px] font-extrabold text-[#006a5c] block mt-1">
-            ₹{order.pricing?.total ? order.pricing.total.toFixed(2) : order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2) || "0.00"}
-          </span>
+        <div className="space-y-0.5 mt-2 flex justify-between items-end">
+          <div>
+            <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Total Amount</span>
+            <span className="text-[14px] font-extrabold text-[#006a5c] block mt-1">
+              ₹{order.pricing?.total ? order.pricing.total.toFixed(2) : order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2) || "0.00"}
+            </span>
+          </div>
+          {!isPast && (
+            <button
+              onClick={() => onTrackLive && onTrackLive(order)}
+              className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
+            >
+              Track Live <ArrowRight className="text-[16px]" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -337,8 +347,16 @@ const PantryOrderCard = ({ order }) => {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToProfile, onShowNotificationToast, socket }) {
-  const [activeSection, setActiveSection] = useState("Meals");
-  const [activeTab, setActiveTab] = useState("Upcoming");
+  const [activeSection, setActiveSection] = useState(() => localStorage.getItem("ordersActiveSection") || "Meals");
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem("ordersActiveTab") || "Upcoming");
+
+  useEffect(() => {
+    localStorage.setItem("ordersActiveSection", activeSection);
+  }, [activeSection]);
+
+  useEffect(() => {
+    localStorage.setItem("ordersActiveTab", activeTab);
+  }, [activeTab]);
   const [orders, setOrders] = useState(() => getCached("upcoming") ?? []);
   const [loading, setLoading] = useState(() => !getCached("upcoming"));
   const [ratedOrders, setRatedOrders] = useState([]);
@@ -778,7 +796,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
         ) : (
           <section className="space-y-4">
             {filteredOrders.map(order => {
-              if (activeSection === "Pantry") return <PantryOrderCard key={order.orderId || order._id} order={order} />;
+              if (activeSection === "Pantry") return <PantryOrderCard key={order.orderId || order._id} order={order} isPast={isPast} onTrackLive={onTrackLive} />;
               return <OrderCard
                 key={order._id || order.orderId}
                 order={order}
