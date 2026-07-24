@@ -180,7 +180,17 @@ router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'),
 router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        const orders = await PantryOrder.find({ userId })
+        const { type } = req.query; // 'upcoming' or 'past'
+        
+        let query = { userId };
+        
+        if (type === 'upcoming') {
+            query.status = { $nin: ['delivered', 'failed', 'cancelled', 'skipped'] };
+        } else if (type === 'past') {
+            query.status = { $in: ['delivered', 'failed', 'cancelled', 'skipped'] };
+        }
+
+        const orders = await PantryOrder.find(query)
             .populate('vendorId', 'restaurantName logo')
             .sort({ createdAt: -1 });
         res.status(200).json({ success: true, orders });

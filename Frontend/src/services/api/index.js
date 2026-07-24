@@ -2096,7 +2096,7 @@ export const dmbCustomerAPI = {
   // Pantry Orders (USER)
   createPantryOrder: (data) => userClient.post("/dmb/pantry-orders/create-order", data),
   verifyPantryPayment: (data) => userClient.post("/dmb/pantry-orders/verify-payment", data),
-  getMyPantryOrders: () => userClient.get("/dmb/pantry-orders/my-orders"),
+  getMyPantryOrders: (type) => userClient.get(`/dmb/pantry-orders/my-orders${type ? `?type=${type}` : ''}`),
   /** Get my subscriptions (auth: USER) */
   getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
   /** Get active duration plans (public) */

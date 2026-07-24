@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
-import { AlertCircle, Wallet, Receipt, Info, ShoppingBag, Coins, Landmark } from 'lucide-react';
+import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle, ShoppingBag, Coins, Landmark } from 'lucide-react';
 
 function fmt(n) {
   const num = Number(n) || 0;

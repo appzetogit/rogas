@@ -782,12 +782,12 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
 
         <main className="pt-20 px-4">
           {/* Tabs */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex items-center bg-[#f0f0f0] p-1 rounded-full mb-6 relative">
             <button 
               onClick={() => setActiveTab('vendor_plans')}
-              className={`flex-1 py-2.5 rounded-[12px] text-[14px] transition-all ${activeTab === 'vendor_plans' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c] hover:bg-[#eef0ec]'}`}
+              className={`flex-1 py-2.5 text-[14px] font-bold rounded-full transition-all duration-300 z-10 ${activeTab === 'vendor_plans' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c]'}`}
             >
-              Vendor Plans
+              Meals
             </button>
             <button 
               onClick={() => setActiveTab('pantry_items')}
