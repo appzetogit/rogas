@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowLeft, Utensils, Flower2, ShoppingCart, Download, FileText, Plus, UtensilsCrossed, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Utensils, Flower2, ShoppingCart, Download, FileText, Plus, UtensilsCrossed, CheckCircle, CheckCircle2, Circle } from 'lucide-react';
 
 
 
@@ -262,9 +262,11 @@ export default function SubViewsOverlay({
                   </div>
                 </div>
                 <button className="flex items-center gap-1 flex-shrink-0">
-                  <span className={`material-symbols-outlined text-[20px] ${checklist.rosol ? 'text-primary' : 'text-outline'}`}>
-                    {checklist.rosol ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
+                  {checklist.rosol ? (
+                    <CheckCircle2 className={`w-5 h-5 ${checklist.rosol ? 'text-primary' : 'text-outline'}`} />
+                  ) : (
+                    <Circle className={`w-5 h-5 ${checklist.rosol ? 'text-primary' : 'text-outline'}`} />
+                  )}
                   <span className={`text-[12px] font-bold ${checklist.rosol ? 'text-primary' : 'text-outline'}`}>Done</span>
                 </button>
               </div>
@@ -285,9 +287,11 @@ export default function SubViewsOverlay({
                   </div>
                 </div>
                 <button className="flex items-center gap-1 flex-shrink-0">
-                  <span className={`material-symbols-outlined text-[20px] ${checklist.pierogi ? 'text-primary' : 'text-outline'}`}>
-                    {checklist.pierogi ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
+                  {checklist.pierogi ? (
+                    <CheckCircle2 className={`w-5 h-5 ${checklist.pierogi ? 'text-primary' : 'text-outline'}`} />
+                  ) : (
+                    <Circle className={`w-5 h-5 ${checklist.pierogi ? 'text-primary' : 'text-outline'}`} />
+                  )}
                   <span className={`text-[12px] font-bold ${checklist.pierogi ? 'text-primary' : 'text-outline'}`}>Done</span>
                 </button>
               </div>
@@ -308,9 +312,11 @@ export default function SubViewsOverlay({
                   </div>
                 </div>
                 <button className="flex items-center gap-1 flex-shrink-0">
-                  <span className={`material-symbols-outlined text-[20px] ${checklist.salad ? 'text-primary' : 'text-outline'}`}>
-                    {checklist.salad ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
+                  {checklist.salad ? (
+                    <CheckCircle2 className={`w-5 h-5 ${checklist.salad ? 'text-primary' : 'text-outline'}`} />
+                  ) : (
+                    <Circle className={`w-5 h-5 ${checklist.salad ? 'text-primary' : 'text-outline'}`} />
+                  )}
                   <span className={`text-[12px] font-bold ${checklist.salad ? 'text-primary' : 'text-outline'}`}>Done</span>
                 </button>
               </div>

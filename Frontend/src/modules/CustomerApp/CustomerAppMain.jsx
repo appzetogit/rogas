@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
+import { Home, ClipboardList, Calendar, ShoppingBag, User } from "lucide-react";
 
 import { WelcomeScreen, GoalsScreen, DietPrefsScreen, LocationScreen, ManualLocationScreen } from "./components/OnboardingScreens";
 import { AuthPhoneScreen, OtpVerificationScreen, UserDetailsScreen } from "./components/AuthScreens";
@@ -628,12 +629,12 @@ export default function CustomerAppMain() {
       {showNav && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[420px] w-full z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 pt-2.5 pb-5 flex justify-around items-center h-20">
           {[
-            { path: "/user/home", icon: "home", label: "Home" },
-            { path: "/user/plans", icon: "assignment", label: "Plans" },
-            { path: "/user/calendar", icon: "calendar_today", label: "Calendar" },
-            { path: "/user/orders", icon: "shopping_bag", label: "Orders" },
-            { path: "/user/profile", icon: "person", label: "Profile" },
-          ].map(({ path, icon, label }) => {
+            { path: "/user/home", icon: Home, label: "Home" },
+            { path: "/user/plans", icon: ClipboardList, label: "Plans" },
+            { path: "/user/calendar", icon: Calendar, label: "Calendar" },
+            { path: "/user/orders", icon: ShoppingBag, label: "Orders" },
+            { path: "/user/profile", icon: User, label: "Profile" },
+          ].map(({ path, icon: IconComp, label }) => {
             const active = currentPath === path;
             return (
               <button
@@ -641,9 +642,7 @@ export default function CustomerAppMain() {
                 onClick={() => navigate(path)}
                 className={`flex flex-col items-center justify-center transition-all duration-200 ${active ? "text-primary scale-105" : "text-on-surface-variant hover:text-primary"}`}
               >
-                <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
-                  {icon}
-                </span>
+                <IconComp className={`w-[22px] h-[22px] ${active ? 'fill-current' : ''}`} />
                 <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{label}</span>
                 {active && <div className="w-1 h-1 bg-primary rounded-full mt-0.5 animate-pulse" />}
               </button>

@@ -122,7 +122,7 @@ export default function PantryMenuManager({ items, setItems }) {
         {items.length === 0 ? (
           <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[32px] text-primary">inventory_2</span>
+              <Package className="text-[32px] text-primary" />
             </div>
             <p className="text-[17px] text-[#1b1c1c] font-extrabold">No pantry items yet</p>
             <p className="text-[14px] text-[#6e7a74] mt-1 font-medium mb-5">Add some items to start selling.</p>

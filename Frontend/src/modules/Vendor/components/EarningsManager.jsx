@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
-import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle } from 'lucide-react';
+import { AlertCircle, Wallet, Receipt, Info, ShoppingBag, Coins, Landmark } from 'lucide-react';
 
 function fmt(n) {
   const num = Number(n) || 0;
@@ -140,20 +140,21 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: 'Total Orders', value: totalOrders, icon: 'shopping_bag' },
-              { label: 'Gross Earnings', value: fmt(grossEarnings), icon: 'payments', small: true },
-              { label: 'Net Earnings', value: fmt(netEarnings), icon: 'account_balance', small: true },
-            ].map((stat, i) => (
+              { label: 'Total Orders', value: totalOrders, icon: ShoppingBag },
+              { label: 'Gross Earnings', value: fmt(grossEarnings), icon: Coins, small: true },
+              { label: 'Net Earnings', value: fmt(netEarnings), icon: Landmark, small: true },
+            ].map((stat, i) => {
+              const IconComp = stat.icon;
+              return (
               <div key={i} className="bg-white rounded-xl p-3 shadow-xs border border-outline-variant/15 text-center">
-                <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {stat.icon}
-                </span>
+                <IconComp className="text-primary w-5 h-5 mx-auto" />
                 <p className={`font-extrabold text-on-surface mt-1 ${stat.small ? 'text-[11px]' : 'text-[16px]'}`}>
                   {stat.value}
                 </p>
                 <p className="text-[9px] text-outline uppercase font-bold mt-0.5">{stat.label}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* VAT Breakdown Card */}

@@ -193,7 +193,7 @@ export default function LoginPage() {
 
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 border border-red-100 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">error</span>
+                <AlertCircle className="text-[18px]" />
                 {error}
               </div>
             )}
@@ -239,9 +239,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] hover:text-[#4A4C56] transition-colors flex items-center justify-center"
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
+                    {showPassword ? <EyeOff className="text-[20px]" /> : <Eye className="text-[20px]" />}
                   </button>
                 </div>
               </div>

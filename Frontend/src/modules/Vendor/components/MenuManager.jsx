@@ -585,9 +585,7 @@ export default function MenuManager({
                                   : 'border-primary text-primary bg-primary/5 hover:bg-primary/10'
                               }`}
                             >
-                              <span className="material-symbols-outlined text-[15px]">
-                                {meal.status === 'Active' ? 'pause_circle' : 'play_circle'}
-                              </span>
+                              {meal.status === 'Active' ? <PauseCircle className="text-[15px]" /> : <PlayCircle className="text-[15px]" />}
                               {meal.status === 'Active' ? 'Pause' : 'Play'}
                             </button>
                           </div>
@@ -1346,9 +1344,7 @@ export default function MenuManager({
                 disabled={isSavingSchedule}
                 className="w-full py-4 bg-primary text-on-primary font-bold text-[15px] rounded-xl shadow-lg active:scale-98 transition-transform flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
               >
-                <span className="material-symbols-outlined leading-none text-[20px]">
-                  {isSavingSchedule ? 'sync' : 'save'}
-                </span>
+                {isSavingSchedule ? <Loader2 className="leading-none text-[20px]" /> : <Save className="leading-none text-[20px]" />}
                 {isSavingSchedule ? 'Saving Schedule...' : 'Save Schedule'}
               </button>
               <button

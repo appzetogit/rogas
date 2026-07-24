@@ -59,7 +59,7 @@ export function PantryItemsList() {
   if (items.length === 0) {
     return (
       <div className="text-center p-10">
-        <span className="material-symbols-outlined text-[40px] text-[#bec9c3]">inventory_2</span>
+        <Package className="text-[40px] text-[#bec9c3]" />
         <p className="text-[16px] font-bold mt-2">No Pantry Items</p>
         <p className="text-[13px] text-[#6e7a74]">Vendors haven't added any items yet.</p>
       </div>
@@ -132,7 +132,7 @@ export function PantryItemsList() {
               </div>
             </div>
             <span className="text-[15px] font-extrabold flex items-center gap-1">
-              Checkout <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              Checkout <ChevronRight className="text-[18px]" />
             </span>
           </button>
         </div>

@@ -241,7 +241,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
         {/* Buttons Action bar */}
         <div className="pt-4">
           <button onClick={handleDownload} className="w-full bg-[#287965] hover:bg-[#1f6050] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-[20px]">download</span>
+            <Download className="text-[20px]" />
             {receiptType === 'simple' ? 'Download Subscription Receipt' : 'Download VAT Invoice'}
           </button>
         </div>

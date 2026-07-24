@@ -8,7 +8,7 @@ import { restaurantAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Info, Edit2, MapPin, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, ArrowRight, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, X, Send, AlertCircle, CheckCircle } from 'lucide-react';
+import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send } from 'lucide-react';
 
 const mapContainerStyle = {
   width: '100%',
@@ -696,9 +696,9 @@ export default function ProfileSettings({
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Financial Settings</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               {[
-            { label: 'Bank Account Details', icon: 'account_balance' },
-            { label: 'Payout Schedules', icon: 'payout' },
-            { label: 'Tax & VAT Registrations', icon: 'receipt' }].
+            { label: 'Bank Account Details', icon: Landmark },
+            { label: 'Payout Schedules', icon: Wallet },
+            { label: 'Tax & VAT Registrations', icon: Receipt }].
             map((item, idx) =>
             <button
               key={idx}
@@ -706,7 +706,10 @@ export default function ProfileSettings({
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-outline">{item.icon}</span>
+                    {(() => {
+                      const Icon = item.icon;
+                      return <Icon className="text-outline w-5 h-5" />
+                    })()}
                     <span className="font-bold text-[13px]">{item.label}</span>
                   </div>
                   <ArrowRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
@@ -1005,9 +1008,9 @@ export default function ProfileSettings({
                       <button
                     type="button"
                     onClick={() => handleRemoveClosedDay(day)}
-                    className="material-symbols-outlined text-[16px] leading-none hover:text-red-500 font-bold">
+                    className="leading-none hover:text-red-500 font-bold">
                     
-                        close
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                 )}
