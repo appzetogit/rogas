@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2 } from "lucide-react";
+import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2, Calendar, Repeat } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 import { useTranslation } from "../../../contexts/LanguageContext";
 
@@ -566,6 +566,28 @@ const ProfileView = ({
             <div className="flex items-center gap-3">
               <HelpCircle className="w-4.5 h-4.5 text-[#5d5f5b]" />
               <p className="text-xs font-bold text-gray-900">Help &amp; Support</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
+          </div>
+
+          <div 
+            onClick={() => navigate("/food/delivery/service")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <Calendar className="w-4.5 h-4.5 text-amber-500" />
+              <p className="text-xs font-bold text-amber-600">Report Unavailability</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
+          </div>
+
+          <div 
+            onClick={() => navigate("/food/delivery/rides")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <Repeat className="w-4.5 h-4.5 text-blue-500" />
+              <p className="text-xs font-bold text-blue-600">Ride Transfers</p>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>

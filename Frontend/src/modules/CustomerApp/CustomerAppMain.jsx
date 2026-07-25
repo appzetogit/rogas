@@ -22,6 +22,7 @@ import { SupportScreen } from "./components/SupportScreen";
 import { DietAndAllergensScreen } from "./components/DietAndAllergensScreen";
 import { PantryCartProvider } from "./components/PantryCartContext";
 import { CustomerLegalPage } from "./components/CustomerLegalPage";
+import CustomerServicePage from "./components/CustomerServicePage";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
 
 export default function CustomerAppMain() {
@@ -623,6 +624,10 @@ export default function CustomerAppMain() {
               onGoBack={() => navigate(-1)}
               onShowNotificationToast={showToast}
             />
+          } />
+
+          <Route path="service" element={
+            <CustomerServicePage />
           } />
 
           <Route path="termsandcondition" element={<CustomerLegalPage pageType="terms" />} />

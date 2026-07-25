@@ -385,6 +385,17 @@ export const adminSidebarMenu = [
   //   ],
   // },
 
+  // ─── SERVICE MANAGEMENT ─────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "SERVICE MANAGEMENT",
+    items: [
+      { type: "link", label: "Delivery Service", path: "/admin/food/service/delivery", icon: "Truck" },
+      { type: "link", label: "Vendor Service", path: "/admin/food/service/vendor", icon: "UtensilsCrossed" },
+      { type: "link", label: "Customer Service", path: "/admin/food/service/customer", icon: "Users" },
+    ],
+  },
+
   // ─── SYSTEM SETTINGS ─────────────────────────────────────────────────────
   {
     type: "section",

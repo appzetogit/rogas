@@ -32,6 +32,7 @@ import dmbPaymentRoutes from '../modules/dailymealbox/payment/dmb.payment.routes
 import pantryOrderRoutes from '../modules/dailymealbox/vendor/pantryOrder.routes.js';
 import officeRoutes from '../modules/dailymealbox/office/routes/office.routes.js';
 import officeAuthRoutes from '../modules/dailymealbox/office/routes/officeAuth.routes.js';
+import serviceManagementRoutes from '../modules/dailymealbox/serviceManagement/serviceManagement.routes.js';
 
 const router = express.Router();
 
@@ -87,6 +88,8 @@ router.use('/v1/dmb/payments', dmbPaymentRoutes);
 // DMB Office routes
 router.use('/v1/dmb/office/auth', officeAuthRoutes);
 router.use('/v1/dmb/office', officeRoutes);
+// DMB Service Management routes
+router.use('/v1/dmb/service', serviceManagementRoutes);
 
 // ─── Development Helper Routes ──────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {

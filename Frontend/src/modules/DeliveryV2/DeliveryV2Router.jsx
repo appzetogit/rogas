@@ -30,7 +30,8 @@ import { ProfileDetailsV2 } from './pages/profile/ProfileDetailsV2';
 import TermsAndConditionsV2 from './pages/TermsAndConditionsV2';
 import PrivacyPolicyV2 from './pages/PrivacyPolicyV2';
 import NotificationsV2 from './pages/NotificationsV2';
-
+import DeliveryServicePage from './pages/DeliveryServicePage';
+import DeliveryRidesPage from './pages/DeliveryRidesPage';
 
 
 const DeliveryV2Router = () => {
@@ -62,6 +63,8 @@ const DeliveryV2Router = () => {
         <Route path="/profile/details" element={<ProtectedRoute><ProfileDetailsV2 /></ProtectedRoute>} />
         <Route path="/profile/bank" element={<ProtectedRoute><ProfileBankV2 /></ProtectedRoute>} />
         <Route path="/profile/documents" element={<ProtectedRoute><ProfileDocsV2 /></ProtectedRoute>} />
+        <Route path="/service" element={<ProtectedRoute><DeliveryServicePage /></ProtectedRoute>} />
+        <Route path="/rides" element={<ProtectedRoute><DeliveryRidesPage /></ProtectedRoute>} />
         
         {/* Support Systems */}
         <Route path="/help/tickets" element={<ProtectedRoute><SupportTicketsV2 /></ProtectedRoute>} />

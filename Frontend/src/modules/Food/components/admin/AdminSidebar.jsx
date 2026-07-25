@@ -135,6 +135,7 @@ const labelToModuleMap = {
   "FEATURE FLAGS": "featureFlags",
   "OTA & CONTENT": "otaContent",
   "SYSTEM SETTINGS": "systemSettings",
+  "SERVICE MANAGEMENT": "serviceManagement",
 };
 
 function filterMenuByRole(menu, user) {

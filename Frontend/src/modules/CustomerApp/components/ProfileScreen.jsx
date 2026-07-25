@@ -476,7 +476,6 @@ export function ProfileScreen({
           </div>
 
 
-          {/* Help & Support / Complaints */}
           <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-xl text-primary flex items-center justify-center">
@@ -485,6 +484,22 @@ export function ProfileScreen({
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
                 <p className="text-xs text-on-surface-variant font-medium">Raise complaints or view tickets</p>
+              </div>
+            </div>
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+              <ArrowRight className="text-sm" />
+            </button>
+          </div>
+
+          {/* Refund Requests */}
+          <div onClick={() => navigate("/user/service")} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-50 p-2 rounded-xl text-amber-500 flex items-center justify-center">
+                <Receipt className="text-[22px]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Refunds & Complaints</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Request order refunds or report issues</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">

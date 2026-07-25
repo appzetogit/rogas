@@ -2142,3 +2142,38 @@ export const dmbCustomerAPI = {
   /** Admin Customer Wallet API */
   getAllCustomerWallets: () => adminClient.get("/food/admin/customers/wallet/wallet-transactions"),
 };
+
+// ─── Service Management API ──────────────────────────────────────────────────
+export const serviceManagementAPI = {
+  // Delivery Partner
+  submitDeliveryUnavailable: (data) => deliveryClient.post("/dmb/service/delivery/unavailable", data),
+  getMyDeliveryRequests: () => deliveryClient.get("/dmb/service/delivery/my-requests"),
+  getMyRideTransfers: () => deliveryClient.get("/dmb/service/delivery/ride-transfers"),
+  respondToRideTransfer: (id, response) => deliveryClient.patch(`/dmb/service/delivery/ride-transfers/${id}/respond`, { response }),
+
+  // Vendor
+  submitVendorUnavailable: (data) => restaurantClient.post("/dmb/service/vendor/unavailable", data),
+  getMyVendorRequests: () => restaurantClient.get("/dmb/service/vendor/my-requests"),
+
+  // Customer
+  getMyCustomerRequests: () => userClient.get("/dmb/service/customer/my-requests"),
+  extendSubscription: (id) => userClient.patch(`/dmb/service/customer/requests/${id}/extend`),
+  requestRefund: (id) => userClient.patch(`/dmb/service/customer/requests/${id}/refund`),
+
+  // Admin — Delivery Service
+  getAdminDeliveryRequests: (params) => adminClient.get("/dmb/service/admin/delivery-requests", { params }),
+  approveDeliveryRequest: (id) => adminClient.patch(`/dmb/service/admin/delivery-requests/${id}/approve`),
+  rejectDeliveryRequest: (id, notes) => adminClient.patch(`/dmb/service/admin/delivery-requests/${id}/reject`, { notes }),
+  assignRides: (id, assignments) => adminClient.post(`/dmb/service/admin/delivery-requests/${id}/assign-rides`, { assignments }),
+  getAvailableDrivers: (params) => adminClient.get("/dmb/service/admin/available-drivers", { params }),
+
+  // Admin — Vendor Service
+  getAdminVendorRequests: (params) => adminClient.get("/dmb/service/admin/vendor-requests", { params }),
+  approveVendorRequest: (id) => adminClient.patch(`/dmb/service/admin/vendor-requests/${id}/approve`),
+  rejectVendorRequest: (id, notes) => adminClient.patch(`/dmb/service/admin/vendor-requests/${id}/reject`, { notes }),
+
+  // Admin — Customer Service
+  getAdminCustomerRequests: (params) => adminClient.get("/dmb/service/admin/customer-requests", { params }),
+  approveCustomerRefund: (id) => adminClient.patch(`/dmb/service/admin/customer-requests/${id}/approve-refund`),
+  rejectCustomerRefund: (id, notes) => adminClient.patch(`/dmb/service/admin/customer-requests/${id}/reject-refund`, { notes }),
+};

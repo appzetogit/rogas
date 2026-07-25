@@ -671,6 +671,17 @@ export default function ProfileSettings({
                 </div>
                 <ChevronRight className="text-primary group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
+
+              <button
+              onClick={() => navigate('/vendor/service')}
+              className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
+              
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="text-amber-500" />
+                  <span className="font-bold text-[13px] text-amber-600">Report Meal Unavailability</span>
+                </div>
+                <ChevronRight className="text-amber-500 group-active:translate-x-0.5 transition-transform text-[18px]" />
+              </button>
             </div>
           </div>
 

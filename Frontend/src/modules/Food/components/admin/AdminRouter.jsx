@@ -154,6 +154,10 @@ const IntegrationSettings   = lazy(() => import("@food/pages/admin/IntegrationSe
 const OfficeOnboardingRequests = lazy(() => import("@food/pages/admin/office/OfficeOnboardingRequests"));
 const ApprovedOffices = lazy(() => import("@food/pages/admin/office/ApprovedOffices"));
 const OfficePayments  = lazy(() => import("@food/pages/admin/office/OfficePayments"));
+// Service Management
+const AdminDeliveryService = lazy(() => import("@food/pages/admin/service-management/AdminDeliveryService"));
+const AdminVendorService = lazy(() => import("@food/pages/admin/service-management/AdminVendorService"));
+const AdminCustomerService = lazy(() => import("@food/pages/admin/service-management/AdminCustomerService"));
 
 export default function AdminRouter() {
   return (
@@ -365,6 +369,10 @@ export default function AdminRouter() {
             <Route path="office-approvals" element={<OfficeOnboardingRequests />} />
             <Route path="approved-offices" element={<ApprovedOffices />} />
             <Route path="office-payments"  element={<OfficePayments />} />
+            {/* SERVICE MANAGEMENT */}
+            <Route path="service/delivery" element={<AdminDeliveryService />} />
+            <Route path="service/vendor" element={<AdminVendorService />} />
+            <Route path="service/customer" element={<AdminCustomerService />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}
