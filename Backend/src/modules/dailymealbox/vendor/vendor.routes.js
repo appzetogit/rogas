@@ -551,6 +551,25 @@ router.get('/pantry-items/all', async (req, res) => {
     }
 });
 
+// ─── PUBLIC: Get Vendor Pricing Config (Food VAT %, Platform Fee) ───────────────
+router.get('/:vendorId/pricing-config', async (req, res) => {
+    try {
+        const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
+        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+
+        const commConfig = await FoodRestaurantCommission.findOne({ restaurantId: req.params.vendorId }).lean();
+        const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+
+        res.json({
+            success: true,
+            foodVatPercent: Number(commConfig?.foodVatPercent ?? 0),
+            platformFee: Number(feeConfig?.platformFee ?? 0),
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── PUBLIC: Get Vendor's Pantry Items ─────────────────────────────────────
 router.get('/:vendorId/pantry-items', async (req, res) => {
     try {
@@ -563,6 +582,49 @@ router.get('/:vendorId/pantry-items', async (req, res) => {
         }).sort({ createdAt: -1 });
 
         res.json({ success: true, items });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── PUBLIC: Get Single Pantry Item ─────────────────────────────────────────
+router.get('/pantry-items/:id', async (req, res) => {
+    try {
+        let item = await PantryItem.findById(req.params.id).populate('vendorId', 'restaurantName city');
+        if (!item) {
+            item = await FoodItem.findById(req.params.id).populate('restaurantId', 'restaurantName city');
+            if (item) {
+                // normalize FoodItem to match PantryItem structure for response
+                item = {
+                    _id: item._id,
+                    title: item.name,
+                    price: item.price || (item.variants && item.variants.length > 0 ? item.variants[0].price : 0),
+                    image: item.image,
+                    isAvailable: item.isAvailable,
+                    vendorId: item.restaurantId,
+                    variants: item.variants,
+                    description: item.description,
+                    categoryId: item.categoryId,
+                    categoryName: item.categoryName,
+                };
+            }
+        }
+        
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+
+        // Generate otherPlatformPrice logic (e.g. 30% higher)
+        const basePrice = item.price || 0;
+        const otherPlatformPrice = Math.ceil(basePrice * 1.3);
+
+        const responseItem = item.toObject ? item.toObject() : item;
+
+        res.json({ 
+            success: true, 
+            item: {
+                ...responseItem,
+                otherPlatformPrice
+            }
+        });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

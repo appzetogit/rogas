@@ -4,19 +4,39 @@ import { ArrowLeft, Heart, Store, MapPin, Minus, Plus, ShoppingBasket } from 'lu
 import { usePantryCart } from './PantryCartContext';
 import { API_BASE_URL } from '@food/api/config';
 import { toast } from 'sonner';
+import { dmbCustomerAPI } from '../../../services/api';
 
 export function PantryItemDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
   
-  // Try to get item from state, otherwise we would need to fetch it (for now rely on state)
-  const item = location.state?.item;
+  // Try to get item from state as initial, but fetch from API for latest data + other platform price
+  const initialItem = location.state?.item;
   
   const { cart, addItem } = usePantryCart();
+  const [item, setItem] = useState(initialItem || null);
+  const [loading, setLoading] = useState(!initialItem);
   const [count, setCount] = useState(1);
   const [scrolled, setScrolled] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(item?.variants?.[0] || null);
+
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        const res = await dmbCustomerAPI.getPantryItemById(id);
+        if (res.data.success) {
+            setItem(res.data.item);
+            if (!selectedVariant) setSelectedVariant(res.data.item?.variants?.[0] || null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pantry item:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItem();
+  }, [id]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,6 +45,14 @@ export function PantryItemDetails() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-10 h-screen items-center bg-[#F5F5F0]">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!item) {
     return (
@@ -108,17 +136,22 @@ export function PantryItemDetails() {
         <div className="px-5 -mt-6 relative z-10">
           <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-6 space-y-4">
             
-            {/* Header Info */}
-            <div className="flex justify-between items-start">
-              <div className="flex-1 pr-4">
-                <h2 className="text-[22px] font-bold text-[#1b1c1c] leading-tight tracking-tight">{item.title}</h2>
-                <p className="text-[14px] font-semibold text-[#00604c] mt-1 flex items-center gap-1">
-                  <Store className="w-[18px] h-[18px]" />
-                  {vendorName}
-                </p>
+            {/* Title & Price */}
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="font-headline-sm text-[22px] font-bold text-[#1b1c1c] mb-1">{item.title}</h2>
+                <div className="flex items-center gap-1.5 text-[#00604c] text-[12px] font-bold">
+                  <Store className="w-3.5 h-3.5" />
+                  <span>{vendorName}</span>
+                </div>
               </div>
-              <div className="text-right shrink-0">
-                <span className="text-[20px] font-bold text-[#00604c]">{Number(displayPrice).toFixed(2)} PLN</span>
+              <div className="text-right">
+                 {item.otherPlatformPrice && item.otherPlatformPrice > displayPrice && (
+                    <div className="text-[12px] text-gray-400 line-through font-medium mb-0.5">
+                       {Number(item.otherPlatformPrice).toFixed(2)} PLN
+                    </div>
+                 )}
+                 <div className="text-[18px] font-extrabold text-[#00604c]">{Number(displayPrice).toFixed(2)} PLN</div>
               </div>
             </div>
             

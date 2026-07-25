@@ -13,7 +13,7 @@ const router = express.Router();
 // 1. Create Order (and Razorpay intent)
 router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
-        const { vendorId, items, deliveryDates, deliverySlots, deliveryAddress: customDeliveryAddress } = req.body;
+        const { vendorId, items, deliveryDates, deliverySlots, deliveryAddress: customDeliveryAddress, totalOverride } = req.body;
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
         
         if (!userId) {
@@ -76,21 +76,49 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
 
         // Fetch dynamic delivery fee configured by Admin
         let feePerOrder = 5; // fallback
+        let platformFee = 0;
         try {
             const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
             const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
             if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
                 feePerOrder = Number(feeConfig.feePerOrder);
             }
+            if (feeConfig && Number(feeConfig.platformFee) > 0) {
+                platformFee = Number(feeConfig.platformFee);
+            }
+        } catch (err) {}
+
+        // Fetch vendor Food VAT % from commission config
+        let foodVatPercent = 0;
+        try {
+            const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
+            const commConfig = await FoodRestaurantCommission.findOne({ restaurantId: vendorId }).lean();
+            if (commConfig && Number(commConfig.foodVatPercent) > 0) {
+                foodVatPercent = Number(commConfig.foodVatPercent);
+            }
         } catch (err) {}
         
         const dailyDeliveryFee = feePerOrder;
         
-        // Total cost for all selected deliveries (dates * slots)
-        const numDeliveries = deliveryDates.length * deliverySlots.length;
-        const itemsTotal = dailyItemsTotal * numDeliveries;
-        const deliveryFee = dailyDeliveryFee * numDeliveries;
-        const total = itemsTotal + deliveryFee;
+        // Total cost — matches frontend formula exactly:
+        // Grand Total = Items Total × (Days × Slots) + Food VAT + Platform Fee
+        const numDates = deliveryDates.length;
+        const numSlots = deliverySlots.length;
+        const itemsTotal = dailyItemsTotal;
+        const foodVatAmount = Math.round((itemsTotal * (foodVatPercent / 100)) * 100) / 100;
+        const deliveryFee = dailyDeliveryFee * numDates;
+        const grandTotal = (itemsTotal * (numDates * numSlots)) + foodVatAmount + platformFee;
+
+        // If the frontend passed a pre-calculated totalOverride, use it as the
+        // authoritative amount. This ensures the Razorpay order amount always
+        // matches the Grand Total shown in the checkout UI (which accounts for
+        // the union of dates/slots across ALL items, not just this group).
+        const effectiveGrandTotal =
+            totalOverride != null && Number(totalOverride) > 0
+                ? Number(totalOverride)
+                : grandTotal;
+
+        const razorpayAmountPaise = Math.round(effectiveGrandTotal * 100);
 
         const orderId = `PO-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
@@ -117,7 +145,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
 
         let razorpayOrder = null;
         if (isRazorpayConfigured()) {
-            razorpayOrder = await createRazorpayOrder(total * 100, 'INR', orderId);
+            razorpayOrder = await createRazorpayOrder(razorpayAmountPaise, 'INR', orderId);
         }
 
         const newOrder = await PantryOrder.create({
@@ -128,7 +156,14 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             deliveryDates,
             deliverySlots,
             deliveryAddress: normalizedAddress,
-            pricing: { itemsTotal, deliveryFee, total },
+            pricing: { 
+                itemsTotal, 
+                deliveryFee, 
+                foodVatPercent,
+                foodVatAmount,
+                platformFee,
+                total: effectiveGrandTotal 
+            },
             status: 'pending_payment',
             dailyDeliveries,
             paymentOrderId: razorpayOrder ? razorpayOrder.id : `mock_order_${orderId}`,
@@ -139,7 +174,8 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             success: true,
             order: newOrder,
             razorpayOrderId: newOrder.paymentOrderId,
-            razorpayKeyId: getRazorpayKeyId() || 'rzp_test_dummy'
+            razorpayKeyId: getRazorpayKeyId() || 'rzp_test_dummy',
+            razorpayAmount: razorpayAmountPaise, // paise — for frontend amount-mismatch guard
         });
 
     } catch (error) {

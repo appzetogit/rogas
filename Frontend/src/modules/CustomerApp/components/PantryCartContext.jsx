@@ -20,8 +20,6 @@ export function PantryCartProvider({ children }) {
     setCart(prev => {
       // If adding an item from a different vendor, clear the cart or block
       if (prev.vendorId && prev.vendorId !== vendorId && prev.items.length > 0) {
-        // Option 1: Auto-clear cart and switch vendor
-        // Option 2: Throw error or show toast. Let's auto-clear for simplicity
         prev = { vendorId: null, items: [] };
       }
 
@@ -39,7 +37,9 @@ export function PantryCartProvider({ children }) {
           title: item.title,
           price: item.price,
           quantity: 1,
-          vendorId // keep for reference
+          deliveryDates: [], // Empty = use global dates from checkout
+          deliverySlots: [], // Empty = use global slots from checkout
+          vendorId
         });
       }
 
@@ -68,6 +68,30 @@ export function PantryCartProvider({ children }) {
       };
     });
   };
+
+  // Update delivery dates for a specific item
+  const updateItemDates = (itemId, dates) => {
+    setCart(prev => ({
+      ...prev,
+      items: prev.items.map(item =>
+        item.pantryItemId === itemId
+          ? { ...item, deliveryDates: dates }
+          : item
+      )
+    }));
+  };
+
+  // Update delivery slots for a specific item
+  const updateItemSlots = (itemId, slots) => {
+    setCart(prev => ({
+      ...prev,
+      items: prev.items.map(item =>
+        item.pantryItemId === itemId
+          ? { ...item, deliverySlots: slots }
+          : item
+      )
+    }));
+  };
   
   const getItemQuantity = (itemId) => {
     const item = cart.items.find(i => i.pantryItemId === itemId);
@@ -82,7 +106,7 @@ export function PantryCartProvider({ children }) {
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <PantryCartContext.Provider value={{ cart, addItem, removeItem, clearCart, getItemQuantity, cartTotal, totalItems }}>
+    <PantryCartContext.Provider value={{ cart, addItem, removeItem, clearCart, getItemQuantity, updateItemDates, updateItemSlots, cartTotal, totalItems }}>
       {children}
     </PantryCartContext.Provider>
   );

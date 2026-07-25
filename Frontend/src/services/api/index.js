@@ -2089,6 +2089,8 @@ export const dmbCustomerAPI = {
   /** Get all available pantry items globally (public) */
   getAllPantryItems: () => userClient.get(`/dmb/vendor/pantry-items/all`),
   getVendorPantryItems: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pantry-items`),
+  getPantryItemById: (itemId) => userClient.get(`/dmb/vendor/pantry-items/${itemId}`),
+  getVendorPricingConfig: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pricing-config`),
   /** Create Razorpay order + pending subscription (auth: USER) */
   createSubscriptionOrder: (data) => userClient.post("/dmb/payments/create-order", data),
   /** Verify Razorpay payment + activate subscription (auth: USER) */
