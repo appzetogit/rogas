@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
 import { getCompanyDetailsApi } from '../services/officeApi';
-import { Utensils, Mail, Lock, RefreshCw, ArrowRight } from 'lucide-react';
+import { Utensils, Mail, Lock, RefreshCw, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();

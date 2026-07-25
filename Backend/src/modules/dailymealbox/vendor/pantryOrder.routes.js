@@ -15,7 +15,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
     try {
         const { vendorId, items, deliveryDates, deliverySlots, deliveryAddress: customDeliveryAddress, totalOverride } = req.body;
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        
+
         if (!userId) {
             return res.status(401).json({ success: false, message: 'Unauthorized: User ID missing from token' });
         }
@@ -86,7 +86,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             if (feeConfig && Number(feeConfig.platformFee) > 0) {
                 platformFee = Number(feeConfig.platformFee);
             }
-        } catch (err) {}
+        } catch (err) { }
 
         // Fetch vendor Food VAT % from commission config
         let foodVatPercent = 0;
@@ -96,10 +96,10 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             if (commConfig && Number(commConfig.foodVatPercent) > 0) {
                 foodVatPercent = Number(commConfig.foodVatPercent);
             }
-        } catch (err) {}
-        
+        } catch (err) { }
+
         const dailyDeliveryFee = feePerOrder;
-        
+
         // Total cost — matches frontend formula exactly:
         // Grand Total = Items Total × (Days × Slots) + Food VAT + Platform Fee
         const numDates = deliveryDates.length;
@@ -128,7 +128,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
         const diff = d.getDate() - currentDayIdx + (currentDayIdx === 0 ? -6 : 1);
         const weekStartDate = new Date(d.setDate(diff));
         weekStartDate.setHours(0, 0, 0, 0);
-        
+
         const dailyDeliveries = [];
         for (const dateStr of deliveryDates) {
             const dayDate = new Date(dateStr);
@@ -156,13 +156,13 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             deliveryDates,
             deliverySlots,
             deliveryAddress: normalizedAddress,
-            pricing: { 
-                itemsTotal, 
-                deliveryFee, 
+            pricing: {
+                itemsTotal,
+                deliveryFee,
                 foodVatPercent,
                 foodVatAmount,
                 platformFee,
-                total: effectiveGrandTotal 
+                total: effectiveGrandTotal
             },
             status: 'pending_payment',
             dailyDeliveries,
@@ -218,9 +218,9 @@ router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async
     try {
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
         const { type } = req.query; // 'upcoming' or 'past'
-        
+
         let query = { userId };
-        
+
         if (type === 'upcoming') {
             query.status = { $nin: ['delivered', 'failed', 'cancelled', 'skipped'] };
         } else if (type === 'past') {
@@ -244,15 +244,15 @@ router.get('/vendor', authMiddleware, requireRoles('RESTAURANT'), async (req, re
     try {
         const { date } = req.query; // date in YYYY-MM-DD
         const vendorId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        
+
         let query = { vendorId, status: 'paid' };
-        
+
         if (date) {
             const startOfDay = new Date(date);
             startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(date);
             endOfDay.setHours(23, 59, 59, 999);
-            
+
             query['dailyDeliveries.date'] = { $gte: startOfDay, $lte: endOfDay };
         }
 
@@ -273,7 +273,7 @@ router.get('/vendor', authMiddleware, requireRoles('RESTAURANT'), async (req, re
                         return;
                     }
                 }
-                
+
                 expandedOrders.push({
                     id: order._id,
                     orderId: order.orderId,
@@ -302,17 +302,17 @@ router.patch('/:id/daily-status', authMiddleware, requireRoles('RESTAURANT'), as
     try {
         const { deliveryId, status } = req.body;
         const vendorId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        
+
         // Find the order that has this dailyDelivery
         const order = await PantryOrder.findOne({ _id: req.params.id, vendorId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-        
+
         const deliveryIndex = order.dailyDeliveries.findIndex(d => d._id.toString() === deliveryId);
         if (deliveryIndex === -1) return res.status(404).json({ success: false, message: 'Delivery day not found' });
-        
+
         order.dailyDeliveries[deliveryIndex].status = status;
         await order.save();
-        
+
         res.status(200).json({ success: true, message: 'Status updated', order });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error: error.message });

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
-import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight } from 'lucide-react';
+import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle } from 'lucide-react';
 
 const toLocalDateStr = (d) => {
   if (!d) return "";

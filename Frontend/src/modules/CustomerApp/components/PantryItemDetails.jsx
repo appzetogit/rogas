@@ -14,12 +14,18 @@ export function PantryItemDetails() {
   // Try to get item from state as initial, but fetch from API for latest data + other platform price
   const initialItem = location.state?.item;
   
-  const { cart, addItem } = usePantryCart();
+  const { cart, addItem, removeItem, getItemQuantity, totalItems } = usePantryCart();
   const [item, setItem] = useState(initialItem || null);
   const [loading, setLoading] = useState(!initialItem);
-  const [count, setCount] = useState(1);
   const [scrolled, setScrolled] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(item?.variants?.[0] || null);
+
+  const itemToAdd = selectedVariant && item
+      ? { ...item, _id: `${item._id}-${selectedVariant.name}`, title: `${item.title} - ${selectedVariant.name}`, price: selectedVariant.price }
+      : item;
+  
+  const vendorId = item?.vendorId?._id || item?.vendorId;
+  const count = itemToAdd ? getItemQuantity(itemToAdd._id) : 0;
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -74,25 +80,17 @@ export function PantryItemDetails() {
     return "";
   };
 
-  const increment = () => setCount(c => c + 1);
-  const decrement = () => setCount(c => c > 1 ? c - 1 : 1);
-
-  const handleAddToCart = () => {
-    if (cart.vendorId && cart.vendorId !== (item.vendorId?._id || item.vendorId)) {
+  const handleIncrement = () => {
+    if (cart.vendorId && cart.vendorId !== vendorId) {
       toast.error('You can only order from one vendor at a time. Clear cart to switch.');
       return;
     }
-    
-    // Add the specific variant if selected, else add base item
-    const itemToAdd = selectedVariant 
-        ? { ...item, _id: `${item._id}-${selectedVariant.name}`, title: `${item.title} - ${selectedVariant.name}`, price: selectedVariant.price }
-        : item;
-
-    for(let i = 0; i < count; i++) {
-        addItem(itemToAdd, item.vendorId?._id || item.vendorId);
-    }
+    addItem(itemToAdd, vendorId);
     toast.success('Added to Box');
-    navigate(-1);
+  };
+
+  const handleDecrement = () => {
+    if (itemToAdd) removeItem(itemToAdd._id);
   };
 
   const displayPrice = selectedVariant ? selectedVariant.price : item.price;
@@ -202,34 +200,73 @@ export function PantryItemDetails() {
         </div>
       </main>
 
-      {/* Fixed Footer Action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#bec9c3]/30 z-50">
-        <div className="flex items-center gap-4 max-w-md mx-auto">
-          <div className="flex items-center bg-[#eae7e7] rounded-full px-2 py-1">
+      {/* Floating Footer Action */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 z-50 pointer-events-none">
+        
+        {/* Separate Floating Cart Icon */}
+        {totalItems > 0 && (
+          <div className="max-w-md mx-auto relative pointer-events-auto">
             <button 
-              onClick={decrement}
-              className="w-10 h-10 flex items-center justify-center text-[#3e4945] active:scale-90 transition-transform"
+              onClick={() => navigate('/user/pantry-checkout')}
+              className="absolute right-0 -top-20 w-14 h-14 bg-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center border border-[#bec9c3]/30 hover:scale-105 active:scale-95 transition-transform"
             >
-              <Minus className="w-6 h-6" />
-            </button>
-            <span className="w-8 text-center text-[16px] font-semibold text-[#1b1c1c]">{count}</span>
-            <button 
-              onClick={increment}
-              className="w-10 h-10 flex items-center justify-center text-[#3e4945] active:scale-90 transition-transform"
-            >
-              <Plus className="w-6 h-6" />
+              <ShoppingBasket className="w-6 h-6 text-[#00604c]" />
+              <span className="absolute -top-1 -right-1 bg-[#ffb100] text-[#1b1c1c] text-[12px] font-extrabold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                {totalItems}
+              </span>
             </button>
           </div>
-          <button 
-            onClick={handleAddToCart}
-            disabled={!item.isAvailable}
-            className={`flex-1 text-[16px] font-semibold py-4 rounded-full shadow-lg transition-all duration-150 flex items-center justify-center gap-2 ${
-              item.isAvailable ? 'bg-[#00604c] text-white active:scale-[0.98]' : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-            }`}
-          >
-            <ShoppingBasket className="w-5 h-5 fill-current" />
-            {item.isAvailable ? 'Add to Box' : 'Out of Stock'}
-          </button>
+        )}
+
+        <div className="max-w-md mx-auto pointer-events-auto">
+          {count === 0 ? (
+            <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white flex items-center justify-center">
+              <button 
+                onClick={handleIncrement}
+                disabled={!item.isAvailable}
+                className={`w-full h-14 rounded-full font-bold text-[16px] transition-all duration-300 flex items-center justify-center gap-2 ${
+                  item.isAvailable 
+                    ? 'bg-[#00604c] text-white shadow-[0_4px_16px_rgba(0,96,76,0.3)] hover:shadow-[0_8px_24px_rgba(0,96,76,0.4)] active:scale-[0.98]' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                <ShoppingBasket className="w-5 h-5" />
+                {item.isAvailable ? 'Add to Box' : 'Out of Stock'}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white flex items-center gap-3">
+              
+              {/* Quantity Selector */}
+              <div className="flex items-center bg-[#f6f3f2] rounded-full p-1 border border-[#bec9c3]/30">
+                <button 
+                  onClick={handleDecrement}
+                  className="w-11 h-11 flex items-center justify-center rounded-full bg-white text-[#1b1c1c] shadow-sm active:scale-95 transition-all hover:bg-gray-50"
+                >
+                  <Minus className="w-5 h-5" />
+                </button>
+                <span className="w-10 text-center text-[16px] font-bold text-[#1b1c1c]">{count}</span>
+                <button 
+                  onClick={handleIncrement}
+                  className="w-11 h-11 flex items-center justify-center rounded-full bg-white text-[#1b1c1c] shadow-sm active:scale-95 transition-all hover:bg-gray-50"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Add to Cart Button */}
+              <button 
+                onClick={handleIncrement}
+                className="flex-1 h-14 rounded-full font-bold text-[16px] transition-all duration-300 flex items-center justify-center px-6 overflow-hidden relative group bg-[#00604c] text-white shadow-[0_4px_16px_rgba(0,96,76,0.3)] hover:shadow-[0_8px_24px_rgba(0,96,76,0.4)] active:scale-[0.98]"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out rounded-full" />
+                <span className="relative z-10 flex items-center gap-2">
+                  <ShoppingBasket className="w-5 h-5" />
+                  Add Another
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
