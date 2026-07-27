@@ -94,12 +94,17 @@ const serviceRequestSchema = new mongoose.Schema(
             index: true
         },
 
-        /** The affected delivery slot */
+        /** The affected delivery slot (Legacy / Single slot logic) */
         slot: {
             type: String,
             enum: ['breakfast', 'lunch', 'dinner'],
-            required: true
         },
+
+        /** The affected delivery slots (Multiple slot logic for vendors) */
+        slots: [{
+            type: String,
+            enum: ['breakfast', 'lunch', 'dinner'],
+        }],
 
         /** Reason for the request */
         reason: {

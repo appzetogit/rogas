@@ -1269,6 +1269,11 @@ export async function getCustomers(query = {}) {
         ? await DMBSubscription.find({ userId: { $in: userIds }, status: 'active' }).populate('mealPlanId', 'name').lean()
         : [];
 
+    const { PantryOrder } = await import('../../restaurant/models/pantryOrder.model.js');
+    const activePantryOrders = userIds.length > 0
+        ? await PantryOrder.find({ userId: { $in: userIds }, status: 'paid' }).lean()
+        : [];
+
     const orderStatsMap = new Map(
         orderStats.map((x) => [
             String(x._id),
@@ -1287,6 +1292,12 @@ export async function getCustomers(query = {}) {
         if (!acc[uid]) {
             acc[uid] = sub;
         }
+        return acc;
+    }, {});
+
+    const pantryMap = activePantryOrders.reduce((acc, po) => {
+        const uid = po.userId.toString();
+        acc[uid] = true;
         return acc;
     }, {});
 
@@ -1315,6 +1326,7 @@ export async function getCustomers(query = {}) {
             isVerified: u.isVerified === true,
             totalOrder: stats.totalOrder + dStats.totalOrder,
             customerPlan: planStr,
+            pantryPlan: pantryMap[String(u._id)] ? 'Active' : 'No Active Plan',
             joiningDate: u.createdAt,
             createdAt: u.createdAt
         });
@@ -1396,6 +1408,41 @@ export async function getCustomerById(id) {
         };
     });
 
+    const { PantryOrder } = await import('../../restaurant/models/pantryOrder.model.js');
+    const pantryOrders = await PantryOrder.find({ userId: customerObjectId, status: 'paid' })
+        .sort({ createdAt: -1 })
+        .populate('vendorId', 'restaurantName _id')
+        .lean();
+
+    const pantryPlans = pantryOrders.map(po => {
+        const vendor = po.vendorId || {};
+        
+        let remainingDays = null;
+        let endDate = po.weekStartDate ? new Date(new Date(po.weekStartDate).getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+        if (endDate) {
+            const diff = endDate.getTime() - Date.now();
+            remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+        }
+
+        return {
+            _id: po._id,
+            subscriptionId: po.orderId || po._id.toString().substring(0, 8).toUpperCase(),
+            planName: 'Pantry Plan',
+            duration: 'weekly',
+            purchaseDate: po.createdAt,
+            startDate: po.weekStartDate,
+            endDate,
+            status: 'active',
+            vendorName: vendor.restaurantName || vendor.name || 'Unknown',
+            vendorDisplayId: vendor._id ? `REST-${vendor._id.toString().slice(-8).toUpperCase()}` : 'N/A',
+            amount: po.pricing?.total || 0,
+            paymentMethod: po.paymentMethod || 'N/A',
+            remainingDays
+        };
+    });
+
+    const allPlans = [...subscriptionPlans, ...pantryPlans];
+
     return {
         id: u._id,
         _id: u._id,
@@ -1413,7 +1460,7 @@ export async function getCustomerById(id) {
         joiningDate: u.createdAt,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
-        subscriptionPlans
+        subscriptionPlans: allPlans
     };
 }
 

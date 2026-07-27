@@ -29,7 +29,7 @@ export default function VendorServicePage() {
 
   // Form state
   const [date, setDate] = useState('');
-  const [slot, setSlot] = useState('lunch');
+  const [slots, setSlots] = useState(['lunch']);
   const [reason, setReason] = useState('');
   const [remarks, setRemarks] = useState('');
 
@@ -49,16 +49,19 @@ export default function VendorServicePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!date || !slot || !reason) {
+    if (!date || slots.length === 0 || !reason) {
       toast.error('Please fill all required fields');
       return;
     }
     setSubmitting(true);
     try {
-      await serviceManagementAPI.submitVendorUnavailable({ date, slot, reason, remarks });
+      await serviceManagementAPI.submitVendorUnavailable({ date, slots, reason, remarks });
       toast.success('Request submitted successfully');
       setShowForm(false);
-      setDate(''); setSlot('lunch'); setReason(''); setRemarks('');
+      setDate('');
+      setSlots(['lunch']);
+      setReason('');
+      setRemarks('');
       fetchRequests();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit request');
@@ -111,19 +114,28 @@ export default function VendorServicePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Meal Slot *</label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <select
-                  value={slot}
-                  onChange={(e) => setSlot(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none"
-                >
-                  <option value="breakfast">Breakfast</option>
-                  <option value="lunch">Lunch</option>
-                  <option value="dinner">Dinner</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Meal Slots *</label>
+              <div className="flex flex-wrap gap-2">
+                {['breakfast', 'lunch', 'dinner'].map(s => (
+                  <button
+                    type="button"
+                    key={s}
+                    onClick={() => {
+                      if (slots.includes(s)) {
+                        setSlots(slots.filter(x => x !== s));
+                      } else {
+                        setSlots([...slots, s]);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize border transition-all ${
+                      slots.includes(s)
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -196,7 +208,9 @@ export default function VendorServicePage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="font-semibold text-gray-900 text-sm">{formatDate(req.date)}</span>
-                        <span className="capitalize bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium">{req.slot}</span>
+                        <span className="capitalize bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium">
+                          {req.slots && req.slots.length > 0 ? req.slots.join(', ') : req.slot}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">{req.reason}</p>
                       {req.remarks && <p className="text-xs text-gray-400 italic">{req.remarks}</p>}

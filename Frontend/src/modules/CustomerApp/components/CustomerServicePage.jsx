@@ -8,6 +8,7 @@ const STATUS_CONFIG = {
   pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Pending' },
   approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Approved & Refunded' },
   rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Rejected' },
+  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Subscription Extended' },
 };
 
 const REASONS = [
@@ -60,6 +61,26 @@ export default function CustomerServicePage() {
       toast.error(err.response?.data?.message || 'Failed to submit request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleExtend = async (id) => {
+    try {
+      await serviceManagementAPI.extendSubscription(id);
+      toast.success('Subscription extended successfully');
+      fetchRequests();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to extend subscription');
+    }
+  };
+
+  const handleRefund = async (id) => {
+    try {
+      await serviceManagementAPI.requestRefund(id);
+      toast.success('Refund request submitted successfully');
+      fetchRequests();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to request refund');
     }
   };
 
@@ -188,6 +209,25 @@ export default function CustomerServicePage() {
                       </div>
                     )}
                   </div>
+
+                  {req.requestType === 'customer_refund' && req.status === 'pending' && req.requesterRole === 'SYSTEM' && (
+                    <div className="mt-3 flex gap-2 pt-3 border-t border-black/5">
+                      {(!req.subscriptionId?.deliverySlots || req.subscriptionId.deliverySlots.length <= 1 || (req.slots && req.slots.length === req.subscriptionId.deliverySlots.length)) && (
+                        <button
+                          onClick={() => handleExtend(req._id)}
+                          className="flex-1 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
+                        >
+                          Add Day
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRefund(req._id)}
+                        className="flex-1 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors"
+                      >
+                        Request Refund
+                      </button>
+                    </div>
+                  )}
 
                   {req.adminNotes && (
                     <div className="mt-2 bg-black/5 rounded-lg p-2">

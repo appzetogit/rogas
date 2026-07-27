@@ -106,7 +106,7 @@ export async function createVendorUnavailableRequest(vendorId, data) {
         requesterRole: 'RESTAURANT',
         vendorId: vendorId,
         date: data.date,
-        slot: data.slot,
+        slots: data.slots || (data.slot ? [data.slot] : []),
         reason: data.reason,
         remarks: data.remarks || '',
         mealPlanId: data.mealPlanId || null,
@@ -130,6 +130,7 @@ export async function getCustomerRequests(userId) {
     })
     .populate('vendorId', 'restaurantName')
     .populate('mealPlanId', 'name')
+    .populate('subscriptionId', 'deliverySlots deliverySlot')
     .sort({ createdAt: -1 })
     .lean();
 }
@@ -148,22 +149,26 @@ export async function handleCustomerExtend(requestId, userId) {
     request.status = 'completed';
     request.resolvedAt = new Date();
 
-    // Extend subscription endDate by 1 day (safe single-field update)
+    // Safe approach: read and update
     if (request.subscriptionId) {
-        await DMBSubscription.updateOne(
-            { _id: request.subscriptionId },
-            { $inc: { 'endDate': 86400000 } } // +1 day in ms — won't work with $inc on Date
-        ).catch(() => {
-            // Fallback: manual date increment
-        });
-
-        // Safer approach: read and update
+        const { DMBSubscription } = await import('../subscription/subscription.model.js');
         const sub = await DMBSubscription.findById(request.subscriptionId);
-        if (sub && sub.endDate) {
-            const newEnd = new Date(sub.endDate);
-            newEnd.setDate(newEnd.getDate() + 1);
-            sub.endDate = newEnd;
-            await sub.save();
+        
+        if (sub) {
+            const subSlots = sub.deliverySlots || (sub.deliverySlot ? [sub.deliverySlot] : []);
+            
+            // OPTION 1 ENFORCEMENT: Prevent full day extension for partial cancellations
+            const reqSlots = request.slots && request.slots.length > 0 ? request.slots : [request.slot];
+            if (subSlots.length > 1 && reqSlots.length < subSlots.length) {
+                throw new Error('This cancellation is only for a single meal. Full-day extensions are not allowed. Please choose Refund.');
+            }
+
+            if (sub.endDate) {
+                const newEnd = new Date(sub.endDate);
+                newEnd.setDate(newEnd.getDate() + 1);
+                sub.endDate = newEnd;
+                await sub.save();
+            }
         }
     }
 
@@ -181,6 +186,7 @@ export async function handleCustomerRefundRequest(requestId, userId) {
 
     // Mark as customer_refund and keep pending for admin approval
     request.requestType = 'customer_refund';
+    request.requesterRole = 'USER'; // Indicate customer has claimed it
     // Status stays 'pending' — admin needs to approve the refund
     return request.save();
 }
@@ -431,13 +437,18 @@ export async function approveVendorRequest(requestId, adminId) {
 
     // Create customer service requests for each affected subscriber
     const customerRequests = [];
-    for (const sub of affectedSubs) {
-        // Check if subscription has the affected slot
-        const subSlots = sub.deliverySlots || [sub.deliverySlot];
-        if (!subSlots.includes(request.slot)) continue;
+    const reqSlots = request.slots && request.slots.length > 0 ? request.slots : [request.slot];
 
-        // Calculate per-day refund amount from subscription pricing
-        const perDayAmount = sub.pricing?.basePricePerDay || 0;
+    for (const sub of affectedSubs) {
+        // Check if subscription has any of the affected slots
+        const subSlots = sub.deliverySlots || (sub.deliverySlot ? [sub.deliverySlot] : []);
+        
+        const overlappingSlots = subSlots.filter(s => reqSlots.includes(s));
+        if (overlappingSlots.length === 0) continue;
+
+        // Calculate proportional refund amount based on how many meals they miss
+        const basePrice = sub.pricing?.basePricePerDay || 0;
+        const refundAmount = (basePrice / subSlots.length) * overlappingSlots.length;
 
         const customerRequest = new ServiceRequest({
             requestType: 'customer_refund', // Default — customer can switch to extend
@@ -447,9 +458,9 @@ export async function approveVendorRequest(requestId, adminId) {
             subscriptionId: sub._id,
             mealPlanId: sub.mealPlanId || (sub.meals?.[0]?.mealPlanId) || null,
             date: request.date,
-            slot: request.slot,
+            slots: overlappingSlots,
             reason: `Vendor unavailable: ${request.reason}`,
-            refundAmount: perDayAmount,
+            refundAmount: refundAmount,
             parentRequestId: request._id,
             status: 'pending'
         });
@@ -478,11 +489,18 @@ export async function rejectVendorRequest(requestId, adminId, notes = '') {
 // ─── Customer Refund Admin Actions ───────────────────────────────────────────
 
 export async function getCustomerRequestsAdmin(filters = {}) {
-    const query = { requestType: 'customer_refund' };
+    const { FoodUser } = await import('../../../core/users/user.model.js');
+
+    const query = { 
+        $or: [
+            { requestType: 'customer_refund', requesterRole: 'USER' },
+            { requestType: 'customer_extend' }
+        ]
+    };
     if (filters.status) query.status = filters.status;
 
     return ServiceRequest.find(query)
-        .populate('requesterId', 'name phone')
+        .populate({ path: 'requesterId', model: FoodUser, select: 'name phone email' })
         .populate('vendorId', 'restaurantName')
         .populate('subscriptionId', 'subscriptionId deliverySlot')
         .populate('mealPlanId', 'name')

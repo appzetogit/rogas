@@ -127,7 +127,7 @@ export default function AdminVendorService() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="capitalize bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md text-xs font-medium flex items-center gap-1 w-fit">
-                      <Clock className="w-3 h-3" /> {req.slot}
+                      <Clock className="w-3 h-3" /> {req.slots && req.slots.length > 0 ? req.slots.join(', ') : req.slot}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 max-w-[250px] truncate">{req.reason}</td>
