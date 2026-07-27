@@ -35,13 +35,53 @@ export async function getDriverRequests(driverId) {
 }
 
 export async function getDriverRideTransfers(driverId) {
-    return RideTransfer.find({
+    const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+    const { PantryOrder } = await import('../../food/restaurant/models/pantryOrder.model.js');
+
+    const transfers = await RideTransfer.find({
         assignedDriverId: driverId
     })
-    .populate('originalDriverId', 'firstName lastName phone')
+    .populate({ 
+        path: 'originalDriverId', 
+        select: 'name phone zoneIds assignedVendors',
+        populate: { path: 'zoneIds', select: 'name' }
+    })
     .populate('zoneId', 'name')
     .sort({ createdAt: -1 })
     .lean();
+
+    // Dynamically calculate orderCount for legacy requests or if 0
+    for (const transfer of transfers) {
+        if (!transfer.orderCount && transfer.originalDriverId?.assignedVendors?.length > 0) {
+            const dateStart = new Date(transfer.date);
+            dateStart.setHours(0, 0, 0, 0);
+            const dateEnd = new Date(dateStart);
+            dateEnd.setDate(dateStart.getDate() + 1);
+            
+            const dmbCount = await DMBDailyOrder.countDocuments({
+                vendorId: { $in: transfer.originalDriverId.assignedVendors },
+                deliveryDate: { $gte: dateStart, $lt: dateEnd },
+                deliverySlot: transfer.slot,
+                status: { $nin: ['delivered', 'skipped', 'failed', 'cancelled'] }
+            });
+            
+            const pantryCount = await PantryOrder.countDocuments({
+                vendorId: { $in: transfer.originalDriverId.assignedVendors },
+                dailyDeliveries: {
+                    $elemMatch: {
+                        date: { $gte: dateStart, $lte: dateEnd },
+                        slot: transfer.slot,
+                        status: { $nin: ['delivered', 'failed'] }
+                    }
+                },
+                status: { $nin: ['pending_payment', 'cancelled'] }
+            });
+
+            transfer.orderCount = dmbCount + pantryCount;
+        }
+    }
+
+    return transfers;
 }
 
 export async function respondToRideTransfer(transferId, driverId, response) {
@@ -148,14 +188,74 @@ export async function handleCustomerRefundRequest(requestId, userId) {
 // ─── Admin Services ──────────────────────────────────────────────────────────
 
 export async function getDeliveryRequests(filters = {}) {
+    const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+    const { PantryOrder } = await import('../../food/restaurant/models/pantryOrder.model.js');
+    const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+    const { RideTransfer } = await import('./rideTransfer.model.js');
+
     const query = { requestType: 'delivery_unavailable' };
     if (filters.status) query.status = filters.status;
     
-    return ServiceRequest.find(query)
-        .populate('requesterId', 'firstName lastName phone')
-        .populate('zoneId', 'name')
+    const requests = await ServiceRequest.find(query)
+        .populate({ 
+            path: 'requesterId', 
+            model: FoodDeliveryPartner, 
+            select: 'name phone zoneIds assignedVendors',
+            populate: { path: 'zoneIds', select: 'name', model: 'FoodZone' } 
+        })
         .sort({ createdAt: -1 })
         .lean();
+
+    for (const req of requests) {
+        if (!req.requesterId || !req.requesterId.assignedVendors || req.requesterId.assignedVendors.length === 0) {
+            req.orderCount = 0;
+            continue;
+        }
+
+        const dateStart = new Date(req.date);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(dateStart);
+        dateEnd.setDate(dateStart.getDate() + 1);
+        
+        const dmbCount = await DMBDailyOrder.countDocuments({
+            vendorId: { $in: req.requesterId.assignedVendors },
+            deliveryDate: { $gte: dateStart, $lt: dateEnd },
+            deliverySlot: req.slot,
+            status: { $nin: ['delivered', 'skipped', 'failed', 'cancelled'] }
+        });
+        
+        const pantryCount = await PantryOrder.countDocuments({
+            vendorId: { $in: req.requesterId.assignedVendors },
+            dailyDeliveries: {
+                $elemMatch: {
+                    date: { $gte: dateStart, $lte: dateEnd },
+                    slot: req.slot,
+                    status: { $nin: ['delivered', 'failed'] }
+                }
+            },
+            status: { $nin: ['pending_payment', 'cancelled'] }
+        });
+
+        req.orderCount = dmbCount + pantryCount;
+        
+        // Fetch RideTransfers
+        const transfers = await RideTransfer.find({ serviceRequestId: req._id })
+            .populate('assignedDriverId', 'name phone profilePhoto')
+            .lean();
+        
+        req.transfers = transfers;
+        if (transfers.some(t => t.status === 'accepted')) {
+            req.transferStatus = 'accepted';
+        } else if (transfers.some(t => t.status === 'pending')) {
+            req.transferStatus = 'pending';
+        } else if (transfers.length > 0 && transfers.every(t => t.status === 'rejected')) {
+            req.transferStatus = 'rejected';
+        } else {
+            req.transferStatus = 'none';
+        }
+    }
+
+    return requests;
 }
 
 export async function approveDeliveryRequest(requestId, adminId) {
@@ -254,7 +354,42 @@ export async function getAvailableDrivers(filters = {}) {
         
         const assignedIds = assignedTransfers.map(t => t.assignedDriverId.toString());
 
-        const excludeIds = new Set([...unavailableIds, ...assignedIds]);
+        // Find drivers who have their OWN deliveries for this date/slot
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        const { PantryOrder } = await import('../../food/restaurant/models/pantryOrder.model.js');
+        
+        const busyVendors = new Set();
+        
+        const dmbBusyVendors = await DMBDailyOrder.distinct('vendorId', {
+            deliveryDate: { $gte: targetDate, $lt: nextDate },
+            deliverySlot: filters.slot,
+            status: { $nin: ['delivered', 'skipped', 'failed', 'cancelled'] }
+        });
+        dmbBusyVendors.forEach(v => busyVendors.add(v.toString()));
+        
+        const pantryBusyVendors = await PantryOrder.distinct('vendorId', {
+            dailyDeliveries: {
+                $elemMatch: {
+                    date: { $gte: targetDate, $lte: nextDate },
+                    slot: filters.slot,
+                    status: { $nin: ['delivered', 'failed'] }
+                }
+            },
+            status: { $nin: ['pending_payment', 'cancelled'] }
+        });
+        pantryBusyVendors.forEach(v => busyVendors.add(v.toString()));
+
+        const busyDriverIds = new Set();
+        for (const driver of drivers) {
+            if (driver.assignedVendors && driver.assignedVendors.length > 0) {
+                const hasOwnOrders = driver.assignedVendors.some(v => busyVendors.has(v.toString()));
+                if (hasOwnOrders) {
+                    busyDriverIds.add(driver._id.toString());
+                }
+            }
+        }
+
+        const excludeIds = new Set([...unavailableIds, ...assignedIds, ...busyDriverIds]);
 
         drivers = drivers.filter(d => !excludeIds.has(d._id.toString()));
     }

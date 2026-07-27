@@ -78,7 +78,7 @@ export default function DeliveryRidesPage() {
                   <div>
                     <h3 className="font-bold text-gray-900 text-sm">Cover Request</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      From: {transfer.originalDriverId?.firstName} {transfer.originalDriverId?.lastName}
+                      From: {transfer.originalDriverId?.name || '—'}
                     </p>
                   </div>
                   {transfer.status !== 'pending' && (
@@ -99,12 +99,22 @@ export default function DeliveryRidesPage() {
                     <Clock className="w-4 h-4 text-blue-500" />
                     <span className="text-xs font-semibold text-gray-700 capitalize">{transfer.slot}</span>
                   </div>
-                  {transfer.zoneId && (
-                    <div className="flex items-center gap-2 col-span-2 pt-1 border-t border-gray-200/60 mt-1">
-                      <MapPin className="w-4 h-4 text-blue-500" />
-                      <span className="text-xs font-semibold text-gray-700">{transfer.zoneId.name}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs font-semibold text-gray-700">{transfer.orderCount || 0} Orders</span>
+                  </div>
+                  
+                  {/* Zone Display */}
+                  {(() => {
+                    const zoneName = transfer.zoneId?.name || (transfer.originalDriverId?.zoneIds && transfer.originalDriverId.zoneIds.length > 0 ? transfer.originalDriverId.zoneIds[0]?.name : null);
+                    if (!zoneName) return null;
+                    return (
+                      <div className="flex items-center gap-2 col-span-2 pt-1 border-t border-gray-200/60 mt-1">
+                        <MapPin className="w-4 h-4 text-blue-500" />
+                        <span className="text-xs font-semibold text-gray-700">{zoneName}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {transfer.status === 'pending' && (

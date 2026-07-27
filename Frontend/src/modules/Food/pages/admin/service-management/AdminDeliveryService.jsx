@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
-import { Truck, Check, X, Search, Users, MapPin, Clock, Calendar, Filter, ChevronDown, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Truck, Check, X, Search, Users, MapPin, Clock, Calendar, Filter, ChevronDown, Loader2, AlertTriangle, RefreshCw, Eye } from 'lucide-react';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -15,6 +15,7 @@ export default function AdminDeliveryService() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(null);
+  const [viewTransfersModal, setViewTransfersModal] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [selectedDrivers, setSelectedDrivers] = useState([]);
   const [driverSearch, setDriverSearch] = useState('');
@@ -87,7 +88,7 @@ export default function AdminDeliveryService() {
     if (selectedDrivers.length === 0) return toast.error('Select at least one driver');
     setActionLoading('assign');
     try {
-      const assignments = selectedDrivers.map(d => ({ driverId: d._id, orderCount: 0 }));
+      const assignments = selectedDrivers.map(d => ({ driverId: d._id, orderCount: showAssignModal.orderCount || 0 }));
       await serviceManagementAPI.assignRides(showAssignModal._id, assignments);
       toast.success(`${assignments.length} ride transfer(s) sent`);
       setShowAssignModal(null);
@@ -166,6 +167,7 @@ export default function AdminDeliveryService() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Zone</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Slot</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Orders</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Reason</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                 <th className="text-center px-4 py-3 font-semibold text-gray-600">Actions</th>
@@ -175,17 +177,22 @@ export default function AdminDeliveryService() {
               {requests.map((req) => (
                 <tr key={req._id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">
-                    {req.requesterId?.firstName || ''} {req.requesterId?.lastName || ''}
+                    {req.requesterId?.name || '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{req.zoneId?.name || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {req.requesterId?.zoneIds && req.requesterId.zoneIds.length > 0 
+                      ? req.requesterId.zoneIds.map(z => z?.name).join(', ') 
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{formatDate(req.date)}</td>
                   <td className="px-4 py-3">
                     <span className="capitalize bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md text-xs font-medium">{req.slot}</span>
                   </td>
+                  <td className="px-4 py-3 text-gray-600 font-semibold">{req.orderCount || 0}</td>
                   <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{req.reason}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase border ${STATUS_COLORS[req.status]}`}>
-                      {req.status}
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase border ${req.transferStatus === 'accepted' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : STATUS_COLORS[req.status]}`}>
+                      {req.transferStatus === 'accepted' ? 'ACCEPTED' : req.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -210,12 +217,22 @@ export default function AdminDeliveryService() {
                       </div>
                     )}
                     {req.status === 'approved' && (
-                      <button
-                        onClick={() => openAssignModal(req)}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Assign Rides
-                      </button>
+                      req.transferStatus === 'accepted' ? (
+                        <button
+                          onClick={() => setViewTransfersModal(req)}
+                          className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                          title="View Assignments"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openAssignModal(req)}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Assign Rides
+                        </button>
+                      )
                     )}
                   </td>
                 </tr>
@@ -304,6 +321,62 @@ export default function AdminDeliveryService() {
                   Send Ride Requests
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Transfers Modal */}
+      {viewTransfersModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Assigned Riders</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatDate(viewTransfersModal.date)} — {viewTransfersModal.slot}
+                </p>
+              </div>
+              <button onClick={() => setViewTransfersModal(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {viewTransfersModal.transfers?.map(transfer => (
+                <div key={transfer._id} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    {transfer.assignedDriverId?.name?.[0] || 'D'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-900">{transfer.assignedDriverId?.name}</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      {transfer.assignedDriverId?.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md border ${
+                      transfer.status === 'accepted' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                      transfer.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                      'bg-amber-100 text-amber-700 border-amber-200'
+                    }`}>
+                      {transfer.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setViewTransfersModal(null);
+                  openAssignModal(viewTransfersModal);
+                }}
+                className="w-full py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors text-sm"
+              >
+                Assign More Riders
+              </button>
             </div>
           </div>
         </div>
