@@ -66,7 +66,15 @@ export default function AdminDeliveryService() {
     setLoadingDrivers(true);
     setSelectedDrivers([]);
     try {
-      const res = await serviceManagementAPI.getAvailableDrivers(request.zoneId ? { zoneId: request.zoneId._id || request.zoneId } : {});
+      const filters = {
+        date: request.date,
+        slot: request.slot
+      };
+      if (request.zoneId) {
+        filters.zoneId = request.zoneId._id || request.zoneId;
+      }
+      
+      const res = await serviceManagementAPI.getAvailableDrivers(filters);
       setDrivers(res.data?.data || []);
     } catch {
       toast.error('Failed to load drivers');

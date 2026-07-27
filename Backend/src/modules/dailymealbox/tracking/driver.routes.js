@@ -159,7 +159,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
             });
         }
 
-        const assignedVendors = driver.assignedVendors || [];
+        let assignedVendors = driver.assignedVendors || [];
 
         // ─── 2. Build today's date range ─────────────────────────────────────
         const today = new Date();
@@ -167,8 +167,61 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
 
+        // ─── 2.5 Resolve Effective Vendors based on Transfers ────────────────
+        const { ServiceRequest } = await import('../serviceManagement/serviceRequest.model.js');
+        const { RideTransfer } = await import('../serviceManagement/rideTransfer.model.js');
+
+        // Check if current driver requested unavailability and it was approved
+        const unavailability = await ServiceRequest.findOne({
+            requesterId: driver._id,
+            requestType: 'delivery_unavailable',
+            status: 'approved',
+            date: { $gte: today, $lt: tomorrow },
+            slot: targetSlot
+        }).lean();
+
+        if (unavailability) {
+            assignedVendors = []; // Driver is skipping this slot
+        }
+
+        // Check if current driver was assigned to cover someone else's ride
+        const acceptedTransfers = await RideTransfer.find({
+            assignedDriverId: driver._id,
+            status: 'accepted',
+            date: { $gte: today, $lt: tomorrow },
+            slot: targetSlot
+        }).populate('originalDriverId', 'assignedVendors').lean();
+
+        let effectiveVendorsSet = new Set(assignedVendors.map(v => v.toString()));
+
+        for (const transfer of acceptedTransfers) {
+            const origDriver = transfer.originalDriverId;
+            if (origDriver && origDriver.assignedVendors) {
+                origDriver.assignedVendors.forEach(vId => effectiveVendorsSet.add(vId.toString()));
+            }
+        }
+
+        const effectiveVendors = Array.from(effectiveVendorsSet);
+
+        // If driver has no vendors assigned for this slot, return early
+        if (effectiveVendors.length === 0) {
+            return res.json({
+                success: true,
+                isSlotActive,
+                activeSlot: targetSlot,
+                slotLabel: targetSlot ? (targetSlot.charAt(0).toUpperCase() + targetSlot.slice(1)) : '',
+                slotWindow: slotWindow,
+                nextSlot: null,
+                nextSlotWindow: null,
+                stops: [],
+                totalOrders: 0,
+                message: `No vendors assigned to you for ${targetSlot} today.`
+            });
+        }
+
         // ─── 3. Fetch DMBDailyOrders for the target slot ─────────────────────
         const orders = await DMBDailyOrder.find({
+            vendorId: { $in: effectiveVendors },
             deliveryDate: { $gte: today, $lt: tomorrow },
             deliverySlot: targetSlot,
             status: { $nin: ['delivered', 'skipped', 'failed'] }
@@ -184,6 +237,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         endOfDay.setHours(23, 59, 59, 999);
 
         const pantryOrders = await PantryOrder.find({
+            vendorId: { $in: effectiveVendors },
             dailyDeliveries: {
                 $elemMatch: {
                     date: { $gte: startOfDay, $lte: endOfDay },

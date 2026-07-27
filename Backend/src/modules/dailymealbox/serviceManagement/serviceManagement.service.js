@@ -213,15 +213,53 @@ export async function assignRideTransfers(serviceRequestId, driverAssignments, a
 export async function getAvailableDrivers(filters = {}) {
     // Import dynamically to avoid circular dependencies
     const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+    const { ServiceRequest } = await import('./serviceRequest.model.js');
+    const { RideTransfer } = await import('./rideTransfer.model.js');
     
-    const query = { status: 'active' };
-    if (filters.zoneId) query.zoneId = filters.zoneId;
+    const query = { status: 'approved' };
+    if (filters.zoneId) query.zoneIds = filters.zoneId;
 
-    return FoodDeliveryPartner.find(query)
-        .select('firstName lastName phone zoneId status')
-        .populate('zoneId', 'name')
+    if (filters.slot) {
+        query.allowedShifts = filters.slot; // Array contains
+    }
+
+    let drivers = await FoodDeliveryPartner.find(query)
+        .select('firstName lastName name phone zoneIds status allowedShifts maxVendorCapacity assignedVendors')
+        .populate('zoneIds', 'name')
         .sort({ firstName: 1 })
         .lean();
+
+    if (filters.date && filters.slot) {
+        const targetDate = new Date(filters.date);
+        targetDate.setHours(0, 0, 0, 0);
+        const nextDate = new Date(targetDate);
+        nextDate.setDate(targetDate.getDate() + 1);
+
+        // Exclude drivers who are unavailable (approved ServiceRequest)
+        const unavailableRequests = await ServiceRequest.find({
+            requestType: 'delivery_unavailable',
+            status: 'approved',
+            date: { $gte: targetDate, $lt: nextDate },
+            slot: filters.slot
+        }).lean();
+        
+        const unavailableIds = unavailableRequests.map(r => r.requesterId.toString());
+
+        // Exclude drivers who already have a RideTransfer assigned to them for this slot/date
+        const assignedTransfers = await RideTransfer.find({
+            date: { $gte: targetDate, $lt: nextDate },
+            slot: filters.slot,
+            status: { $in: ['pending', 'accepted'] }
+        }).lean();
+        
+        const assignedIds = assignedTransfers.map(t => t.assignedDriverId.toString());
+
+        const excludeIds = new Set([...unavailableIds, ...assignedIds]);
+
+        drivers = drivers.filter(d => !excludeIds.has(d._id.toString()));
+    }
+
+    return drivers;
 }
 
 // ─── Vendor Request Admin Actions ────────────────────────────────────────────
