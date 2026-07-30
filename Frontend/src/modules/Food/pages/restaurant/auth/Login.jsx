@@ -5,7 +5,7 @@ import { ShieldCheck, Utensils, Star, Heart, ArrowRight, Loader2, Store, ShieldQ
 import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
 import { restaurantAPI } from "@food/api"
-import logoNew from "@/assets/logo.png"
+import logoNew from "@food/assets/logo.png"
 import { SUPPORTED_COUNTRIES } from "@/config/countries"
 import CountrySelector from "@/shared/components/CountrySelector"
 import { useTranslation } from "@/contexts/LanguageContext"
