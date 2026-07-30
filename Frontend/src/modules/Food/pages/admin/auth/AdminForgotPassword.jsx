@@ -221,11 +221,11 @@ export default function AdminForgotPassword() {
         <Card className="w-full max-w-lg bg-white/90 backdrop-blur border-neutral-200 shadow-2xl">
           <CardHeader className="pb-4">
             <div className="flex w-full items-center gap-4 sm:gap-5">
-              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-gray-900/5 ring-1 ring-neutral-200">
+              <div className="flex shrink-0 items-center justify-center">
                 <img
                   src={logoUrl || quickSpicyLogo}
                   alt={companyName}
-                  className="h-10 w-24 object-contain"
+                  className="h-14 w-auto max-w-[120px] object-contain rounded-xl"
                   loading="lazy"
                   onError={(e) => {
                     if (e.target.src !== quickSpicyLogo) {
