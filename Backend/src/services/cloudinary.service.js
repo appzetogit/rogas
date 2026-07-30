@@ -23,6 +23,7 @@ export const uploadImageBuffer = async (buffer, folder = 'uploads') => {
             }
         );
 
+        stream.on('error', (err) => reject(err));
         stream.end(buffer);
     });
 };
@@ -43,6 +44,7 @@ export const uploadImageBufferDetailed = async (buffer, folder = 'uploads') => {
             }
         );
 
+        stream.on('error', (err) => reject(err));
         stream.end(buffer);
     });
 };
@@ -63,6 +65,7 @@ export const uploadVideoBuffer = async (buffer, folder = 'uploads') => {
             }
         );
 
+        stream.on('error', (err) => reject(err));
         stream.end(buffer);
     });
 };
@@ -100,6 +103,7 @@ export const uploadFileBuffer = async (buffer, folder = 'uploads', options = {})
             }
         );
 
+        stream.on('error', (err) => reject(err));
         stream.end(buffer);
     });
 };
@@ -136,6 +140,7 @@ export const uploadFileBufferDetailed = async (buffer, folder = 'uploads', optio
             }
         );
 
+        stream.on('error', (err) => reject(err));
         stream.end(buffer);
     });
 };

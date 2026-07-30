@@ -72,6 +72,9 @@ app.use('/api', apiRateLimiter);
 // Optional: log API response time (method, path, status, duration) - no sensitive data
 app.use('/api', responseTimeLogger);
 
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
+
 // API Routes
 app.use('/api', routes);
 

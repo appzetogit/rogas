@@ -676,8 +676,8 @@ export const restaurantAPI = {
       },
     }),
   /** Submit a real withdrawal request to the backend. */
-  createWithdrawalRequest: (amount) =>
-    restaurantClient.post("/food/restaurant/withdraw", { amount: Number(amount) }),
+  createWithdrawalRequest: (amount, bankDetails) =>
+    restaurantClient.post("/food/restaurant/withdraw", { amount: Number(amount), bankDetails }),
   /** List withdrawal history for current restaurant. */
   getWithdrawalHistory: () =>
     restaurantClient.get("/food/restaurant/withdrawals"),

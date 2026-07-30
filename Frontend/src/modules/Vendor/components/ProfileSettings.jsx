@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { restaurantAPI } from '../../../services/api/index';
+import { restaurantAPI, uploadAPI, dmbVendorAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle } from 'lucide-react';
+import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2 } from 'lucide-react';
 
 const mapContainerStyle = {
   width: '100%',
@@ -364,6 +364,196 @@ export default function ProfileSettings({
   const navigate = useNavigate();
   const [subView, setSubView] = useState('profile');
 
+  // ── Bank Account Details state & logic ──────────────────────────────────────
+  const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+  const UPI_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+
+  const [bankForm, setBankForm] = useState({
+    accountHolderName: '',
+    accountNumber: '',
+    confirmAccountNumber: '',
+    ifscCode: '',
+    accountType: 'Savings',
+    upiId: '',
+    upiQrImage: ''
+  });
+  const [bankErrors, setBankErrors] = useState({});
+  const [savingBank, setSavingBank] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const qrInputRef = useRef(null);
+
+  const initBankForm = async () => {
+    try {
+      // Set initial values from profile prop first
+      setBankForm({
+        accountHolderName: profile.accountHolderName || '',
+        accountNumber: profile.accountNumber || '',
+        confirmAccountNumber: profile.accountNumber || '',
+        ifscCode: profile.ifscCode || '',
+        accountType: profile.accountType || 'Savings',
+        upiId: profile.upiId || '',
+        upiQrImage: profile.upiQrImage || ''
+      });
+
+      // Then fetch latest from backend
+      const res = await restaurantAPI.getCurrentRestaurant();
+      const doc = res?.data?.data?.restaurant || res?.data?.restaurant || null;
+      if (doc) {
+        setBankForm({
+          accountHolderName: doc.accountHolderName || '',
+          accountNumber: doc.accountNumber || '',
+          confirmAccountNumber: doc.accountNumber || '',
+          ifscCode: doc.ifscCode || '',
+          accountType: doc.accountType || 'Savings',
+          upiId: doc.upiId || '',
+          upiQrImage: doc.upiQrImage || ''
+        });
+      }
+    } catch (_) {}
+  };
+
+  const handleQrUpload = async (file) => {
+    if (!file) return;
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        triggerToast("Image size too large. Max 5MB allowed.");
+        return;
+      }
+      setUploadingQr(true);
+      const response = await uploadAPI.uploadMedia(file, { folder: "food/restaurants/upi-qr" });
+      const url = response?.data?.data?.url || response?.data?.url || "";
+      if (!url) throw new Error("Upload failed");
+      setBankForm((prev) => ({ ...prev, upiQrImage: url }));
+      triggerToast("QR updated successfully");
+    } catch (error) {
+      triggerToast(error?.response?.data?.message || error?.message || "Failed to upload QR image");
+    } finally {
+      setUploadingQr(false);
+    }
+  };
+
+  const handleSaveBankDetails = async (e) => {
+    e.preventDefault();
+    const nextErrors = {};
+    const accountHolderName = String(bankForm.accountHolderName || "").trim();
+    const accountNumber = String(bankForm.accountNumber || "").replace(/\s|-/g, "");
+    const confirmAccountNumber = String(bankForm.confirmAccountNumber || "").replace(/\s|-/g, "");
+    const ifscCode = String(bankForm.ifscCode || "").trim().toUpperCase();
+    const upiId = String(bankForm.upiId || "").trim();
+
+    const anyBankField = Boolean(accountHolderName || accountNumber || ifscCode);
+
+    if (anyBankField) {
+      if (!accountHolderName) nextErrors.accountHolderName = "Account holder name is required";
+      if (!accountNumber) {
+        nextErrors.accountNumber = "Account number is required";
+      } else if (!/^\d{9,18}$/.test(accountNumber)) {
+        nextErrors.accountNumber = "Account number must be 9 to 18 digits";
+      }
+      if (!confirmAccountNumber) {
+        nextErrors.confirmAccountNumber = "Please confirm account number";
+      } else if (confirmAccountNumber !== accountNumber) {
+        nextErrors.confirmAccountNumber = "Account numbers do not match";
+      }
+      if (!ifscCode) {
+        nextErrors.ifscCode = "IFSC code is required";
+      } else if (!IFSC_REGEX.test(ifscCode)) {
+        nextErrors.ifscCode = "Invalid IFSC format (e.g. SBIN0018764)";
+      }
+    }
+
+    if (upiId && !UPI_REGEX.test(upiId)) {
+      nextErrors.upiId = "Invalid UPI ID format (e.g. name@bank)";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setBankErrors(nextErrors);
+      return;
+    }
+
+    const payload = {
+      accountHolderName,
+      accountNumber,
+      ifscCode,
+      accountType: bankForm.accountType,
+      upiId,
+      upiQrImage: bankForm.upiQrImage
+    };
+
+    try {
+      setSavingBank(true);
+      await restaurantAPI.updateProfile(payload);
+      onUpdateProfile(payload);
+      setBankErrors({});
+      triggerToast("Bank details updated successfully");
+      setSubView('profile');
+    } catch (error) {
+      triggerToast(error?.response?.data?.message || "Failed to update bank details");
+    } finally {
+      setSavingBank(false);
+    }
+  };
+
+  // ── Withdraw Request state & logic ──────────────────────────────────────────
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawHistoryLoading, setWithdrawHistoryLoading] = useState(false);
+  const [availableBalance, setAvailableBalance] = useState(0);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false);
+
+  const loadWithdrawHistoryAndBalance = async () => {
+    setWithdrawHistoryLoading(true);
+    try {
+      // Load balance
+      const earningsRes = await dmbVendorAPI.getVendorEarningsSummary();
+      const bal = earningsRes?.data?.data?.summary?.availableBalance ?? 0;
+      setAvailableBalance(Number(bal));
+
+      // Load history
+      const historyRes = await restaurantAPI.getWithdrawalHistory();
+      const list = historyRes?.data?.data || historyRes?.data || [];
+      setWithdrawals(Array.isArray(list) ? list : []);
+    } catch (e) {
+      triggerToast('Failed to load withdrawals');
+    } finally {
+      setWithdrawHistoryLoading(false);
+    }
+  };
+
+  const handleCreateWithdrawRequest = async (e) => {
+    e.preventDefault();
+    const amt = Number(withdrawAmount);
+    if (!amt || amt <= 0) {
+      triggerToast('Please enter a valid withdrawal amount');
+      return;
+    }
+    if (amt > availableBalance) {
+      triggerToast(`Insufficient balance. Maximum available is ₹${availableBalance}`);
+      return;
+    }
+
+    const bankPayload = {
+      accountNumber: profile.accountNumber || bankForm.accountNumber,
+      ifscCode: profile.ifscCode || bankForm.ifscCode,
+      bankName: profile.bankName || 'Bank',
+      accountHolderName: profile.accountHolderName || bankForm.accountHolderName,
+      upiId: profile.upiId || bankForm.upiId,
+      upiQrImage: profile.upiQrImage || bankForm.upiQrImage
+    };
+
+    setSubmittingWithdrawal(true);
+    try {
+      await restaurantAPI.createWithdrawalRequest(amt, bankPayload);
+      triggerToast('Withdrawal request submitted successfully');
+      setWithdrawAmount('');
+      await loadWithdrawHistoryAndBalance();
+    } catch (e) {
+      triggerToast(e?.response?.data?.message || 'Failed to submit withdrawal request');
+    } finally {
+      setSubmittingWithdrawal(false);
+    }
+  };
+
   // ── Help & Support state ──────────────────────────────────────────────────
   const [supportTickets, setSupportTickets] = useState([]);
   const [supportLoading, setSupportLoading] = useState(false);
@@ -707,14 +897,25 @@ export default function ProfileSettings({
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Financial Settings</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               {[
-            { label: 'Bank Account Details', icon: Landmark },
-            { label: 'Payout Schedules', icon: Wallet },
-            { label: 'Tax & VAT Registrations', icon: Receipt }].
-            map((item, idx) =>
-            <button
-              key={idx}
-              onClick={() => triggerToast(`Accessing Secure Vault: ${item.label}. This syncs automatically!`)}
-              className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
+                { label: 'Bank Account Details', icon: Landmark },
+                { label: 'Withdraw Request', icon: Wallet },
+                { label: 'Tax & VAT Registrations', icon: Receipt }
+              ].map((item, idx) =>
+                <button
+                  key={idx}
+                  onClick={() => {
+                    if (item.label === 'Bank Account Details') {
+                      initBankForm();
+                      setSubView('bank');
+                    } else if (item.label === 'Withdraw Request') {
+                      loadWithdrawHistoryAndBalance();
+                      setSubView('withdraw');
+                    } else {
+                      triggerToast(`Accessing Secure Vault: ${item.label}. This syncs automatically!`);
+                    }
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
+                >
               
                   <div className="flex items-center gap-3">
                     {(() => {
@@ -1376,6 +1577,257 @@ export default function ProfileSettings({
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bank Account Details subview ────────────────────────────────────── */}
+      {subView === 'bank' && (
+        <div className="space-y-5 animate-fadeIn text-left pt-6 pb-10">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+            <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
+              <ArrowLeft />
+            </button>
+            <h2 className="text-[16px] font-semibold">Bank Details</h2>
+            <div className="w-6"></div>
+          </div>
+
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Holder Name</label>
+              <input
+                type="text"
+                value={bankForm.accountHolderName}
+                onChange={(e) => setBankForm(p => ({ ...p, accountHolderName: e.target.value }))}
+                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+                placeholder="Enter account holder name"
+              />
+              {bankErrors.accountHolderName && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.accountHolderName}</p>}
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Number</label>
+              <input
+                type="text"
+                value={bankForm.accountNumber}
+                onChange={(e) => setBankForm(p => ({ ...p, accountNumber: e.target.value.replace(/[^\d]/g, '') }))}
+                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+                placeholder="Enter bank account number"
+              />
+              {bankErrors.accountNumber && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.accountNumber}</p>}
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Confirm Account Number</label>
+              <input
+                type="text"
+                value={bankForm.confirmAccountNumber}
+                onChange={(e) => setBankForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/[^\d]/g, '') }))}
+                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+                placeholder="Confirm bank account number"
+              />
+              {bankErrors.confirmAccountNumber && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.confirmAccountNumber}</p>}
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">IFSC Code</label>
+              <input
+                type="text"
+                value={bankForm.ifscCode}
+                onChange={(e) => setBankForm(p => ({ ...p, ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+                placeholder="e.g. SBIN0018764"
+                maxLength={11}
+              />
+              {bankErrors.ifscCode && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.ifscCode}</p>}
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Type</label>
+              <select
+                value={bankForm.accountType}
+                onChange={(e) => setBankForm(p => ({ ...p, accountType: e.target.value }))}
+                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+              >
+                <option value="Savings">Savings</option>
+                <option value="Current">Current</option>
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-outline-variant/20">
+              <h4 className="text-[12px] font-extrabold text-primary uppercase tracking-widest mb-3">UPI Details</h4>
+
+              <div>
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">UPI ID</label>
+                <input
+                  type="text"
+                  value={bankForm.upiId}
+                  onChange={(e) => setBankForm(p => ({ ...p, upiId: e.target.value.trim() }))}
+                  className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
+                  placeholder="e.g. merchant@okaxis"
+                />
+                {bankErrors.upiId && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.upiId}</p>}
+              </div>
+
+              <div className="mt-4">
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-2">UPI QR Image</label>
+                {bankForm.upiQrImage ? (
+                  <div className="relative w-40 h-40 border border-outline-variant/30 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center">
+                    <img src={bankForm.upiQrImage} alt="UPI QR" className="max-w-full max-h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setBankForm(p => ({ ...p, upiQrImage: '' }))}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-40 h-40 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center text-xs text-outline bg-white">
+                    No QR uploaded
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => qrInputRef.current?.click()}
+                    disabled={uploadingQr}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-surface-container/5 text-primary border border-primary/20 rounded-xl text-[12px] font-bold active:scale-95 transition-all shadow-xs"
+                  >
+                    {uploadingQr ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload QR Image
+                      </>
+                    )}
+                  </button>
+                  <input
+                    ref={qrInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleQrUpload(e.target.files?.[0])}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveBankDetails}
+              disabled={savingBank || uploadingQr}
+              className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 mt-6 disabled:opacity-60"
+            >
+              {savingBank ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save Bank Details
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Withdraw Requests subview ──────────────────────────────────────── */}
+      {subView === 'withdraw' && (
+        <div className="space-y-5 animate-fadeIn text-left pt-6 pb-10">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+            <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
+              <ArrowLeft />
+            </button>
+            <h2 className="text-[16px] font-semibold">Withdrawal Requests</h2>
+            <div className="w-6"></div>
+          </div>
+
+          {/* Wallet Available Balance Card */}
+          <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-5 text-on-primary shadow-md relative overflow-hidden mt-4">
+            <p className="text-[11px] uppercase tracking-wider opacity-85 font-bold">Available Balance</p>
+            <h3 className="text-3xl font-extrabold mt-1">
+              ₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </h3>
+          </div>
+
+          {/* Create Withdraw Request Form */}
+          <div className="bg-white rounded-2xl p-4 border border-outline-variant/15 shadow-xs space-y-4">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline">Request Payout</h4>
+            <form onSubmit={handleCreateWithdrawRequest} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold block mb-1">Amount to Withdraw (₹)</label>
+                <input
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="w-full bg-slate-50 border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="e.g. 500"
+                  min="1"
+                  max={availableBalance}
+                  disabled={submittingWithdrawal}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingWithdrawal || !withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > availableBalance}
+                className="w-full h-11 bg-primary text-on-primary rounded-xl font-bold text-[13px] shadow active:scale-95 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {submittingWithdrawal ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Request Withdrawal'
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Withdraw Requests List */}
+          <div className="space-y-3">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1">Request History</h4>
+            {withdrawHistoryLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : withdrawals.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 text-center border border-outline-variant/15 shadow-xs flex flex-col items-center justify-center space-y-2">
+                <Inbox className="w-10 h-10 text-outline/40" />
+                <p className="text-[12px] text-outline font-semibold">No withdrawals requested yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {withdrawals.map((w) => {
+                  const date = new Date(w.createdAt);
+                  const formattedDate = date.toLocaleString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+
+                  return (
+                    <div key={w._id} className="bg-white rounded-2xl p-4 shadow-xs border border-outline-variant/15 flex justify-between items-center text-left">
+                      <div>
+                        <p className="text-[14px] font-extrabold text-on-surface">₹{w.amount.toFixed(2)}</p>
+                        <p className="text-[11px] text-outline font-medium mt-0.5">{formattedDate}</p>
+                      </div>
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${
+                        w.status === "pending" ? "bg-amber-50 text-amber-700 border-amber-200/50" :
+                        w.status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" :
+                        "bg-red-50 text-red-700 border-red-200/50"
+                      }`}>
+                        {w.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

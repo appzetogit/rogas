@@ -1,7 +1,7 @@
 import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
-import { getRestaurantFinance } from '../services/restaurantFinance.service.js';
+import { getRestaurantFinance, getVendorEarningsSummary } from '../services/restaurantFinance.service.js';
 
 export const createWithdrawalRequestController = async (req, res, next) => {
     try {
@@ -12,18 +12,31 @@ export const createWithdrawalRequestController = async (req, res, next) => {
         if (!amount || amount <= 0) return sendError(res, 400, 'Invalid withdrawal amount');
 
         // Check if restaurant has enough balance
-        const finance = await getRestaurantFinance(restaurantId);
-        const availableBalance = finance?.currentCycle?.estimatedPayout || 0;
+        const earningsSummary = await getVendorEarningsSummary(restaurantId);
+        const availableBalance = earningsSummary?.summary?.availableBalance ?? 0;
 
         if (amount > availableBalance) {
             return sendError(res, 400, `Insufficient balance. Available: ₹${availableBalance}`);
         }
 
+        // Fetch restaurant details to get current bank info as fallback
+        const restaurant = await FoodRestaurant.findById(restaurantId).lean();
+        if (!restaurant) return sendError(res, 404, 'Restaurant not found');
+
+        const finalBankDetails = {
+            accountNumber: bankDetails?.accountNumber || restaurant.accountNumber || '',
+            ifscCode: bankDetails?.ifscCode || restaurant.ifscCode || '',
+            bankName: bankDetails?.bankName || restaurant.bankName || 'Bank',
+            accountHolderName: bankDetails?.accountHolderName || restaurant.accountHolderName || '',
+            upiId: bankDetails?.upiId || restaurant.upiId || '',
+            upiQrImage: bankDetails?.upiQrImage || restaurant.upiQrImage || ''
+        };
+
         // Create the withdrawal request
         const withdrawal = new FoodRestaurantWithdrawal({
             restaurantId,
             amount,
-            bankDetails,
+            bankDetails: finalBankDetails,
             status: 'pending'
         });
 

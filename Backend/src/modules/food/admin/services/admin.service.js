@@ -5469,9 +5469,9 @@ export async function getWithdrawals(query = {}) {
         restaurantName: w.restaurantId?.restaurantName || 'N/A',
         restaurantIdString: w.restaurantId ? `REST${w.restaurantId._id.toString().slice(-6).padStart(6, '0')}` : 'N/A',
         restaurantBankDetails: {
-            accountHolderName: w.restaurantId?.accountHolderName || '',
-            accountNumber: w.restaurantId?.accountNumber || '',
-            ifscCode: w.restaurantId?.ifscCode || '',
+            accountHolderName: w.bankDetails?.accountHolderName || w.restaurantId?.accountHolderName || '',
+            accountNumber: w.bankDetails?.accountNumber || w.restaurantId?.accountNumber || '',
+            ifscCode: w.bankDetails?.ifscCode || w.restaurantId?.ifscCode || '',
             accountType: w.restaurantId?.accountType || '',
             upiId: w.restaurantId?.upiId || '',
             upiQrImage: w.restaurantId?.upiQrImage || ''
