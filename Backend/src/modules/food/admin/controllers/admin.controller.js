@@ -1594,6 +1594,15 @@ export async function getWithdrawals(req, res, next) {
     }
 }
 
+export async function getVendorEarningsList(req, res, next) {
+    try {
+        const data = await adminService.getVendorEarningsList(req.query || {});
+        res.status(200).json({ success: true, message: 'Vendor earnings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function updateWithdrawalStatus(req, res, next) {
     try {
         const { id } = req.params;

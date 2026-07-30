@@ -263,6 +263,7 @@ export const adminAPI = {
   // Aliases for RestaurantWithdraws page
   getWithdrawalRequests: (params) => adminAPI.getWithdrawals(params),
   approveWithdrawalRequest: (id) => adminAPI.updateWithdrawalStatus(id, { status: "approved" }),
+  getVendorEarningsList: (params = {}) => adminClient.get("/food/admin/vendor/earnings", { params }),
   
   // ----- Subscribers -----
   getAllSubscribers: (params = {}) => adminClient.get("/food/admin/subscribers", { params }),

@@ -6357,3 +6357,54 @@ export async function getAllSubscribers(options = {}) {
 
     return { data: subscribers, total, page: parseInt(page, 10), pages: Math.ceil(total / limit) || 1 };
 }
+
+export async function getVendorEarningsList(query = {}) {
+    const search = typeof query.search === 'string' ? query.search.trim() : '';
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 500);
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const filter = { status: 'approved' };
+    if (search) {
+        filter.restaurantName = { $regex: search, $options: 'i' };
+    }
+
+    const [restaurants, total] = await Promise.all([
+        FoodRestaurant.find(filter)
+            .select('restaurantName ownerName ownerEmail ownerPhone createdAt')
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        FoodRestaurant.countDocuments(filter)
+    ]);
+
+    const { getVendorEarningsSummary } = await import('../../restaurant/services/restaurantFinance.service.js');
+
+    const data = [];
+    for (const rest of restaurants) {
+        const summaryObj = await getVendorEarningsSummary(rest._id);
+        const summary = summaryObj?.summary || {
+            totalOrders: 0,
+            grossEarnings: 0,
+            commissionVatDeduction: 0,
+            platformCommissionVatDeduction: 0,
+            foodVatDeduction: 0,
+            netEarnings: 0,
+            totalWithdrawals: 0,
+            availableBalance: 0
+        };
+
+        data.push({
+            vendorId: rest._id,
+            vendorIdString: `REST${rest._id.toString().slice(-6).padStart(6, '0')}`,
+            vendorName: rest.restaurantName || 'N/A',
+            ownerName: rest.ownerName || 'N/A',
+            ownerEmail: rest.ownerEmail || 'N/A',
+            ownerPhone: rest.ownerPhone || 'N/A',
+            createdAt: rest.createdAt,
+            ...summary
+        });
+    }
+
+    return { data, total, page, limit, pages: Math.ceil(total / limit) || 1 };
+}

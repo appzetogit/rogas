@@ -315,7 +315,8 @@ export const adminSidebarMenu = [
     roles: ["SUPER_ADMIN", "ACCOUNTANT"],
     items: [
       { type: "link", label: "Financial Overview", path: "/admin/food/financial", icon: "DollarSign" },
-      { type: "link", label: "Restaurant Withdrawals", path: "/admin/food/restaurant-withdraws", icon: "CreditCard" },
+      { type: "link", label: "Vendor Withdrawals", path: "/admin/food/restaurant-withdraws", icon: "CreditCard" },
+      { type: "link", label: "Vendor Earnings", path: "/admin/food/vendor-earnings", icon: "TrendingUp" },
       { type: "link", label: "Delivery Withdrawals", path: "/admin/food/delivery-withdrawal", icon: "Wallet" },
       { type: "link", label: "Delivery Boy Wallet", path: "/admin/food/delivery-boy-wallet", icon: "PiggyBank" },
       // { type: "link", label: "Fee Settings", path: "/admin/food/fee-settings", icon: "DollarSign" },

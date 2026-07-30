@@ -283,6 +283,7 @@ router.put('/delivery-emergency-help', requirePermission('driverManagement', 'ed
 
 // ----- Withdrawals (admin) -----
 router.get('/withdrawals', requirePermission('financialManagement', 'view'), adminController.getWithdrawals);
+router.get('/vendor/earnings', requirePermission('financialManagement', 'view'), adminController.getVendorEarningsList);
 router.patch('/withdrawals/:id', requirePermission('financialManagement', 'edit'), adminController.updateWithdrawalStatus);
 router.get('/delivery/withdrawals', requirePermission('financialManagement', 'view'), adminController.getDeliveryWithdrawals);
 router.patch('/delivery/withdrawals/:id', requirePermission('financialManagement', 'edit'), adminController.updateDeliveryWithdrawalStatus);
