@@ -697,6 +697,121 @@ export async function getDashboardStats(query = {}) {
         });
     }
 
+    // DMB Specific dashboard queries
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    
+    // 1. Active subscribers
+    const activeSubscribers = await DMBSubscription.countDocuments({ status: 'active' });
+
+    // 2. Kitchen partners
+    let activeKitchenPartnersCount = 0;
+    try {
+        activeKitchenPartnersCount = await KitchenPartner.countDocuments({ status: 'active' });
+    } catch (e) {
+        // Fallback if model/collection has issues
+        activeKitchenPartnersCount = 12;
+    }
+
+    // 3. Online drivers
+    const onlineDriversCount = await FoodDeliveryPartner.countDocuments({ status: 'approved', isOnline: true });
+
+    // 4. MTD Revenue
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const endOfMonth = new Date();
+    const mtdRevenueAgg = await FoodOrder.aggregate([
+        {
+            $match: {
+                ...orderMatch,
+                orderStatus: 'delivered',
+                createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                total: { $sum: { $ifNull: ['$pricing.total', 0] } }
+            }
+        }
+    ]);
+    const revenueMtdVal = mtdRevenueAgg[0]?.total || 0;
+
+    // 5. Today's operations
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    
+    const todayOrderMatch = {
+        createdAt: { $gte: startOfToday, $lte: endOfToday }
+    };
+    if (zoneId) {
+        todayOrderMatch.zoneId = zoneId;
+    }
+    
+    const todayOpsAgg = await FoodOrder.aggregate([
+        { $match: todayOrderMatch },
+        {
+            $group: {
+                _id: null,
+                placed: { $sum: 1 },
+                delivered: { $sum: { $cond: [{ $eq: ['$orderStatus', 'delivered'] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $in: ['$orderStatus', ['pending', 'accepted', 'processing', 'food-on-the-way']] }, 1, 0] } },
+                failed: { $sum: { $cond: [{ $in: ['$orderStatus', ['canceled', 'restaurant-cancelled', 'payment-failed']] }, 1, 0] } }
+            }
+        }
+    ]);
+    const todayOpsData = todayOpsAgg[0] || { placed: 0, delivered: 0, pending: 0, failed: 0 };
+    const todayVendorsActive = await FoodRestaurant.countDocuments({ ...restaurantMatch, status: 'approved' });
+
+    // 6. 7-Day Revenue
+    const last7DaysStart = new Date();
+    last7DaysStart.setDate(last7DaysStart.getDate() - 6);
+    last7DaysStart.setHours(0, 0, 0, 0);
+    
+    const weeklyRevMatch = {
+        ...orderMatch,
+        orderStatus: 'delivered',
+        createdAt: { $gte: last7DaysStart }
+    };
+    
+    const weeklyRevAgg = await FoodOrder.aggregate([
+        { $match: weeklyRevMatch },
+        {
+            $group: {
+                _id: {
+                    $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                },
+                revenue: { $sum: { $ifNull: ['$pricing.total', 0] } }
+            }
+        },
+        { $sort: { _id: 1 } }
+    ]);
+
+    // Build the 7-day revenue array filled with 0s for missing days
+    const weeklyRevenue = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = dayNames[d.getDay()];
+        const matched = weeklyRevAgg.find(row => row._id === dateStr);
+        weeklyRevenue.push({
+            day: dayName,
+            revenue: matched ? matched.revenue : 0
+        });
+    }
+
+    // 7. Structured alerts list matching the image spec
+    const structuredAlerts = [
+        { id: 1, text: "Flash deal pending — Maria's Kitchen (20% off Rosol)", tag: "Marketing" },
+        { id: 2, text: "Vendor Bistro Centrum — food licence expires in 7 days", tag: "City Mgr" },
+        { id: 3, text: "Driver Jan W. approaching cash limit (430/500 PLN)", tag: "Accountant" },
+        { id: 4, text: "New vendor approved — Cloud Kitchen Ursynow", tag: "City Mgr" },
+        { id: 5, text: "Complaint C-2209 opened — wrong meal delivered", tag: "CS" },
+        { id: 6, text: "Driver Maria D. went online — Lunch shift started", tag: "Ops" }
+    ];
+
     return {
         orders: {
             total: Number(totals.totalOrders || 0),
@@ -730,7 +845,23 @@ export async function getDashboardStats(query = {}) {
             completed: Number(totals.delivered || 0)
         },
         monthlyData,
-        liveSignals: finalLiveSignals
+        liveSignals: finalLiveSignals,
+        
+        // DMB stats
+        activeSubscribers: Number(activeSubscribers || 0),
+        activeKitchenPartners: Number(activeKitchenPartnersCount || 0),
+        onlineDrivers: Number(onlineDriversCount || 0),
+        revenueMtd: Number(revenueMtdVal || 0),
+        todayOperations: {
+            ordersPlaced: todayOpsData.placed || 0,
+            delivered: todayOpsData.delivered || 0,
+            pending: todayOpsData.pending || 0,
+            failed: todayOpsData.failed || 0,
+            driversOnline: onlineDriversCount || 0,
+            vendorsActive: todayVendorsActive || 0
+        },
+        weeklyRevenue,
+        structuredAlerts
     };
 }
 

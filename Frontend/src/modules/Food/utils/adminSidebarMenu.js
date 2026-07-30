@@ -288,10 +288,9 @@ export const adminSidebarMenu = [
   // ─── ZONE & CITY MANAGEMENT (AP-08) ──────────────────────────────────────
   {
     type: "section",
-    label: "ZONE & CITY MANAGEMENT",
+    label: "ZONE MANAGEMENT",
     roles: ["SUPER_ADMIN", "CITY_MANAGER"],
     items: [
-      { type: "link", label: "City Management", path: "/admin/food/cities", icon: "Globe" },
       { type: "link", label: "Zone Setup", path: "/admin/food/zone-setup", icon: "MapPin" },
       { type: "link", label: "Zone Ranking", path: "/admin/food/zone-ranking", icon: "MapPin" },
     ],

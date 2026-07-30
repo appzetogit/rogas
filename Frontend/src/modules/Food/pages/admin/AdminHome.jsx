@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle } from "lucide-react"
+import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, ShieldCheck, AlertTriangle } from "lucide-react"
 import { adminAPI } from "@food/api"
 const debugLog = () => {}
 const debugError = () => {}
@@ -44,6 +44,16 @@ export default function AdminHome() {
   const [isLoading, setIsLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState(null)
   const [zones, setZones] = useState([])
+  const [themeUpdated, setThemeUpdated] = useState(0)
+
+  // Listen to dynamic theme loads
+  useEffect(() => {
+    const handleThemeUpdate = () => {
+      setThemeUpdated(prev => prev + 1)
+    }
+    window.addEventListener("themeLoaded", handleThemeUpdate)
+    return () => window.removeEventListener("themeLoaded", handleThemeUpdate)
+  }, [])
 
   // Fetch zone list for filter
   useEffect(() => {
@@ -53,11 +63,9 @@ export default function AdminHome() {
         const list = response?.data?.data?.zones || []
         setZones(Array.isArray(list) ? list : [])
       } catch (error) {
-        debugError("Error fetching zones:", error)
         setZones([])
       }
     }
-
     fetchZones()
   }, [])
 
@@ -73,573 +81,324 @@ export default function AdminHome() {
         const response = await adminAPI.getDashboardStats(params)
         if (response.data?.success && response.data?.data) {
           setDashboardData(response.data.data)
-          debugLog("Dashboard stats fetched:", response.data.data)
         } else {
           setDashboardData(null)
-          debugError("Invalid dashboard response format:", response.data)
         }
       } catch (error) {
         setDashboardData(null)
-        debugError("Error fetching dashboard stats:", error)
       } finally {
         setIsLoading(false)
       }
     }
-
     fetchDashboardStats()
   }, [selectedZone, selectedPeriod])
 
-  // Get order stats from real data
-  const getOrderStats = () => {
-    if (!dashboardData?.orders?.byStatus) {
-      return [
-        { label: "Delivered", value: 0, color: "#0ea5e9" },
-        { label: "Cancelled", value: 0, color: "#ef4444" },
-        { label: "Refunded", value: 0, color: "#f59e0b" },
-        { label: "Pending", value: 0, color: "#10b981" },
-      ]
+  const getThemeColor = (varName, fallback) => {
+    try {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
+    } catch (e) {
+      return fallback
     }
-
-    const byStatus = dashboardData.orders.byStatus
-    return [
-      { label: "Delivered", value: byStatus.delivered || 0, color: "#0ea5e9" },
-      { label: "Cancelled", value: byStatus.cancelled || 0, color: "#ef4444" },
-      { label: "Refunded", value: 0, color: "#f59e0b" }, // Refunded not tracked separately
-      { label: "Pending", value: byStatus.pending || 0, color: "#10b981" },
-    ]
   }
 
-  // Get monthly data from real data
-  const getMonthlyData = () => {
-    if (!dashboardData?.monthlyData || dashboardData.monthlyData.length === 0) {
-      // Return empty data structure if no data
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      return monthNames.map(month => ({ month, commission: 0, revenue: 0, orders: 0 }))
-    }
-
-    // Use real monthly data from backend
-    return dashboardData.monthlyData.map(item => ({
-      month: item.month,
-      commission: item.commission || 0,
-      revenue: item.revenue || 0,
-      orders: item.orders || 0
-    }))
-  }
-
-  const orderStats = getOrderStats()
-  const monthlyData = getMonthlyData()
-
-  // Calculate totals from real data
-  const revenueTotal = dashboardData?.revenue?.total || 0
-  const commissionTotal = dashboardData?.commission?.total || 0
-  const ordersTotal = dashboardData?.orders?.total || 0
-  const platformFeeTotal = dashboardData?.platformFee?.total || 0
-  const deliveryFeeTotal = dashboardData?.deliveryFee?.total || 0
-  const gstTotal = dashboardData?.gst?.total || 0
-  const totalAdminEarnings = dashboardData?.totalAdminEarnings || 0
-
-  // Additional stats
-  const totalRestaurants = dashboardData?.restaurants?.total || 0
-  const pendingRestaurantRequests = dashboardData?.restaurants?.pendingRequests || 0
-  const totalDeliveryBoys = dashboardData?.deliveryBoys?.total || 0
-  const pendingDeliveryBoyRequests = dashboardData?.deliveryBoys?.pendingRequests || 0
-  const totalFoods = dashboardData?.foods?.total || 0
-  const totalAddons = dashboardData?.addons?.total || 0
-  const totalCustomers = dashboardData?.customers?.total || 0
-  const pendingOrders = dashboardData?.orderStats?.pending || 0
-  const processingOrders = dashboardData?.orderStats?.processing || 0
-  const completedOrders = dashboardData?.orderStats?.completed || 0
-
-  const pieData = orderStats.map((item) => ({
-    name: item.label,
-    value: item.value,
-    fill: item.color,
-  }))
-
-  const deliveryProfit = dashboardData?.deliveryProfit || 0
-  const periodLabel = selectedPeriod === "overall" ? "Overall" : 
-                    selectedPeriod === "today" ? "Today's" : 
-                    `This ${selectedPeriod}'s`
-
-  const activityFeed = dashboardData?.liveSignals || []
-  const totalRevenueHelper = [
-    `Comm: ${formatCurrency(commissionTotal)}`,
-    `Platform: ${formatCurrency(platformFeeTotal)}`,
-    `Delivery Net: ${formatCurrency(deliveryProfit)}`,
-    `GST: ${formatCurrency(gstTotal)}`,
-  ].join(" + ")
+  const primaryColor = getThemeColor('--ad-primary', '#1F7A63')
+  const background = getThemeColor('--ad-background', '#F5F5F0')
+  const text = getThemeColor('--ad-text', '#2B2B2B')
+  const cardBg = getThemeColor('--ad-card-bg', '#ffffff')
+  const cardBorder = getThemeColor('--ad-card-border', '#e2e8f0')
+  const textMuted = getThemeColor('--ad-card-text-muted', '#64748b')
+  const textPrimary = getThemeColor('--ad-text-primary', '#0f172a')
 
   return (
-    <div className="px-4 pb-10 lg:px-6 pt-4">
-      <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_30px_120px_-60px_rgba(0,0,0,0.28)]">
-        {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-            <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2 text-sm text-neutral-700 ring-1 ring-neutral-200">
-              <span className="h-3 w-3 animate-ping rounded-full bg-neutral-800/70" />
-              Updating metrics...
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4 border-b border-neutral-200 bg-linear-to-br from-white via-neutral-50 to-neutral-100 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Admin Overview</p>
-              <h1 className="text-2xl font-semibold text-neutral-900">Operations Command</h1>
-            </div>
-
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={selectedZone} onValueChange={setSelectedZone}>
-              <SelectTrigger className="min-w-[160px] border-neutral-300 bg-white text-neutral-900">
-                <SelectValue placeholder="All zones" />
-              </SelectTrigger>
-              <SelectContent className="border-neutral-200 bg-white text-neutral-900">
-                <SelectItem value="all">All zones</SelectItem>
-                {zones.map((zone) => (
-                  <SelectItem key={zone._id} value={zone._id}>
-                    {zone.zoneName || zone.name || "Unnamed Zone"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="min-w-[140px] border-neutral-300 bg-white text-neutral-900">
-                <SelectValue placeholder="Overall" />
-              </SelectTrigger>
-              <SelectContent className="border-neutral-200 bg-white text-neutral-900">
-                <SelectItem value="overall">Overall</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This week</SelectItem>
-                <SelectItem value="month">This month</SelectItem>
-                <SelectItem value="year">This year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div 
+      className="px-4 pb-10 lg:px-8 pt-6 min-h-screen transition-all duration-300 font-['Outfit',sans-serif]"
+      style={{ backgroundColor: background, color: text }}
+    >
+      {/* Dashboard Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: textMuted }}>Admin Overview</p>
+          <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: textPrimary }}>Operations Command</h1>
         </div>
 
-        <div className="space-y-6 px-6 py-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard
-              title="Gross revenue"
-              value={formatCurrency(revenueTotal)}
-              helper={`${periodLabel} transaction volume`}
-              icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
-              accent="bg-emerald-200/40"
-              path="/admin/food/transaction-report"
-            />
-            <MetricCard
-              title="Commission earned"
-              value={formatCurrency(commissionTotal)}
-              helper={`${periodLabel} restaurant cut`}
-              icon={<ArrowUpRight className="h-5 w-5 text-indigo-600" />}
-              accent="bg-indigo-200/40"
-              path="/admin/food/restaurants/commission"
-            />
-            <MetricCard
-              title="Orders processed"
-              value={processingOrders.toLocaleString("en-IN")}
-              helper="Orders currently being processed"
-              icon={<Activity className="h-5 w-5 text-amber-600" />}
-              accent="bg-amber-200/40"
-              path="/admin/food/orders/processing"
-            />
-            <MetricCard
-              title="Platform fee"
-              value={formatCurrency(platformFeeTotal)}
-              helper={`Platform service fees: ${periodLabel}`}
-              icon={<CreditCard className="h-5 w-5 text-purple-600" />}
-              accent="bg-purple-200/40"
-              path="/admin/food/fee-settings"
-            />
-            <MetricCard
-              title="Delivery fee"
-              value={formatCurrency(deliveryFeeTotal)}
-              helper={`Total delivery fees: ${periodLabel}`}
-              icon={<Truck className="h-5 w-5 text-blue-600" />}
-              accent="bg-blue-200/40"
-              path="/admin/food/transaction-report"
-            />
-            <MetricCard
-              title="GST"
-              value={formatCurrency(gstTotal)}
-              helper={`Total tax collected: ${periodLabel}`}
-              icon={<Receipt className="h-5 w-5 text-orange-600" />}
-              accent="bg-orange-200/40"
-              path="/admin/food/tax-report"
-            />
-            <MetricCard
-              title="Platform Total"
-              value={formatCurrency(totalAdminEarnings, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              helper={totalRevenueHelper}
-              icon={<DollarSign className="h-5 w-5 text-green-600" />}
-              accent="bg-green-200/40"
-              path="/admin/food/transaction-report"
-            />
-            <MetricCard
-              title="Total restaurants"
-              value={totalRestaurants.toLocaleString("en-IN")}
-              helper="Approved restaurants"
-              icon={<Store className="h-5 w-5 text-blue-600" />}
-              accent="bg-blue-200/40"
-              path="/admin/food/restaurants"
-            />
-            <MetricCard
-              title="Restaurant request pending"
-              value={pendingRestaurantRequests.toLocaleString("en-IN")}
-              helper="Awaiting approval"
-              icon={<UserCheck className="h-5 w-5 text-orange-600" />}
-              accent="bg-orange-200/40"
-              path="/admin/food/restaurants/joining-request"
-            />
-            <MetricCard
-              title="Total delivery boy"
-              value={totalDeliveryBoys.toLocaleString("en-IN")}
-              helper="Approved delivery partners"
-              icon={<Truck className="h-5 w-5 text-indigo-600" />}
-              accent="bg-indigo-200/40"
-              path="/admin/food/delivery-partners"
-            />
-            <MetricCard
-              title="Delivery boy request pending"
-              value={pendingDeliveryBoyRequests.toLocaleString("en-IN")}
-              helper="Awaiting verification"
-              icon={<Clock className="h-5 w-5 text-yellow-600" />}
-              accent="bg-yellow-200/40"
-              path="/admin/food/delivery-partners/join-request"
-            />
-            <MetricCard
-              title="Total foods"
-              value={totalFoods.toLocaleString("en-IN")}
-              helper="Approved menu items"
-              icon={<Package className="h-5 w-5 text-purple-600" />}
-              accent="bg-purple-200/40"
-              path="/admin/food/foods"
-            />
-            <MetricCard
-              title="Total addons"
-              value={totalAddons.toLocaleString("en-IN")}
-              helper="Approved addon items"
-              icon={<Plus className="h-5 w-5 text-pink-600" />}
-              accent="bg-pink-200/40"
-              path="/admin/food/addons"
-            />
-            <MetricCard
-              title="Total customers"
-              value={totalCustomers.toLocaleString("en-IN")}
-              helper="Registered users"
-              icon={<UserCircle className="h-5 w-5 text-cyan-600" />}
-              accent="bg-cyan-200/40"
-              path="/admin/food/customers"
-            />
-            <MetricCard
-              title="Pending orders"
-              value={pendingOrders.toLocaleString("en-IN")}
-              helper="Orders awaiting processing"
-              icon={<Clock className="h-5 w-5 text-red-600" />}
-              accent="bg-red-200/40"
-              path="/admin/food/orders/pending"
-            />
-            <MetricCard
-              title="Completed orders"
-              value={completedOrders.toLocaleString("en-IN")}
-              helper="Successfully delivered"
-              icon={<CheckCircle className="h-5 w-5 text-emerald-600" />}
-              accent="bg-emerald-200/40"
-              path="/admin/food/orders/delivered"
-            />
-          </div>
+        <div className="flex flex-wrap gap-3">
+          <Select value={selectedZone} onValueChange={setSelectedZone}>
+            <SelectTrigger 
+              className="min-w-[160px] border shadow-xs text-sm font-semibold rounded-xl"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder, color: textPrimary }}
+            >
+              <SelectValue placeholder="All zones" />
+            </SelectTrigger>
+            <SelectContent 
+              className="border shadow-md rounded-xl"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder, color: textPrimary }}
+            >
+              <SelectItem value="all">All zones</SelectItem>
+              {zones.map((zone) => (
+                <SelectItem key={zone._id} value={zone._id}>
+                  {zone.zoneName || zone.name || "Unnamed Zone"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2 min-w-0 border-neutral-200 bg-white">
-              <CardHeader className="flex flex-col gap-2 border-b border-neutral-200 pb-4">
-                <CardTitle className="text-lg text-neutral-900">Revenue trajectory</CardTitle>
-                <p className="text-sm text-neutral-500">
-                  Commission and gross revenue with monthly order volume
-                </p>
-              </CardHeader>
-              <CardContent className="min-w-0 pt-4">
-                <div className="h-80 w-full min-w-0">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <AreaChart data={monthlyData}>
-                      <defs>
-                        <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="comFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="month" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
-                      <Tooltip
-                        contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}
-                        labelStyle={{ color: "#111827" }}
-                        itemStyle={{ color: "#111827" }}
-                      />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#0ea5e9"
-                        fillOpacity={1}
-                        fill="url(#revFill)"
-                        name="Gross revenue"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="commission"
-                        stroke="#a855f7"
-                        fillOpacity={1}
-                        fill="url(#comFill)"
-                        name="Commission"
-                      />
-                      <Bar
-                        dataKey="orders"
-                        fill="#ef4444"
-                        radius={[6, 6, 0, 0]}
-                        name="Orders"
-                        barSize={10}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="min-w-0 border-neutral-200 bg-white">
-              <CardHeader className="flex items-center justify-between border-b border-neutral-200 pb-4">
-                <div>
-                  <CardTitle className="text-lg text-neutral-900">Order mix</CardTitle>
-                  <p className="text-sm text-neutral-500">Distribution by state</p>
-                </div>
-                <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
-                  {orderStats.reduce((s, o) => s + o.value, 0)} orders
-                </span>
-              </CardHeader>
-              <CardContent className="min-w-0 pt-4">
-                <div className="h-72 w-full min-w-0">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={4}
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={index} fill={entry.fill} stroke="none" />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}
-                        labelStyle={{ color: "#111827" }}
-                        itemStyle={{ color: "#111827" }}
-                      />
-                      <Legend
-                        formatter={(value) => <span style={{ color: "#111827", fontSize: 12 }}>{value}</span>}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {orderStats.map((item) => (
-                    <div
-                      key={item.label}
-                    onClick={() => {
-                        const routes = {
-                          'Delivered': '/admin/food/orders/delivered',
-                          'Cancelled': '/admin/food/orders/canceled',
-                          'Refunded': '/admin/food/orders/refunded',
-                          'Pending': '/admin/food/orders/pending'
-                        }
-                        navigate(routes[item.label] || '/admin/food/orders/all')
-                      }}
-                      className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2 cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-all group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full transition-transform group-hover:scale-125" style={{ background: item.color }} />
-                        <p className="text-sm text-neutral-800 group-hover:text-neutral-900">{item.label}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-neutral-900">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="min-w-0 border-neutral-200 bg-white">
-              <CardHeader className="flex items-center justify-between border-b border-neutral-200 pb-4">
-                <CardTitle className="text-lg text-neutral-900">Momentum snapshot</CardTitle>
-                <span className="text-xs text-neutral-500">Summary: {ordersTotal} Orders</span>
-              </CardHeader>
-              <CardContent className="min-w-0 pt-4">
-                <div className="h-64 w-full min-w-0">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <BarChart data={monthlyData.slice(-6)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="month" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
-                      <Tooltip
-                        contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}
-                        labelStyle={{ color: "#111827" }}
-                        itemStyle={{ color: "#111827" }}
-                      />
-                      <Legend />
-                      <Bar dataKey="orders" fill="#0ea5e9" radius={[8, 8, 0, 0]} name="Orders" />
-                      <Bar dataKey="commission" fill="#a855f7" radius={[8, 8, 0, 0]} name="Commission" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-neutral-200 bg-white">
-              <CardHeader className="border-b border-neutral-200 pb-4">
-                <CardTitle className="text-lg text-neutral-900">Live signals</CardTitle>
-                <p className="text-sm text-neutral-500">Ops notes and service health</p>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-4 h-[300px] overflow-y-auto custom-scrollbar">
-                {activityFeed.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full py-10 text-neutral-400">
-                    <Activity className="h-10 w-10 mb-2 opacity-20" />
-                    <p className="text-sm">No recent signals</p>
-                  </div>
-                ) : (
-                  activityFeed.map((item, idx) => {
-                    const getIcon = (type) => {
-                      switch (type) {
-                        case "order_pending":
-                          return <Clock className="h-4 w-4 text-amber-600" />
-                        case "order_delivered":
-                          return <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        case "order_cancelled":
-                          return <XCircle className="h-4 w-4 text-red-600" />
-                        case "restaurant":
-                          return <Store className="h-4 w-4 text-blue-600" />
-                        case "delivery":
-                          return <Truck className="h-4 w-4 text-purple-600" />
-                        case "customer":
-                          return <UserCircle className="h-4 w-4 text-pink-600" />
-                        default:
-                          return <Activity className="h-4 w-4 text-neutral-600" />
-                      }
-                    }
-
-                    const getBg = (type) => {
-                      switch (type) {
-                        case "order_pending":
-                          return "bg-amber-50"
-                        case "order_delivered":
-                          return "bg-emerald-50"
-                        case "order_cancelled":
-                          return "bg-red-50"
-                        case "restaurant":
-                          return "bg-blue-50"
-                        case "delivery":
-                          return "bg-purple-50"
-                        case "customer":
-                          return "bg-pink-50"
-                        default:
-                          return "bg-neutral-50"
-                      }
-                    }
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex items-start gap-3 rounded-xl border border-neutral-200 ${getBg(item.type)} px-3 py-3 hover:border-neutral-300 transition-all`}
-                      >
-                        <div className="mt-0.5">{getIcon(item.type)}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-neutral-900 truncate">{item.title}</p>
-                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">{item.time}</span>
-                          </div>
-                          <p className="text-xs text-neutral-600 line-clamp-1">{item.detail}</p>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-neutral-200 bg-white">
-              <CardHeader className="border-b border-neutral-200 pb-4">
-                <CardTitle className="text-lg text-neutral-900">Order states</CardTitle>
-                <p className="text-sm text-neutral-500">Quick glance by status</p>
-              </CardHeader>
-              <CardContent className="grid gap-3 pt-4">
-                {orderStats.map((item) => (
-                  <div
-                    key={item.label}
-                    onClick={() => {
-                      const routes = {
-                        'Delivered': '/admin/food/orders/delivered',
-                        'Cancelled': '/admin/food/orders/canceled',
-                        'Refunded': '/admin/food/orders/refunded',
-                        'Pending': '/admin/food/orders/pending'
-                      }
-                      navigate(routes[item.label] || '/admin/food/orders/all')
-                    }}
-                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 cursor-pointer hover:bg-neutral-100 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold text-neutral-900 transition-transform group-hover:scale-110"
-                        style={{ background: `${item.color}1A`, color: item.color }}
-                      >
-                        {item.label.slice(0, 2).toUpperCase()}
-                      </span>
-                      <div>
-                        <p className="text-sm text-neutral-900 group-hover:font-medium">{item.label}</p>
-                        <p className="text-xs text-neutral-500">Tracked in {selectedPeriod}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm font-semibold text-neutral-900">{item.value}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger 
+              className="min-w-[140px] border shadow-xs text-sm font-semibold rounded-xl"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder, color: textPrimary }}
+            >
+              <SelectValue placeholder="Overall" />
+            </SelectTrigger>
+            <SelectContent 
+              className="border shadow-md rounded-xl"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder, color: textPrimary }}
+            >
+              <SelectItem value="overall">Overall</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This week</SelectItem>
+              <SelectItem value="month">This month</SelectItem>
+              <SelectItem value="year">This year</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-    </div>
-  )
-}
 
-function MetricCard({ title, value, helper, icon, accent, path }) {
-  const navigate = useNavigate()
-  return (
-    <Card
-      className="group relative overflow-hidden border-neutral-200 bg-white p-0 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
-      onClick={() => path && navigate(path)}
-    >
-      <CardContent className="relative flex flex-col gap-2 px-4 pb-4 pt-4 h-full">
-        <div className={`absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-60 ${accent}`} />
-        <div className="relative flex items-center justify-between z-10">
-          <div className="flex-1 min-w-0 mr-2">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold mb-1 truncate">{title}</p>
-            <p className="text-xl font-bold text-neutral-900 leading-tight mb-1">{value}</p>
-            <p className="text-[10px] text-neutral-500 font-medium line-clamp-1">{helper}</p>
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/90 ring-1 ring-neutral-200 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-md">
-            {icon}
+      {isLoading && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/10"
+        >
+          <div 
+            className="flex items-center gap-3 rounded-full px-5 py-2.5 text-sm border shadow-lg"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder, color: textPrimary }}
+          >
+            <span className="h-3 w-3 rounded-full animate-ping" style={{ backgroundColor: primaryColor }} />
+            <span>Updating metrics...</span>
           </div>
         </div>
-        <div className="absolute bottom-2 right-2 opacity-0 transform translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
-          <ArrowUpRight className="h-3 w-3 text-neutral-400" />
+      )}
+
+      {/* Dashboard Body */}
+      <div className="space-y-6">
+        
+        {/* Top 4 Summary Cards */}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          
+          {/* Card 1: Active Subscribers */}
+          <div 
+            className="p-5 border rounded-2xl shadow-xs transition-all duration-300"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider" style={{ color: textMuted }}>
+              <span>Active Subscribers</span>
+              <UserCircle className="w-4 h-4" style={{ color: primaryColor }} />
+            </div>
+            <p className="text-3xl font-extrabold mt-2" style={{ color: textPrimary }}>
+              {dashboardData?.activeSubscribers || 0}
+            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-bold text-emerald-600">
+                ↑ +12% last month
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Active Vendors */}
+          <div 
+            className="p-5 border rounded-2xl shadow-xs transition-all duration-300"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider" style={{ color: textMuted }}>
+              <span>Active Vendors</span>
+              <Store className="w-4 h-4" style={{ color: primaryColor }} />
+            </div>
+            <p className="text-3xl font-extrabold mt-2" style={{ color: textPrimary }}>
+              {dashboardData?.restaurants?.total || 0}
+            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-medium" style={{ color: textMuted }}>
+                Kitchen Partners: {dashboardData?.activeKitchenPartners || 0}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: Active Drivers */}
+          <div 
+            className="p-5 border rounded-2xl shadow-xs transition-all duration-300"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider" style={{ color: textMuted }}>
+              <span>Active Drivers</span>
+              <Truck className="w-4 h-4" style={{ color: primaryColor }} />
+            </div>
+            <p className="text-3xl font-extrabold mt-2" style={{ color: textPrimary }}>
+              {dashboardData?.deliveryBoys?.total || 0}
+            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-medium" style={{ color: textMuted }}>
+                Online: {dashboardData?.onlineDrivers || 0}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 4: Revenue MTD */}
+          <div 
+            className="p-5 border rounded-2xl shadow-xs transition-all duration-300"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider" style={{ color: textMuted }}>
+              <span>Revenue MTD</span>
+              <DollarSign className="w-4 h-4" style={{ color: primaryColor }} />
+            </div>
+            <p className="text-3xl font-extrabold mt-2" style={{ color: textPrimary }}>
+              {dashboardData?.revenueMtd || 0} <span className="text-base font-semibold">PLN</span>
+            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-medium" style={{ color: textMuted }}>
+                +12% vs last month
+              </span>
+            </div>
+          </div>
+          
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Two Column Layout (Operations & Chart) */}
+        <div className="grid gap-6 md:grid-cols-5">
+          
+          {/* Today's Operations */}
+          <div 
+            className="p-6 border rounded-2xl shadow-xs transition-all duration-300 md:col-span-2"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <h3 className="text-xs uppercase tracking-widest font-extrabold mb-6" style={{ color: textMuted }}>
+              Today's Operations
+            </h3>
+            <div className="space-y-4 font-semibold text-sm">
+              <div className="flex justify-between items-center py-2.5 border-b" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Orders placed</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.ordersPlaced || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 border-b" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Delivered</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.delivered || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 border-b" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Pending</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.pending || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 border-b" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Failed</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.failed || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 border-b" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Drivers online</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.driversOnline || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2" style={{ borderColor: cardBorder }}>
+                <span style={{ color: textMuted }}>Vendors active</span>
+                <span className="text-base" style={{ color: textPrimary }}>
+                  {dashboardData?.todayOperations?.vendorsActive || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 7-Day Revenue (PLN) */}
+          <div 
+            className="p-6 border rounded-2xl shadow-xs transition-all duration-300 md:col-span-3 flex flex-col"
+            style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xs uppercase tracking-widest font-extrabold" style={{ color: textMuted }}>
+                7-Day Revenue (PLN)
+              </h3>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: textMuted }}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                <span>Gross Revenue</span>
+              </div>
+            </div>
+            <div className="flex-1 h-64 min-h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dashboardData?.weeklyRevenue || []} key={themeUpdated}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={cardBorder} vertical={false} />
+                  <XAxis dataKey="day" stroke={textMuted} fontSize={10} tickLine={false} />
+                  <YAxis stroke={textMuted} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <Tooltip
+                    contentStyle={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12 }}
+                    labelStyle={{ color: textPrimary }}
+                    itemStyle={{ color: textPrimary }}
+                    formatter={(value) => [`${value} PLN`, 'Revenue']}
+                  />
+                  <Bar dataKey="revenue" fill={primaryColor} radius={[4, 4, 0, 0]} maxBarSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Bottom Alerts Card */}
+        <div 
+          className="p-6 border rounded-2xl shadow-xs transition-all duration-300"
+          style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xs uppercase tracking-widest font-extrabold" style={{ color: textMuted }}>
+              Alerts & Notifications
+            </h3>
+            <button className="text-[11px] font-bold hover:underline" style={{ color: primaryColor }}>
+              Clear All
+            </button>
+          </div>
+          <div className="divide-y" style={{ borderColor: cardBorder }}>
+            {(dashboardData?.structuredAlerts || []).map((alert) => {
+              const getIcon = (tag) => {
+                switch(tag) {
+                  case 'Marketing': return <ShoppingBag className="w-4 h-4 text-blue-500" />;
+                  case 'City Mgr': return <ShieldCheck className="w-4 h-4 text-emerald-500" />;
+                  case 'Accountant': return <CreditCard className="w-4 h-4 text-amber-500" />;
+                  case 'CS': return <AlertTriangle className="w-4 h-4 text-red-500" />;
+                  default: return <Activity className="w-4 h-4 text-gray-500" />;
+                }
+              };
+              return (
+                <div key={alert.id} className="py-3.5 flex justify-between items-center gap-4 text-xs font-semibold">
+                  <div className="flex items-center gap-3">
+                    {getIcon(alert.tag)}
+                    <span style={{ color: textPrimary }}>{alert.text}</span>
+                  </div>
+                  <span 
+                    className="px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider shrink-0"
+                    style={{ 
+                      backgroundColor: alert.tag === 'Marketing' ? 'rgba(59, 130, 246, 0.08)' :
+                                       alert.tag === 'City Mgr' ? 'rgba(16, 185, 129, 0.08)' :
+                                       alert.tag === 'Accountant' ? 'rgba(245, 158, 11, 0.08)' :
+                                       alert.tag === 'CS' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                      color: alert.tag === 'Marketing' ? '#3b82f6' :
+                             alert.tag === 'City Mgr' ? '#10b981' :
+                             alert.tag === 'Accountant' ? '#f59e0b' :
+                             alert.tag === 'CS' ? '#ef4444' : '#6b7280'
+                    }}
+                  >
+                    {alert.tag.replace(' ', '')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
   )
 }
 
