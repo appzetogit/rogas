@@ -21,6 +21,7 @@ import { PocketBalanceV2 } from './pages/pocket/PocketBalanceV2';
 import { CashLimitInfoV2 } from './pages/pocket/CashLimitInfoV2';
 import { ProfileBankV2 } from './pages/profile/ProfileBankV2';
 import { ProfileDocsV2 } from './pages/profile/ProfileDocsV2';
+import { ProfileWithdrawalsV2 } from './pages/profile/ProfileWithdrawalsV2';
 import { SupportTicketsV2 } from './pages/help/SupportTicketsV2';
 import { CreateSupportTicketV2 } from './pages/help/CreateSupportTicketV2';
 import { ViewSupportTicketV2 } from './pages/help/ViewSupportTicketV2';
@@ -62,6 +63,7 @@ const DeliveryV2Router = () => {
         <Route path="/notifications" element={<ProtectedRoute><NotificationsV2 /></ProtectedRoute>} />
         <Route path="/profile/details" element={<ProtectedRoute><ProfileDetailsV2 /></ProtectedRoute>} />
         <Route path="/profile/bank" element={<ProtectedRoute><ProfileBankV2 /></ProtectedRoute>} />
+        <Route path="/profile/withdrawals" element={<ProtectedRoute><ProfileWithdrawalsV2 /></ProtectedRoute>} />
         <Route path="/profile/documents" element={<ProtectedRoute><ProfileDocsV2 /></ProtectedRoute>} />
         <Route path="/service" element={<ProtectedRoute><DeliveryServicePage /></ProtectedRoute>} />
         <Route path="/rides" element={<ProtectedRoute><DeliveryRidesPage /></ProtectedRoute>} />

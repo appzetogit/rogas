@@ -7,111 +7,308 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 /**
  * ProfileBankV2 - Restored Old UI for Bank Details.
  */
+
+// Field-wise config: maxLength, allowed-characters filter (applied while typing),
+// and a stricter format regex (checked on save / blur).
+const FIELD_CONFIG = {
+   accountHolderName: {
+      maxLength: 50,
+      typingPattern: /[^a-zA-Z\s.'-]/g, // strips disallowed chars as user types
+      formatRegex: /^[a-zA-Z\s.'-]{3,100}$/,
+      errorMsg: "Enter a valid name (letters only, min 3 characters)"
+   },
+   accountNumber: {
+      maxLength: 18,
+      typingPattern: /[^0-9]/g,
+      formatRegex: /^[0-9]{9,18}$/,
+      errorMsg: "Account number must be 9-18 digits"
+   },
+   ifscCode: {
+      maxLength: 11,
+      typingPattern: /[^a-zA-Z0-9]/g,
+      formatRegex: /^[A-Z]{4}0[A-Z0-9]{6}$/,
+      errorMsg: "Enter a valid IFSC code (e.g. SBIN0001234)",
+      transform: (v) => v.toUpperCase()
+   },
+   bankName: {
+      maxLength: 50,
+      typingPattern: /[^a-zA-Z\s.&-]/g,
+      formatRegex: /^[a-zA-Z\s.&-]{2,100}$/,
+      errorMsg: "Enter a valid bank name"
+   },
+   panNumber: {
+      maxLength: 10,
+      typingPattern: /[^a-zA-Z0-9]/g,
+      formatRegex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+      errorMsg: "Enter a valid PAN (e.g. ABCDE1234F)",
+      transform: (v) => v.toUpperCase(),
+      optional: true
+   },
+   upiId: {
+      maxLength: 50,
+      typingPattern: /[^a-zA-Z0-9.\-_@]/g,
+      formatRegex: /^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z][a-zA-Z0-9.-]{1,}$/,
+      errorMsg: "Enter a valid UPI ID (e.g. name@bank)",
+      optional: true
+   }
+};
+
+const FIELDS = [
+   { label: "Account Holder", key: "accountHolderName" },
+   { label: "Account Number", key: "accountNumber" },
+   { label: "IFSC Code", key: "ifscCode" },
+   { label: "Bank Name", key: "bankName" },
+   { label: "PAN Number", key: "panNumber" },
+   { label: "UPI ID", key: "upiId" }
+];
+
 export const ProfileBankV2 = () => {
-  const goBack = useDeliveryBackNavigation();
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState({
-    accountHolderName: "",
-    accountNumber: "",
-    ifscCode: "",
-    bankName: "",
-    panNumber: ""
-  });
-  const [isSaving, setIsSaving] = useState(false);
+   const goBack = useDeliveryBackNavigation();
+   const [loading, setLoading] = useState(true);
+   const [isEditing, setIsEditing] = useState(false);
+   const [form, setForm] = useState({
+      accountHolderName: "",
+      accountNumber: "",
+      ifscCode: "",
+      bankName: "",
+      panNumber: "",
+      upiId: ""
+   });
+   const [errors, setErrors] = useState({});
+   const [qrFile, setQrFile] = useState(null);
+   const [qrPreview, setQrPreview] = useState("");
+   const [qrError, setQrError] = useState("");
+   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+   const handleFileChange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+      const maxSizeMB = 5;
+
+      if (!allowedTypes.includes(file.type)) {
+         setQrError("Only PNG, JPG or WEBP images are allowed");
+         return;
+      }
+      if (file.size > maxSizeMB * 1024 * 1024) {
+         setQrError(`Image size must be under ${maxSizeMB}MB`);
+         return;
+      }
+
+      setQrError("");
+      setQrFile(file);
+      setQrPreview(URL.createObjectURL(file));
+   };
+
+   // Validate a single field against its format regex. Empty value on an
+   // optional field is treated as valid (nothing to check).
+   const validateField = (key, value) => {
+      const config = FIELD_CONFIG[key];
+      if (!config) return "";
+      if (!value) {
+         return config.optional ? "" : "This field is required";
+      }
+      if (!config.formatRegex.test(value)) {
+         return config.errorMsg;
+      }
+      return "";
+   };
+
+   const handleFieldChange = (key, rawValue) => {
+      const config = FIELD_CONFIG[key];
+      let value = rawValue;
+
+      if (config?.typingPattern) {
+         value = value.replace(config.typingPattern, "");
+      }
+      if (config?.maxLength) {
+         value = value.slice(0, config.maxLength);
+      }
+      if (config?.transform) {
+         value = config.transform(value);
+      }
+
+      setForm((prev) => ({ ...prev, [key]: value }));
+      setErrors((prev) => ({ ...prev, [key]: validateField(key, value) }));
+   };
+
+   const handleFieldBlur = (key) => {
+      setErrors((prev) => ({ ...prev, [key]: validateField(key, form[key]) }));
+   };
+
+   useEffect(() => {
+      const fetchProfile = async () => {
+         try {
+            const response = await deliveryAPI.getProfile();
+            if (response?.data?.success) {
+               const profile = response.data.data.profile;
+               setForm({
+                  accountHolderName: profile?.documents?.bankDetails?.accountHolderName || profile?.bankAccountHolderName || "",
+                  accountNumber: profile?.documents?.bankDetails?.accountNumber || profile?.bankAccountNumber || "",
+                  ifscCode: profile?.documents?.bankDetails?.ifscCode || profile?.bankIfscCode || "",
+                  bankName: profile?.documents?.bankDetails?.bankName || profile?.bankName || "",
+                  panNumber: profile?.documents?.pan?.number || profile?.panNumber || "",
+                  upiId: profile?.documents?.bankDetails?.upiId || profile?.upiId || ""
+               });
+               setQrPreview(profile?.documents?.bankDetails?.upiQrCode || profile?.upiQrCode || "");
+            }
+         } catch (e) { toast.error("Failed to load details"); }
+         finally { setLoading(false); }
+      };
+      fetchProfile();
+   }, []);
+
+   const validateAll = () => {
+      const newErrors = {};
+      let firstErrorKey = null;
+
+      FIELDS.forEach(({ key }) => {
+         const msg = validateField(key, form[key]);
+         if (msg) {
+            newErrors[key] = msg;
+            if (!firstErrorKey) firstErrorKey = key;
+         }
+      });
+
+      setErrors(newErrors);
+      return { isValid: !firstErrorKey, firstErrorKey };
+   };
+
+   const handleSave = async () => {
+      const { isValid, firstErrorKey } = validateAll();
+      if (!isValid) {
+         toast.error(FIELD_CONFIG[firstErrorKey]?.errorMsg || "Please fix the errors before saving");
+         return;
+      }
+      if (qrError) {
+         toast.error(qrError);
+         return;
+      }
+
+      setIsSaving(true);
       try {
-        const response = await deliveryAPI.getProfile();
-        if (response?.data?.success) {
-           const profile = response.data.data.profile;
-           setForm({
-              accountHolderName: profile?.documents?.bankDetails?.accountHolderName || "",
-              accountNumber: profile?.documents?.bankDetails?.accountNumber || "",
-              ifscCode: profile?.documents?.bankDetails?.ifscCode || "",
-              bankName: profile?.documents?.bankDetails?.bankName || "",
-              panNumber: profile?.documents?.pan?.number || ""
-           });
-        }
-      } catch (e) { toast.error("Failed to load details"); }
-      finally { setLoading(false); }
-    };
-    fetchProfile();
-  }, []);
+         const formData = new FormData();
+         formData.append("documents[bankDetails][accountHolderName]", form.accountHolderName);
+         formData.append("documents[bankDetails][accountNumber]", form.accountNumber);
+         formData.append("documents[bankDetails][ifscCode]", form.ifscCode);
+         formData.append("documents[bankDetails][bankName]", form.bankName);
+         formData.append("documents[bankDetails][upiId]", form.upiId || "");
+         formData.append("documents[pan][number]", form.panNumber || "");
 
-  const handleSave = async () => {
-     if (!form.accountNumber || !form.ifscCode) return toast.error("Missing mandatory fields");
-     setIsSaving(true);
-     try {
-        const payload = {
-           documents: {
-              bankDetails: {
-                 accountHolderName: form.accountHolderName,
-                 accountNumber: form.accountNumber,
-                 ifscCode: form.ifscCode,
-                 bankName: form.bankName
-              },
-              pan: { number: form.panNumber }
-           }
-        };
-        const response = await deliveryAPI.updateProfileDetails(payload);
-        if (response?.data?.success) {
-           toast.success("Bank details updated");
-           setIsEditing(false);
-        }
-     } catch (e) { toast.error("Update failed"); }
-     finally { setIsSaving(false); }
-  };
+         if (qrFile) {
+            formData.append("upiQrCode", qrFile);
+         }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
+         const response = await deliveryAPI.updateBankDetailsMultipart(formData);
+         if (response?.data?.success) {
+            toast.success("Bank details updated successfully");
+            setIsEditing(false);
+         }
+      } catch (e) {
+         console.error("Update failed:", e);
+         toast.error("Update failed");
+      }
+      finally { setIsSaving(false); }
+   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-poppins">
-       <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
-          <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
-          <h1 className="text-xl font-black">Bank Details</h1>
-          {!isEditing && (
-             <button onClick={() => setIsEditing(true)} className="ml-auto p-2 bg-orange-50 text-orange-600 rounded-xl"><Edit2 className="w-4 h-4" /></button>
-          )}
-       </div>
+   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[#00604c]" /></div>;
 
-       <div className="pt-24 px-4 pb-10 space-y-6">
-          <div className="space-y-4">
-             {Object.entries({
-                "Account Holder": "accountHolderName",
-                "Account Number": "accountNumber",
-                "IFSC Code": "ifscCode",
-                "Bank Name": "bankName",
-                "PAN Number": "panNumber"
-             }).map(([label, key]) => (
-                <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{label}</label>
-                   {isEditing ? (
-                      <input 
-                         type="text" 
-                         value={form[key]}
-                         onChange={(e) => setForm({...form, [key]: e.target.value})}
-                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-950 focus:ring-2 focus:ring-orange-500/20"
-                      />
-                   ) : (
-                      <p className="text-sm font-bold text-gray-950">{form[key] || "Not provided"}</p>
-                   )}
-                </div>
-             ))}
-          </div>
+   return (
+      <div className="min-h-screen bg-gray-50 font-poppins">
+         <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
+            <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
+            <h1 className="text-xl font-black">Bank Details</h1>
+            {!isEditing && (
+               <button onClick={() => setIsEditing(true)} className="ml-auto p-2 bg-[#ebefeb] text-[#00604c] rounded-xl"><Edit2 className="w-4 h-4" /></button>
+            )}
+         </div>
 
-          {isEditing && (
-             <button 
-               onClick={handleSave}
-               disabled={isSaving}
-               className="w-full bg-black text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
-             >
-                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                Save Changes
-             </button>
-          )}
-       </div>
-    </div>
-  );
+         <div className="pt-24 px-4 pb-10 space-y-6">
+            <div className="space-y-4">
+               {FIELDS.map(({ label, key }) => {
+                  const config = FIELD_CONFIG[key];
+                  const errorMsg = errors[key];
+                  return (
+                     <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              {label}{!config?.optional && <span className="text-red-500"> *</span>}
+                           </label>
+                           {isEditing && config?.maxLength && (
+                              <span className="text-[10px] font-semibold text-gray-300">
+                                 {(form[key] || "").length}/{config.maxLength}
+                              </span>
+                           )}
+                        </div>
+                        {isEditing ? (
+                           <>
+                              <input
+                                 type="text"
+                                 value={form[key]}
+                                 maxLength={config?.maxLength}
+                                 onChange={(e) => handleFieldChange(key, e.target.value)}
+                                 onBlur={() => handleFieldBlur(key)}
+                                 className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm font-bold text-gray-950 focus:ring-2 ${errorMsg
+                                    ? "border-red-400 focus:ring-red-500/20"
+                                    : "border-gray-100 focus:ring-orange-500/20"
+                                    }`}
+                              />
+                              {errorMsg && (
+                                 <p className="text-xs font-semibold text-red-500 mt-1.5">{errorMsg}</p>
+                              )}
+                           </>
+                        ) : (
+                           <p className="text-sm font-bold text-gray-950">{form[key] || "Not provided"}</p>
+                        )}
+                     </div>
+                  );
+               })}
+
+               {/* QR Code */}
+               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">UPI QR Code</label>
+                  {isEditing ? (
+                     <div className="space-y-3">
+                        <input
+                           type="file"
+                           accept="image/png, image/jpeg, image/webp"
+                           onChange={handleFileChange}
+                           className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#ebefeb] file:text-[#00604c] hover:file:bg-slate-100"
+                        />
+                        <p className="text-[10px] font-semibold text-gray-400">PNG, JPG or WEBP, max 5MB</p>
+                        {qrError && <p className="text-xs font-semibold text-red-500">{qrError}</p>}
+                        {qrPreview && (
+                           <div className="relative w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
+                              <img src={qrPreview} alt="QR Code Preview" className="w-full h-full object-cover" />
+                           </div>
+                        )}
+                     </div>
+                  ) : (
+                     <div>
+                        {qrPreview ? (
+                           <div className="w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
+                              <img src={qrPreview} alt="QR Code" className="w-full h-full object-cover" />
+                           </div>
+                        ) : (
+                           <p className="text-sm font-bold text-gray-950">Not provided</p>
+                        )}
+                     </div>
+                  )}
+               </div>
+            </div>
+
+            {isEditing && (
+               <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full bg-black text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
+               >
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                  Save Changes
+               </button>
+            )}
+         </div>
+      </div>
+   );
 };

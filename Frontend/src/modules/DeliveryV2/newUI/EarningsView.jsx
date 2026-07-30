@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
 import { Info, Gift, CalendarDays, ShieldCheck, Coins } from "lucide-react";
 import { deliveryAPI } from "@food/api";
+import { toast } from "sonner";
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+};
+
 const EarningsView = ({ stats }) => {
   const [activeTab, setActiveTab] = useState("today");
   const getTotalsByTab = () => {
@@ -46,21 +61,65 @@ const EarningsView = ({ stats }) => {
   const data = getTotalsByTab();
 
   const [walletBalance, setWalletBalance] = useState(0);
+  const [walletData, setWalletData] = useState(null);
   
+  const fetchWalletBalance = async () => {
+    try {
+      const walletResponse = await deliveryAPI.getWallet();
+      const resData = walletResponse?.data;
+      const wallet = (resData?.success && resData?.data?.wallet) || resData?.wallet || resData?.data || resData;
+      const balance = Number(wallet?.totalBalance || wallet?.balance || wallet?.pocketBalance || 0);
+      setWalletBalance(balance);
+      setWalletData(wallet);
+    } catch (error) {
+      console.error("Error fetching wallet balance:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchWalletBalance = async () => {
-      try {
-        const walletResponse = await deliveryAPI.getWallet();
-        const resData = walletResponse?.data;
-        const wallet = (resData?.success && resData?.data?.wallet) || resData?.wallet || resData?.data || resData;
-        const balance = Number(wallet?.totalBalance || wallet?.balance || wallet?.pocketBalance || 0);
-        setWalletBalance(balance);
-      } catch (error) {
-        console.error("Error fetching wallet balance:", error);
-      }
-    };
     fetchWalletBalance();
   }, []);
+
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+
+  const handleWithdrawSubmit = async () => {
+    const amount = Number(withdrawAmount);
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid amount to withdraw");
+      return;
+    }
+
+    const pocketBalance = walletData?.pocketBalance || 0;
+    const minLimit = walletData?.deliveryWithdrawalLimit || 100;
+
+    if (amount < minLimit) {
+      toast.error(`Minimum withdrawal amount is ${minLimit} PLN`);
+      return;
+    }
+
+    if (amount > pocketBalance) {
+      toast.error(`Insufficient balance. Max withdrawable: ${pocketBalance.toFixed(2)} PLN`);
+      return;
+    }
+
+    try {
+      setWithdrawLoading(true);
+      const res = await deliveryAPI.createWithdrawalRequest({ amount });
+      if (res.data?.success || res.status === 201 || res.status === 200) {
+        toast.success(res.data?.message || "Withdrawal request submitted successfully!");
+        setWithdrawAmount("");
+        await fetchWalletBalance();
+      } else {
+        toast.error(res.data?.message || "Failed to submit withdrawal request");
+      }
+    } catch (error) {
+      console.error("Error creating withdrawal request:", error);
+      toast.error(error?.response?.data?.message || "Error submitting request. Please try again.");
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
 
   const [tipsData, setTipsData] = useState({
     totalTips: 0,
@@ -159,6 +218,50 @@ const EarningsView = ({ stats }) => {
             <span className="font-bold text-gray-900">{data.topUp.toFixed(2)} PLN</span>
           </div>
         </div>
+      </section>
+
+      {/* Withdrawal Request Section */}
+      <section className="bg-white border border-[#e0e3e0]/80 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h4 className="font-extrabold text-sm text-[#181d1b]">AVAILABLE TO WITHDRAW</h4>
+            <p className="text-[11px] text-[#3e4945] font-semibold mt-0.5">
+              Pocket Balance: <span 
+                className="font-bold text-[#00604c] cursor-pointer hover:underline"
+                onClick={() => setWithdrawAmount(String(walletData?.pocketBalance || 0))}
+                title="Click to fill full balance"
+              >
+                {walletData?.pocketBalance?.toFixed(2) || "0.00"} PLN
+              </span>
+            </p>
+          </div>
+          <span className="text-[10px] font-bold text-[#3e4945] bg-[#ebefeb] px-2.5 py-1 rounded-lg">
+            Min Limit: {walletData?.deliveryWithdrawalLimit || 100} PLN
+          </span>
+        </div>
+
+        {withdrawLoading ? (
+          <div className="text-center py-2 text-xs font-bold text-[#00604c] animate-pulse">Processing withdrawal request...</div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="number"
+                placeholder="Enter amount to withdraw"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="flex-1 px-3 py-2.5 text-xs border border-[#e0e3e0] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#00604c] font-semibold h-11"
+                min="1"
+              />
+              <button
+                onClick={handleWithdrawSubmit}
+                className="bg-[#00604c] text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-[#1f7a63] cursor-pointer shadow-sm active:scale-95 transition-transform shrink-0 h-11"
+              >
+                REQUEST WITHDRAWAL
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {

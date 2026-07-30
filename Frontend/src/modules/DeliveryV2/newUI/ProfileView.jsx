@@ -38,6 +38,21 @@ const ProfileView = ({
     history: []
   });
   const [ratingsLoading, setRatingsLoading] = useState(true);
+  const [walletData, setWalletData] = useState(null);
+
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const response = await deliveryAPI.getWallet();
+        const resData = response?.data;
+        const wallet = (resData?.success && resData?.data?.wallet) || resData?.wallet || resData?.data || resData;
+        setWalletData(wallet);
+      } catch (error) {
+        console.error("Error fetching wallet inside profile:", error);
+      }
+    };
+    fetchWallet();
+  }, []);
 
   useEffect(() => {
     const fetchRatings = async () => {
@@ -490,18 +505,18 @@ const ProfileView = ({
         </div>
       </section>
 
-      {
-    /* Earnings Settings Settings */
-  }
       <section className="space-y-2">
         <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">BANKING DETAILS</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
-          <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group">
+          <div 
+            onClick={() => navigate("/food/delivery/profile/withdrawals")}
+            className="flex items-center justify-between p-3.5 hover:bg-gray-50 cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
               <span className="text-sm">🗓️</span>
               <div>
-                <p className="text-xs font-bold text-gray-900">Payout Schedule</p>
-                <p className="text-[11px] text-[#5d5f5b]">Weekly (Tuesday morning)</p>
+                <p className="text-xs font-bold text-gray-900">Withdrawal Request</p>
+                <p className="text-[11px] text-[#5d5f5b]">View your withdrawal history & status</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
@@ -523,9 +538,6 @@ const ProfileView = ({
         </div>
       </section>
 
-      {
-        /* General Settings */
-      }
       <section className="space-y-2">
         <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">SETTINGS</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">

@@ -303,7 +303,10 @@ export default function DeliveryWithdrawal() {
 
         {/* View details dialog */}
         <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-md bg-white p-0">
+          <DialogContent 
+            className="max-w-md bg-white p-0 max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl"
+            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '92%', maxWidth: '448px' }}
+          >
             <DialogHeader className="px-6 pt-6 pb-4">
               <DialogTitle>Withdrawal request details</DialogTitle>
             </DialogHeader>
@@ -410,7 +413,10 @@ export default function DeliveryWithdrawal() {
 
         {/* Reject modal */}
         <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-          <DialogContent className="max-w-md bg-white p-0">
+          <DialogContent 
+            className="max-w-md bg-white p-0 max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl"
+            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '92%', maxWidth: '448px' }}
+          >
             <DialogHeader className="px-6 pt-6 pb-4">
               <DialogTitle>Reject withdrawal request</DialogTitle>
             </DialogHeader>

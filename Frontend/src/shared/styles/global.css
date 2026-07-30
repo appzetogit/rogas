@@ -406,6 +406,15 @@
   background-color: rgba(0, 0, 0, 0.6) !important;
 }
 
+[data-slot="dialog-content"] {
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+}
+
 /* Sidebar Text & Elements Color Preservation to White/Light */
 .admin-theme-container .admin-sidebar-container h2,
 .admin-theme-container .admin-sidebar-container p,

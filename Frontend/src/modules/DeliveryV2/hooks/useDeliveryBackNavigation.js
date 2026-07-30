@@ -33,6 +33,7 @@ const resolveDeliveryBackPath = ({ pathname, state }) => {
   if (
     normalizedPath === "/profile/details" ||
     normalizedPath === "/profile/bank" ||
+    normalizedPath === "/profile/withdrawals" ||
     normalizedPath === "/profile/documents" ||
     normalizedPath === "/profile/terms" ||
     normalizedPath === "/profile/privacy" ||
