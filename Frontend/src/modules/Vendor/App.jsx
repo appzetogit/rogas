@@ -108,7 +108,7 @@ export default function App() {
               ...userObj,
               city: userObj.location?.city || userObj.city || 'indore',
               name: userObj.restaurantName || userObj.name || 'Vendor Partner',
-              partner: userObj.kitchenPartnerId?.companyName || 'FreshKitchen Partners Sp. z o.o.',
+              partner: userObj.kitchenPartnerId?.companyName || userObj.kitchenPartnerName || 'Independent Vendor',
               rating: typeof userObj.rating === 'number' ? userObj.rating : 4.9,
               isRegistered: true,
               avatarInitials: (userObj.restaurantName || userObj.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -252,7 +252,7 @@ export default function App() {
       ...userData,
       city: userData.location?.city || userData.city || 'indore',
       name: userData.restaurantName || userData.name || 'Vendor Partner',
-      partner: 'FreshKitchen Partners Sp. z o.o.',
+      partner: userData.kitchenPartnerId?.companyName || userData.kitchenPartnerName || 'Independent Vendor',
       isRegistered: true,
       avatarInitials: (userData.restaurantName || userData.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     });
@@ -775,8 +775,12 @@ export default function App() {
                   Rating: ⭐️ {profile.rating || '4.9'}
                 </span>
               </div>
-              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20">
-                {profile.avatarInitials || 'VP'}
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 overflow-hidden">
+                {profile?.profileImage?.url || typeof profile?.profileImage === 'string' ? (
+                  <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  profile.avatarInitials || 'VP'
+                )}
               </div>
             </div>
           </header>

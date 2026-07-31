@@ -116,9 +116,10 @@ export const INITIAL_PROFILE = {
   type: 'Home Cook',
   bio: 'Passionate local chef delivering authentic home-style Polish classics crafted with local seasonal ingredients.',
   phone: '+48 789 123 456',
+  email: 'maria.k@example.com',
   city: 'Warsaw — Mokotow',
   licenseFile: 'licence_food_pl_2026.pdf',
-  partner: 'FreshKitchen Partners Sp. z o.o.',
+  partner: 'Independent Vendor',
   rating: 4.9,
   isRegistered: true,
   avatarInitials: 'MK'

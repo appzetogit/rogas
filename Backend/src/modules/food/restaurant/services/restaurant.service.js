@@ -200,7 +200,8 @@ const toRestaurantProfile = (doc) => {
             name: doc.assignedDeliveryPartnerId.name || '',
             phone: doc.assignedDeliveryPartnerId.phone || '',
             profilePhoto: doc.assignedDeliveryPartnerId.profilePhoto || ''
-        } : null
+        } : null,
+        kitchenPartnerId: doc.kitchenPartnerId || null
     };
 };
 
@@ -499,6 +500,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
     if (!restaurantId) return null;
     const doc = await FoodRestaurant.findById(restaurantId)
         .populate('assignedDeliveryPartnerId', 'name profilePhoto phone')
+        .populate('kitchenPartnerId', 'companyName')
         .select(
             [
                 'restaurantName',
@@ -544,7 +546,8 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'pendingLocation',
                 'zoneChangeStatus',
                 'zoneChangeRejectionReason',
-                'assignedDeliveryPartnerId'
+                'assignedDeliveryPartnerId',
+                'kitchenPartnerId'
             ].join(' ')
         )
         .lean();
@@ -1594,7 +1597,7 @@ export async function getVendorSubscribers(vendorId, options = {}) {
             customerEmail: user.email || 'N/A',
             planName: mealPlan.name || 'Custom Plan',
             planType: doc.duration,
-            mealTypes: (doc.meals || []).map(m => m.type).join(', '),
+            mealTypes: Array.isArray(doc.deliverySlots) && doc.deliverySlots.length > 0 ? doc.deliverySlots.join(', ') : (doc.deliverySlot || ''),
             deliveryDays: doc.deliveryDays === 'mon_fri' ? 'Mon-Fri' : (doc.deliveryDays === 'full_week' ? 'Full Week' : (doc.deliveryDays || 'N/A')),
             startDate: doc.startDate,
             endDate: doc.endDate,

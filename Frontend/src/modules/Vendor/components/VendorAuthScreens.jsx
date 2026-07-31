@@ -458,7 +458,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       area: addressDetails.area,
       state: addressDetails.state,
       pincode: addressDetails.pincode,
-      kitchenPartnerId: type === 'Home Cook' ? selectedKitchenPartnerId : undefined
+      kitchenPartnerId: type === 'Home Cook' ? selectedKitchenPartnerId : undefined,
+      kitchenPartnerName: type === 'Home Cook' ? kitchenPartnerSearch : undefined
     });
   };
 

@@ -183,8 +183,8 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   };
 
   return (
-    <div className="space-y-5 animate-fadeIn text-left pt-14 md:pt-0">
-      <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+    <div className="space-y-5 animate-fadeIn text-left pt-2">
+      <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
         <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
           <ArrowLeft />
         </button>
@@ -351,6 +351,170 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   );
 }
 
+
+function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
+  const [name, setName] = useState(profile?.name || profile?.restaurantName || '');
+  const [phone, setPhone] = useState(profile?.primaryContactNumber || profile?.ownerPhone || '');
+  
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(profile?.profileImage?.url || profile?.profileImage || '');
+
+  const [coverImageFile, setCoverImageFile] = useState(null);
+  const [coverImagePreview, setCoverImagePreview] = useState(profile?.coverImages?.[0]?.url || profile?.coverImages?.[0] || '');
+
+  const [loading, setLoading] = useState(false);
+
+  const handleImageChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (type === 'profile') {
+        setProfileImageFile(file);
+        setProfileImagePreview(URL.createObjectURL(file));
+      } else {
+        setCoverImageFile(file);
+        setCoverImagePreview(URL.createObjectURL(file));
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      triggerToast('Kitchen Name is required');
+      return;
+    }
+    if (!phone.trim()) {
+      triggerToast('Contact Number is required');
+      return;
+    }
+    try {
+      setLoading(true);
+      
+      let newProfileImageUrl = undefined;
+      let newCoverImageUrl = undefined;
+
+      if (profileImageFile) {
+        const pRes = await uploadAPI.uploadMedia(profileImageFile, { folder: 'food/restaurants/profile' });
+        newProfileImageUrl = pRes?.data?.data?.url || pRes?.data?.url || pRes?.url;
+      }
+      
+      if (coverImageFile) {
+        const cRes = await uploadAPI.uploadMedia(coverImageFile, { folder: 'food/restaurants/cover' });
+        newCoverImageUrl = cRes?.data?.data?.url || cRes?.data?.url || cRes?.url;
+      }
+
+      const updateData = { restaurantName: name, primaryContactNumber: phone };
+      if (newProfileImageUrl) updateData.profileImage = newProfileImageUrl;
+      if (newCoverImageUrl) updateData.coverImages = [newCoverImageUrl];
+
+      const response = await restaurantAPI.updateProfile(updateData);
+      
+      if (response?.data?.data?.restaurant) {
+        onSave(response.data.data.restaurant);
+      } else {
+        onSave(updateData);
+      }
+      
+      triggerToast('Kitchen Details updated successfully!');
+      onBack();
+    } catch (err) {
+      triggerToast('Failed to update kitchen info');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5 animate-fadeIn text-left pt-2">
+      <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
+        <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
+          <ArrowLeft />
+        </button>
+        <h2 className="text-[16px] font-semibold">Kitchen Name & Contact</h2>
+        <div className="w-6"></div>
+      </div>
+
+      <div className="pt-6 space-y-5">
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Kitchen Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter kitchen name"
+              className="w-full h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 text-[14px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Contact Number</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Enter contact number"
+              className="w-full h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 text-[14px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            />
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-outline-variant/20">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Profile Image</label>
+              <div className="flex items-center gap-4">
+                {profileImagePreview ? (
+                  <img src={profileImagePreview} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-outline-variant/30" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center text-outline">
+                    <ImagePlus size={24} />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageChange(e, 'profile')}
+                  className="text-[12px] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Banner / Cover Image</label>
+              <div className="flex flex-col gap-3">
+                {coverImagePreview ? (
+                  <img src={coverImagePreview} alt="Cover" className="w-full h-48 rounded-xl object-cover border border-outline-variant/30" />
+                ) : (
+                  <div className="w-full h-48 rounded-xl bg-surface-container-highest flex items-center justify-center text-outline">
+                    <ImagePlus size={32} />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageChange(e, 'cover')}
+                  className="text-[12px] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="w-full h-12 bg-primary text-on-primary rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center shadow-md disabled:opacity-70"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+            </span>
+          ) : (
+            'Save Changes'
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ProfileSettings({
   profile,
@@ -778,11 +942,15 @@ export default function ProfileSettings({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Profile overview card logo stats */}
             <section className="flex flex-col items-center justify-center bg-white p-5 rounded-2xl shadow-xs border border-outline-variant/15 text-center min-h-[160px]">
-              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-[20px] mb-3 shadow">
-                {profile.avatarInitials}
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-[20px] mb-3 shadow overflow-hidden">
+                {profile?.profileImage?.url || typeof profile?.profileImage === 'string' ? (
+                  <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  profile.avatarInitials
+                )}
               </div>
               <h2 className="text-[16px] font-bold text-on-surface">{profile.name}</h2>
-              <p className="text-on-surface-variant text-[12px]">{profile.type} · Mokotow · ★ {profile.rating}</p>
+              <p className="text-on-surface-variant text-[12px]">{profile.type} · {profile.primaryContactNumber || profile.ownerPhone || 'No Number'} · ★ {profile.rating}</p>
               <div className="inline-flex items-center px-3.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[11px] font-bold mt-3 animate-pulse">
                 Approved ✓
               </div>
@@ -805,12 +973,12 @@ export default function ProfileSettings({
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               
               <button
-              onClick={() => triggerToast(`Kitchen Info: ${profile.name} | ${profile.bio}`)}
+              onClick={() => setSubView('kitchen-details')}
               className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
               
                 <div className="flex items-center gap-3">
                   <Store className="text-outline" />
-                  <span className="font-bold text-[13px]">Kitchen Name &amp; Bio</span>
+                  <span className="font-bold text-[13px]">Kitchen Name &amp; Contact</span>
                 </div>
                 <ChevronRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
@@ -963,15 +1131,24 @@ export default function ProfileSettings({
         />
       )}
 
+      {subView === 'kitchen-details' && (
+        <KitchenNameContactSettings
+          profile={profile}
+          onBack={() => setSubView('profile')}
+          onSave={onUpdateProfile}
+          triggerToast={triggerToast}
+        />
+      )}
+
 
 
 
 
       {/* ── Help & Support: Ticket List ───────────────────────────────────── */}
       {subView === 'support' && (
-        <div className="space-y-4 animate-fadeIn pt-14 md:pt-0">
+        <div className="space-y-4 animate-fadeIn pt-2">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+          <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
@@ -1050,9 +1227,9 @@ export default function ProfileSettings({
 
       {/* ── Help & Support: Create Ticket ─────────────────────────────────── */}
       {subView === 'support-create' && (
-        <div className="space-y-4 animate-fadeIn pt-14 md:pt-0">
+        <div className="space-y-4 animate-fadeIn pt-2">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+          <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
             <button onClick={() => setSubView('support')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
@@ -1156,9 +1333,9 @@ export default function ProfileSettings({
 
       {/* ── Help & Support: Ticket Detail ─────────────────────────────────── */}
       {subView === 'support-detail' && (
-        <div className="space-y-4 animate-fadeIn pt-14 md:pt-0">
+        <div className="space-y-4 animate-fadeIn pt-2">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+          <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
             <button onClick={() => { setSelectedTicket(null); loadSupportTickets(); setSubView('support'); }} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
@@ -1289,9 +1466,9 @@ export default function ProfileSettings({
 
       {/* ── Bank Account Details subview ────────────────────────────────────── */}
       {subView === 'bank' && (
-        <div className="space-y-5 animate-fadeIn text-left pt-14 md:pt-0 pb-10">
+        <div className="space-y-5 animate-fadeIn text-left pt-2 pb-10">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+          <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
@@ -1439,9 +1616,9 @@ export default function ProfileSettings({
 
       {/* ── Withdraw Requests subview ──────────────────────────────────────── */}
       {subView === 'withdraw' && (
-        <div className="space-y-5 animate-fadeIn text-left pt-14 md:pt-0 pb-10">
+        <div className="space-y-5 animate-fadeIn text-left pt-2 pb-10">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:static md:h-auto md:bg-transparent md:text-on-surface md:border-b-0 md:p-0 md:mx-0 md:mb-4 md:z-auto">
+          <div className="flex items-center justify-between pb-3 mb-4 text-on-surface">
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>

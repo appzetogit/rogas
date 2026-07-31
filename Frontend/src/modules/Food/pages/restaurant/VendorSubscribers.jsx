@@ -112,40 +112,21 @@ export default function VendorSubscribers() {
           </div>
         </div>
 
-        {/* Production Summary Cards */}
+        {/* Total Subscribers Card */}
         <div className="bg-white rounded-xl border border-primary/25 shadow-sm overflow-hidden mb-6">
           <div className="p-4 border-b border-primary/10 bg-primary/5">
             <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-              <Activity className="w-5 h-5" /> Today's Production Summary
+              <Activity className="w-5 h-5" /> Total Subscribers
             </h2>
-            <p className="text-sm text-primary/80 mt-1">Meals required for today based on active subscriptions.</p>
+            <p className="text-sm text-primary/80 mt-1">Total subscriptions associated with your account.</p>
           </div>
-          
           <div className="p-4">
-            {summaryLoading ? (
-              <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-            ) : productionSummary ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center text-center">
-                  <p className="text-sm text-slate-600 font-medium">Total Meals Today</p>
-                  <p className="text-3xl font-bold text-slate-900 mt-1">{productionSummary.totalMealsToday || 0}</p>
-                </div>
-                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-200 flex flex-col items-center text-center">
-                  <p className="text-sm text-orange-700 font-medium">Breakfast</p>
-                  <p className="text-3xl font-bold text-orange-600 mt-1">{productionSummary.breakfastCount || 0}</p>
-                </div>
-                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200 flex flex-col items-center text-center">
-                  <p className="text-sm text-amber-700 font-medium">Lunch</p>
-                  <p className="text-3xl font-bold text-amber-600 mt-1">{productionSummary.lunchCount || 0}</p>
-                </div>
-                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 flex flex-col items-center text-center">
-                  <p className="text-sm text-indigo-700 font-medium">Dinner</p>
-                  <p className="text-3xl font-bold text-indigo-600 mt-1">{productionSummary.dinnerCount || 0}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-center text-slate-500 py-4">Summary not available.</p>
-            )}
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 flex flex-col items-center text-center max-w-sm mx-auto">
+              <p className="text-sm text-slate-600 font-medium uppercase tracking-wider">Total Customers</p>
+              <p className="text-5xl font-bold text-slate-900 mt-3">
+                {loading ? <Loader2 className="w-8 h-8 animate-spin text-slate-400 mx-auto" /> : pagination.total}
+              </p>
+            </div>
           </div>
         </div>
 
