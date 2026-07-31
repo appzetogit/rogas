@@ -73,7 +73,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
   const foodVatRate = Number(rates.foodVatRate ?? 0);
 
   return (
-    <div className="flex-grow pt-14 pb-[99px] font-sans px-4 select-none max-w-[390px] mx-auto w-full text-left relative">
+    <div className="flex-grow pt-4 pb-[99px] md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left relative">
 
       {/* Subview Toggle Tabs */}
       <div className="flex gap-2 my-3">
@@ -120,125 +120,128 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
 
       {/* Summary View */}
       {!loading && !error && subView === 'summary' && (
-        <div className="space-y-4 animate-fadeIn">
-
-          {/* Available Balance Card */}
-          <div className="bg-primary-container text-on-primary rounded-xl p-5 shadow-sm relative overflow-hidden transition-all hover:scale-[1.01] duration-300">
-            <div className="absolute -right-4 -top-4 opacity-10">
-              <Wallet className="!text-[100px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            </div>
-            <div className="relative z-10 text-left">
-              <p className="text-[11px] uppercase tracking-wider text-white/80 font-bold">Available Balance</p>
-              <div className="mt-2 text-3xl font-extrabold text-white">{fmt(availableBalance)}</div>
-              <div className="mt-1 flex items-center text-[12px] text-white/85">
-                <Receipt className="text-[14px] mr-1" />
-                {totalOrders} total delivered orders
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0 animate-fadeIn">
+          <div className="space-y-4">
+            {/* Available Balance Card */}
+            <div className="bg-primary-container text-on-primary rounded-xl p-5 shadow-sm relative overflow-hidden transition-all hover:scale-[1.01] duration-300">
+              <div className="absolute -right-4 -top-4 opacity-10">
+                <Wallet className="!text-[100px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               </div>
+              <div className="relative z-10 text-left">
+                <p className="text-[11px] uppercase tracking-wider text-white/80 font-bold">Available Balance</p>
+                <div className="mt-2 text-3xl font-extrabold text-white">{fmt(availableBalance)}</div>
+                <div className="mt-1 flex items-center text-[12px] text-white/85">
+                  <Receipt className="text-[14px] mr-1" />
+                  {totalOrders} total delivered orders
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Total Orders', value: totalOrders, icon: ShoppingBag },
+                { label: 'Gross Earnings', value: fmt(grossEarnings), icon: Coins, small: true },
+                { label: 'Net Earnings', value: fmt(netEarnings), icon: Landmark, small: true },
+              ].map((stat, i) => {
+                const IconComp = stat.icon;
+                return (
+                <div key={i} className="bg-white rounded-xl p-3 shadow-xs border border-outline-variant/15 text-center">
+                  <IconComp className="text-primary w-5 h-5 mx-auto" />
+                  <p className={`font-extrabold text-on-surface mt-1 ${stat.small ? 'text-[11px]' : 'text-[16px]'}`}>
+                    {stat.value}
+                  </p>
+                  <p className="text-[9px] text-outline uppercase font-bold mt-0.5">{stat.label}</p>
+                </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Total Orders', value: totalOrders, icon: ShoppingBag },
-              { label: 'Gross Earnings', value: fmt(grossEarnings), icon: Coins, small: true },
-              { label: 'Net Earnings', value: fmt(netEarnings), icon: Landmark, small: true },
-            ].map((stat, i) => {
-              const IconComp = stat.icon;
-              return (
-              <div key={i} className="bg-white rounded-xl p-3 shadow-xs border border-outline-variant/15 text-center">
-                <IconComp className="text-primary w-5 h-5 mx-auto" />
-                <p className={`font-extrabold text-on-surface mt-1 ${stat.small ? 'text-[11px]' : 'text-[16px]'}`}>
-                  {stat.value}
-                </p>
-                <p className="text-[9px] text-outline uppercase font-bold mt-0.5">{stat.label}</p>
+          <div className="space-y-4">
+            {/* VAT Breakdown Card */}
+            <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-outline-variant/25 text-left">
+              <div className="flex justify-between items-center mb-3 border-b border-outline-variant/15 pb-2">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">Earnings Breakdown</h2>
+                <Info className="text-[16px] text-outline" />
               </div>
-              );
-            })}
+
+              <div className="space-y-2.5 text-[13px] font-medium">
+                {/* Gross */}
+                <div className="flex justify-between items-center">
+                  <span className="text-on-surface-variant">Gross Meal Revenue</span>
+                  <span className="font-bold text-on-surface">{fmt(grossEarnings)}</span>
+                </div>
+
+                {/* Commission VAT */}
+                {(commissionVatRate > 0 || commVatDed > 0) && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant">Commission VAT {commissionVatRate > 0 ? `${commissionVatRate}%` : ''}</span>
+                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform fee)</span>
+                    </div>
+                    <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
+                      -{fmt(commVatDed)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Platform Commission VAT */}
+                {(platformCommissionVatRate > 0 || platVatDed > 0) && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant">Platform Commission VAT {platformCommissionVatRate > 0 ? `${platformCommissionVatRate}%` : ''}</span>
+                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform VAT)</span>
+                    </div>
+                    <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
+                      -{fmt(platVatDed)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Food VAT */}
+                {(foodVatRate > 0 || foodVatDed > 0) && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant">Food VAT {foodVatRate > 0 ? `${foodVatRate}%` : ''}</span>
+                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(you declare)</span>
+                    </div>
+                    <span className="bg-secondary-container/10 text-on-secondary-container px-2.5 py-0.5 rounded-full font-bold text-[12px]">
+                      -{fmt(foodVatDed)}
+                    </span>
+                  </div>
+                )}
+
+                {/* No deductions configured */}
+                {commissionVatRate === 0 && platformCommissionVatRate === 0 && foodVatRate === 0 && totalDeductions === 0 && (
+                  <div className="text-[12px] text-outline italic py-1">
+                    No commission rates configured by admin yet.
+                  </div>
+                )}
+
+                <hr className="border-outline-variant/20 my-2" />
+
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="font-bold text-on-surface">NET PAYOUT TO YOU</span>
+                  <span className="text-xl font-extrabold text-primary">{fmt(netEarnings)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-outline">Available (after withdrawals)</span>
+                  <span className="text-[12px] font-bold text-on-surface">{fmt(availableBalance)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* No earnings yet */}
+            {totalOrders === 0 && (
+              <div className="bg-white rounded-xl p-6 shadow-xs border border-outline-variant/15 text-center">
+                <Receipt className="text-[40px] text-outline/60" />
+                <p className="text-[13px] text-on-surface-variant font-medium mt-2">No completed orders yet.</p>
+                <p className="text-[11px] text-outline mt-1">Earnings will appear here once orders are delivered.</p>
+              </div>
+            )}
           </div>
-
-          {/* VAT Breakdown Card */}
-          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-outline-variant/25 text-left">
-            <div className="flex justify-between items-center mb-3 border-b border-outline-variant/15 pb-2">
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">Earnings Breakdown</h2>
-              <Info className="text-[16px] text-outline" />
-            </div>
-
-            <div className="space-y-2.5 text-[13px] font-medium">
-              {/* Gross */}
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Gross Meal Revenue</span>
-                <span className="font-bold text-on-surface">{fmt(grossEarnings)}</span>
-              </div>
-
-              {/* Commission VAT */}
-              {(commissionVatRate > 0 || commVatDed > 0) && (
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-on-surface-variant">Commission VAT {commissionVatRate > 0 ? `${commissionVatRate}%` : ''}</span>
-                    <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform fee)</span>
-                  </div>
-                  <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
-                    -{fmt(commVatDed)}
-                  </span>
-                </div>
-              )}
-
-              {/* Platform Commission VAT */}
-              {(platformCommissionVatRate > 0 || platVatDed > 0) && (
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-on-surface-variant">Platform Commission VAT {platformCommissionVatRate > 0 ? `${platformCommissionVatRate}%` : ''}</span>
-                    <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform VAT)</span>
-                  </div>
-                  <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
-                    -{fmt(platVatDed)}
-                  </span>
-                </div>
-              )}
-
-              {/* Food VAT */}
-              {(foodVatRate > 0 || foodVatDed > 0) && (
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-on-surface-variant">Food VAT {foodVatRate > 0 ? `${foodVatRate}%` : ''}</span>
-                    <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(you declare)</span>
-                  </div>
-                  <span className="bg-secondary-container/10 text-on-secondary-container px-2.5 py-0.5 rounded-full font-bold text-[12px]">
-                    -{fmt(foodVatDed)}
-                  </span>
-                </div>
-              )}
-
-              {/* No deductions configured */}
-              {commissionVatRate === 0 && platformCommissionVatRate === 0 && foodVatRate === 0 && totalDeductions === 0 && (
-                <div className="text-[12px] text-outline italic py-1">
-                  No commission rates configured by admin yet.
-                </div>
-              )}
-
-              <hr className="border-outline-variant/20 my-2" />
-
-              <div className="flex justify-between items-center py-0.5">
-                <span className="font-bold text-on-surface">NET PAYOUT TO YOU</span>
-                <span className="text-xl font-extrabold text-primary">{fmt(netEarnings)}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] text-outline">Available (after withdrawals)</span>
-                <span className="text-[12px] font-bold text-on-surface">{fmt(availableBalance)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* No earnings yet */}
-          {totalOrders === 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-xs border border-outline-variant/15 text-center">
-              <Receipt className="text-[40px] text-outline/60" />
-              <p className="text-[13px] text-on-surface-variant font-medium mt-2">No completed orders yet.</p>
-              <p className="text-[11px] text-outline mt-1">Earnings will appear here once orders are delivered.</p>
-            </div>
-          )}
         </div>
       )}
 
@@ -257,12 +260,12 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
               <p className="text-[13px] text-on-surface-variant font-medium mt-2">No transactions yet.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-xs divide-y divide-outline-variant/15 border border-outline-variant/15 overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0 bg-transparent rounded-xl overflow-hidden">
               {recentTx.map((tx, idx) => (
                 <div
                   key={tx.transactionId || idx}
                   onClick={() => triggerToast(`Order ${tx.orderId} — Net: ${fmt(tx.netAmount)} (Gross: ${fmt(tx.grossAmount)})`)}
-                  className="p-4 flex justify-between items-center active:bg-surface-container/10 hover:bg-surface-container/5 transition-colors cursor-pointer">
+                  className="p-4 flex justify-between items-center bg-white rounded-xl border border-outline-variant/15 active:bg-surface-container/10 hover:bg-surface-container/5 transition-all cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary">
                       <Truck className="text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} />

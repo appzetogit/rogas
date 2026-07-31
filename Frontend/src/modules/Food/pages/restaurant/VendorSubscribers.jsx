@@ -113,17 +113,17 @@ export default function VendorSubscribers() {
         </div>
 
         {/* Production Summary Cards */}
-        <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden mb-6">
-          <div className="p-4 border-b border-blue-100 bg-blue-50/50">
-            <h2 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-primary/25 shadow-sm overflow-hidden mb-6">
+          <div className="p-4 border-b border-primary/10 bg-primary/5">
+            <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
               <Activity className="w-5 h-5" /> Today's Production Summary
             </h2>
-            <p className="text-sm text-blue-700 mt-1">Meals required for today based on active subscriptions.</p>
+            <p className="text-sm text-primary/80 mt-1">Meals required for today based on active subscriptions.</p>
           </div>
           
           <div className="p-4">
             {summaryLoading ? (
-              <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+              <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : productionSummary ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center text-center">
@@ -162,14 +162,14 @@ export default function VendorSubscribers() {
                   value={filters.search}
                   onChange={handleFilterChange}
                   placeholder="Search customer..."
-                  className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full lg:w-48"
+                  className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full lg:w-48"
                 />
               </div>
               <select
                 name="status"
                 value={filters.status}
                 onChange={handleFilterChange}
-                className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>

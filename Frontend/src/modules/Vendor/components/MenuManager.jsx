@@ -451,7 +451,7 @@ export default function MenuManager({
   };
 
   return (
-    <div className="flex-grow pt-14 pb-[99px] font-sans px-4 select-none max-w-[390px] mx-auto w-full text-left relative">
+    <div className="flex-grow pt-4 pb-[99px] md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left relative">
       
       {/* List Subview */}
       {subView === 'list' && (
@@ -510,7 +510,7 @@ export default function MenuManager({
               </div>
 
               {/* Meals list */}
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 space-y-0">
                 {meals.filter((m) => m.status !== 'Removed').length === 0 ? (
                   <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/15 text-center flex flex-col items-center justify-center min-h-[220px] animate-fadeIn">
                     <UtensilsCrossed className="text-[48px] text-primary/40 mb-3" />
@@ -650,7 +650,7 @@ export default function MenuManager({
                     </div>
 
                     {/* Slots columns: Breakfast, Lunch, Dinner */}
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 space-y-0">
                       {['breakfast', 'lunch', 'dinner'].map((slot) => {
                         const existingDish = getScheduledDishForSlotAndDate(slot, activeDate);
                         const existingMeal = existingDish
@@ -804,7 +804,7 @@ export default function MenuManager({
       {subView === 'addEdit' &&
       <form onSubmit={handleSaveMeal} className="space-y-5 animate-fadeIn">
           {/* Header row simulation */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:left-64 md:right-0 md:w-auto mx-auto md:mx-0 z-50">
             <button
             type="button"
             onClick={() => setSubView('list')}
@@ -1039,7 +1039,7 @@ export default function MenuManager({
       {subView === 'surpriseBox' &&
       <div className="space-y-6 animate-fadeIn">
           {/* Header bar back button */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-50">
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:left-64 md:right-0 md:w-auto mx-auto md:mx-0 z-50">
             <button
             onClick={() => setSubView('list')}
             className="flex items-center active:scale-90 transition-transform">
@@ -1207,8 +1207,8 @@ export default function MenuManager({
 
       {/* Schedule Custom Dish Overlay Modal */}
       {scheduleModalOpen && selectedMealForSchedule && (
-        <form onSubmit={handleSaveDailyMenu} className="space-y-5 animate-fadeIn bg-surface min-h-screen z-[110] fixed inset-0 overflow-y-auto w-[390px] mx-auto text-left px-4 pb-20">
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-[390px] mx-auto z-120">
+        <form onSubmit={handleSaveDailyMenu} className="space-y-5 animate-fadeIn bg-surface min-h-screen z-[110] fixed inset-0 overflow-y-auto w-full md:left-64 md:right-0 md:w-auto text-left px-4 pb-20">
+          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:left-64 md:right-0 md:w-auto mx-auto md:mx-0 z-120">
             <button
               type="button"
               onClick={() => setScheduleModalOpen(false)}
@@ -1361,8 +1361,8 @@ export default function MenuManager({
 
       {/* Meal Selection Modal Overlay */}
       {mealSelectorOpenPlan && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-end justify-center z-[110] animate-fadeIn">
-          <div className="w-[390px] bg-white rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-end md:items-center justify-center z-[110] animate-fadeIn">
+          <div className="w-full md:max-w-md bg-white rounded-t-[28px] md:rounded-2xl p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
             <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
               <div>
                 <h3 className="font-extrabold text-[16px] text-on-surface">Select Dish for Schedule</h3>
@@ -1419,8 +1419,8 @@ export default function MenuManager({
 
       {/* Add Meal to Schedule Modal Overlay */}
       {addMealSelectorOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-end justify-center z-[110] animate-fadeIn">
-          <div className="w-[390px] bg-white rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-end md:items-center justify-center z-[110] animate-fadeIn">
+          <div className="w-full md:max-w-md bg-white rounded-t-[28px] md:rounded-2xl p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
             <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
               <div>
                 <h3 className="font-extrabold text-[16px] text-on-surface">Select Meal</h3>

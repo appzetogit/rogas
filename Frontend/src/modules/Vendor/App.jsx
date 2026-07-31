@@ -35,7 +35,7 @@ import { VendorLegalPage } from './components/VendorLegalPage';
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
 import { dmbVendorAPI, authAPI, restaurantAPI } from '../../services/api/index';
-import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle } from 'lucide-react';
+import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle, ChefHat, LogOut } from 'lucide-react';
 
 export default function App() {
   const navigate = useNavigate();
@@ -501,8 +501,9 @@ export default function App() {
   const isAuthView = location.pathname.includes('/auth') || location.pathname.includes('/welcome') || location.pathname.includes('/termsandcondition') || location.pathname.includes('/privacy');
 
   if (isAuthView) {
+    const isAuthCardView = location.pathname.includes('/auth');
     return (
-      <div className="vendor-app-container">
+      <div className={`vendor-app-container min-h-screen bg-[#F5F5F0] ${isAuthCardView ? 'md:flex md:flex-col md:justify-center md:items-center md:p-12' : ''}`}>
         <Routes>
           <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
           <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
@@ -698,62 +699,119 @@ export default function App() {
   };
 
   return (
-    <div className="vendor-app-container">
-      <div className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden font-sans mx-auto shadow-2xl pb-10">
+    <div className="vendor-app-container min-h-screen bg-[#F5F5F0]">
+      <div className="w-full md:max-w-none min-h-screen relative flex flex-col md:flex-row bg-surface overflow-x-hidden font-sans mx-auto md:mx-0 shadow-2xl md:shadow-none pb-10 md:pb-0">
 
-        {/* Top Application Bar Header details */}
-        <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-14 flex items-center px-4 bg-primary text-on-primary shadow-sm">
-          <div className="flex items-center justify-between w-full">
+        {/* Desktop Sidebar (visible on md and up) */}
+        <aside className="hidden md:flex flex-col w-64 fixed left-0 top-0 bottom-0 bg-[#00604c] text-white z-50 p-6">
+          <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/10">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
+              <ChefHat className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-[15px] leading-tight tracking-tight text-white truncate max-w-[160px]">
+                {profile.name}
+              </h2>
+              <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider">
+                {profile.vendorType?.replace('_', ' ') || 'Vendor Partner'}
+              </span>
+            </div>
+          </div>
+
+          <nav className="flex-grow space-y-1">
+            {[
+              { path: '/vendor/dashboard', label: 'Home', icon: Home },
+              { path: '/vendor/orders', label: 'Orders', icon: Receipt },
+              { path: '/vendor/menu', label: 'Menu', icon: UtensilsCrossed },
+              { path: '/vendor/earnings', label: 'Earn', icon: Banknote },
+              { path: '/vendor/profile', label: 'Profile', icon: MoreHorizontal }
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="pt-4 border-t border-white/10">
             <button
-              onClick={() => triggerGlobalToast('Side drawer menu requires admin credentials.')}
-              className="flex items-center justify-center p-2 hover:opacity-90 active:scale-95 transition-transform">
-
-              <Menu />
-            </button>
-            <h1 className="font-semibold text-[16px] tracking-tight">
-              {getPageTitle()}
-            </h1>
-            <button
-              title="More Options"
-              className="flex items-center justify-center p-2 hover:opacity-90 active:scale-95 transition-transform">
-
-              <MoreVertical className="font-normal" />
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[13px] text-white/80 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer"
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span>Sign Out</span>
             </button>
           </div>
+        </aside>
+
+        {/* Mobile Header (visible only on mobile) */}
+        <header className="fixed top-0 left-0 right-0 w-full md:hidden z-50 h-14 flex items-center justify-center bg-primary text-on-primary shadow-sm">
+          <h1 className="font-semibold text-[16px] tracking-tight">
+            {getPageTitle()}
+          </h1>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-grow pb-[83px] bg-slate-50/50 flex flex-col">
-          <Routes>
-            <Route path="/dashboard" element={<HomeDashboard profile={profile} orders={orders} meals={meals} transactions={transactions} onMarkAllReady={handleMarkAllReady} onNavigateToTab={(t) => navigate(`/vendor/${t.toLowerCase()}`)} onOpenSubView={setShowSubView} subscriberCount={subscriberCount} />} />
-            {profile.vendorType === 'pantry_shop' ? (
-              <Route path="/orders" element={<PantryOrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} />} />
-            ) : (
-              <Route path="/orders" element={<OrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onBatchUpdateStatus={handleBatchUpdateStatus} />} />
-            )}
-            {profile.vendorType === 'pantry_shop' ? (
-              <Route path="/menu" element={<PantryMenuManager items={pantryItems} setItems={setPantryItems} />} />
-            ) : (
-              <Route path="/menu" element={<MenuManager vendorType={profile.vendorType} meals={meals} surpriseBoxes={surpriseBoxes} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onAddSurpriseBox={handleAddSurpriseBox} onEndSurpriseBox={handleEndSurpriseBox} onToggleMealStatus={handleToggleMealStatus} />} />
-            )}
-            <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
-            <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
-            <Route path="/subscribers" element={<VendorSubscribers />} />
-            <Route path="/service" element={<VendorServicePage />} />
-            <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
-            <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
-            <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
-            <Route path="*" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
-          </Routes>
-        </main>
+        {/* Content Wrapper next to Desktop Sidebar */}
+        <div className="flex-grow flex flex-col md:pl-64 w-full">
+          {/* Desktop Topbar */}
+          <header className="hidden md:flex items-center justify-between h-16 px-8 bg-white border-b border-outline-variant/20 sticky top-0 z-40">
+            <h1 className="text-lg font-black tracking-tight text-on-surface">{getPageTitle()}</h1>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col text-right">
+                <span className="text-sm font-bold text-on-surface">{profile.name}</span>
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider mt-0.5">
+                  Rating: ⭐️ {profile.rating || '4.9'}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20">
+                {profile.avatarInitials || 'VP'}
+              </div>
+            </div>
+          </header>
 
-        {/* Bottom Navigation Ribbon Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 w-[390px] mx-auto z-50 h-[83px] bg-white border-t border-outline-variant/15 flex justify-around items-center px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+          {/* Main Content Area */}
+          <main className="flex-grow pt-14 md:pt-0 pb-[83px] md:pb-6 bg-slate-50/50 flex flex-col">
+            <Routes>
+              <Route path="/dashboard" element={<HomeDashboard profile={profile} orders={orders} meals={meals} transactions={transactions} onMarkAllReady={handleMarkAllReady} onNavigateToTab={(t) => navigate(`/vendor/${t.toLowerCase()}`)} onOpenSubView={setShowSubView} subscriberCount={subscriberCount} />} />
+              {profile.vendorType === 'pantry_shop' ? (
+                <Route path="/orders" element={<PantryOrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} />} />
+              ) : (
+                <Route path="/orders" element={<OrdersManager orders={orders} onUpdateOrderStatus={handleUpdateOrderStatus} onBatchUpdateStatus={handleBatchUpdateStatus} />} />
+              )}
+              {profile.vendorType === 'pantry_shop' ? (
+                <Route path="/menu" element={<PantryMenuManager items={pantryItems} setItems={setPantryItems} />} />
+              ) : (
+                <Route path="/menu" element={<MenuManager vendorType={profile.vendorType} meals={meals} surpriseBoxes={surpriseBoxes} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onAddSurpriseBox={handleAddSurpriseBox} onEndSurpriseBox={handleEndSurpriseBox} onToggleMealStatus={handleToggleMealStatus} />} />
+              )}
+              <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
+              <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
+              <Route path="/subscribers" element={<VendorSubscribers />} />
+              <Route path="/service" element={<VendorServicePage />} />
+              <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
+              <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
+              <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
+              <Route path="*" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
+            </Routes>
+          </main>
+        </div>
 
+        {/* Mobile Navigation Bar (visible only on mobile) */}
+        <nav className="fixed bottom-0 left-0 right-0 w-full md:hidden z-50 h-[83px] bg-white border-t border-outline-variant/15 flex justify-around items-center px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
           <button
             onClick={() => navigate('/vendor/dashboard')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/dashboard') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
-
             <Home style={{ fontVariationSettings: location.pathname.includes('/dashboard') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
           </button>
@@ -761,7 +819,6 @@ export default function App() {
           <button
             onClick={() => navigate('/vendor/orders')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/orders') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
-
             <Receipt style={{ fontVariationSettings: location.pathname.includes('/orders') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Orders</span>
           </button>
@@ -769,7 +826,6 @@ export default function App() {
           <button
             onClick={() => navigate('/vendor/menu')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/menu') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
-
             <UtensilsCrossed style={{ fontVariationSettings: location.pathname.includes('/menu') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Menu</span>
           </button>
@@ -777,7 +833,6 @@ export default function App() {
           <button
             onClick={() => navigate('/vendor/earnings')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/earnings') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
-
             <Banknote style={{ fontVariationSettings: location.pathname.includes('/earnings') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Earn</span>
           </button>
@@ -785,23 +840,21 @@ export default function App() {
           <button
             onClick={() => navigate('/vendor/profile')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/profile') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
-
             <MoreHorizontal style={{ fontVariationSettings: location.pathname.includes('/profile') ? "'FILL' 1" : "'FILL' 0" }} />
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">More</span>
           </button>
-
         </nav>
 
         {/* Global Toast notifications overlay */}
         <div
           className={`fixed bottom-24 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full flex items-center gap-3 transition-all duration-300 shadow-xl z-[150] ${showGlobalToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
           }>
-
           <CheckCircle className="text-green-400" />
           <span className="font-bold text-[13px]">{toastText}</span>
         </div>
 
       </div>
-    </div>);
+    </div>
+  );
 
 }

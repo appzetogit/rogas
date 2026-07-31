@@ -119,9 +119,9 @@ export default function PantryOrdersManager() {
       </div>
 
       {/* Orders List */}
-      <div className="px-5 mt-5 space-y-4">
+      <div className="px-5 mt-5">
         {displayOrders.length === 0 ? (
-          <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm">
+          <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm max-w-md mx-auto">
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
               <Receipt className="text-[32px] text-primary" />
             </div>
@@ -129,8 +129,9 @@ export default function PantryOrdersManager() {
             <p className="text-[14px] text-[#6e7a74] mt-1 font-medium">You're all caught up!</p>
           </div>
         ) : (
-          displayOrders.map(order => (
-            <div key={order.id} className="bg-white rounded-[24px] p-5 shadow-sm border border-transparent hover:border-primary/20 transition-all">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {displayOrders.map(order => (
+            <div key={order.id} className="bg-white rounded-[24px] p-5 shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="font-extrabold text-[16px] text-[#1b1c1c]">Order #{order.orderId || order.id.slice(-4)}</h3>
@@ -171,6 +172,8 @@ export default function PantryOrdersManager() {
               )}
             </div>
           ))
+          }
+          </div>
         )}
       </div>
     </div>

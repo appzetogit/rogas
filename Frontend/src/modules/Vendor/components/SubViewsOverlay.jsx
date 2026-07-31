@@ -53,10 +53,10 @@ export default function SubViewsOverlay({
   };
 
   return (
-    <div className="w-[390px] min-h-screen bg-surface relative flex flex-col font-sans text-left mx-auto shadow-xl pb-10">
+    <div className="w-full md:max-w-none min-h-screen bg-surface relative flex flex-col font-sans text-left mx-auto md:mx-0 shadow-xl md:shadow-none pb-10">
       
       {/* Header bar setup with close button */}
-      <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-14 flex items-center px-4 bg-primary text-on-primary">
+      <header className="fixed top-0 left-0 right-0 w-full md:left-64 md:right-0 md:w-auto mx-auto md:mx-0 z-50 h-14 flex items-center px-4 bg-primary text-on-primary">
         <button
           onClick={onClose}
           className="active:scale-95 transition-transform hover:opacity-90 flex items-center">
@@ -390,7 +390,7 @@ export default function SubViewsOverlay({
             </div>
 
             {/* Smart graphic disclaimer banner info */}
-            <div className="bg-white rounded-2xl border border-outline-variant/20 p-4 flex gap-3 text-left relative mt-6 overflow-hidden max-w-[390px]">
+            <div className="bg-white rounded-2xl border border-outline-variant/20 p-4 flex gap-3 text-left relative mt-6 overflow-hidden w-full max-w-xl md:max-w-none">
               <div className="flex items-center gap-4">
                 <UtensilsCrossed className="text-primary text-[32px]" />
                 <div>

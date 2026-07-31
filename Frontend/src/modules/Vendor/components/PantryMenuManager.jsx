@@ -191,9 +191,9 @@ export default function PantryMenuManager({ items, setItems }) {
       </div>
 
       {/* List */}
-      <div className="px-5 mt-2 space-y-4">
+      <div className="px-5 mt-2">
         {items.length === 0 ? (
-          <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm">
+          <div className="text-center mt-12 bg-white rounded-3xl p-8 border border-[#e4e2e1]/50 shadow-sm max-w-md mx-auto">
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
               <span className="text-[32px]">📦</span>
             </div>
@@ -204,7 +204,8 @@ export default function PantryMenuManager({ items, setItems }) {
             </button>
           </div>
         ) : (
-          items.map((item) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((item) => {
             const itemId = item._id || item.id;
             const itemName = item.name || item.title || "Unnamed Item";
             return (
@@ -246,6 +247,8 @@ export default function PantryMenuManager({ items, setItems }) {
               </div>
             );
           })
+          }
+          </div>
         )}
       </div>
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { dmbVendorAPI } from '../../../services/api/index';
-import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check } from 'lucide-react';
+import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Sun, CloudSun, Moon, Clock } from 'lucide-react';
 
-const SLOT_LABEL = { breakfast: 'Breakfast ☀️', lunch: 'Lunch 🌤️', dinner: 'Dinner 🌙' };
-const SLOT_EMOJI = { breakfast: '🌅', lunch: '🌤️', dinner: '🌙' };
+const SLOT_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
+const SLOT_EMOJI = { breakfast: '', lunch: '', dinner: '' };
 
 const STATUS_CONFIG = {
   scheduled: { label: 'Scheduled', color: 'bg-slate-100 text-slate-600', border: 'border-slate-300' },
@@ -32,6 +33,7 @@ const fmtMin = (mins) => {
 };
 
 export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatus, onBatchUpdateStatus }) {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('daily');
   const [activeDate, setActiveDate] = useState('today');
   const [timingConfig, setTimingConfig] = useState(null); // admin timing from backend
@@ -240,7 +242,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   const pendingCount = filteredOrders.filter(o => ['scheduled', 'preparing'].includes(o.status)).length;
 
   return (
-    <div className="flex-grow pt-14 pb-[99px] font-sans px-4 select-none max-w-[390px] mx-auto w-full text-left">
+    <div className="flex-grow pt-4 pb-[99px] md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left">
 
       {/* View Mode Tabs */}
       <div className="flex gap-2 my-3">
@@ -250,7 +252,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             viewMode === 'daily' ? 'bg-primary text-white border-primary' : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}
         >
-          📋 Subscription Orders
+          <span className="flex items-center justify-center gap-1.5"><Receipt className="w-4 h-4" /> Subscription Orders</span>
         </button>
         <button
           onClick={() => setViewMode('legacy')}
@@ -258,7 +260,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             viewMode === 'legacy' ? 'bg-primary text-white border-primary' : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}
         >
-          🛒 One-Time Orders
+          <span className="flex items-center justify-center gap-1.5"><Tag className="w-4 h-4" /> One-Time Orders</span>
         </button>
       </div>
 
@@ -283,20 +285,22 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           {/* Slot Filter Chips */}
           <div className="flex gap-1.5 select-none">
             {[
-              { id: 'breakfast', label: 'Breakfast', count: breakfastCount, icon: '☀️' },
-              { id: 'lunch', label: 'Lunch', count: lunchCount, icon: '🌤️' },
-              { id: 'dinner', label: 'Dinner', count: dinnerCount, icon: '🌙' }
-            ].map(slot => (
+              { id: 'breakfast', label: 'Breakfast', count: breakfastCount, icon: Sun },
+              { id: 'lunch', label: 'Lunch', count: lunchCount, icon: CloudSun },
+              { id: 'dinner', label: 'Dinner', count: dinnerCount, icon: Moon }
+            ].map(slot => {
+              const Icon = slot.icon;
+              return (
               <button
                 key={slot.id}
                 onClick={() => setActiveSlot(slot.id)}
-                className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-bold border transition-all active:scale-95 ${
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-bold border transition-all active:scale-95 ${
                   activeSlot === slot.id
                     ? 'bg-primary text-white border-primary shadow-sm font-extrabold'
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <span>{slot.icon}</span>
+                <Icon className="w-4 h-4 shrink-0" />
                 <span>{slot.label}</span>
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
                   activeSlot === slot.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200'
@@ -304,7 +308,8 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                   {slot.count}
                 </span>
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Timing Window Banner */}
@@ -319,7 +324,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                   : 'bg-amber-50 border-amber-300 text-amber-700'
               }`}>
-                <span className="text-base">{allowed ? '✅' : '⏰'}</span>
+                {allowed ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
                 <span>
                   {slotLabel} window: <strong>{win}</strong>
                   {!allowed && ' — Outside prep window'}
@@ -397,7 +402,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               <p className="text-[12px] text-slate-400 mt-1">Select another slot or check back later</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 space-y-0">
               {filteredOrders.map(order => {
                 const sc = STATUS_CONFIG[order.status] || STATUS_CONFIG.scheduled;
                 const mealName = order.meals?.[0]?.name || 'Meal';
@@ -537,6 +542,26 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           )}
         </div>
       )}
+
+      {/* Quick Actions (at the bottom of OrdersManager) */}
+      <section className="space-y-2 text-left pt-6 mt-8 border-t border-slate-100">
+        <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-3 pb-4">
+          <button
+            onClick={() => onBatchUpdateStatus('any', 'Ready')}
+            className="bg-primary text-on-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-md hover:brightness-110 transition-all cursor-pointer">
+            <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
+            <span>Mark All Ready</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/vendor/earnings')}
+            className="bg-white border border-primary text-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-xs hover:bg-primary/5 transition-all cursor-pointer">
+            <BarChart className="text-[18px]" />
+            <span>View Forecast</span>
+          </button>
+        </div>
+      </section>
 
       {/* Toast */}
       {toast && (

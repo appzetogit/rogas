@@ -32,7 +32,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
   };
 
   return (
-    <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
+    <div className="w-full md:max-w-md min-h-screen md:min-h-0 flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl md:rounded-2xl md:border md:border-outline-variant/15 font-sans">
       <header className="px-5 h-14 flex items-center">
         <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
           <ArrowLeft className="text-primary" />
@@ -142,7 +142,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
   };
 
   return (
-    <div className="w-[390px] min-h-screen flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl font-sans">
+    <div className="w-full md:max-w-md min-h-screen md:min-h-0 flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl md:rounded-2xl md:border md:border-outline-variant/15 font-sans">
       <header className="px-5 h-14 flex items-center">
         <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
           <ArrowLeft className="text-primary" />
@@ -463,8 +463,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   };
 
   return (
-    <main className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl">
-      <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary">
+    <main className="w-full md:max-w-xl min-h-screen md:min-h-0 relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl md:rounded-2xl md:border md:border-outline-variant/15">
+      <header className="fixed top-0 left-0 right-0 w-full md:max-w-xl mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary md:rounded-t-2xl">
         <div className="flex items-center w-full justify-between">
           <div className="flex items-center gap-4">
             <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
@@ -998,8 +998,8 @@ export function UnderReviewScreen({ onApproved }) {
   };
 
   return (
-    <main className="w-[390px] min-h-screen relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl">
-      <header className="fixed top-0 left-0 right-0 w-[390px] mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary">
+    <main className="w-full md:max-w-xl min-h-screen md:min-h-0 relative flex flex-col bg-surface overflow-x-hidden pb-20 mx-auto font-sans shadow-xl md:rounded-2xl md:border md:border-outline-variant/15">
+      <header className="fixed top-0 left-0 right-0 w-full md:max-w-xl mx-auto z-50 h-[56px] flex items-center px-4 bg-primary-container text-on-primary md:rounded-t-2xl">
         <div className="flex items-center w-full justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/vendor/welcome')} className="active:scale-95 transition-transform hover:opacity-90">

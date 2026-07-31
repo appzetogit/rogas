@@ -11,7 +11,7 @@ export function VendorWelcomeScreen() {
       {/* Status Bar Area (Simulated) */}
 
       {/* Main Content Container */}
-      <main className="w-full max-w-[390px] flex-1 flex flex-col items-center px-4 pt-12 animate-fade-in z-10">
+      <main className="w-full max-w-md flex-1 flex flex-col items-center px-4 pt-12 animate-fade-in z-10">
         {/* Brand Identity Section */}
         <div className="flex flex-col items-center text-center space-y-4">
           {/* Avatar Icon / Logo */}

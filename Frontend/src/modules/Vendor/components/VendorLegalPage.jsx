@@ -50,8 +50,8 @@ export function VendorLegalPage({ pageType }) {
   }, [pageType]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
-      <header className="fixed top-0 left-0 w-[390px] mx-auto right-0 z-40 bg-primary text-on-primary flex justify-between items-center px-4 h-14 shadow-sm">
+    <div className="min-h-screen flex flex-col bg-[#F5F5F0] pt-0 md:pt-6 pb-6">
+      <header className="fixed top-0 left-0 right-0 w-full max-w-xl mx-auto z-40 bg-primary text-on-primary flex justify-between items-center px-4 h-14 shadow-sm md:rounded-t-xl">
         <button
           onClick={handleBack}
           className="cursor-pointer active:scale-95 transition-transform p-2 rounded-full flex items-center justify-center hover:opacity-90"
@@ -64,7 +64,7 @@ export function VendorLegalPage({ pageType }) {
         <div className="w-10" />
       </header>
 
-      <main className="flex-grow pt-16 px-4 pb-12 w-[390px] mx-auto bg-surface overflow-x-hidden">
+      <main className="flex-grow pt-16 px-4 pb-12 w-full max-w-xl mx-auto bg-white overflow-x-hidden md:rounded-b-xl md:shadow-md">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-primary">
             <Loader2 className="animate-spin w-8 h-8" />
