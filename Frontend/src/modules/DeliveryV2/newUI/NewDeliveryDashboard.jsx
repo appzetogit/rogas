@@ -548,7 +548,7 @@ function NewDeliveryDashboard() {
     <div className="min-h-screen bg-[#F5F5F0] pb-24 text-gray-800 font-sans relative">
       <div className="h-1 bg-[#00604c] w-full sticky top-0 z-50" />
 
-      <main className="max-w-md mx-auto px-4 pt-4">
+      <main className="w-full px-4 sm:px-6 lg:px-8 pt-4 md:pt-8">
 
         {/* ─── FIX: New Batch Request Modal ─────────────────────────────────── */}
         {newBatchRequest && (
@@ -705,7 +705,7 @@ function NewDeliveryDashboard() {
       )}
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center">
+      <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around md:justify-center md:gap-24 items-center">
         <button
           onClick={() => {
             if (currentScreen === "cannot_deliver" && activeOrder?.status === "picked_up") {

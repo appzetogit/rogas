@@ -68,7 +68,7 @@ export function PantryItemsList() {
 
   return (
     <div className="relative pb-24">
-      <div className="grid grid-cols-2 gap-3 mb-4 px-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 mb-4 px-2">
         {items.map((item) => {
           const qty = getItemQuantity(item._id);
           return (
@@ -121,7 +121,7 @@ export function PantryItemsList() {
 
       {/* Cart Sticky Bottom Bar */}
       {totalItems > 0 && (
-        <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 max-w-[420px] w-full px-4 z-30">
+        <div className="fixed bottom-[80px] left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] px-4 sm:px-8 lg:px-24 z-30">
           <button 
             onClick={() => navigate('/user/pantry-checkout')}
             className="w-full bg-[#1F7A63] hover:bg-[#155a49] text-white py-4 px-5 rounded-[20px] flex items-center justify-between shadow-[0_8px_24px_rgba(31,122,99,0.3)] transition-all active:scale-[0.98]"

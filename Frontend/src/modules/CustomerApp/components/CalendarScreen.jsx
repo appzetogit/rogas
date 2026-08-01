@@ -368,7 +368,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   if (loading) {
     return (
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
-        <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
           <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
           <div className="w-8" />
@@ -384,7 +384,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   if (error) {
     return (
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
-        <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
           <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
           <div className="w-8" />
@@ -406,7 +406,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   return (
     <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
       {/* Top App Bar */}
-      <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
         <div className="w-8" />

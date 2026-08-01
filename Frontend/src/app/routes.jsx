@@ -116,17 +116,14 @@ const AppRoutes = () => {
       <Route path="/office/*" element={<OfficeAppWrapper />} />
 
       {/* Food Module - Handle both /food and root / for the user app */}
+      {/* Food Module - Handle both /food and root / for the user app */}
       <Route path="/food/*" element={<FoodAppWrapper />} />
 
-      {/* Global Admin Portal - AdminRouter handles its own protection for sub-routes */}
+      {/* Global Admin Portal */}
       <Route path="/admin/*" element={<AdminRouter />} />
 
-      {/* Handle root and other paths via FoodAppWrapper */}
-      <Route path="/" element={
-        <Suspense fallback={<PageLoader />}>
-          <MasterLandingPage />
-        </Suspense>
-      } />
+      {/* Redirect root to user app */}
+      <Route path="/" element={<Navigate to="/user" replace />} />
       <Route path="/*" element={<FoodAppWrapper />} />
     </Routes>
   )

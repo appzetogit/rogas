@@ -151,145 +151,147 @@ export function ProfileScreen({
   if (isEditing) {
     return (
       <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
-        <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setIsEditing(false)} className="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low">
-              arrow_back
-            </button>
-          </div>
-          <h1 className="text-lg font-extrabold text-primary text-center">Customer Details</h1>
-          <div className="w-8" /> {/* Spacer */}
+        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+          <button onClick={() => setIsEditing(false)} className="text-[#1b1c1c] cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-[18px] font-extrabold text-[#1b1c1c] mx-auto pr-8">Customer Details</h1>
         </header>
 
-        <main className="pt-20 px-5 max-w-md mx-auto">
+        <main className="pt-20 px-5 sm:px-8 max-w-4xl mx-auto">
           <form onSubmit={handleSave} className="space-y-6">
-            {/* Profile Picture Upload Section */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#bec9c3]/20 flex flex-col items-center gap-4">
-              <div className="relative">
-                <div className={`relative w-24 h-24 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm bg-primary/10 flex items-center justify-center transition-opacity ${imageUploading ? "opacity-45" : ""} text-primary font-bold text-[36px]`}>
-                  <span className="z-0">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
-                  {formData.profileImage && formData.profileImage.trim() !== "" && (
-                    <img
-                      alt="Avatar preview"
-                      className="absolute inset-0 w-full h-full object-cover z-10"
-                      src={formData.profileImage}
-                      onError={(e) => e.target.style.display = 'none'}
-                    />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Profile Picture Upload Section */}
+              <div className="md:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-[#bec9c3]/20 flex flex-col items-center justify-center gap-4 text-center h-fit">
+                <h3 className="text-sm font-bold text-[#1b1c1c] hidden md:block">Profile Picture</h3>
+                <div className="relative">
+                  <div className={`relative w-28 h-28 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm bg-primary/10 flex items-center justify-center transition-opacity ${imageUploading ? "opacity-45" : ""} text-primary font-bold text-[40px]`}>
+                    <span className="z-0">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
+                    {formData.profileImage && formData.profileImage.trim() !== "" && (
+                      <img
+                        alt="Avatar preview"
+                        className="absolute inset-0 w-full h-full object-cover z-10"
+                        src={formData.profileImage}
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    )}
+                  </div>
+                  {imageUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full">
+                      <Loader2 className="text-white text-[24px] animate-spin" />
+                    </div>
                   )}
+                  <label className="absolute bottom-0 right-0 bg-primary text-white w-9 h-9 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors z-20 shadow-sm">
+                    <Camera className="text-[18px]" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={formLoading}
+                    />
+                  </label>
                 </div>
-                {imageUploading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full">
-                    <Loader2 className="text-white text-[24px] animate-spin" />
+                <p className="text-xs text-[#6e7a74] hidden md:block font-medium">Click the camera icon to upload a new profile photo.</p>
+              </div>
+
+              {/* Basic Info Fields */}
+              <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-[#bec9c3]/20 space-y-5">
+                {formError && (
+                  <div className="p-3 bg-red-50 text-brand-red rounded-xl text-xs font-semibold border border-red-100">
+                    {formError}
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 bg-primary text-white w-8 h-8 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors z-20 shadow-sm">
-                  <Camera className="text-[18px]" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={formLoading}
-                  />
-                </label>
-              </div>
 
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-on-surface-variant">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
+                      disabled={formLoading}
+                    />
+                  </div>
 
-            {/* Basic Info Fields */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#bec9c3]/20 space-y-4">
-              {formError && (
-                <div className="p-3 bg-red-50 text-brand-red rounded-xl text-xs font-semibold border border-red-100">
-                  {formError}
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-on-surface-variant">Email Address</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
+                      disabled={formLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-bold text-on-surface-variant">Phone Number (Read-Only)</label>
+                    <input
+                      type="text"
+                      value={currentUser?.phone || ""}
+                      disabled
+                      className="w-full text-sm p-3 bg-[#e4e2e1]/45 border border-[#bec9c3]/30 rounded-xl font-medium text-gray-500 cursor-not-allowed"
+                    />
+                    <span className="text-[10px] text-on-surface-variant font-medium block mt-0.5">Phone number is linked to auth and cannot be changed.</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-on-surface-variant">Gender</label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
+                      disabled={formLoading}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer-not-to-say">Prefer not to say</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-on-surface-variant">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
+                      disabled={formLoading}
+                    />
+                  </div>
                 </div>
-              )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                  disabled={formLoading}
-                />
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4 border-t border-[#bec9c3]/20">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 bg-white border border-[#bec9c3] text-[#3e4945] py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer"
+                    disabled={formLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-[#155a49] transition-colors active:scale-95 flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    disabled={formLoading}
+                  >
+                    {formLoading ? (
+                      <>
+                        <Loader2 className="text-sm animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </button>
+                </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Email Address</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                  disabled={formLoading}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Phone Number (Read-Only)</label>
-                <input
-                  type="text"
-                  value={currentUser?.phone || ""}
-                  disabled
-                  className="w-full text-sm p-3 bg-[#e4e2e1]/45 border border-[#bec9c3]/30 rounded-xl font-medium text-gray-500 cursor-not-allowed"
-                />
-                <span className="text-[10px] text-on-surface-variant font-medium">Phone number is linked to auth and cannot be changed.</span>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Gender</label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-                  className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                  disabled={formLoading}
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                  className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                  disabled={formLoading}
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex-1 bg-white border border-[#bec9c3] text-[#3e4945] py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors active:scale-95"
-                disabled={formLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-[#155a49] transition-colors active:scale-95 flex items-center justify-center gap-2 shadow-md"
-                disabled={formLoading}
-              >
-                {formLoading ? (
-                  <>
-                    <Loader2 className="text-sm animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </button>
             </div>
           </form>
         </main>
@@ -301,15 +303,14 @@ export function ProfileScreen({
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
       {/* Top action context header */}
-      <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-        <h1 className="text-xl font-extrabold text-primary text-center">DailyMealBox</h1>
-        <div className="w-8" />
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <button onClick={onGoBack} className="text-[#1b1c1c] cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200"><ArrowLeft size={24} /></button>
+        <h1 className="text-[18px] font-extrabold text-[#1b1c1c] mx-auto pr-8">Profile</h1>
       </header>
 
       <main className="pt-14 pb-12">
         {/* Profile green banner */}
-        <section className="bg-gradient-to-b from-[#1f7a63] to-[#175d4b] px-5 pt-8 pb-10 text-white rounded-b-[32px] shadow-lg relative overflow-hidden">
+        <section className="md:hidden bg-gradient-to-b from-[#1f7a63] to-[#175d4b] px-5 pt-8 pb-10 text-white rounded-b-[32px] shadow-lg relative overflow-hidden">
           <div className="absolute right-[-20px] top-[-10px] opacity-10 pointer-events-none">
             <User className="text-[130px]" style={{ fontVariationSettings: "'FILL' 1" }} />
           </div>
@@ -339,7 +340,7 @@ export function ProfileScreen({
         </section>
 
         {/* Content list buttons */}
-        <div className="px-5 -mt-5 flex flex-col gap-4 relative z-10">
+        <div className="px-5 -mt-5 md:mt-6 flex flex-col gap-4 relative z-10">
           {/* Customer Details setup */}
           <div onClick={handleOpenEdit} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">

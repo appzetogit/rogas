@@ -112,22 +112,11 @@ export function WalletScreen({ onBack, currentUser }) {
     return (
         <div className="bg-[#F5F5F0] min-h-screen text-[#1b1c1c] relative">
             {/* Top App Bar */}
-            <header className="fixed top-0 w-full z-40 bg-[#F5F5F0] flex justify-between items-center px-4 h-14">
+            <header className="fixed top-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-4 h-14 shadow-sm border-b border-[#bec9c3]/20">
                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-start active:scale-90 transition-transform">
                     <ArrowLeft className="text-[#1b1c1c]" />
                 </button>
-                <h1 className="text-[20px] font-extrabold text-[#1b1c1c]">Wallet</h1>
-                <div className="w-10 h-10 rounded-full border-2 border-[#1f7a63]/20 overflow-hidden shadow-sm bg-[#1f7a63]/10 flex items-center justify-center font-bold text-[#1f7a63] text-[18px] relative">
-                    <span className="z-0">{currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "U"}</span>
-                    {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
-                        <img
-                            alt="Profile"
-                            className="absolute inset-0 w-full h-full object-cover z-10"
-                            src={currentUser.profileImage}
-                            onError={(e) => e.target.style.display = 'none'}
-                        />
-                    )}
-                </div>
+                <h1 className="text-[20px] font-extrabold text-[#1b1c1c] mx-auto pr-10">Wallet</h1>
             </header>
 
             {/* Main Content Canvas */}

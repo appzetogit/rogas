@@ -101,7 +101,7 @@ export function PantryItemDetails() {
     <div className="font-body-md text-on-surface antialiased overflow-x-hidden min-h-[max(884px,100dvh)]" style={{ backgroundColor: '#F5F5F0', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       {/* Top Navigation */}
       <header 
-        className={`fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-4 justify-between transition-all duration-300 ${scrolled ? 'shadow-sm bg-[rgba(252,249,248,0.95)]' : 'bg-[rgba(252,249,248,0.8)] backdrop-blur-md'}`}
+        className={`fixed top-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] z-50 h-14 flex items-center px-4 justify-between transition-all duration-300 ${scrolled ? 'shadow-sm bg-[rgba(252,249,248,0.95)]' : 'bg-[rgba(252,249,248,0.8)] backdrop-blur-md'}`}
       >
         <button 
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors" 
@@ -201,7 +201,7 @@ export function PantryItemDetails() {
       </main>
 
       {/* Floating Footer Action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 z-50 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] p-4 pb-6 z-50 pointer-events-none">
         
         {/* Separate Floating Cart Icon */}
         {totalItems > 0 && (

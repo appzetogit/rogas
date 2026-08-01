@@ -607,7 +607,7 @@ export function PantryCheckoutScreen() {
       {/* ── Map Modal ── */}
       {showMap && isLoaded && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl overflow-hidden w-full max-w-[420px] shadow-2xl flex flex-col h-[70vh]">
+          <div className="bg-white rounded-3xl overflow-hidden w-full max-w-md md:max-w-xl shadow-2xl flex flex-col h-[70vh]">
             <div className="px-5 py-4 border-b border-[#f0eded] flex justify-between items-center">
               <h2 className="text-[18px] font-extrabold text-[#1b1c1c]">Set Delivery Location</h2>
               <button onClick={() => setShowMap(false)} className="w-8 h-8 rounded-full bg-[#f5f5f0] flex items-center justify-center">
@@ -633,7 +633,7 @@ export function PantryCheckoutScreen() {
       )}
 
       {/* ── Sticky Bottom Bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white px-5 py-4 border-t border-[#f0f0f0] shadow-[0_-12px_24px_rgba(0,0,0,0.06)] z-20">
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] max-w-[480px] mx-auto bg-white px-5 py-4 border-t border-[#f0f0f0] shadow-[0_-12px_24px_rgba(0,0,0,0.06)] z-20">
         <div className="flex justify-between items-center mb-4">
           <div>
             <p className="text-[12px] text-[#6e7a74] font-medium">Total for {totalDeliveryDays} day(s) · {totalDeliverySlots} slot(s)</p>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
-import { Home, ClipboardList, Calendar, ShoppingBag, User } from "lucide-react";
+import { Home, ClipboardList, Calendar, ShoppingBag, User, LogOut } from "lucide-react";
 
 import { WelcomeScreen, GoalsScreen, DietPrefsScreen, LocationScreen, ManualLocationScreen } from "./components/OnboardingScreens";
 import { AuthPhoneScreen, OtpVerificationScreen, UserDetailsScreen } from "./components/AuthScreens";
@@ -41,8 +41,22 @@ export default function CustomerAppMain() {
   });
   const isLoggedIn = Boolean(currentUser && localStorage.getItem("user_accessToken"));
 
-  // ─── Socket.IO State ─────────────────────────────────────────────────────────
+  // ─── Socket.IO & Config State ────────────────────────────────────────────────
   const [socket, setSocket] = useState(null);
+  const [appConfig, setAppConfig] = useState(null);
+
+  // Fetch App Config for Logo
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
+    fetch(`${backendUrl}/api/v1/app-config/user_app`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setAppConfig(data.data);
+        }
+      })
+      .catch(err => console.error("Failed to fetch app config", err));
+  }, []);
 
   // Connect socket when user logs in; join subscription rooms
   useEffect(() => {
@@ -318,13 +332,79 @@ export default function CustomerAppMain() {
 
   // ─── Bottom Nav Visibility ───────────────────────────────────────────────────
   const currentPath = location.pathname;
-  const showNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
+  const showBottomNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
+  const isPublicRoute = ["/user/welcome", "/user/auth/login", "/user/auth/signup", "/user/otp", "/user/termsandcondition", "/user/privacy", "/user/about"].includes(currentPath);
+  const showDesktopNav = isLoggedIn && !isPublicRoute;
 
   return (
     <PantryCartProvider>
-      <div className="relative max-w-[420px] mx-auto min-h-screen bg-slate-50 shadow-2xl border-x border-[#bec9c3]/30 overflow-x-hidden flex flex-col font-sans transition-all duration-300">
+      <div className="relative w-full min-h-screen bg-slate-50 shadow-2xl overflow-x-hidden flex flex-col md:flex-row font-sans transition-all duration-300">
+        
+        {/* Desktop Sidebar */}
+        {showDesktopNav && (
+          <aside className="hidden md:flex fixed top-0 left-0 h-full w-64 bg-[#00604c] text-white flex-col z-50 overflow-y-auto shadow-xl">
+            <div className="p-6 pb-2 border-b border-white/10">
+              {appConfig?.logoUrl ? (
+                <img src={appConfig.logoUrl} alt="FoodApp" className="h-8 w-auto object-contain rounded" />
+              ) : (
+                <h2 className="text-xl font-bold tracking-tight">FoodApp</h2>
+              )}
+              <p className="text-white/70 text-xs mt-1 uppercase tracking-widest font-semibold">User Panel</p>
+            </div>
+            <nav className="flex-1 px-4 py-6 space-y-2">
+              {[
+                { path: "/user/home", icon: Home, label: "Home" },
+                { path: "/user/plans", icon: ClipboardList, label: "Plans" },
+                { path: "/user/calendar", icon: Calendar, label: "Calendar" },
+                { path: "/user/orders", icon: ShoppingBag, label: "Orders" },
+                { path: "/user/profile", icon: User, label: "Profile" },
+              ].map(({ path, icon: IconComp, label }) => {
+                const active = currentPath === path;
+                return (
+                  <button
+                    key={path}
+                    onClick={() => navigate(path)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-all cursor-pointer ${
+                      active ? "bg-white text-[#00604c] shadow-sm" : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <IconComp className="w-5 h-5 shrink-0" />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="p-4 border-t border-white/10 mt-auto">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] text-white/80 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer"
+              >
+                <LogOut className="w-5 h-5 shrink-0" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* Desktop Global Top-Right Profile */}
+        {showDesktopNav && currentUser && currentPath !== "/user/home" && (
+          <div className="hidden md:flex fixed top-0 right-0 h-14 pl-8 pr-6 items-center gap-3 z-[60] bg-white rounded-bl-2xl shadow-sm md:shadow-none border-b border-l border-[#bec9c3]/20 md:border-none">
+            <div className="flex flex-col text-right justify-center">
+              <span className="text-[13px] font-bold text-[#1b1c1c] leading-tight truncate max-w-[150px]">{currentUser.name || "Customer"}</span>
+              <span className="text-[10px] text-[#6e7a74] truncate max-w-[150px]">{currentUser.city || "Warsaw"}</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-[#1F7A63] text-white flex items-center justify-center font-bold text-sm border-2 border-white overflow-hidden shadow-sm ring-2 ring-[#1F7A63]/10">
+              {currentUser.profileImage ? (
+                <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                (currentUser.name || "C")[0].toUpperCase()
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Screen Routes */}
-        <div className="flex-1 w-full relative">
+        <div className={`flex-1 w-full relative ${showDesktopNav ? 'md:ml-64' : ''}`}>
           <Routes>
             <Route path="welcome" element={
             <WelcomeScreen
@@ -641,9 +721,9 @@ export default function CustomerAppMain() {
         </Routes>
       </div>
 
-      {/* Bottom Navigation */}
-      {showNav && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[420px] w-full z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 pt-2.5 pb-5 flex justify-around items-center h-20">
+      {/* Bottom Navigation (Mobile Only) */}
+      {showBottomNav && (
+        <nav className="fixed bottom-0 left-0 w-full md:hidden z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 sm:px-8 pt-2.5 pb-5 flex justify-around items-center h-20">
           {[
             { path: "/user/home", icon: Home, label: "Home" },
             { path: "/user/plans", icon: ClipboardList, label: "Plans" },

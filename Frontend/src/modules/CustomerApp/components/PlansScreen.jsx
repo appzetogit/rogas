@@ -59,7 +59,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-[420px] bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div className="relative z-10 w-full max-w-md md:max-w-xl bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-[#e4e2e1] rounded-full" />
@@ -371,7 +371,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-[420px] bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div className="relative z-10 w-full max-w-md md:max-w-xl bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-[#e4e2e1] rounded-full" />
         </div>
@@ -774,7 +774,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
     <>
       <div className="bg-[#F5F5F0] text-on-surface min-h-screen pb-32">
         {/* Top Header */}
-        <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
           <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
           <h1 className="text-xl font-extrabold text-primary text-center">Meal Plans</h1>
           <div className="w-8" />
@@ -858,9 +858,9 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
           </div>
 
           {/* Vendor Cards */}
-          <section className="space-y-4">
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
             {loading ? (
-              <div className="space-y-4">
+              <div className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-6">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
                     <div className="h-44 bg-[#e4e2e1]" />
@@ -873,7 +873,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                 ))}
               </div>
             ) : filteredPlans.length === 0 ? (
-              <div className="text-center py-16 space-y-3">
+              <div className="col-span-full text-center py-16 space-y-3">
                 <span className="text-5xl">🍽️</span>
                 <p className="font-extrabold text-[#1b1c1c] text-[16px]">No vendors found</p>
                 <p className="text-[13px] text-[#6e7a74]">{searchQuery ? "Try a different search" : "No approved vendors yet"}</p>

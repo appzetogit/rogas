@@ -260,7 +260,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
     </main>
 
     {/* footer sticky actions */}
-    <footer className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
+    <footer className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
       <button onClick={handleContinue} className="w-full bg-primary-container text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all">
         Continue
       </button>

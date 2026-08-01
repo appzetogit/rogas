@@ -138,13 +138,12 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32">
       {/* Top Header */}
-      <header className="fixed top-0 left-0 w-full z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-        <h1 className="text-lg font-extrabold text-primary text-center">Help & Support</h1>
-        <div className="w-8" />
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <button onClick={onGoBack}  className="text-[#1b1c1c] cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200"><ArrowLeft size={24} /></button>
+        <h1 className="text-[18px] font-extrabold text-[#1b1c1c] mx-auto pr-8">Help & Support</h1>
       </header>
 
-      <main className="pt-20 px-5 max-w-md mx-auto">
+      <main className="pt-20 px-5 sm:px-8 max-w-3xl mx-auto">
         {/* Navigation Tabs */}
         <div className="flex bg-white p-1 rounded-2xl border border-[#bec9c3]/20 mb-6">
           <button
