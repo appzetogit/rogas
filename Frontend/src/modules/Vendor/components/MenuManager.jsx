@@ -41,14 +41,14 @@ export default function MenuManager({
   const currentWeekDates = React.useMemo(() => {
     const days = [];
     const today = new Date();
-    const currentDay = today.getDay();
-    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - daysToMonday);
-    monday.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    
+    // Generate 7 days: Yesterday, Today, and next 5 days
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
+      const d = new Date(yesterday);
+      d.setDate(yesterday.getDate() + i);
       days.push(d);
     }
     return days;
@@ -105,10 +105,8 @@ export default function MenuManager({
     try {
       setIsLoadingDailyMenus(true);
       const start = new Date();
-      const currentDay = start.getDay();
-      const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
-      start.setDate(start.getDate() - daysToMonday);
       start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - 1); // Start fetching from yesterday
 
       const end = new Date(start);
       end.setDate(start.getDate() + 14);
@@ -640,6 +638,10 @@ export default function MenuManager({
 
               {(() => {
                 const activeDate = selectedDateForSchedule || selectedDate;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const isPast = activeDate < today;
+                
                 return (
                   <div className="space-y-4">
                     {/* Header row */}
@@ -670,41 +672,43 @@ export default function MenuManager({
                                 <span className="text-base">{slotIcon}</span>
                                 <span className="font-extrabold text-[13px] text-on-surface">{slotLabel} Slot</span>
                               </div>
-                              {existingDish ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedDateForSchedule(activeDate);
-                                    setSelectedSlotForSchedule(slot);
-                                    setMealSelectorOpenPlan(
-                                      existingMeal || {
-                                        id: existingDish.mealPlanId?._id || existingDish.mealPlanId,
-                                        name: existingDish.dishName,
-                                        imageUrl: '',
-                                        description: '',
-                                        calories: '',
-                                        prot: '', carb: '', fat: ''
-                                      }
-                                    );
-                                  }}
-                                  className="text-amber-600 hover:text-amber-700 font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
-                                >
-                                  <ArrowRightLeft className="text-[16px]" />
-                                  Change
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedDateForSchedule(activeDate);
-                                    setSelectedSlotForSchedule(slot);
-                                    setAddMealSelectorOpen(true);
-                                  }}
-                                  className="text-primary hover:text-primary-dark font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
-                                >
-                                  <PlusCircle className="text-[16px]" />
-                                  Add Meal
-                                </button>
+                              {!isPast && (
+                                existingDish ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDateForSchedule(activeDate);
+                                      setSelectedSlotForSchedule(slot);
+                                      setMealSelectorOpenPlan(
+                                        existingMeal || {
+                                          id: existingDish.mealPlanId?._id || existingDish.mealPlanId,
+                                          name: existingDish.dishName,
+                                          imageUrl: '',
+                                          description: '',
+                                          calories: '',
+                                          prot: '', carb: '', fat: ''
+                                        }
+                                      );
+                                    }}
+                                    className="text-amber-600 hover:text-amber-700 font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
+                                  >
+                                    <ArrowRightLeft className="text-[16px]" />
+                                    Change
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDateForSchedule(activeDate);
+                                      setSelectedSlotForSchedule(slot);
+                                      setAddMealSelectorOpen(true);
+                                    }}
+                                    className="text-primary hover:text-primary-dark font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
+                                  >
+                                    <PlusCircle className="text-[16px]" />
+                                    Add Meal
+                                  </button>
+                                )
                               )}
                             </div>
 
@@ -754,33 +758,35 @@ export default function MenuManager({
                                   </div>
                                 )}
 
-                                <div className="flex gap-2 justify-end pt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenScheduler(
-                                      existingMeal || { id: existingDish.mealPlanId?._id || existingDish.mealPlanId, name: existingDish.dishName },
-                                      activeDate,
-                                      slot,
-                                      existingDish
-                                    )}
-                                    className="px-3 py-1.5 rounded-lg border border-primary text-primary font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
-                                  >
-                                    <Edit2 className="text-[14px]" />
-                                    Edit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteScheduledMeal(
-                                      existingDish.mealPlanId?._id || existingDish.mealPlanId,
-                                      activeDate,
-                                      slot
-                                    )}
-                                    className="px-3 py-1.5 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[11px] cursor-pointer flex items-center justify-center gap-0.5"
-                                  >
-                                    <Trash2 className="text-[14px]" />
-                                    Remove
-                                  </button>
-                                </div>
+                                {!isPast && (
+                                  <div className="flex gap-2 justify-end pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenScheduler(
+                                        existingMeal || { id: existingDish.mealPlanId?._id || existingDish.mealPlanId, name: existingDish.dishName },
+                                        activeDate,
+                                        slot,
+                                        existingDish
+                                      )}
+                                      className="px-3 py-1.5 rounded-lg border border-primary text-primary font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                                    >
+                                      <Edit2 className="text-[14px]" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteScheduledMeal(
+                                        existingDish.mealPlanId?._id || existingDish.mealPlanId,
+                                        activeDate,
+                                        slot
+                                      )}
+                                      className="px-3 py-1.5 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[11px] cursor-pointer flex items-center justify-center gap-0.5"
+                                    >
+                                      <Trash2 className="text-[14px]" />
+                                      Remove
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="text-center py-4 bg-slate-50 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center gap-2">
