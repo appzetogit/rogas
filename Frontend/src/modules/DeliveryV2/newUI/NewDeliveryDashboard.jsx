@@ -333,7 +333,15 @@ function NewDeliveryDashboard({ children }) {
     }
   };
 
-  const handleConfirmPickup = () => {
+  const handleConfirmPickup = async () => {
+    // Clear the active selection lock so the new route stops (deliveries) can load completely
+    setSelectedOrderId(null);
+    selectedOrderIdRef.current = null;
+    
+    // Go back to the route screen so the driver can see their delivery tasks
+    setCurrentScreen("route");
+    
+    // Optimistic UI updates
     setOrders(prev => prev.map(o => ({ ...o, status: "picked_up" })));
     setStops(prev => prev.map(s => {
       if (s.type === "pickup" || s.type === "P") return { ...s, status: "COMPLETED" };
@@ -341,13 +349,8 @@ function NewDeliveryDashboard({ children }) {
       return s;
     }));
     
-    // Switch active order to the first delivery stop so the delivery screen has the correct order ID
-    const firstDeliveryStop = stops.find(s => s.type === "delivery" || s.type === "D");
-    if (firstDeliveryStop) {
-      setSelectedOrderId(firstDeliveryStop.orderId || firstDeliveryStop.id);
-    }
-    
-    setCurrentScreen("delivery");
+    // Fetch live route from backend to get the actual delivery stops and correct earning amounts
+    await fetchActiveRoute();
   };
 
   const handleConfirmDelivered = async (cashCollected) => {
