@@ -387,7 +387,7 @@ export default function CustomerAppMain() {
         )}
 
         {/* Desktop Global Top-Right Profile */}
-        {showDesktopNav && currentUser && currentPath !== "/user/home" && (
+        {showDesktopNav && currentUser && currentPath !== "/user/home" && currentPath !== "/user/profile" && (
           <div className="hidden md:flex fixed top-0 right-0 h-14 pl-8 pr-6 items-center gap-3 z-[60] bg-white rounded-bl-2xl shadow-sm md:shadow-none border-b border-l border-[#bec9c3]/20 md:border-none">
             <div className="flex flex-col text-right justify-center">
               <span className="text-[13px] font-bold text-[#1b1c1c] leading-tight truncate max-w-[150px]">{currentUser.name || "Customer"}</span>

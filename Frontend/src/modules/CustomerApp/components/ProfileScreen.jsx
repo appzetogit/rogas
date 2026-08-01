@@ -3,7 +3,7 @@ import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
 import { useTranslation } from "../../../contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info } from 'lucide-react';
+import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
 
 export function ProfileScreen({
   onGoBack,
@@ -150,144 +150,249 @@ export function ProfileScreen({
   // Render Detailed Edit View
   if (isEditing) {
     return (
-      <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
-        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-          <button onClick={() => setIsEditing(false)} className="text-[#1b1c1c] cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200">
-            <ArrowLeft size={24} />
-          </button>
-          <h1 className="text-[18px] font-extrabold text-[#1b1c1c] mx-auto pr-8">Customer Details</h1>
+      <div className="bg-[#f6f8f7] text-slate-800 min-h-screen pb-20 font-sans">
+        {/* Top Fixed Header */}
+        <header className="fixed top-0 left-0 right-0 md:left-64 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs h-16 flex items-center justify-between px-4 sm:px-8 lg:px-10">
+          <div className="flex items-center gap-3">
+            <button 
+              type="button"
+              onClick={() => setIsEditing(false)} 
+              className="text-slate-700 hover:text-slate-900 cursor-pointer active:scale-95 transition-all w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 border border-slate-200/60"
+              title="Go back"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-lg font-extrabold text-slate-900 leading-tight">Customer Details</h1>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">Manage and update your account details</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#1f7a63]/10 text-[#1f7a63] border border-[#1f7a63]/20">
+              <ShieldCheck size={14} />
+              Account Settings
+            </span>
+            <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200">
+              <div className="flex flex-col text-right">
+                <span className="text-xs font-bold text-slate-800 leading-tight">{currentUser?.name || "Customer"}</span>
+                <span className="text-[10px] text-slate-500">{currentUser?.city || "Warsaw"}</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-[#1f7a63] text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
+                {currentUser?.profileImage ? (
+                  <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  (currentUser?.name || "C")[0].toUpperCase()
+                )}
+              </div>
+            </div>
+          </div>
         </header>
 
-        <main className="pt-20 px-5 sm:px-8 max-w-4xl mx-auto">
+        <main className="pt-20 pb-10 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
           <form onSubmit={handleSave} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Profile Picture Upload Section */}
-              <div className="md:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-[#bec9c3]/20 flex flex-col items-center justify-center gap-4 text-center h-fit">
-                <h3 className="text-sm font-bold text-[#1b1c1c] hidden md:block">Profile Picture</h3>
-                <div className="relative">
-                  <div className={`relative w-28 h-28 rounded-full border-2 border-primary/20 overflow-hidden shadow-sm bg-primary/10 flex items-center justify-center transition-opacity ${imageUploading ? "opacity-45" : ""} text-primary font-bold text-[40px]`}>
-                    <span className="z-0">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
-                    {formData.profileImage && formData.profileImage.trim() !== "" && (
-                      <img
-                        alt="Avatar preview"
-                        className="absolute inset-0 w-full h-full object-cover z-10"
-                        src={formData.profileImage}
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                    )}
-                  </div>
-                  {imageUploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full">
-                      <Loader2 className="text-white text-[24px] animate-spin" />
-                    </div>
-                  )}
-                  <label className="absolute bottom-0 right-0 bg-primary text-white w-9 h-9 rounded-full border-2 border-white flex items-center justify-center cursor-pointer hover:bg-[#155a49] transition-colors z-20 shadow-sm">
-                    <Camera className="text-[18px]" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      disabled={formLoading}
-                    />
-                  </label>
+            {/* Unified Profile Card */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
+              {/* Decorative Top Banner */}
+              <div className="h-32 sm:h-40 bg-gradient-to-r from-[#1f7a63] via-[#175d4b] to-[#0f3d32] relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none text-white">
+                  <Sparkles size={140} />
                 </div>
-                <p className="text-xs text-[#6e7a74] hidden md:block font-medium">Click the camera icon to upload a new profile photo.</p>
               </div>
 
-              {/* Basic Info Fields */}
-              <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-[#bec9c3]/20 space-y-5">
+              {/* Profile Avatar Header */}
+              <div className="px-6 sm:px-10 pb-6 -mt-16 sm:-mt-20 relative z-10 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 border-b border-slate-100">
+                <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 text-center sm:text-left">
+                  {/* Avatar Circle with Upload Trigger */}
+                  <div className="relative group">
+                    <div className={`relative w-28 h-28 sm:w-34 sm:h-34 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-[#1f7a63]/20 to-[#175d4b]/30 overflow-hidden flex items-center justify-center transition-opacity ${imageUploading ? "opacity-50" : ""} text-[#1f7a63] font-bold text-4xl`}>
+                      <span className="z-0 select-none">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
+                      {formData.profileImage && formData.profileImage.trim() !== "" && (
+                        <img
+                          alt="Profile Avatar"
+                          className="absolute inset-0 w-full h-full object-cover z-10"
+                          src={formData.profileImage}
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      )}
+                    </div>
+                    {imageUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full z-20">
+                        <Loader2 className="text-white animate-spin" size={28} />
+                      </div>
+                    )}
+                    <label 
+                      className="absolute bottom-1 right-1 bg-[#1f7a63] hover:bg-[#155a49] text-white w-10 h-10 rounded-full border-3 border-white flex items-center justify-center cursor-pointer shadow-md transition-all active:scale-90 z-20 group-hover:scale-105"
+                      title="Upload Profile Picture"
+                    >
+                      <Camera size={18} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        disabled={formLoading}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mb-1">
+                    <h2 className="text-2xl font-extrabold text-slate-900">{formData.name || "Customer Account"}</h2>
+                    <p className="text-xs text-slate-500 font-medium flex items-center justify-center sm:justify-start gap-1.5 mt-1">
+                      <Camera size={14} className="text-[#1f7a63]" />
+                      Click camera icon to upload a new profile photo
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Body */}
+              <div className="p-6 sm:p-10 space-y-8">
                 {formError && (
-                  <div className="p-3 bg-red-50 text-brand-red rounded-xl text-xs font-semibold border border-red-100">
-                    {formError}
+                  <div className="p-4 bg-red-50/80 border border-red-200 text-red-700 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                    <Info size={16} className="flex-shrink-0 text-red-500" />
+                    <span>{formError}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-bold text-on-surface-variant">Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                      disabled={formLoading}
-                    />
-                  </div>
+                {/* Personal Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <User size={14} className="text-[#1f7a63]" />
+                    Personal Details
+                  </h3>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-bold text-on-surface-variant">Email Address</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                      disabled={formLoading}
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Full Name */}
+                    <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter your full name"
+                          className="w-full text-sm pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
+                          disabled={formLoading}
+                        />
+                      </div>
+                    </div>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-bold text-on-surface-variant">Phone Number (Read-Only)</label>
-                    <input
-                      type="text"
-                      value={currentUser?.phone || ""}
-                      disabled
-                      className="w-full text-sm p-3 bg-[#e4e2e1]/45 border border-[#bec9c3]/30 rounded-xl font-medium text-gray-500 cursor-not-allowed"
-                    />
-                    <span className="text-[10px] text-on-surface-variant font-medium block mt-0.5">Phone number is linked to auth and cannot be changed.</span>
-                  </div>
+                    {/* Gender */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Gender</label>
+                      <select
+                        value={formData.gender}
+                        onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                        className="w-full text-sm px-3.5 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 cursor-pointer"
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                        <option value="prefer-not-to-say">Prefer not to say</option>
+                      </select>
+                    </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-on-surface-variant">Gender</label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                      disabled={formLoading}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                      <option value="prefer-not-to-say">Prefer not to say</option>
-                    </select>
+                    {/* Date of Birth */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Date of Birth</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="date"
+                          value={formData.dateOfBirth}
+                          onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                          className="w-full text-sm pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 cursor-pointer"
+                          disabled={formLoading}
+                        />
+                      </div>
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-on-surface-variant">Date of Birth</label>
-                    <input
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                      className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
-                      disabled={formLoading}
-                    />
+                <hr className="border-slate-100" />
+
+                {/* Contact Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Mail size={14} className="text-[#1f7a63]" />
+                    Contact Information
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Email Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Email Address</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="name@example.com"
+                          className="w-full text-sm pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
+                          disabled={formLoading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phone Number (Read-Only) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Phone Number (Read-Only)</label>
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1">
+                          <Lock size={10} /> Read-Only
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          value={currentUser?.phone || ""}
+                          disabled
+                          className="w-full text-sm pl-10 pr-4 py-3 bg-slate-100/80 border border-slate-200 rounded-xl font-semibold text-slate-500 cursor-not-allowed select-none"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-1">
+                        <Info size={12} className="text-slate-400 flex-shrink-0" />
+                        Phone number is linked to auth and cannot be changed.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4 pt-4 border-t border-[#bec9c3]/20">
+                <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="flex-1 bg-white border border-[#bec9c3] text-[#3e4945] py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto px-8 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
                     disabled={formLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-[#155a49] transition-colors active:scale-95 flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    className="w-full sm:w-auto px-10 bg-gradient-to-r from-[#1f7a63] to-[#175d4b] hover:from-[#175d4b] hover:to-[#0f3d32] text-white py-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-md hover:shadow-lg cursor-pointer"
                     disabled={formLoading}
                   >
                     {formLoading ? (
                       <>
-                        <Loader2 className="text-sm animate-spin" />
+                        <Loader2 className="animate-spin" size={18} />
                         <span>Saving...</span>
                       </>
                     ) : (
-                      "Save Changes"
+                      <>
+                        <CheckCircle2 size={18} />
+                        <span>Save Changes</span>
+                      </>
                     )}
                   </button>
                 </div>
@@ -301,16 +406,33 @@ export function ProfileScreen({
 
   // Render Main Profile Screen
   return (
-    <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
-      {/* Top action context header */}
-      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-        <button onClick={onGoBack} className="text-[#1b1c1c] cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200"><ArrowLeft size={24} /></button>
-        <h1 className="text-[18px] font-extrabold text-[#1b1c1c] mx-auto pr-8">Profile</h1>
+    <div className="bg-[#f6f8f7] text-slate-800 min-h-screen pb-20 font-sans">
+      {/* Top Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 md:left-64 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs h-16 flex items-center justify-between px-4 sm:px-8 lg:px-10">
+        <div className="flex items-center gap-3">
+          <button onClick={onGoBack} className="text-slate-700 hover:text-slate-900 cursor-pointer active:scale-95 transition-all w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 border border-slate-200/60">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-lg font-extrabold text-slate-900">Profile</h1>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <div className="flex flex-col text-right">
+            <span className="text-xs font-bold text-slate-800 leading-tight">{currentUser?.name || "Customer"}</span>
+            <span className="text-[10px] text-slate-500">{currentUser?.city || "Warsaw"}</span>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-[#1f7a63] text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
+            {currentUser?.profileImage ? (
+              <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              (currentUser?.name || "C")[0].toUpperCase()
+            )}
+          </div>
+        </div>
       </header>
 
-      <main className="pt-14 pb-12">
-        {/* Profile green banner */}
-        <section className="md:hidden bg-gradient-to-b from-[#1f7a63] to-[#175d4b] px-5 pt-8 pb-10 text-white rounded-b-[32px] shadow-lg relative overflow-hidden">
+      <main className="pt-20 pb-10 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
+        {/* Profile green banner (Mobile) */}
+        <section className="md:hidden bg-gradient-to-b from-[#1f7a63] to-[#175d4b] px-5 pt-8 pb-10 text-white rounded-3xl shadow-md relative overflow-hidden mb-6">
           <div className="absolute right-[-20px] top-[-10px] opacity-10 pointer-events-none">
             <User className="text-[130px]" style={{ fontVariationSettings: "'FILL' 1" }} />
           </div>
@@ -340,7 +462,7 @@ export function ProfileScreen({
         </section>
 
         {/* Content list buttons */}
-        <div className="px-5 -mt-5 md:mt-6 flex flex-col gap-4 relative z-10">
+        <div className="flex flex-col gap-4 relative z-10">
           {/* Customer Details setup */}
           <div onClick={handleOpenEdit} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
