@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
-import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft, MoreVertical, UtensilsCrossed, Check } from 'lucide-react';
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -56,8 +56,16 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [skipTarget, setSkipTarget] = useState(null); // { orderId, mealName }
+  const [skipTarget, setSkipTarget] = useState(null); // legacy skip target (can be removed later if we fully migrate, but keep for now)
   const [hasFullWeekSub, setHasFullWeekSub] = useState(false);
+
+  // Manage Order States
+  const [activeDropdown, setActiveDropdown] = useState(null); // Tracks which order's 3-dot menu is open
+  const [manageMode, setManageMode] = useState(null);
+  const [manageOrder, setManageOrder] = useState(null);
+  const [availableMeals, setAvailableMeals] = useState([]);
+  const [selectedMealIds, setSelectedMealIds] = useState([]);
+  const [pauseDays, setPauseDays] = useState(1);
   const [dateCache, setDateCache] = useState({});
   const [subsFetched, setSubsFetched] = useState(false);
 
@@ -262,6 +270,84 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to undo skip";
       onShowToast(errMsg);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  // ─── Manage Order Flows ───────────────────────────────────────────────────
+  const closeManage = () => {
+    setManageMode(null);
+    setManageOrder(null);
+    setSelectedMealIds([]);
+    setAvailableMeals([]);
+    setPauseDays(1);
+    setSkipTarget(null);
+  };
+
+  const openSkip = (order, mealName) => {
+    setManageOrder(order);
+    setSkipTarget({ orderId: order._id, mealName }); 
+    setManageMode("confirm_skip");
+    setActiveDropdown(null);
+  };
+
+  const openPause = (order) => {
+    setManageOrder(order);
+    setPauseDays(1);
+    setManageMode("pause");
+    setActiveDropdown(null);
+  };
+
+  const handlePause = async () => {
+    if (!manageOrder) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.pauseSubscription(
+        manageOrder.subscriptionId._id || manageOrder.subscriptionId,
+        pauseDays
+      );
+      onShowToast(`Subscription paused for ${pauseDays} day(s).`);
+      closeManage();
+      loadOrdersForDate(selectedDateStrRef.current, true);
+    } catch (err) {
+      onShowToast(err.response?.data?.message || "Failed to pause subscription");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const openChangeMeal = async (order) => {
+    setManageOrder(order);
+    setManageMode("change_meal");
+    setActiveDropdown(null);
+    setSelectedMealIds(order.meals?.map(m => m.mealPlanId?._id || m.mealPlanId) || []);
+    
+    try {
+      const vendorId = order.vendorId?._id || order.vendorId;
+      const res = await dmbCustomerAPI.getVendorMenu(vendorId);
+      setAvailableMeals(res.data?.menu ?? res.data?.meals ?? res.data?.plans ?? []);
+    } catch (err) {
+      onShowToast("Failed to fetch available meals.");
+    }
+  };
+
+  const toggleMealSelection = (mealId) => {
+    setSelectedMealIds(prev =>
+      prev.includes(mealId) ? prev.filter(id => id !== mealId) : [mealId] 
+    );
+  };
+
+  const handleChangeMeal = async () => {
+    if (!manageOrder || selectedMealIds.length === 0) return;
+    setLoadingAction(true);
+    try {
+      await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
+      onShowToast("Meal changed successfully!");
+      closeManage();
+      loadOrdersForDate(selectedDateStrRef.current, true);
+    } catch (err) {
+      onShowToast(err.response?.data?.message || "Failed to change meal");
     } finally {
       setLoadingAction(false);
     }
@@ -624,8 +710,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                             )}
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex-shrink-0">
+                          <div className="flex-shrink-0 relative">
                             {m.status === "skipped" ? (
                               (day.isYesterday || day.isToday) ? (
                                 <span className="text-[12px] font-bold text-brand-red/60 font-sans pr-2">Skipped</span>
@@ -643,13 +728,33 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                                 <Info className="text-[20px]" />
                               </button>
                             ) : (
-                              <button
-                                onClick={() => triggerSkipOrder(m.order._id, m.mealName)}
-                                disabled={loadingAction}
-                                className="px-4 py-1.5 rounded-full border border-primary-container text-primary hover:bg-[#e8f3f0] font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50"
-                              >
-                                Skip
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setActiveDropdown(activeDropdown === m.order._id ? null : m.order._id)}
+                                  className="p-1.5 rounded-full hover:bg-[#e8f3f0] text-primary transition-colors cursor-pointer"
+                                >
+                                  <MoreVertical className="text-[20px]" />
+                                </button>
+                                
+                                {activeDropdown === m.order._id && (
+                                  <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-[#e4e2e1] overflow-hidden z-20">
+                                    <button 
+                                      onClick={() => openSkip(m.order, m.mealName)}
+                                      className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-brand-red hover:bg-slate-50 transition-colors"
+                                    >Skip</button>
+                                    <div className="h-[1px] bg-slate-100 w-full" />
+                                    <button 
+                                      onClick={() => openPause(m.order)}
+                                      className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-amber-600 hover:bg-slate-50 transition-colors"
+                                    >Pause</button>
+                                    <div className="h-[1px] bg-slate-100 w-full" />
+                                    <button 
+                                      onClick={() => openChangeMeal(m.order)}
+                                      className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-primary hover:bg-slate-50 transition-colors"
+                                    >Change</button>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -718,37 +823,112 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         </section>
       </main>
 
-      {/* Skip Confirmation Modal */}
-      {skipTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={() => setSkipTarget(null)} />
+      {/* Manage Order Bottom Sheet */}
+      {manageOrder && manageMode && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm sm:p-4 animate-fadeIn">
+          <div className="bg-white w-full sm:w-[400px] rounded-t-3xl sm:rounded-3xl p-6 pb-8 shadow-2xl relative animate-slideUp">
+            <button onClick={closeManage} className="absolute right-5 top-5 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+              <XCircle className="text-slate-500 text-[20px]" />
+            </button>
 
-          {/* Modal Content */}
-          <div className="relative bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px] text-center border border-[#bec9c3]/20 z-10">
-            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <XCircle className="text-brand-red text-[28px]" />
-            </div>
+            {manageMode === "confirm_skip" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-brand-red mb-2">Skip this Meal?</h2>
+                <p className="text-[13px] text-on-surface-variant mb-6">
+                  Are you sure you want to skip <strong className="text-on-surface">{skipTarget?.mealName || "this meal"}</strong>? You will not receive delivery for this slot.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button
+                    onClick={confirmSkipOrder}
+                    disabled={loadingAction}
+                    className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  >
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    Confirm Skip
+                  </button>
+                </div>
+              </>
+            )}
 
-            <h3 className="text-lg font-extrabold text-on-surface mb-2">Skip Meal?</h3>
-            <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-              Are you sure you want to skip <strong>{skipTarget.mealName || "this meal"}</strong>? Confirming this will skip your meal.
-            </p>
+            {manageMode === "pause" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
+                <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription starting from this date.</p>
+                <div className="flex gap-3 mb-6">
+                  {[1, 2, 3].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setPauseDays(d)}
+                      className={`flex-1 py-4 rounded-2xl font-bold text-[15px] border-2 transition-all active:scale-95 ${pauseDays === d ? "border-primary bg-[#e8f3f0] text-primary" : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
+                        }`}
+                    >
+                      {d} Day{d > 1 ? "s" : ""}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button
+                    onClick={handlePause}
+                    disabled={loadingAction}
+                    className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  >
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
+                  </button>
+                </div>
+              </>
+            )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSkipTarget(null)}
-                className="flex-grow border border-[#e4e2e1] py-2.5 rounded-full font-extrabold text-[13px] text-on-surface-variant hover:bg-slate-50 active:scale-95 transition-all"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={confirmSkipOrder}
-                className="flex-grow bg-brand-red text-white py-2.5 rounded-full font-extrabold text-[13px] hover:bg-red-600 active:scale-95 transition-all"
-              >
-                Confirm
-              </button>
-            </div>
+            {manageMode === "change_meal" && (
+              <>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
+                <p className="text-[13px] text-on-surface-variant mb-4">Choose a meal for this delivery from the vendor's menu.</p>
+
+                {availableMeals.length === 0 ? (
+                  <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
+                    <UtensilsCrossed className="text-[36px] text-slate-300 mb-2 mx-auto" />
+                    <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-5 max-h-60 overflow-y-auto pr-1">
+                    {availableMeals.map((meal) => {
+                      const id = meal._id || meal.id;
+                      const isSelected = selectedMealIds.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => toggleMealSelection(id)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${isSelected ? "border-primary bg-[#e8f3f0]" : "border-[#e4e2e1] bg-white hover:bg-slate-50"
+                            }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"}`}>
+                            {isSelected && <Check className="text-white text-[12px]" />}
+                          </div>
+                          <div>
+                            <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">₹{meal.pricePerDay || meal.price || "—"}/day</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button
+                    onClick={handleChangeMeal}
+                    disabled={loadingAction || selectedMealIds.length === 0}
+                    className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    Confirm Change
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
