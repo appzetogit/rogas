@@ -420,7 +420,7 @@ export const ProfileDetailsV2 = () => {
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-0.5">{label}</p>
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold text-gray-900">{value || "—"}</h4>
+            <h4 className="text-sm font-bold text-[#2B2B2B]">{value || "—"}</h4>
             {badge}
           </div>
         </div>
@@ -436,7 +436,7 @@ export const ProfileDetailsV2 = () => {
   return (
     <div className="min-h-screen bg-[#FDFEFE] font-poppins pb-24">
       {/* ─── HEADER ─── */}
-      <div className="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 px-4 flex items-center justify-between">
+      <div className="sticky top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 px-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-xl transition-all active:scale-90">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
@@ -467,7 +467,7 @@ export const ProfileDetailsV2 = () => {
            <div className="flex items-center justify-center absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 gap-2">
               <button 
                 onClick={() => handleTakeCameraPhoto('profilePhoto')}
-                className="bg-black text-white p-3 rounded-2xl shadow-xl hover:bg-gray-900 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
+                className="bg-[#1F7A63] text-[#F5F5F0] p-3 rounded-2xl shadow-xl hover:bg-gray-900 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
                 title="Take Photo"
               >
                 <Camera className="w-5 h-5" />
@@ -494,7 +494,7 @@ export const ProfileDetailsV2 = () => {
         </div>
 
         <div className="text-center pt-6">
-           <h2 className="text-2xl font-black text-gray-900 leading-none">{profile?.name}</h2>
+           <h2 className="text-2xl font-black text-[#2B2B2B] leading-none">{profile?.name}</h2>
            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2 mb-4">Delivery Partner • {profile?.location?.city}</p>
            
            <div className="flex items-center justify-center gap-2">
@@ -511,18 +511,18 @@ export const ProfileDetailsV2 = () => {
         <div className="grid grid-cols-2 gap-3">
            <div className="bg-white border border-gray-100 p-4 rounded-3xl shadow-sm text-center">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Rider Level</p>
-              <h4 className="text-xl font-black text-gray-900">{riderLevel}</h4>
+              <h4 className="text-xl font-black text-[#2B2B2B]">{riderLevel}</h4>
            </div>
            <div className="bg-white border border-gray-100 p-4 rounded-3xl shadow-sm text-center">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Rating</p>
-              <h4 className="text-xl font-black text-gray-900">{ratingDisplay}</h4>
+              <h4 className="text-xl font-black text-[#2B2B2B]">{ratingDisplay}</h4>
            </div>
         </div>
 
         {/* ─── VEHICLE SECTION ─── */}
         <section>
           <div className="flex items-center justify-between mb-3 px-1">
-             <h3 className="text-xs font-black text-gray-950 uppercase tracking-widest flex items-center gap-2">
+             <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
                 {(() => {
                   const type = String(profile?.vehicle?.type || "").toLowerCase();
                   if (type.includes("car")) return <Car className="w-4 h-4 text-gray-400" />;
@@ -554,7 +554,7 @@ export const ProfileDetailsV2 = () => {
         {/* ─── BANK & PAYMENTS SECTION (ENHANCED) ─── */}
         <section>
            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-xs font-black text-gray-950 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
                  <Banknote className="w-4 h-4 text-gray-400" /> Bank & Payments
               </h3>
               <button 
@@ -613,7 +613,7 @@ export const ProfileDetailsV2 = () => {
                     </div>
                     <div>
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">UPI ID</p>
-                       <h4 className="text-base font-black text-gray-900">{bankDetails.upiId || "Not added"}</h4>
+                       <h4 className="text-base font-black text-[#2B2B2B]">{bankDetails.upiId || "Not added"}</h4>
                     </div>
                  </div>
                  {bankDetails.upiQrCode && (
@@ -631,7 +631,7 @@ export const ProfileDetailsV2 = () => {
         {/* ─── DOCUMENTS SECTION ─── */}
         <section>
           <div className="flex items-center justify-between mb-4 px-1">
-             <h3 className="text-xs font-black text-gray-950 uppercase tracking-widest flex items-center gap-2">
+             <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
                 <Shield className="w-4 h-4 text-gray-400" /> Verification Docs
              </h3>
           </div>
@@ -698,7 +698,7 @@ export const ProfileDetailsV2 = () => {
             <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-10 h-10 text-red-500" />
             </div>
-            <h3 className="text-xl font-black text-gray-950 mb-2 uppercase tracking-tight">Are you sure?</h3>
+            <h3 className="text-xl font-black text-[#2B2B2B] mb-2 uppercase tracking-tight">Are you sure?</h3>
             <p className="text-sm font-medium text-gray-500 mb-8 max-w-[200px] mx-auto">This will remove your current profile picture.</p>
             
             <div className="grid grid-cols-2 gap-3 px-2">
@@ -815,7 +815,7 @@ export const ProfileDetailsV2 = () => {
                      await refreshProfile()
                    } catch (e) { toast.error("Cloud storage sync failed") }
                }}
-               className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-gray-900 transition-all active:scale-95"
+               className="w-full bg-[#1F7A63] text-[#F5F5F0] py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-gray-900 transition-all active:scale-95"
             >
                Save Changes
             </button>
@@ -855,7 +855,7 @@ export const ProfileDetailsV2 = () => {
                         if (field.format) val = field.format(val);
                         setBankDetails({...bankDetails, [field.key]: val})
                     }} 
-                    className="w-full bg-transparent text-sm font-bold text-gray-950 outline-none"
+                    className="w-full bg-transparent text-sm font-bold text-[#2B2B2B] outline-none"
                     placeholder={`Enter ${field.label.toLowerCase()}`}
                   />
                </div>

@@ -24,7 +24,7 @@ import { useDMBTracking } from "../hooks/useDMBTracking";
 import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
 
-function NewDeliveryDashboard() {
+function NewDeliveryDashboard({ children }) {
   useDMBTracking();
   const [stats, setStats] = useState(INITIAL_DRIVER_STATS);
   const [orders, setOrders] = useState([]);
@@ -727,7 +727,7 @@ function NewDeliveryDashboard() {
           </div>
         )}
 
-        {renderActiveScreen()}
+        {children || renderActiveScreen()}
         </div>
       </main>
 

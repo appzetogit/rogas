@@ -64,7 +64,7 @@ function BottomPopup({ isOpen, onClose, title, children }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{title}</h2>
+          <h2 className="text-xl font-black text-[#2B2B2B] uppercase tracking-tight">{title}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
              <AlertTriangle className="w-4 h-4" />
           </button>
@@ -730,11 +730,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   };
 
   return (
-    <div className="relative h-screen w-full bg-white text-gray-900 overflow-hidden flex flex-col">
+    <div className="relative h-screen w-full bg-white text-[#2B2B2B] overflow-hidden flex flex-col">
       {/* ─── 1. TOP HEADER (Dynamic Theme Gradient) ─── */}
       {currentTab !== 'history' && (
       <div 
-        className="absolute top-0 inset-x-0 backdrop-blur-2xl shadow-2xl z-[200] safe-top pb-2 border-b border-white/10"
+        className="absolute top-0 inset-x-0 backdrop-blur-2xl shadow-2xl z-[200] sticky top-0 pb-2 border-b border-white/10"
         style={{ backgroundColor: 'var(--dv-primary)' }}
       >
         <div className="flex items-center justify-between px-4 py-2">
@@ -967,8 +967,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
              <div className="absolute right-4 bottom-28 md:bottom-32 flex flex-col gap-4 z-[120]">
                 <div className="flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                   <button onClick={() => setZoom(z => Math.min(22, z + 1))} className="p-3 hover:bg-gray-50 border-b border-gray-100 text-gray-900 active:scale-90 transition-all" aria-label="Zoom in"><Plus className="w-5 h-5 stroke-[2.75]" /></button>
-                   <button onClick={() => setZoom(z => Math.max(8, z - 1))} className="p-3 hover:bg-gray-50 text-gray-900 active:scale-90 transition-all" aria-label="Zoom out"><Minus className="w-5 h-5 stroke-[2.75]" /></button>
+                   <button onClick={() => setZoom(z => Math.min(22, z + 1))} className="p-3 hover:bg-gray-50 border-b border-gray-100 text-[#2B2B2B] active:scale-90 transition-all" aria-label="Zoom in"><Plus className="w-5 h-5 stroke-[2.75]" /></button>
+                   <button onClick={() => setZoom(z => Math.max(8, z - 1))} className="p-3 hover:bg-gray-50 text-[#2B2B2B] active:scale-90 transition-all" aria-label="Zoom out"><Minus className="w-5 h-5 stroke-[2.75]" /></button>
                 </div>
                 <button 
                   onClick={() => {
@@ -1027,7 +1027,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 </button>
                 <button 
                   onClick={handleCenterMap}
-                  className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-900 border border-gray-100 group active:scale-90 transition-all"
+                  className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center text-[#2B2B2B] border border-gray-100 group active:scale-90 transition-all"
                 >
                   <Target className="w-7 h-7" />
                 </button>
@@ -1063,7 +1063,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                      />
                    </div>
                    <div className="mt-8 bg-white/90 backdrop-blur-md px-8 py-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] text-center border border-gray-100/50">
-                      <h2 className="text-gray-900 font-black uppercase tracking-widest text-lg">You are Offline</h2>
+                      <h2 className="text-[#2B2B2B] font-black uppercase tracking-widest text-lg">You are Offline</h2>
                       <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mt-1.5">Go online to receive orders</p>
                    </div>
                 </div>
@@ -1153,7 +1153,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                            </div>
                            <div className="flex justify-between items-start gap-4">
                               <div>
-                                 <p className="text-gray-950 font-bold text-base sm:text-xl leading-tight">
+                                 <p className="text-[#2B2B2B] font-bold text-base sm:text-xl leading-tight">
                                     {activeOrder?.user?.name || activeOrder?.deliveryAddress?.name || ""}
                                  </p>
                                  <p className="text-gray-500 text-sm font-medium leading-relaxed mt-1 line-clamp-2">
@@ -1187,14 +1187,14 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                                <Clock className="w-5 h-5 text-orange-500" />
                                <div className="flex flex-col">
                                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Time</span>
-                                  <span className={`text-sm font-bold ${isWithinRange ? 'text-green-600' : 'text-gray-900'}`}>{isWithinRange ? 'Ready' : `${eta || '--'} MINS`}</span>
+                                  <span className={`text-sm font-bold ${isWithinRange ? 'text-green-600' : 'text-[#2B2B2B]'}`}>{isWithinRange ? 'Ready' : `${eta || '--'} MINS`}</span>
                                </div>
                              </div>
                              <div className="p-3 sm:p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-2.5 sm:gap-3">
                                <MapPin className="w-5 h-5 text-gray-400" />
                                <div className="flex flex-col">
                                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Distance</span>
-                                  <span className={`text-sm font-bold ${isWithinRange ? 'text-green-600' : 'text-gray-900'}`}>{isWithinRange ? '0 KM' : `${(distanceToTarget / 1000).toFixed(1)} KM`}</span>
+                                  <span className={`text-sm font-bold ${isWithinRange ? 'text-green-600' : 'text-[#2B2B2B]'}`}>{isWithinRange ? '0 KM' : `${(distanceToTarget / 1000).toFixed(1)} KM`}</span>
                                </div>
                              </div>
                            </div>
@@ -1206,7 +1206,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                                 </div>
                                 <div className="flex-1">
                                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-1 opacity-80">Drop Message</p>
-                                   <p className="text-sm font-bold text-gray-950 leading-relaxed capitalize">"{activeOrder.note}"</p>
+                                   <p className="text-sm font-bold text-[#2B2B2B] leading-relaxed capitalize">"{activeOrder.note}"</p>
                                 </div>
                              </div>
                            )}
@@ -1260,7 +1260,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
              >
                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">{opt.icon}</div>
                <div>
-                 <h4 className="font-bold text-gray-900">{opt.title}</h4>
+                 <h4 className="font-bold text-[#2B2B2B]">{opt.title}</h4>
                  <p className="text-xs text-gray-500 font-medium">{opt.subtitle}</p>
                </div>
              </button>
@@ -1311,7 +1311,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                               </div>
                               <div className="flex-1 min-w-0">
                                  <div className="flex justify-between items-start gap-2">
-                                    <h4 className={`text-sm font-bold truncate ${item.read ? 'text-gray-600' : 'text-gray-950'}`}>
+                                    <h4 className={`text-sm font-bold truncate ${item.read ? 'text-gray-600' : 'text-[#2B2B2B]'}`}>
                                        {item.title}
                                     </h4>
                                     <span className="text-[9px] font-black uppercase text-gray-400 shrink-0 whitespace-nowrap pt-0.5">
@@ -1332,7 +1332,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mb-4 border border-gray-100/50">
                      <Bell className="w-7 h-7 text-gray-300" />
                   </div>
-                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest leading-none mb-2">No Notifications</h3>
+                  <h3 className="text-sm font-black text-[#2B2B2B] uppercase tracking-widest leading-none mb-2">No Notifications</h3>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-tight leading-relaxed">System notifications for order requests and updates will appear here.</p>
                </div>
             )}
@@ -1374,16 +1374,16 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
       {/* ─── 3. BOTTOM NAV (Fixed - Compact Pro) ─── */}
       <div className="bg-white border-t border-gray-100 px-8 py-3 pb-6 flex justify-between items-center z-[200] shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-         <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+         <button onClick={() => navigate('/food/delivery/feed')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'feed' ? 'text-[#2B2B2B] scale-110' : 'text-gray-400 opacity-70'}`}>
             <LayoutGrid className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Feed</span>
          </button>
-         <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+         <button onClick={() => navigate('/food/delivery/pocket')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'pocket' ? 'text-[#2B2B2B] scale-110' : 'text-gray-400 opacity-70'}`}>
             <Wallet className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Pocket</span>
          </button>
-         <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+         <button onClick={() => navigate('/food/delivery/history')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'history' ? 'text-[#2B2B2B] scale-110' : 'text-gray-400 opacity-70'}`}>
             <History className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Trip History</span>
          </button>
-         <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-gray-950 scale-110' : 'text-gray-400 opacity-70'}`}>
+         <button onClick={() => navigate('/food/delivery/profile')} className={`flex flex-col items-center gap-1 transition-all ${currentTab === 'profile' ? 'text-[#2B2B2B] scale-110' : 'text-gray-400 opacity-70'}`}>
             <UserIcon className="w-6 h-6" /><span className="text-[11px] font-medium font-sans">Profile</span>
          </button>
       </div>

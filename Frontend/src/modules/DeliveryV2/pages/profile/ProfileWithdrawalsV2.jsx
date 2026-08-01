@@ -38,11 +38,11 @@ export const ProfileWithdrawalsV2 = () => {
     });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[#00604c]" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[#1F7A63]" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-poppins">
-       <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
+    <div className="min-h-full bg-transparent font-poppins">
+       <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
           <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
           <h1 className="text-xl font-black">Withdrawal Requests</h1>
        </div>
@@ -63,7 +63,7 @@ export const ProfileWithdrawalsV2 = () => {
             return withdrawals.map((tx) => (
               <div key={tx.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-bold text-gray-950">{tx.amount.toFixed(2)} PLN</p>
+                  <p className="text-sm font-bold text-[#2B2B2B]">{tx.amount.toFixed(2)} PLN</p>
                   <p className="text-[11px] text-gray-500 font-semibold mt-1">{formatDate(tx.date)}</p>
                 </div>
                 <span className={`text-[10px] font-extrabold px-3 py-1 rounded-lg border uppercase tracking-wider ${

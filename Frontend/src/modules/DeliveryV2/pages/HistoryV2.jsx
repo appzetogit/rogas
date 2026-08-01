@@ -204,11 +204,11 @@ export const HistoryV2 = () => {
           <div className="bg-[#E9F9F4] rounded-2xl p-6 border border-[#D1F2E8] flex justify-between items-center">
              <div>
                 <p className="text-[11px] font-bold text-[#10B981] mb-1">COD Collected</p>
-                <h3 className="text-xl font-bold text-gray-950">₹{metrics.cod.toFixed(2)}</h3>
+                <h3 className="text-xl font-bold text-[#2B2B2B]">₹{metrics.cod.toFixed(2)}</h3>
              </div>
              <div className="text-right">
                 <p className="text-[11px] font-bold text-[#10B981] mb-1">Earnings</p>
-                <h3 className="text-xl font-bold text-gray-950">₹{metrics.earnings.toFixed(2)}</h3>
+                <h3 className="text-xl font-bold text-[#2B2B2B]">₹{metrics.earnings.toFixed(2)}</h3>
              </div>
           </div>
 
@@ -233,7 +233,7 @@ export const HistoryV2 = () => {
                       <div key={trip.orderId || idx} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm active:scale-[0.99] transition-all">
                          <div className="flex justify-between items-start mb-2">
                              <div>
-                                <h4 className="text-base font-bold text-gray-950">{trip.orderId || 'ORDER-ID'}</h4>
+                                <h4 className="text-base font-bold text-[#2B2B2B]">{trip.orderId || 'ORDER-ID'}</h4>
                                 <p className="text-sm font-medium text-gray-500 mt-0.5">{trip.restaurant || trip.restaurantName || 'Sayaji'}</p>
                                 <p className="text-xs text-gray-400 font-medium mt-0.5 line-clamp-1">{extractItems(trip)}</p>
                              </div>
@@ -251,15 +251,15 @@ export const HistoryV2 = () => {
                          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-50">
                              <div>
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Time</p>
-                                <p className="text-sm font-bold text-gray-950">{trip.time || '--:--'}</p>
+                                <p className="text-sm font-bold text-[#2B2B2B]">{trip.time || '--:--'}</p>
                              </div>
                              <div className="text-center">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">COD</p>
-                                <p className="text-sm font-bold text-gray-950">₹{collection.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-[#2B2B2B]">₹{collection.toFixed(2)}</p>
                              </div>
                              <div className="text-right">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Earning</p>
-                                <p className="text-sm font-bold text-gray-950">₹{payout.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-[#2B2B2B]">₹{payout.toFixed(2)}</p>
                              </div>
                          </div>
                       </div>
@@ -287,7 +287,7 @@ export const HistoryV2 = () => {
                             <Gift className="w-6 h-6" />
                          </div>
                          <div>
-                            <h3 className="text-lg font-bold text-gray-950">Incentive Records</h3>
+                            <h3 className="text-lg font-bold text-[#2B2B2B]">Incentive Records</h3>
                             <p className="text-xs text-gray-400 font-medium">Extra bonuses credited by team</p>
                          </div>
                       </div>
@@ -300,7 +300,7 @@ export const HistoryV2 = () => {
                       ) : bonusTransactions.length > 0 ? bonusTransactions.map((tx, i) => (
                          <div key={i} className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex justify-between items-center">
                             <div>
-                               <p className="text-lg font-bold text-gray-950 mb-0.5">₹{Number(tx.amount || 0).toFixed(2)}</p>
+                               <p className="text-lg font-bold text-[#2B2B2B] mb-0.5">₹{Number(tx.amount || 0).toFixed(2)}</p>
                                <p className="text-sm font-medium text-gray-600 line-clamp-1">{tx.description || 'Bonus Payout'}</p>
                                <p className="text-[10px] text-gray-400 font-medium mt-1">{new Date(tx.createdAt || tx.date).toLocaleDateString()}</p>
                             </div>
@@ -314,7 +314,7 @@ export const HistoryV2 = () => {
                       )}
                    </div>
                    
-                   <button onClick={() => setShowBonusModal(false)} className="w-full py-5 bg-black text-white rounded-2xl font-bold text-base mt-8 shrink-0 active:scale-95 transition-all">Okay, Got it</button>
+                   <button onClick={() => setShowBonusModal(false)} className="w-full py-5 bg-[#1F7A63] text-[#F5F5F0] rounded-2xl font-bold text-base mt-8 shrink-0 active:scale-95 transition-all">Okay, Got it</button>
                 </motion.div>
              </div>
           )}

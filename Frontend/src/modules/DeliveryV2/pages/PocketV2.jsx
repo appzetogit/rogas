@@ -190,14 +190,14 @@ export const PocketV2 = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#f6e9dc] flex flex-col items-center justify-center font-poppins">
+    <div className="min-h-full bg-transparent flex flex-col items-center justify-center font-poppins">
        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
        <p className="text-xs font-semibold text-gray-500">Loading Pocket...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] pb-32 font-poppins">
+    <div className="min-h-full bg-transparent pb-32 font-poppins">
        
        {/* 1. BANK DETAILS BANNER */}
        {!walletState.bankDetailsFilled && (

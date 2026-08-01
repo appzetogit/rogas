@@ -306,7 +306,7 @@ export default function DeliverySignup() {
         >
           {/* Title */}
           <div className="mb-8 text-center">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-[#2B2B2B] mb-2">
               Create Your Account
             </h2>
             <p className="text-sm text-gray-500">

@@ -91,16 +91,16 @@ export const LimitSettlementV2 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] font-poppins pb-32">
+    <div className="min-h-full bg-transparent font-poppins pb-32">
        {/* Header (Old UI Style) */}
-       <div className="bg-white border-b border-gray-200 px-4 py-4 safe-top flex items-center gap-4">
+       <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 flex items-center gap-4">
           <button
             onClick={goBack}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-lg md:text-xl font-bold text-gray-900">
+          <h1 className="text-lg md:text-xl font-bold text-[#2B2B2B]">
              Available limit settlement
           </h1>
        </div>
@@ -131,7 +131,7 @@ export const LimitSettlementV2 = () => {
                                      {tx.status}
                                   </span>
                                </div>
-                               <p className="text-gray-900 text-xl font-bold mb-1 font-poppins">
+                               <p className="text-[#2B2B2B] text-xl font-bold mb-1 font-poppins">
                                   ₹{tx.amount}
                                </p>
                                <p className="text-gray-600 text-sm mb-1 font-medium">
@@ -149,7 +149,7 @@ export const LimitSettlementV2 = () => {
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 border border-gray-100">
                    <Clock className="w-8 h-8 text-gray-200" />
                 </div>
-                <p className="text-gray-900 text-lg font-bold mb-2">No settlement transactions</p>
+                <p className="text-[#2B2B2B] text-lg font-bold mb-2">No settlement transactions</p>
                 <p className="text-gray-400 text-xs font-semibold leading-relaxed">
                    Whenever you settle the available limit, the payment transactions will appear here.
                 </p>

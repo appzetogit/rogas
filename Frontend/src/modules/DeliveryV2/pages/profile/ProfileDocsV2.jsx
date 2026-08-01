@@ -71,8 +71,8 @@ export const ProfileDocsV2 = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 font-poppins pb-20">
-       <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
+    <div className="min-h-full bg-transparent font-poppins pb-20">
+       <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
           <button onClick={goBack}><ArrowLeft className="w-6 h-6 shadow-sm p-1 rounded-full bg-gray-50 bg-opacity-70" /></button>
           <h1 className="text-xl font-black">Registration Docs</h1>
        </div>
@@ -135,7 +135,7 @@ export const ProfileDocsV2 = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowViewer(null)} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
                 <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl">
                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                      <h3 className="text-lg font-black text-gray-950 uppercase tracking-widest">{showViewer.title}</h3>
+                      <h3 className="text-lg font-black text-[#2B2B2B] uppercase tracking-widest">{showViewer.title}</h3>
                       <button onClick={() => setShowViewer(null)} className="p-3 bg-gray-50 rounded-full text-gray-400"><X className="w-6 h-6" /></button>
                    </div>
                    <div className="p-2">

@@ -46,14 +46,14 @@ export default function TermsAndConditionsV2() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-x-hidden">
-      <div className="fixed top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-4 shadow-sm">
+      <div className="sticky top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-4 shadow-sm">
         <button
           onClick={goBack}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-900" />
+          <ArrowLeft className="w-5 h-5 text-[#2B2B2B]" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900">Terms and Conditions</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B]">Terms and Conditions</h1>
       </div>
 
       <div className="w-full px-5 pt-24 pb-6">

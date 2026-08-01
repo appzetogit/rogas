@@ -121,16 +121,16 @@ export const PocketStatementV2 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] font-poppins pb-32">
+    <div className="min-h-full bg-transparent font-poppins pb-32">
        {/* Header (Old Style) */}
-       <div className="bg-white border-b border-gray-200 px-4 py-4 safe-top flex items-center gap-4">
+       <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 flex items-center gap-4">
           <button 
             onClick={goBack}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900 leading-none">Pocket statement</h1>
+          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">Pocket statement</h1>
        </div>
 
        {/* Main Content */}
@@ -176,7 +176,7 @@ export const PocketStatementV2 = () => {
           ) : orders.length === 0 ? (
              <div className="bg-white rounded-xl p-10 text-center shadow-sm border border-gray-100">
                 <Clock className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-900 text-lg font-bold mb-1">No transactions</p>
+                <p className="text-[#2B2B2B] text-lg font-bold mb-1">No transactions</p>
                 <p className="text-gray-400 text-sm font-medium">No transactions found for this week.</p>
              </div>
           ) : (
@@ -207,7 +207,7 @@ export const PocketStatementV2 = () => {
                                   index % 3 === 1 ? 'bg-orange-500' : 'bg-blue-500'
                                }`}></div>
                                <div>
-                                  <p className="text-gray-900 text-sm font-bold mb-0.5">
+                                  <p className="text-[#2B2B2B] text-sm font-bold mb-0.5">
                                      Order #{orderId?.slice(-6) || '...'}
                                   </p>
                                   <p className="text-gray-400 text-[11px] font-bold mb-1 uppercase tracking-tight">{dateText}</p>

@@ -98,16 +98,16 @@ export const PayoutV2 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] font-poppins pb-24">
+    <div className="min-h-full bg-transparent font-poppins pb-24">
       {/* Header (Old Style) */}
-      <div className="bg-white border-b border-gray-200 px-4 py-4 safe-top flex items-center gap-4">
+      <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 flex items-center gap-4">
         <button
           onClick={goBack}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900">Withdrawal History</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B]">Withdrawal History</h1>
       </div>
 
       {/* Main Content */}
@@ -136,7 +136,7 @@ export const PayoutV2 = () => {
                           {withdrawal.status}
                         </span>
                       </div>
-                      <p className="text-gray-900 text-xl font-bold mb-1">
+                      <p className="text-[#2B2B2B] text-xl font-bold mb-1">
                         ₹{withdrawal.amount}
                       </p>
                       <p className="text-gray-500 text-[11px] font-medium">
@@ -163,7 +163,7 @@ export const PayoutV2 = () => {
             <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-6 shadow-sm">
               <Clock className="w-8 h-8 text-gray-200" />
             </div>
-            <p className="text-gray-900 text-lg font-bold mb-2">No withdrawal history</p>
+            <p className="text-[#2B2B2B] text-lg font-bold mb-2">No withdrawal history</p>
             <p className="text-gray-400 text-sm font-medium">
               You haven't made any withdrawal requests yet. Your withdrawal history will appear here.
             </p>

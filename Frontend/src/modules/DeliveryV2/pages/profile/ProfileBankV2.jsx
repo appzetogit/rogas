@@ -212,15 +212,15 @@ export const ProfileBankV2 = () => {
       finally { setIsSaving(false); }
    };
 
-   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[#00604c]" /></div>;
+   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-[#1F7A63]" /></div>;
 
    return (
-      <div className="min-h-screen bg-gray-50 font-poppins">
-         <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm">
+      <div className="min-h-full bg-transparent font-poppins">
+         <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
             <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
             <h1 className="text-xl font-black">Bank Details</h1>
             {!isEditing && (
-               <button onClick={() => setIsEditing(true)} className="ml-auto p-2 bg-[#ebefeb] text-[#00604c] rounded-xl"><Edit2 className="w-4 h-4" /></button>
+               <button onClick={() => setIsEditing(true)} className="ml-auto p-2 bg-[#ebefeb] text-[#1F7A63] rounded-xl"><Edit2 className="w-4 h-4" /></button>
             )}
          </div>
 
@@ -249,7 +249,7 @@ export const ProfileBankV2 = () => {
                                  maxLength={config?.maxLength}
                                  onChange={(e) => handleFieldChange(key, e.target.value)}
                                  onBlur={() => handleFieldBlur(key)}
-                                 className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm font-bold text-gray-950 focus:ring-2 ${errorMsg
+                                 className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm font-bold text-[#2B2B2B] focus:ring-2 ${errorMsg
                                     ? "border-red-400 focus:ring-red-500/20"
                                     : "border-gray-100 focus:ring-orange-500/20"
                                     }`}
@@ -259,7 +259,7 @@ export const ProfileBankV2 = () => {
                               )}
                            </>
                         ) : (
-                           <p className="text-sm font-bold text-gray-950">{form[key] || "Not provided"}</p>
+                           <p className="text-sm font-bold text-[#2B2B2B]">{form[key] || "Not provided"}</p>
                         )}
                      </div>
                   );
@@ -274,7 +274,7 @@ export const ProfileBankV2 = () => {
                            type="file"
                            accept="image/png, image/jpeg, image/webp"
                            onChange={handleFileChange}
-                           className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#ebefeb] file:text-[#00604c] hover:file:bg-slate-100"
+                           className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#ebefeb] file:text-[#1F7A63] hover:file:bg-slate-100"
                         />
                         <p className="text-[10px] font-semibold text-gray-400">PNG, JPG or WEBP, max 5MB</p>
                         {qrError && <p className="text-xs font-semibold text-red-500">{qrError}</p>}
@@ -291,7 +291,7 @@ export const ProfileBankV2 = () => {
                               <img src={qrPreview} alt="QR Code" className="w-full h-full object-cover" />
                            </div>
                         ) : (
-                           <p className="text-sm font-bold text-gray-950">Not provided</p>
+                           <p className="text-sm font-bold text-[#2B2B2B]">Not provided</p>
                         )}
                      </div>
                   )}
@@ -302,7 +302,7 @@ export const ProfileBankV2 = () => {
                <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="w-full bg-black text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="w-full bg-[#1F7A63] text-[#F5F5F0] py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
                >
                   {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                   Save Changes

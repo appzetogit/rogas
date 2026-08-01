@@ -147,7 +147,7 @@ export const ProfileV2 = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 font-poppins pb-24">
+    <div className="min-h-screen bg-gray-100 text-[#2B2B2B] font-poppins pb-24">
       {/* Profile Header Block */}
       <div className="bg-white p-4 w-full shadow-sm">
         <div 
@@ -186,7 +186,7 @@ export const ProfileV2 = () => {
             <div className="rounded-full bg-gray-50 p-3">
               <Bike className="w-6 h-6 text-gray-700" />
             </div>
-            <span className="text-sm font-bold text-gray-900">Trips history</span>
+            <span className="text-sm font-bold text-[#2B2B2B]">Trips history</span>
           </button>
         </div>
 
@@ -201,7 +201,7 @@ export const ProfileV2 = () => {
                   <img src={profile.shiftStartPic} alt="Shift Start" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 mb-1">
+                  <p className="text-sm font-bold text-[#2B2B2B] mb-1">
                     Started at {new Date(profile.shiftStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   {profile.shiftStartAddress && (
@@ -216,14 +216,14 @@ export const ProfileV2 = () => {
           {/* Share & Earn */}
           <div className="bg-white rounded-xl p-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h3 className="text-base font-bold text-gray-900 mb-1">
+              <h3 className="text-base font-bold text-[#2B2B2B] mb-1">
                 Share & Earn{referralReward > 0 ? ` ₹${referralReward}` : ""}
               </h3>
               <p className="text-gray-500 text-xs font-medium">Invite friends to join the delivery partner fleet.</p>
             </div>
             <button
               onClick={handleShareReferral}
-              className="shrink-0 bg-black text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest shadow-md"
+              className="shrink-0 bg-[#1F7A63] text-[#F5F5F0] px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest shadow-md"
             >
               Share
             </button>
@@ -238,7 +238,7 @@ export const ProfileV2 = () => {
             >
               <div className="flex items-center gap-3">
                 <Ticket className="w-5 h-5 text-gray-700" />
-                <span className="text-sm font-bold text-gray-900">Support tickets</span>
+                <span className="text-sm font-bold text-[#2B2B2B]">Support tickets</span>
               </div>
               <ArrowRight className="w-5 h-5 text-gray-300" />
             </div>
@@ -252,7 +252,7 @@ export const ProfileV2 = () => {
             >
               <div className="flex items-center gap-3">
                 <Bell className={`w-5 h-5 text-blue-500 ${isTestingNotification ? "animate-pulse" : ""}`} />
-                <span className="text-sm font-bold text-gray-900">{isTestingNotification ? "Sending test..." : "Test Notification"}</span>
+                <span className="text-sm font-bold text-[#2B2B2B]">{isTestingNotification ? "Sending test..." : "Test Notification"}</span>
               </div>
               <ArrowRight className="w-5 h-5 text-blue-200" />
             </div>
@@ -298,7 +298,7 @@ export const ProfileV2 = () => {
             className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-black text-gray-900 mb-2">Do you want to log out?</h3>
+            <h3 className="text-base font-black text-[#2B2B2B] mb-2">Do you want to log out?</h3>
             <p className="text-sm text-gray-500 mb-5">You will be signed out from your delivery account.</p>
             <div className="flex items-center gap-3">
               <button
@@ -335,7 +335,7 @@ export const ProfileV2 = () => {
                   <div className="bg-red-100 rounded-full p-2.5">
                     <AlertTriangle className="h-6 w-6 text-red-500" />
                   </div>
-                  <h3 className="text-base font-black text-gray-900">Delete Account?</h3>
+                  <h3 className="text-base font-black text-[#2B2B2B]">Delete Account?</h3>
                 </div>
                 <div className="bg-red-50 rounded-xl p-3.5 mb-4 border border-red-100">
                   <p className="text-sm font-semibold text-red-600 mb-2">⚠️ This action is permanent!</p>
@@ -366,14 +366,14 @@ export const ProfileV2 = () => {
 
             {deleteStep === 2 && (
               <div className="p-5">
-                <h3 className="text-base font-black text-gray-900 mb-2">Confirm Deletion</h3>
+                <h3 className="text-base font-black text-[#2B2B2B] mb-2">Confirm Deletion</h3>
                 <p className="text-sm text-gray-500 mb-4">Type <span className="font-bold text-red-500">DELETE MY ACCOUNT</span> to confirm.</p>
                 <input
                   type="text"
                   value={deleteCaptcha}
                   onChange={(e) => setDeleteCaptcha(e.target.value)}
                   placeholder="Type here..."
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400 mb-4"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-[#2B2B2B] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400 mb-4"
                   autoFocus
                   autoComplete="off"
                 />

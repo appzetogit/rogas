@@ -56,16 +56,16 @@ export const DeductionStatementV2 = () => {
   }, [weekRange]);
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] font-poppins pb-32">
+    <div className="min-h-full bg-transparent font-poppins pb-32">
        {/* Header (Old Style) */}
-       <div className="bg-white border-b border-gray-200 px-4 py-4 safe-top flex items-center gap-4">
+       <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 flex items-center gap-4">
           <button 
             onClick={goBack}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900 leading-none">Deduction statement</h1>
+          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">Deduction statement</h1>
        </div>
 
        {/* Main Content */}
@@ -111,7 +111,7 @@ export const DeductionStatementV2 = () => {
                                index % 3 === 1 ? 'bg-orange-500' : 'bg-blue-500'
                             }`}></div>
                             <div>
-                               <p className="text-gray-900 text-sm font-bold leading-tight">{item.description || 'System Deduction'}</p>
+                               <p className="text-[#2B2B2B] text-sm font-bold leading-tight">{item.description || 'System Deduction'}</p>
                                <p className="text-gray-400 text-[10px] font-bold mt-1 uppercase tracking-tight">
                                   {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                </p>

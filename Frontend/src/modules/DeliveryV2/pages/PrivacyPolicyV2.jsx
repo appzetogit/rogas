@@ -51,7 +51,7 @@ export default function PrivacyPolicyV2() {
         >
           <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white">Privacy Policy</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B] dark:text-white">Privacy Policy</h1>
       </div>
 
       <div className="w-full px-5 py-6">

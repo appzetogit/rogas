@@ -74,9 +74,9 @@ export const ViewSupportTicketV2 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-poppins pb-20">
+    <div className="min-h-full bg-transparent font-poppins pb-20">
       {/* Header */}
-      <div className="bg-white px-4 py-5 flex items-center gap-4 fixed top-0 w-full z-50 shadow-sm border-b border-gray-100">
+      <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm border-b border-gray-100">
         <button onClick={goBack} className="p-1 hover:bg-[#F5F5F0] rounded-full transition-colors">
            <ArrowLeft className="w-6 h-6 text-[#2B2B2B]" />
         </button>

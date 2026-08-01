@@ -101,11 +101,11 @@ export default function NotificationsV2() {
           className="p-2 rounded-full hover:bg-gray-100"
           aria-label="Back"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-900" />
+          <ArrowLeft className="w-5 h-5 text-[#2B2B2B]" />
         </button>
         <div className="flex items-center gap-2 flex-1">
           <Bell className="w-5 h-5 text-[#EB590E]" />
-          <h1 className="text-base font-semibold text-gray-900">Notifications</h1>
+          <h1 className="text-base font-semibold text-[#2B2B2B]">Notifications</h1>
           {unreadCount > 0 && (
             <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-[#EB590E] text-white text-[10px] font-semibold">
               {unreadCount}
@@ -140,7 +140,7 @@ export default function NotificationsV2() {
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                  <p className="text-sm font-medium text-[#2B2B2B]">{item.title}</p>
                   <p className="text-sm text-gray-700 mt-0.5">{item.message || "Delivery notification"}</p>
                   <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />

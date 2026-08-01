@@ -100,15 +100,15 @@ export const PocketDetailsV2 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12 font-poppins">
+    <div className="min-h-full bg-transparent pb-12 font-poppins">
       {/* ─── HEADER ─── */}
       <div className="bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between sticky top-0 z-[100]">
         <div className="flex items-center gap-4">
-          <button onClick={goBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-900 border border-gray-100 active:scale-90 transition-all">
+          <button onClick={goBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-[#2B2B2B] border border-gray-100 active:scale-90 transition-all">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-black text-gray-950 uppercase tracking-tighter">Pocket Details</h1>
+            <h1 className="text-xl font-black text-[#2B2B2B] uppercase tracking-tighter">Pocket Details</h1>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Trips & Earnings History</p>
           </div>
         </div>
@@ -155,7 +155,7 @@ export const PocketDetailsV2 = () => {
         {/* ─── ORDERS LIST ─── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-             <h3 className="text-xs font-black text-gray-950 uppercase tracking-widest">Trips History</h3>
+             <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest">Trips History</h3>
              <span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-[10px] font-bold">{orders.length} Orders</span>
           </div>
 
@@ -179,12 +179,12 @@ export const PocketDetailsV2 = () => {
                     className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between active:scale-[0.98] transition-all"
                   >
                     <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-900 border border-gray-100">
+                       <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#2B2B2B] border border-gray-100">
                           <Package className="w-6 h-6" />
                        </div>
                        <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                             <h4 className="text-sm font-black text-gray-950 uppercase tracking-tight">#{oid.toString().slice(-6)}</h4>
+                             <h4 className="text-sm font-black text-[#2B2B2B] uppercase tracking-tight">#{oid.toString().slice(-6)}</h4>
                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">• {new Date(order.deliveredAt || order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
                           </div>
                           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate max-w-[140px]">
@@ -193,7 +193,7 @@ export const PocketDetailsV2 = () => {
                        </div>
                     </div>
                     <div className="text-right">
-                       <p className="text-base font-black text-gray-950 leading-none mb-1">{formatCurrency(earning + bonus)}</p>
+                       <p className="text-base font-black text-[#2B2B2B] leading-none mb-1">{formatCurrency(earning + bonus)}</p>
                        <div className="flex items-center justify-end gap-1.5">
                           {bonus > 0 && <span className="text-[9px] font-bold text-green-500 uppercase">+{formatCurrency(bonus)} BP</span>}
                           <div className={`px-2 py-0.5 rounded-md ${order.paymentMethod?.toLowerCase() === 'cod' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-green-50 text-green-600 border border-green-100'} text-[8px] font-black uppercase`}>
@@ -210,7 +210,7 @@ export const PocketDetailsV2 = () => {
                <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-4 text-gray-200">
                   <Package className="w-8 h-8" />
                </div>
-               <h3 className="text-lg font-black text-gray-950 uppercase tracking-tight">No Trips Found</h3>
+               <h3 className="text-lg font-black text-[#2B2B2B] uppercase tracking-tight">No Trips Found</h3>
                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Check another week Range</p>
             </div>
           )}

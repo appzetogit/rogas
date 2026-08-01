@@ -48,7 +48,7 @@ export default function DeliveryRidesPage() {
             <button onClick={() => navigate('/delivery/dashboard')} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">Ride Requests</h1>
+            <h1 className="text-lg font-bold text-[#2B2B2B]">Ride Requests</h1>
           </div>
           <button onClick={fetchTransfers} className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors">
             <RefreshCw className="w-4 h-4" />
@@ -76,7 +76,7 @@ export default function DeliveryRidesPage() {
                 
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm">Cover Request</h3>
+                    <h3 className="font-bold text-[#2B2B2B] text-sm">Cover Request</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                       From: {transfer.originalDriverId?.name || '—'}
                     </p>

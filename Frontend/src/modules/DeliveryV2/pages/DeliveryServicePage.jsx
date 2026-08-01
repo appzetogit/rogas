@@ -77,7 +77,7 @@ export default function DeliveryServicePage() {
             <button onClick={() => navigate('/delivery/dashboard')} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">Delivery Service</h1>
+            <h1 className="text-lg font-bold text-[#2B2B2B]">Delivery Service</h1>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -101,7 +101,7 @@ export default function DeliveryServicePage() {
         {/* Submit Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-            <h2 className="font-bold text-gray-900">Report Unavailability</h2>
+            <h2 className="font-bold text-[#2B2B2B]">Report Unavailability</h2>
 
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Date *</label>
@@ -203,7 +203,7 @@ export default function DeliveryServicePage() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="font-semibold text-gray-900 text-sm">{formatDate(req.date)}</span>
+                        <span className="font-semibold text-[#2B2B2B] text-sm">{formatDate(req.date)}</span>
                         <span className="capitalize bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium">{req.slot}</span>
                       </div>
                       <p className="text-sm text-gray-600">{req.reason}</p>
