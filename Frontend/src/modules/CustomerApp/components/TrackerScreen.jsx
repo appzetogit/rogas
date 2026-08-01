@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { IMAGES } from "../types";
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
 import { ArrowLeft, Star, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
 
@@ -16,7 +15,6 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
   useEffect(() => {
     if (!socket || !trackedOrder?._id) return;
     
-    // Join room for this specific order to get updates
     socket.emit("join_room", `order_tracking_${trackedOrder._id}`);
 
     const handleStatusUpdate = (data) => {
@@ -44,7 +42,6 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
     if (Array.isArray(coords) && coords.length === 2) {
       return { lat: Number(coords[1]), lng: Number(coords[0]) };
     }
-    // Default fallback to Warsaw center coordinates
     return { lat: 52.2297, lng: 21.0122 };
   }, [trackedOrder]);
 
@@ -69,141 +66,140 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
   };
 
   return (
-    <div className="relative w-full h-[844px] overflow-hidden bg-[#242f3e] shadow-2xl flex flex-col mx-auto rounded-[32px] border-4 border-on-surface">
-      {/* Live tracking Google Map */}
-      <div className="absolute inset-0 z-0">
-        <DeliveryTrackingMap
-          orderId={trackedOrder?._id}
-          restaurantCoords={restaurantCoords}
-          customerCoords={customerCoords}
-          order={trackedOrder}
-          onEtaUpdate={(eta) => {
-            const minutes = parseInt(eta) || 8;
-            setArrivingMin(minutes);
-          }}
-        />
-      </div>
+    <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32 font-sans relative">
+      {/* Fixed Top Header */}
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <button 
+          onClick={onGoBack} 
+          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-xl font-extrabold text-primary text-center">Live Order Tracking</h1>
+        <div className="w-8" />
+      </header>
 
-      {/* Top Floating App Bar */}
-      <header className="relative z-40 px-5 pt-3">
-        <div className="flex items-center justify-between h-14 w-full">
-          <button onClick={onGoBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform text-[#1b1c1c]">
-            <ArrowLeft className="text-xl" />
-          </button>
-
-          <div className="flex-1 px-4">
-            <div className="bg-white rounded-2xl p-3 flex items-center justify-between shadow-lg border border-[#bec9c3]/20">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#e4e2e1] flex items-center justify-center font-bold text-gray-500">
-                  {driverPhoto ? (
-                    <img alt={`Driver ${driverName} portrait`} className="w-full h-full object-cover" src={driverPhoto} />
-                  ) : (
-                    driverName ? driverName.charAt(0).toUpperCase() : "D"
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-on-surface leading-tight">{driverName} · {driverVehicle}</span>
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    <Star className="text-[13px] text-secondary font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }} />
-                    <span className="text-[11px] font-extrabold text-on-surface-variant">4.9</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end">
-                <div className="bg-primary-container px-2 py-0.5 rounded-full mb-0.5">
-                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">
-                    {orderStatus === "delivered" ? "DONE" : "12:47"}
-                  </span>
-                </div>
-                <span className="text-[10px] font-extrabold text-on-surface-variant">
-                  {orderStatus === "delivered" ? "Delivered" : `~${arrivingMin} min away`}
-                </span>
+      <main className="pt-20 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto space-y-6">
+        {/* Driver & Status Top Bar */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-[#e4e2e1] flex items-center justify-center font-bold text-slate-500 border border-slate-200">
+              {driverPhoto ? (
+                <img alt={`Driver ${driverName}`} className="w-full h-full object-cover" src={driverPhoto} />
+              ) : (
+                driverName ? driverName.charAt(0).toUpperCase() : "D"
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 leading-tight">{driverName} · {driverVehicle}</h3>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                <span className="text-xs font-bold text-slate-600">4.9 Rating</span>
               </div>
             </div>
           </div>
+
+          <div className="text-right">
+            <span className="inline-block bg-[#1F7A63]/10 text-[#1F7A63] px-3 py-1 rounded-full text-xs font-extrabold mb-0.5">
+              {orderStatus === "delivered" ? "DONE" : "12:47"}
+            </span>
+            <p className="text-xs font-bold text-slate-500">
+              {orderStatus === "delivered" ? "Delivered" : `~${arrivingMin} min away`}
+            </p>
+          </div>
         </div>
-      </header>
 
-      {/* Bottom sliding delivery tracker sheet */}
-      <div className="mt-auto relative z-40">
-        <div className="bg-white rounded-t-[28px] shadow-[0_-4px_24px_rgba(0,0,0,0.15)] p-5 pb-8">
-          {/* Drag bar handle placeholder */}
-          <div className="w-10 h-1.5 bg-[#e4e2e1] rounded-full mx-auto mb-6 opacity-60"></div>
+        {/* Live Map Area */}
+        <div className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-md border border-slate-200/80 bg-slate-200 z-0">
+          <DeliveryTrackingMap
+            orderId={trackedOrder?._id}
+            restaurantCoords={restaurantCoords}
+            customerCoords={customerCoords}
+            order={trackedOrder}
+            onEtaUpdate={(eta) => {
+              const minutes = parseInt(eta) || 8;
+              setArrivingMin(minutes);
+            }}
+          />
+        </div>
 
+        {/* Delivery Details Card */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
           {orderStatus === "delivered" ? (
             <>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex flex-col">
-                  <h2 className="text-lg font-extrabold text-[#00604c] tracking-tight">🎉 Order Delivered!</h2>
-                  <span className="text-xs text-on-surface-variant font-semibold mt-0.5">
-                    Your meal has been successfully delivered. Enjoy!
-                  </span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-extrabold text-[#1F7A63]">🎉 Order Delivered!</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Your meal has been successfully delivered. Enjoy your meal!
+                  </p>
                 </div>
-                <div className="w-11 h-11 bg-green-100 rounded-full flex items-center justify-center text-[#00604c] shadow-sm">
-                  <CheckCircle className="text-[24px]" />
+                <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-[#1F7A63] shadow-xs">
+                  <CheckCircle className="w-6 h-6" />
                 </div>
               </div>
 
-              {/* Success display */}
-              <div className="bg-green-50 rounded-2xl p-5 flex flex-col items-center justify-center mb-6 border border-green-200 shadow-inner">
-                <span className="text-2xl mb-1">✅</span>
-                <span className="text-base font-extrabold text-[#00604c] font-sans">
-                  Delivered Successfully
-                </span>
-                <span className="text-[11px] text-gray-500 font-bold font-sans mt-1 leading-none">
-                  Thank you for ordering with Rogas!
-                </span>
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-5 text-center">
+                <span className="text-3xl block mb-1">✅</span>
+                <p className="text-base font-extrabold text-[#1F7A63]">Delivered Successfully</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">Thank you for ordering with DailyMealBox!</p>
               </div>
 
-              <div className="flex gap-3">
-                <button onClick={onGoBack} className="w-full h-12 bg-[#00604c] hover:bg-[#155a49] rounded-xl flex items-center justify-center gap-2 text-white font-bold text-xs active:scale-[0.98] transition-transform shadow">
-                  <span>Back to Orders</span>
-                </button>
-              </div>
+              <button 
+                onClick={onGoBack} 
+                className="w-full h-12 bg-[#1F7A63] hover:bg-[#155a49] text-white rounded-xl font-extrabold text-sm transition-all shadow-md cursor-pointer active:scale-[0.98]"
+              >
+                Back to Orders
+              </button>
             </>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex flex-col">
-                  <h2 className="text-lg font-extrabold text-on-surface tracking-tight">🚴 Driver on the way!</h2>
-                  <span className="text-xs text-on-surface-variant font-semibold mt-0.5">
-                    {tomorrowMeal?.name || "Meal"} by Maria K.
-                  </span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">🚴 Driver on the way!</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    {tomorrowMeal?.name || "Meal"} by {trackedOrder?.vendor?.restaurantName || "Maria K."}
+                  </p>
                 </div>
-                <div className="w-11 h-11 bg-primary/10 rounded-full flex items-center justify-center text-primary shadow-sm hover:scale-105 active:scale-95 transition-all">
-                  <BellRing className="text-[24px]" />
+                <div className="w-12 h-12 bg-[#1F7A63]/10 rounded-2xl flex items-center justify-center text-[#1F7A63]">
+                  <BellRing className="w-6 h-6 animate-bounce" />
                 </div>
               </div>
 
-              {/* Core delivery pin display parameters */}
-              <div className="bg-[#f6f3f2] rounded-2xl p-5 flex flex-col items-center justify-center mb-6 border border-[#bec9c3]/30 shadow-inner">
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-sans mb-1">
-                  Your delivery PIN
+              {/* Delivery PIN Card */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 text-center space-y-2">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest block">
+                  Your Delivery PIN
                 </span>
-                <div className="flex gap-2">
-                  <span className="text-[32px] font-extrabold tracking-[0.3em] pl-2 text-primary font-mono select-all">
-                    {trackedOrder?.deliveryPin || trackedOrder?.pin || "7234"}
-                  </span>
-                </div>
-                <span className="text-[11px] text-[#6e7a74] font-bold font-sans mt-2 leading-none">
+                <span className="text-3xl sm:text-4xl font-extrabold tracking-[0.3em] pl-3 text-[#1F7A63] font-mono block">
+                  {trackedOrder?.deliveryPin || trackedOrder?.pin || "8323"}
+                </span>
+                <span className="text-xs text-slate-500 font-medium block">
                   Share this PIN with your driver upon arrival
                 </span>
               </div>
 
+              {/* Action Buttons */}
               <div className="flex gap-3">
-                <button onClick={handleCall} className="flex-1 h-12 bg-primary-container hover:bg-[#155a49] rounded-xl flex items-center justify-center gap-2 text-white font-bold text-xs active:scale-[0.98] transition-transform shadow">
-                  <Phone className="text-sm font-fill-1" style={{ fontVariationSettings: "'FILL' 1" }} />
+                <button 
+                  onClick={handleCall} 
+                  className="flex-1 h-12 bg-[#1F7A63] hover:bg-[#155a49] text-white font-extrabold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer active:scale-[0.98]"
+                >
+                  <Phone className="w-4 h-4 fill-current" />
                   <span>Call Driver</span>
                 </button>
-                <button onClick={handleChat} className="w-12 h-12 bg-[#eae7e7] hover:bg-[#dcd9d9] text-[#1b1c1c] rounded-xl flex items-center justify-center active:scale-[0.95] transition-all shadow-sm" aria-label="chat driver">
-                  <MessageSquare className="text-lg" />
+                <button 
+                  onClick={handleChat} 
+                  className="w-12 h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-slate-200/60" 
+                  title="Chat Driver"
+                >
+                  <MessageSquare className="w-5 h-5" />
                 </button>
               </div>
             </>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
