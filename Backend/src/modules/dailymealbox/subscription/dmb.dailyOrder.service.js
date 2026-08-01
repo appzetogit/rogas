@@ -1294,29 +1294,54 @@ export const getTodayAndTomorrowMeals = async (userId) => {
 /**
  * Get upcoming + past orders for a customer (OrdersScreen)
  */
-export const getCustomerOrders = async (userId, { type = 'upcoming' } = {}) => {
+export const getCustomerOrders = async (userId, { type = 'upcoming', date } = {}) => {
     await ensureOrdersForUser(userId);
 
     const today = toDateOnly(new Date());
 
     const filter = { userId };
-    if (type === 'upcoming') {
-        filter.deliveryDate = { $gte: today };
-        filter.status = { $nin: ['delivered', 'failed'] };
+    
+    if (date) {
+        const targetDate = toDateOnly(new Date(date));
+        const nextDay = new Date(targetDate);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+        
+        filter.deliveryDate = { $gte: targetDate, $lt: nextDay };
+        // We do not filter by status or 'type' logic here, return all for the requested date.
     } else {
-        filter.$or = [
-            { deliveryDate: { $lt: today } },
-            { status: { $in: ['delivered', 'failed'] } }
-        ];
+        if (type === 'upcoming') {
+            const nextDay = new Date(today);
+            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+            filter.deliveryDate = { $gte: today, $lt: nextDay };
+            filter.status = { $nin: ['delivered', 'failed'] };
+        } else {
+            filter.$or = [
+                { deliveryDate: { $lt: today } },
+                { status: { $in: ['delivered', 'failed'] } }
+            ];
+        }
     }
 
-    if (type === 'upcoming') {
+    if (!date && type === 'upcoming') {
         const orderDocs = await DMBDailyOrder.find(filter)
             .sort({ deliveryDate: 1 })
             .limit(50);
         for (const order of orderDocs) {
             let dirty = false;
             if (!order.deliveryPin) {
+                order.deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
+                dirty = true;
+            }
+            await refreshMealNameFromDailyMenu(order);
+            if (dirty) {
+                await order.save().catch(err => logger.error(`Error saving generated deliveryPin: ${err.message}`));
+            }
+        }
+    } else if (date) {
+        const orderDocs = await DMBDailyOrder.find(filter);
+        for (const order of orderDocs) {
+            let dirty = false;
+            if (!order.deliveryPin && order.status !== 'delivered' && order.status !== 'failed' && order.status !== 'skipped') {
                 order.deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
                 dirty = true;
             }

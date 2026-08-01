@@ -217,12 +217,20 @@ router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'),
 router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        const { type } = req.query; // 'upcoming' or 'past'
+        const { type, date } = req.query; // 'upcoming' or 'past' or 'date'
 
         let query = { userId };
 
-        if (type === 'upcoming') {
+        if (date) {
+            query.deliveryDates = date;
+        } else if (type === 'upcoming') {
             query.status = { $nin: ['delivered', 'failed', 'cancelled', 'skipped'] };
+            // Restrict to strictly today's orders
+            const todayIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+            const yyyy = todayIST.getFullYear();
+            const mm = String(todayIST.getMonth() + 1).padStart(2, '0');
+            const dd = String(todayIST.getDate()).padStart(2, '0');
+            query.deliveryDates = `${yyyy}-${mm}-${dd}`;
         } else if (type === 'past') {
             query.status = { $in: ['delivered', 'failed', 'cancelled', 'skipped'] };
         }

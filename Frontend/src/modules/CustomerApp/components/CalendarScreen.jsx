@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft } from 'lucide-react';
@@ -58,6 +58,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [loadingAction, setLoadingAction] = useState(false);
   const [skipTarget, setSkipTarget] = useState(null); // { orderId, mealName }
   const [hasFullWeekSub, setHasFullWeekSub] = useState(false);
+  const [dateCache, setDateCache] = useState({});
+  const [subsFetched, setSubsFetched] = useState(false);
 
   // Rating Modal state
   const [ratingModalOrder, setRatingModalOrder] = useState(null);
@@ -66,51 +68,60 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [tipAmount, setTipAmount] = useState(0);
   const [customTip, setCustomTip] = useState("");
 
-  // Load orders
-  const loadOrders = async () => {
+  // Ref to always hold the latest selectedDateStr (avoids stale closures in socket handlers)
+  const selectedDateStrRef = useRef(selectedDateStr);
+  selectedDateStrRef.current = selectedDateStr;
+
+  // Load orders for a specific date (also fetches subscriptions on first call)
+  const loadOrdersForDate = async (dateStr, forceRefresh = false) => {
+    if (!forceRefresh && dateCache[dateStr]) {
+      setOrders(dateCache[dateStr].orders);
+      setPantryOrders(dateCache[dateStr].pantryOrders);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("user_accessToken");
       if (!token) {
         setOrders([]);
+        setPantryOrders([]);
         return;
       }
-      const [upcomingRes, pastRes, activeSubsRes, pantryRes] = await Promise.all([
-        dmbCustomerAPI.getMyOrders("upcoming"),
-        dmbCustomerAPI.getMyOrders("past"),
-        dmbCustomerAPI.getMySubscriptions("active"),
-        dmbCustomerAPI.getMyPantryOrders().catch(() => ({ data: { success: false } }))
-      ]);
-
-      if (pantryRes?.data?.success) {
-        setPantryOrders(pantryRes.data.orders || []);
+      
+      // Build parallel requests — include subscriptions only on first load
+      const requests = [
+        dmbCustomerAPI.getMyOrders({ date: dateStr }),
+        dmbCustomerAPI.getMyPantryOrders({ date: dateStr }).catch(() => ({ data: { success: false } }))
+      ];
+      if (!subsFetched) {
+        requests.push(dmbCustomerAPI.getMySubscriptions("active").catch(() => ({ data: { success: false } })));
       }
 
-      let combined = [];
-      if (upcomingRes.data?.success) {
-        combined = [...combined, ...(upcomingRes.data.orders || [])];
-      }
-      if (pastRes.data?.success) {
-        combined = [...combined, ...(pastRes.data.orders || [])];
+      const results = await Promise.all(requests);
+      const [ordersRes, pantryRes] = results;
+
+      // Process subscriptions (only on first load)
+      if (!subsFetched && results[2]) {
+        const subsRes = results[2];
+        if (subsRes.data?.success) {
+          const activeSubs = subsRes.data?.subscriptions || [];
+          const hasFullWeek = activeSubs.some(sub => sub.deliveryDays === 'full_week');
+          setHasFullWeekSub(hasFullWeek);
+        }
+        setSubsFetched(true);
       }
 
-      // Deduplicate
-      const seen = new Set();
-      const deduped = combined.filter(o => {
-        const id = o._id || o.orderId;
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      });
+      const newOrders = ordersRes.data?.success ? (ordersRes.data.orders || []) : [];
+      const newPantry = pantryRes?.data?.success ? (pantryRes.data.orders || []) : [];
 
-      setOrders(deduped);
-
-      if (activeSubsRes.data?.success) {
-        const activeSubs = activeSubsRes.data?.subscriptions || [];
-        const hasFullWeek = activeSubs.some(sub => sub.deliveryDays === 'full_week');
-        setHasFullWeekSub(hasFullWeek);
-      }
+      setOrders(newOrders);
+      setPantryOrders(newPantry);
+      setDateCache(prev => ({
+        ...prev,
+        [dateStr]: { orders: newOrders, pantryOrders: newPantry }
+      }));
     } catch (err) {
       console.error("Failed to load orders for calendar:", err);
       setError("Failed to load meal data. Please try again later.");
@@ -119,11 +130,17 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     }
   };
 
+  // Fetch data when selected date changes (with abort guard for React 18 StrictMode)
   useEffect(() => {
-    loadOrders();
-  }, []);
+    let cancelled = false;
+    const fetch = async () => {
+      if (!cancelled) await loadOrdersForDate(selectedDateStr);
+    };
+    fetch();
+    return () => { cancelled = true; };
+  }, [selectedDateStr]);
 
-  // Socket listener
+  // Socket listener — uses ref to always access latest selectedDateStr
   useEffect(() => {
     if (!socket) return;
     const handleStatusUpdate = (data) => {
@@ -140,7 +157,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     };
 
     const handleDailyMenuUpdated = () => {
-      loadOrders();
+      loadOrdersForDate(selectedDateStrRef.current, true);
     };
 
     socket.on("order_status_updated", handleStatusUpdate);
@@ -175,7 +192,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     setLoadingAction(true);
     try {
       await dmbCustomerAPI.skipDailyOrder(orderId);
-      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: "skipped" } : o));
+      const updateState = prev => prev.map(o => o._id === orderId ? { ...o, status: "skipped" } : o);
+      setOrders(updateState);
+      setDateCache(prev => {
+        if (prev[selectedDateStr]) {
+          return { ...prev, [selectedDateStr]: { ...prev[selectedDateStr], orders: updateState(prev[selectedDateStr].orders) } };
+        }
+        return prev;
+      });
       onShowToast(`${mealName || 'Meal'} marked as skipped`);
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to skip order";
@@ -218,7 +242,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     setLoadingAction(true);
     try {
       await dmbCustomerAPI.undoSkipDailyOrder(orderId);
-      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: "scheduled" } : o));
+      const updateState = prev => prev.map(o => o._id === orderId ? { ...o, status: "scheduled" } : o);
+      setOrders(updateState);
+      setDateCache(prev => {
+        if (prev[selectedDateStr]) {
+          return { ...prev, [selectedDateStr]: { ...prev[selectedDateStr], orders: updateState(prev[selectedDateStr].orders) } };
+        }
+        return prev;
+      });
       onShowToast(`${mealName || 'Meal'} skip undone successfully`);
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to undo skip";
@@ -252,7 +283,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       setCustomTip("");
 
       // Update local state to reflect it's rated
-      setOrders(prev => prev.map(o => String(o._id) === String(ratingModalOrder._id) ? { ...o, isRated: true } : o));
+      const updateState = prev => prev.map(o => String(o._id) === String(ratingModalOrder._id) ? { ...o, isRated: true } : o);
+      setOrders(updateState);
+      setDateCache(prev => {
+        if (prev[selectedDateStr]) {
+          return { ...prev, [selectedDateStr]: { ...prev[selectedDateStr], orders: updateState(prev[selectedDateStr].orders) } };
+        }
+        return prev;
+      });
     } catch (err) {
       const errMsg = err.response?.data?.message || "Failed to submit rating";
       onShowToast(errMsg);
@@ -393,7 +431,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
           <AlertCircle className="text-6xl text-brand-red" />
           <p className="text-on-surface-variant font-bold text-base">{error}</p>
           <button
-            onClick={loadOrders}
+            onClick={() => loadOrdersForDate(selectedDateStr, true)}
             className="px-6 py-2.5 bg-primary text-white rounded-full font-bold shadow-md hover:bg-primary/95 active:scale-95 transition-all"
           >
             Retry
@@ -461,15 +499,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
           <h2 className="text-[20px] font-extrabold text-on-surface">
             {getSelectedDateHeading()}
           </h2>
-          <span className="text-xs font-bold text-on-surface-variant font-sans tracking-wide">
-            WEEKLY OVERVIEW
-          </span>
         </section>
 
         {/* Meal planner rows */}
         <section className="flex flex-col gap-4">
-          {weekMealsGrouped.map((day) => {
-            const isSelected = selectedDateStr === day.dateStr;
+          {(() => {
+            const day = weekMealsGrouped.find(d => d.dateStr === selectedDateStr);
+            if (!day) return null;
+
             const isSunday = day.date.getDay() === 0;
             const hasOrders = day.orders.length > 0;
 
@@ -501,14 +538,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             return (
               <div
                 key={day.dateStr}
-                className={`bg-white rounded-2xl p-4 shadow-sm flex border-l-4 transition-all duration-300 ${isSelected ? "scale-[1.01] shadow-md border-l-primary" : ""} ${borderClass}`}
+                className={`bg-white rounded-2xl p-4 flex border-l-4 transition-all duration-300 scale-[1.01] shadow-md border-l-primary ${borderClass}`}
               >
                 {/* Left Column: Date info */}
                 <div className="text-center w-12 select-none flex-shrink-0 pt-1 border-r border-[#bec9c3]/20 pr-3 mr-1 flex flex-col justify-start">
                   <span className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant font-sans">
                     {day.dayName}
                   </span>
-                  <span className={`text-[17px] font-extrabold ${isSelected ? "text-primary" : "text-[#1b1c1c]"}`}>
+                  <span className="text-[17px] font-extrabold text-primary">
                     {day.dayNum}
                   </span>
                 </div>
@@ -614,7 +651,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 </div>
               </div>
             );
-          })}
+          })()}
         </section>
 
         {/* Empty state banner when no active subscriptions exist */}

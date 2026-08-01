@@ -1,6 +1,5 @@
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { StrictMode } from 'react'
 import { Provider as ReduxProvider } from 'react-redux'
 import { store } from './store'
 import { UserNotificationProvider } from '../modules/Food/context/UserNotificationContext'
@@ -27,7 +26,6 @@ export function AppProviders({ children }) {
   const Router = shouldUseHashRouter() ? HashRouter : BrowserRouter
 
   return (
-    <StrictMode>
       <ReduxProvider store={store}>
         <LanguageProvider>
           <Router>
@@ -42,6 +40,5 @@ export function AppProviders({ children }) {
           </Router>
         </LanguageProvider>
       </ReduxProvider>
-    </StrictMode>
   )
 }

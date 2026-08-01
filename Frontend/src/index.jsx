@@ -1,5 +1,4 @@
 
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster, toast } from 'sonner'
 import App from './app/App.jsx'

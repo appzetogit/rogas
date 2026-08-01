@@ -2099,7 +2099,15 @@ export const dmbCustomerAPI = {
   // Pantry Orders (USER)
   createPantryOrder: (data) => userClient.post("/dmb/pantry-orders/create-order", data),
   verifyPantryPayment: (data) => userClient.post("/dmb/pantry-orders/verify-payment", data),
-  getMyPantryOrders: (type) => userClient.get(`/dmb/pantry-orders/my-orders${type ? `?type=${type}` : ''}`),
+  getMyPantryOrders: (params) => {
+    let url = "/dmb/pantry-orders/my-orders";
+    if (params) {
+      if (typeof params === 'string') url += `?type=${params}`; // backward compat for old code
+      else if (params.date) url += `?date=${params.date}`;
+      else if (params.type) url += `?type=${params.type}`;
+    }
+    return userClient.get(url);
+  },
   /** Get my subscriptions (auth: USER) */
   getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
   /** Get active duration plans (public) */
@@ -2115,7 +2123,10 @@ export const dmbCustomerAPI = {
   /** NEW: Get today's & tomorrow's meal for HomeScreen */
   getTodayMeal: () => userClient.get("/dmb/subscriptions/today"),
   /** NEW: Get customer's upcoming or past orders for OrdersScreen */
-  getMyOrders: (type = "upcoming") => userClient.get("/dmb/subscriptions/my-orders", { params: { type } }),
+  getMyOrders: (params) => {
+    if (typeof params === 'string') return userClient.get("/dmb/subscriptions/my-orders", { params: { type: params } }); // backward compat
+    return userClient.get("/dmb/subscriptions/my-orders", { params });
+  },
   /** NEW: Skip a specific daily order (only when status=scheduled) */
   skipDailyOrder: (orderId) => userClient.patch(`/dmb/subscriptions/daily-orders/${orderId}/skip`, {}),
   /** NEW: Undo skip a specific daily order (only when status=skipped) */

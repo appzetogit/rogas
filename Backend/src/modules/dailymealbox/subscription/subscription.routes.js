@@ -67,12 +67,12 @@ router.get('/today', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (re
 });
 
 // ─── Get Customer Orders List (OrdersScreen) ──────────────────────────────
-// ?type=upcoming (default) | ?type=past
+// ?type=upcoming (default) | ?type=past | ?date=YYYY-MM-DD
 router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
-        const { type = 'upcoming' } = req.query;
-        const orders = await getCustomerOrders(userId, { type });
+        const { type = 'upcoming', date } = req.query;
+        const orders = await getCustomerOrders(userId, { type, date });
         res.json({ success: true, orders });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
