@@ -245,7 +245,7 @@ export const RoutesMap = ({ stops = [] }) => {
   return (
     <div className="relative w-full h-[450px] rounded-2xl overflow-hidden shadow-sm">
       {/* Side Control Overlay */}
-      <div className="absolute top-4 right-4 z-[10] flex flex-col gap-2">
+      <div className="absolute top-4 left-4 z-[10] flex flex-col gap-2">
         <button
           onClick={handleLiveClick}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md ${

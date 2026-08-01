@@ -16,10 +16,10 @@ import { ProfileView } from "./ProfileView";
 import { MyShiftsView } from "./MyShiftsView";
 import { DemandHeatmapView } from "./DemandHeatmapView";
 import { RoutesView } from "./RoutesView";
-import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History, AlertTriangle } from "lucide-react";
+import { Home, Route as RouteIcon, Banknote, User, Package, MapPin, Phone, History, AlertTriangle, LogOut } from "lucide-react";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { useDeliveryNotificationContext } from "../../Food/context/DeliveryNotificationContext";
-import { dmbDeliveryAPI, deliveryAPI } from "../../../services/api";
+import apiClient, { dmbDeliveryAPI, deliveryAPI } from "../../../services/api";
 import { useDMBTracking } from "../hooks/useDMBTracking";
 import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
@@ -31,6 +31,21 @@ function NewDeliveryDashboard() {
   const [stops, setStops] = useState([]);
   const [shifts, setShifts] = useState(INITIAL_SHIFTS);
   const [pickupFirstModalOpen, setPickupFirstModalOpen] = useState(false);
+  const [appLogo, setAppLogo] = useState(null);
+
+  useEffect(() => {
+    const fetchAppConfig = async () => {
+      try {
+        const response = await apiClient.get("/api/v1/app-config/delivery_app");
+        if (response.data?.success && response.data?.data?.logoUrl) {
+          setAppLogo(response.data.data.logoUrl);
+        }
+      } catch (err) {
+        console.error("Failed to fetch app config", err);
+      }
+    };
+    fetchAppConfig();
+  }, []);
 
   const isOnline = useDeliveryStore((state) => state.isOnline);
   const toggleOnlineAction = useDeliveryStore((state) => state.toggleOnline);
@@ -545,10 +560,45 @@ function NewDeliveryDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] pb-24 text-gray-800 font-sans relative">
-      <div className="h-1 bg-[#00604c] w-full sticky top-0 z-50" />
+    <div className="flex h-screen overflow-hidden bg-[#F5F5F0] font-sans relative">
+      {/* Sidebar for Desktop */}
+      <aside className="hidden md:flex flex-col w-[260px] bg-[#006a5c] text-white h-full flex-shrink-0 shadow-xl z-50">
+        <div className="px-6 py-6 flex justify-start pl-8">
+          <img 
+            src={appLogo || "https://res.cloudinary.com/hmuqqx79/image/upload/v1784878828/app-logos/jptpxhxz6nfk9f5hry1p.jpg"} 
+            alt="App Logo" 
+            className="w-[100px] h-auto object-contain rounded-lg bg-white shadow-sm p-1" 
+          />
+        </div>
 
-      <main className="w-full px-4 sm:px-6 lg:px-8 pt-4 md:pt-8">
+        <div className="flex-1 px-4 space-y-2 mt-4">
+          <button onClick={() => { navigate('/food/delivery/feed'); setCurrentScreen("home"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "home" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
+            <Home className="w-5 h-5" /> Home
+          </button>
+          <button onClick={() => { navigate('/food/delivery/routes'); setCurrentScreen("routes"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "routes" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
+            <History className="w-5 h-5" /> Routes
+          </button>
+          <button onClick={() => { navigate('/food/delivery/route'); setCurrentScreen("route"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${["route", "pickup", "delivery"].includes(currentScreen) ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
+            <RouteIcon className="w-5 h-5" /> Active Route
+          </button>
+          <button onClick={() => { navigate('/food/delivery/earn'); setCurrentScreen("earnings"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "earnings" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
+            <Banknote className="w-5 h-5" /> Earnings
+          </button>
+          <button onClick={() => { navigate('/food/delivery/profile'); setCurrentScreen("profile"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${["profile", "shifts"].includes(currentScreen) ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
+            <User className="w-5 h-5" /> Profile
+          </button>
+        </div>
+
+        <div className="p-4 border-t border-white/20 mt-auto">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-all">
+            <LogOut className="w-5 h-5" /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto relative w-full h-full pb-20 md:pb-0 text-gray-800 !max-w-none !m-0">
+        <div className="h-1 bg-[#00604c] w-full sticky top-0 z-50 md:hidden" />
+        <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 md:pt-8">
 
         {/* ─── FIX: New Batch Request Modal ─────────────────────────────────── */}
         {newBatchRequest && (
@@ -678,6 +728,7 @@ function NewDeliveryDashboard() {
         )}
 
         {renderActiveScreen()}
+        </div>
       </main>
 
       {/* Pickup First modal alert */}
@@ -705,7 +756,7 @@ function NewDeliveryDashboard() {
       )}
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around md:justify-center md:gap-24 items-center">
+      <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center md:hidden">
         <button
           onClick={() => {
             if (currentScreen === "cannot_deliver" && activeOrder?.status === "picked_up") {
