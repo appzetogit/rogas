@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { IMAGES } from "../types";
-import { dmbCustomerAPI } from "@food/api";
+import { dmbCustomerAPI, restaurantAPI } from "@food/api";
 import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft, MoreVertical, UtensilsCrossed, Check } from 'lucide-react';
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
@@ -79,6 +79,20 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   // Ref to always hold the latest selectedDateStr (avoids stale closures in socket handlers)
   const selectedDateStrRef = useRef(selectedDateStr);
   selectedDateStrRef.current = selectedDateStr;
+
+  const [cutoffTime, setCutoffTime] = useState(null);
+
+  useEffect(() => {
+    restaurantAPI.getVendorTimingSettingsPublic()
+      .then(res => {
+        if (res.data?.success && res.data.data?.mealChangeCutoffTime) {
+          setCutoffTime(res.data.data.mealChangeCutoffTime);
+        } else {
+          setCutoffTime('20:00');
+        }
+      })
+      .catch(() => setCutoffTime('20:00'));
+  }, []);
 
   // Load orders for a specific date (also fetches subscriptions on first call)
   const loadOrdersForDate = async (dateStr, forceRefresh = false) => {
@@ -818,7 +832,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         {/* Tip block */}
         <section className="bg-primary/5 p-4 rounded-xl border border-primary-container/20">
           <p className="text-[12px] text-primary-container font-semibold font-sans leading-relaxed">
-            💡 <strong>Pro-Tip:</strong> Locked meals are already cooked by our neighborhood chefs. You can skip any future delivery up to 48 hours in advance!
+            💡 <strong>Pro-Tip:</strong> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <strong>{cutoffTime ? (() => { const [h, m] = cutoffTime.split(':'); const h12 = parseInt(h, 10) % 12 || 12; const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM'; return `${h12}:${m} ${ampm}`; })() : '8:00 PM'}</strong> on the day prior to delivery.
           </p>
         </section>
       </main>

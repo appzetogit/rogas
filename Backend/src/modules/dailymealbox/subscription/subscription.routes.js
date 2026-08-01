@@ -17,6 +17,7 @@ import {
 } from './dmb.dailyOrder.service.js';
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { VendorTimingSettings } from '../../food/admin/models/vendorTimingSettings.model.js';
 
 const router = express.Router();
 
@@ -91,11 +92,37 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot skip today's or past orders (tomorrow onwards only)
+        // Enforce: Cannot skip today's or past orders
         const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
         const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
         if (orderDateStr <= todayISTStr) {
             return res.status(400).json({ success: false, message: "Cannot skip today's or past orders" });
+        }
+
+        // Cutoff time check for tomorrow's orders
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
+
+        if (orderDateStr === tomorrowISTStr) {
+            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
+            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const currentISTTime = formatter.format(now);
+            
+            if (currentISTTime >= cutoffTime) {
+                const [h, m] = cutoffTime.split(':');
+                const h12 = parseInt(h, 10) % 12 || 12;
+                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
+                const formattedCutoff = `${h12}:${m} ${ampm}`;
+                return res.status(400).json({ success: false, message: `Cannot skip tomorrow's meal after ${formattedCutoff}` });
+            }
         }
 
         if (order.status !== 'scheduled') {
@@ -133,11 +160,37 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot undo skip for today's or past orders (tomorrow onwards only)
+        // Enforce: Cannot undo skip for today's or past orders
         const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
         const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
         if (orderDateStr <= todayISTStr) {
             return res.status(400).json({ success: false, message: "Cannot undo skip for today's or past orders" });
+        }
+
+        // Cutoff time check for tomorrow's orders
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
+
+        if (orderDateStr === tomorrowISTStr) {
+            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
+            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const currentISTTime = formatter.format(now);
+            
+            if (currentISTTime >= cutoffTime) {
+                const [h, m] = cutoffTime.split(':');
+                const h12 = parseInt(h, 10) % 12 || 12;
+                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
+                const formattedCutoff = `${h12}:${m} ${ampm}`;
+                return res.status(400).json({ success: false, message: `Cannot undo skip for tomorrow's meal after ${formattedCutoff}` });
+            }
         }
 
         if (order.status !== 'skipped') {
@@ -176,11 +229,37 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot modify today's or past orders (tomorrow onwards only)
+        // Enforce: Cannot modify today's or past orders
         const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
         const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
         if (orderDateStr <= todayISTStr) {
             return res.status(400).json({ success: false, message: "Cannot modify today's or past orders" });
+        }
+
+        // Cutoff time check for tomorrow's orders
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
+
+        if (orderDateStr === tomorrowISTStr) {
+            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
+            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const currentISTTime = formatter.format(now);
+            
+            if (currentISTTime >= cutoffTime) {
+                const [h, m] = cutoffTime.split(':');
+                const h12 = parseInt(h, 10) % 12 || 12;
+                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
+                const formattedCutoff = `${h12}:${m} ${ampm}`;
+                return res.status(400).json({ success: false, message: `Cannot modify tomorrow's meal after ${formattedCutoff}` });
+            }
         }
 
         if (!['scheduled'].includes(order.status)) {

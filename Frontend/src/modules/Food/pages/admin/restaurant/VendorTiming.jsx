@@ -65,6 +65,7 @@ const DEFAULT_SETTINGS = {
   breakfast: { startTime: '04:00', endTime: '10:00', maxPrepMinutes: 60, isEnabled: true },
   lunch:     { startTime: '11:00', endTime: '15:00', maxPrepMinutes: 60, isEnabled: true },
   dinner:    { startTime: '17:00', endTime: '21:00', maxPrepMinutes: 90, isEnabled: true },
+  mealChangeCutoffTime: '20:00'
 };
 
 // ─── SlotCard ─────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ export default function VendorTiming() {
             breakfast: { ...DEFAULT_SETTINGS.breakfast, ...d.breakfast },
             lunch:     { ...DEFAULT_SETTINGS.lunch,     ...d.lunch },
             dinner:    { ...DEFAULT_SETTINGS.dinner,    ...d.dinner },
+            mealChangeCutoffTime: d.mealChangeCutoffTime || DEFAULT_SETTINGS.mealChangeCutoffTime,
           });
         }
       })
@@ -273,6 +275,30 @@ export default function VendorTiming() {
                 onChange={handleChange}
               />
             ))}
+          </div>
+        )}
+
+        {/* Global Cutoff Setting */}
+        {!loading && (
+          <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                <Clock size={18} className="text-indigo-500" />
+                Customer Modification Cutoff
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                The time on the <strong>day before delivery</strong> after which customers cannot skip or change their meal.
+              </p>
+            </div>
+            <div className="shrink-0 flex items-center gap-3">
+              <input
+                type="time"
+                value={settings.mealChangeCutoffTime}
+                onChange={e => setSettings(prev => ({ ...prev, mealChangeCutoffTime: e.target.value }))}
+                className="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-xs font-semibold text-slate-500 w-16">{to12h(settings.mealChangeCutoffTime)}</span>
+            </div>
           </div>
         )}
 
