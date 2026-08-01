@@ -333,8 +333,8 @@ export default function CustomerAppMain() {
   // ─── Bottom Nav Visibility ───────────────────────────────────────────────────
   const currentPath = location.pathname;
   const showBottomNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
-  const isPublicRoute = ["/user/welcome", "/user/auth/login", "/user/auth/signup", "/user/otp", "/user/termsandcondition", "/user/privacy", "/user/about"].includes(currentPath);
-  const showDesktopNav = isLoggedIn && !isPublicRoute;
+  const isAuthScreen = ["/user/welcome", "/user/auth/login", "/user/auth/signup", "/user/otp"].includes(currentPath);
+  const showDesktopNav = isLoggedIn && !isAuthScreen;
 
   return (
     <PantryCartProvider>
@@ -343,13 +343,12 @@ export default function CustomerAppMain() {
         {/* Desktop Sidebar */}
         {showDesktopNav && (
           <aside className="hidden md:flex fixed top-0 left-0 h-full w-64 bg-[#00604c] text-white flex-col z-50 overflow-y-auto shadow-xl">
-            <div className="p-6 pb-2 border-b border-white/10">
+            <div className="p-6 border-b border-white/10">
               {appConfig?.logoUrl ? (
                 <img src={appConfig.logoUrl} alt="FoodApp" className="h-8 w-auto object-contain rounded" />
               ) : (
                 <h2 className="text-xl font-bold tracking-tight">FoodApp</h2>
               )}
-              <p className="text-white/70 text-xs mt-1 uppercase tracking-widest font-semibold">User Panel</p>
             </div>
             <nav className="flex-1 px-4 py-6 space-y-2">
               {[
@@ -387,11 +386,10 @@ export default function CustomerAppMain() {
         )}
 
         {/* Desktop Global Top-Right Profile */}
-        {showDesktopNav && currentUser && currentPath !== "/user/home" && currentPath !== "/user/profile" && (
-          <div className="hidden md:flex fixed top-0 right-0 h-14 pl-8 pr-6 items-center gap-3 z-[60] bg-white rounded-bl-2xl shadow-sm md:shadow-none border-b border-l border-[#bec9c3]/20 md:border-none">
+        {showDesktopNav && currentUser && currentPath !== "/user/home" && (
+          <div className="hidden md:flex fixed top-0 right-0 h-14 pl-8 pr-6 items-center gap-3 z-[60] bg-transparent">
             <div className="flex flex-col text-right justify-center">
               <span className="text-[13px] font-bold text-[#1b1c1c] leading-tight truncate max-w-[150px]">{currentUser.name || "Customer"}</span>
-              <span className="text-[10px] text-[#6e7a74] truncate max-w-[150px]">{currentUser.city || "Warsaw"}</span>
             </div>
             <div className="w-9 h-9 rounded-full bg-[#1F7A63] text-white flex items-center justify-center font-bold text-sm border-2 border-white overflow-hidden shadow-sm ring-2 ring-[#1F7A63]/10">
               {currentUser.profileImage ? (

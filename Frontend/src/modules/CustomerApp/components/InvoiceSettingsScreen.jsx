@@ -138,14 +138,13 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
   };
   return (<div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
     {/* Header element bar */}
-    <header className="bg-white flex justify-between items-center w-full px-5 h-14 sticky top-0 z-40 border-b border-[#bec9c3]/20 shadow-sm">
-      <div className="flex items-center gap-3">
-        <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-        <h1 className="text-[18px] font-extrabold text-primary">Invoice Settings</h1>
-      </div>
+    <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+      <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><ArrowLeft size={24} /></button>
+      <h1 className="text-xl font-extrabold text-primary text-center">Invoice Preferences</h1>
+      <div className="w-8" />
     </header>
 
-    <main className="px-5 pb-12 pt-6 space-y-6">
+    <main className="pt-20 pb-12 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto space-y-6">
       {/* Intro */}
       <section className="space-y-1">
         <h2 className="text-[18px] font-extrabold text-on-surface">Receipt &amp; Invoice Preferences</h2>

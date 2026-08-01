@@ -100,98 +100,98 @@ export function PantryItemDetails() {
   return (
     <div className="font-body-md text-on-surface antialiased overflow-x-hidden min-h-[max(884px,100dvh)]" style={{ backgroundColor: '#F5F5F0', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       {/* Top Navigation */}
-      <header 
-        className={`fixed top-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] z-50 h-14 flex items-center px-4 justify-between transition-all duration-300 ${scrolled ? 'shadow-sm bg-[rgba(252,249,248,0.95)]' : 'bg-[rgba(252,249,248,0.8)] backdrop-blur-md'}`}
-      >
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button 
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors" 
+          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100" 
           onClick={() => navigate(-1)}
         >
-          <ArrowLeft className="text-[#1b1c1c] w-6 h-6" />
+          <ArrowLeft size={24} />
         </button>
-        <h1 className="font-headline-sm text-[18px] font-bold text-[#1b1c1c]">Details</h1>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
-          <Heart className="text-[#1b1c1c] w-6 h-6" />
+        <h1 className="text-xl font-extrabold text-primary text-center">Item Details</h1>
+        <button className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+          <Heart size={20} />
         </button>
       </header>
 
-      <main className="pt-14 pb-32">
-        {/* Hero Product Image */}
-        <div className="relative w-full aspect-square bg-[#f6f3f2] overflow-hidden">
-          <img 
-            className="w-full h-full object-cover" 
-            alt={item.title} 
-            src={normalizeImageUrl(item.image)} 
-          />
-          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-sm">
-            <p className="font-label-caps text-[12px] font-bold text-[#00604c] uppercase tracking-wider">
-              {item.isAvailable ? 'Stock: High' : 'Out of Stock'}
-            </p>
-          </div>
-        </div>
-
-        {/* Content Container */}
-        <div className="px-5 -mt-6 relative z-10">
-          <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-6 space-y-4">
-            
-            {/* Title & Price */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="font-headline-sm text-[22px] font-bold text-[#1b1c1c] mb-1">{item.title}</h2>
-                <div className="flex items-center gap-1.5 text-[#00604c] text-[12px] font-bold">
-                  <Store className="w-3.5 h-3.5" />
-                  <span>{vendorName}</span>
-                </div>
-              </div>
-              <div className="text-right">
-                 {item.otherPlatformPrice && item.otherPlatformPrice > displayPrice && (
-                    <div className="text-[12px] text-gray-400 line-through font-medium mb-0.5">
-                       {Number(item.otherPlatformPrice).toFixed(2)} PLN
-                    </div>
-                 )}
-                 <div className="text-[18px] font-extrabold text-[#00604c]">{Number(displayPrice).toFixed(2)} PLN</div>
-              </div>
-            </div>
-            
-            <div className="h-[1px] bg-[#bec9c3]/30 w-full"></div>
-
-            {/* Description */}
-            <section>
-              <h3 className="text-[16px] font-semibold text-[#1b1c1c] mb-2">Description</h3>
-              <p className="text-[14px] text-[#3e4945] leading-relaxed">
-                {item.description || "Premium pantry item crafted with care. Enjoy the rich flavors and high-quality ingredients selected specially for you."}
+      <main className="pt-20 pb-32 px-4 sm:px-8 lg:px-10 w-full max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+          {/* LEFT COLUMN: Hero Product Image */}
+          <div className="relative w-full h-72 sm:h-96 md:h-full min-h-[380px] rounded-3xl bg-[#f6f3f2] overflow-hidden shadow-sm border border-slate-200/80">
+            <img 
+              className="w-full h-full object-cover" 
+              alt={item.title} 
+              src={normalizeImageUrl(item.image)} 
+            />
+            <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-full shadow-sm border border-slate-200/60">
+              <p className="text-[12px] font-bold text-[#00604c] uppercase tracking-wider flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${item.isAvailable ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                {item.isAvailable ? 'Stock: High' : 'Out of Stock'}
               </p>
-            </section>
+            </div>
+          </div>
 
-            {/* Select Size (Variants) */}
-            {item.variants && item.variants.length > 0 && (
-              <section className="mt-4">
-                <h3 className="text-[16px] font-semibold text-[#1b1c1c] mb-3">Select Size</h3>
-                <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-                  {item.variants.map((v, i) => (
-                    <button 
-                      key={i}
-                      onClick={() => setSelectedVariant(v)}
-                      className={`px-4 py-2 rounded-full font-semibold text-[14px] whitespace-nowrap transition-colors ${
-                        selectedVariant?.name === v.name 
-                          ? 'bg-[#00604c] text-white shadow-sm' 
-                          : 'border border-[#bec9c3]/40 text-[#3e4945] hover:bg-[#eae7e7]'
-                      }`}
-                    >
-                      {v.name} - {Number(v.price).toFixed(2)} PLN
-                    </button>
-                  ))}
+          {/* RIGHT COLUMN: Product Content Details */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6 flex flex-col justify-between">
+            <div>
+              {/* Title & Price */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="font-headline-sm text-2xl font-bold text-[#1b1c1c] mb-1">{item.title}</h2>
+                  <div className="flex items-center gap-1.5 text-[#00604c] text-xs font-bold">
+                    <Store className="w-4 h-4" />
+                    <span>{vendorName}</span>
+                  </div>
                 </div>
+                <div className="text-right">
+                   {item.otherPlatformPrice && item.otherPlatformPrice > displayPrice && (
+                      <div className="text-xs text-gray-400 line-through font-medium mb-0.5">
+                         {Number(item.otherPlatformPrice).toFixed(2)} PLN
+                      </div>
+                   )}
+                   <div className="text-xl font-extrabold text-[#00604c]">{Number(displayPrice).toFixed(2)} PLN</div>
+                </div>
+              </div>
+              
+              <div className="h-[1px] bg-[#bec9c3]/30 w-full mb-6"></div>
+
+              {/* Description */}
+              <section className="mb-6">
+                <h3 className="text-base font-semibold text-[#1b1c1c] mb-2">Description</h3>
+                <p className="text-sm text-[#3e4945] leading-relaxed">
+                  {item.description || "Premium pantry item crafted with care. Enjoy the rich flavors and high-quality ingredients selected specially for you."}
+                </p>
               </section>
-            )}
+
+              {/* Select Size (Variants) */}
+              {item.variants && item.variants.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="text-base font-semibold text-[#1b1c1c] mb-3">Select Size</h3>
+                  <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                    {item.variants.map((v, i) => (
+                      <button 
+                        key={i}
+                        onClick={() => setSelectedVariant(v)}
+                        className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-colors cursor-pointer ${
+                          selectedVariant?.name === v.name 
+                            ? 'bg-[#00604c] text-white shadow-sm' 
+                            : 'border border-[#bec9c3]/40 text-[#3e4945] hover:bg-[#eae7e7]'
+                        }`}
+                      >
+                        {v.name} - {Number(v.price).toFixed(2)} PLN
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
 
             {/* Bento Info Grid */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              <div className="bg-[#f6f3f2] p-4 rounded-lg flex flex-col gap-2 col-span-2">
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="bg-[#f6f3f2] p-4 rounded-2xl flex flex-col gap-2 col-span-2">
                 <MapPin className="text-[#00604c] w-6 h-6 fill-current" />
                 <div>
-                  <p className="text-[12px] font-bold text-[#6e7a74] uppercase tracking-wider">Origin</p>
-                  <p className="text-[14px] font-semibold text-[#1b1c1c]">{vendorCity}, PL</p>
+                  <p className="text-xs font-bold text-[#6e7a74] uppercase tracking-wider">Origin</p>
+                  <p className="text-sm font-semibold text-[#1b1c1c]">{vendorCity}, PL</p>
                 </div>
               </div>
             </div>

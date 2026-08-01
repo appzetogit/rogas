@@ -152,41 +152,17 @@ export function ProfileScreen({
     return (
       <div className="bg-[#f6f8f7] text-slate-800 min-h-screen pb-20 font-sans">
         {/* Top Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 md:left-64 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs h-16 flex items-center justify-between px-4 sm:px-8 lg:px-10">
-          <div className="flex items-center gap-3">
-            <button 
-              type="button"
-              onClick={() => setIsEditing(false)} 
-              className="text-slate-700 hover:text-slate-900 cursor-pointer active:scale-95 transition-all w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 border border-slate-200/60"
-              title="Go back"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div>
-              <h1 className="text-lg font-extrabold text-slate-900 leading-tight">Customer Details</h1>
-              <p className="text-xs text-slate-500 font-medium hidden sm:block">Manage and update your account details</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#1f7a63]/10 text-[#1f7a63] border border-[#1f7a63]/20">
-              <ShieldCheck size={14} />
-              Account Settings
-            </span>
-            <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200">
-              <div className="flex flex-col text-right">
-                <span className="text-xs font-bold text-slate-800 leading-tight">{currentUser?.name || "Customer"}</span>
-                <span className="text-[10px] text-slate-500">{currentUser?.city || "Warsaw"}</span>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-[#1f7a63] text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
-                {currentUser?.profileImage ? (
-                  <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  (currentUser?.name || "C")[0].toUpperCase()
-                )}
-              </div>
-            </div>
-          </div>
+        <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+          <button 
+            type="button"
+            onClick={() => setIsEditing(false)} 
+            className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
+            title="Go back"
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-extrabold text-primary text-center">Customer Details</h1>
+          <div className="w-8" />
         </header>
 
         <main className="pt-20 pb-10 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
@@ -408,26 +384,12 @@ export function ProfileScreen({
   return (
     <div className="bg-[#f6f8f7] text-slate-800 min-h-screen pb-20 font-sans">
       {/* Top Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 md:left-64 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs h-16 flex items-center justify-between px-4 sm:px-8 lg:px-10">
-        <div className="flex items-center gap-3">
-          <button onClick={onGoBack} className="text-slate-700 hover:text-slate-900 cursor-pointer active:scale-95 transition-all w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 border border-slate-200/60">
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-lg font-extrabold text-slate-900">Profile</h1>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <div className="flex flex-col text-right">
-            <span className="text-xs font-bold text-slate-800 leading-tight">{currentUser?.name || "Customer"}</span>
-            <span className="text-[10px] text-slate-500">{currentUser?.city || "Warsaw"}</span>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-[#1f7a63] text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
-            {currentUser?.profileImage ? (
-              <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              (currentUser?.name || "C")[0].toUpperCase()
-            )}
-          </div>
-        </div>
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-xl font-extrabold text-primary text-center">Profile</h1>
+        <div className="w-8" />
       </header>
 
       <main className="pt-20 pb-10 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
@@ -561,7 +523,7 @@ export function ProfileScreen({
           )}
 
           {/* Diet preferences */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+          <div onClick={onGoToDietAndAllergens} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-[#fea619]/10 p-2 rounded-xl text-[#fea619] flex items-center justify-center">
                 <Utensils className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -573,14 +535,14 @@ export function ProfileScreen({
                 </p>
               </div>
             </div>
-            <button onClick={onGoToDietAndAllergens} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Edit</span> */}
               <ArrowRight className="text-sm" />
             </button>
           </div>
 
           {/* Invoice preferences mappings */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
+          <div onClick={onGoToInvoiceSettings} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="bg-[#e4e2e1] p-2 rounded-xl text-[#3e4945] flex items-center justify-center">
                 <Receipt className="text-[22px]" />
@@ -592,7 +554,7 @@ export function ProfileScreen({
                 </p>
               </div>
             </div>
-            <button onClick={onGoToInvoiceSettings} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+            <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
               {/* <span>Change</span> */}
               <ArrowRight className="text-sm" />
             </button>

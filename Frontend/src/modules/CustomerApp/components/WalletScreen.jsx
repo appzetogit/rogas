@@ -112,15 +112,16 @@ export function WalletScreen({ onBack, currentUser }) {
     return (
         <div className="bg-[#F5F5F0] min-h-screen text-[#1b1c1c] relative">
             {/* Top App Bar */}
-            <header className="fixed top-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex items-center px-4 h-14 shadow-sm border-b border-[#bec9c3]/20">
-                <button onClick={onBack} className="w-10 h-10 flex items-center justify-start active:scale-90 transition-transform">
-                    <ArrowLeft className="text-[#1b1c1c]" />
+            <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+                <button onClick={onBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-[20px] font-extrabold text-[#1b1c1c] mx-auto pr-10">Wallet</h1>
+                <h1 className="text-xl font-extrabold text-primary text-center">My Wallet</h1>
+                <div className="w-8" />
             </header>
 
             {/* Main Content Canvas */}
-            <main className="pt-16 pb-24 px-5">
+            <main className="pt-20 pb-24 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
                 {/* Balance Section */}
                 <section className="mt-4">
                     <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex flex-col gap-4 relative overflow-hidden">

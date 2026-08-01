@@ -44,16 +44,15 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
 
     return (
         <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[100dvh] relative">
-            <header className="fixed top-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-50 bg-white flex justify-between items-center px-4 h-14 shadow-sm border-b border-[#bec9c3]/20">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} aria-label="Go back" className="p-2 -ml-2 rounded-full hover:bg-slate-200 transition-colors">
-                        <ArrowLeft className="text-primary" />
-                    </button>
-                    <h1 className="text-[20px] font-extrabold text-primary">Diet &amp; Allergens</h1>
-                </div>
+            <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+                <button onClick={onBack} aria-label="Go back" className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <ArrowLeft size={24} />
+                </button>
+                <h1 className="text-xl font-extrabold text-primary text-center">Diet &amp; Allergens</h1>
+                <div className="w-8" />
             </header>
 
-            <main className="pt-20 pb-[100px] px-5">
+            <main className="pt-20 pb-[100px] px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
                 {/* Header Visual Accent */}
                 <div className="mb-6 relative overflow-hidden rounded-xl h-24 bg-[#1f7a63] flex items-center px-4 shadow-sm">
                     <div className="z-10">

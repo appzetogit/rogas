@@ -737,30 +737,34 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[880px] pb-32">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-xs border-b border-[#bec9c3]/20">
         <button
           onClick={onGoBack}
-           className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"
+          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
         ><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-extrabold text-primary text-center">My Orders</h1>
         <div className="w-8" />
       </header>
 
-      <main className="px-5 pt-20">
-        <div className="flex items-center bg-[#f0f0f0] p-1 rounded-full mb-6 relative">
+      {/* Fixed Sub-Header Tabs */}
+      <div className="fixed top-14 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-30 bg-[#F5F5F0] px-4 sm:px-8 lg:px-10 py-2.5 border-b border-[#bec9c3]/30 shadow-xs">
+        <div className="flex items-center bg-[#e4e8e5] p-1.5 rounded-full relative shadow-xs border border-slate-200/50 max-w-7xl mx-auto">
           <button 
             onClick={() => setActiveSection('Meals')}
-            className={`flex-1 py-2.5 text-[14px] font-bold rounded-full transition-all duration-300 z-10 ${activeSection === 'Meals' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74]'}`}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all duration-300 z-10 cursor-pointer ${activeSection === 'Meals' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74] hover:text-[#1F7A63]'}`}
           >
             Meals
           </button>
           <button 
             onClick={() => setActiveSection('Pantry')}
-            className={`flex-1 py-2.5 text-[14px] font-bold rounded-full transition-all duration-300 z-10 ${activeSection === 'Pantry' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74]'}`}
+            className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all duration-300 z-10 cursor-pointer ${activeSection === 'Pantry' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74] hover:text-[#1F7A63]'}`}
           >
             Pantry
           </button>
         </div>
+      </div>
+
+      <main className="pt-36 sm:pt-40 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto pb-32">
         {/* Tabs */}
         <div className="flex border-b border-[#bec9c3] mb-5">
           {["Upcoming", "Past"].map(tab => (

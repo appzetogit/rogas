@@ -5,10 +5,10 @@ import { ArrowLeft, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCir
 import { useNavigate } from 'react-router-dom';
 
 const STATUS_CONFIG = {
-  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Pending' },
-  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Approved & Refunded' },
-  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Rejected' },
-  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Subscription Extended' },
+  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50/80 border-amber-200/80', label: 'Pending' },
+  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50/80 border-emerald-200/80', label: 'Approved & Refunded' },
+  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50/80 border-red-200/80', label: 'Rejected' },
+  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50/80 border-blue-200/80', label: 'Subscription Extended' },
 };
 
 const REASONS = [
@@ -87,50 +87,61 @@ export default function CustomerServicePage() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
   return (
-    <div className="w-[390px] min-h-screen bg-slate-50/50 mx-auto relative flex flex-col font-sans">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 shadow-sm h-14 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </button>
-          <h1 className="text-[16px] font-bold text-gray-900 tracking-tight">Customer Support</h1>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="text-primary font-bold text-[13px]"
+    <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32 font-sans">
+      {/* Top Header */}
+      <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
         >
-          {showForm ? 'Cancel' : 'New Complaint'}
+          <ArrowLeft size={24} />
         </button>
-      </div>
+        <h1 className="text-xl font-extrabold text-primary text-center">Customer Support</h1>
+        <div className="w-8" />
+      </header>
 
-      <div className="flex-grow p-4 space-y-4 pb-20 overflow-y-auto">
-        
+      <main className="pt-20 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto space-y-5">
         {/* Info Banner */}
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-start gap-2.5">
-          <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <p className="text-xs text-on-surface-variant leading-relaxed">
+        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+          <Info className="w-5 h-5 text-[#1F7A63] shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-700 leading-relaxed font-medium">
             Submit a complaint or request a refund for recent orders. If approved, the amount will be credited to your DailyMealBox Wallet instantly.
           </p>
         </div>
 
+        {/* Requests Header & New Complaint Action Row */}
+        <div className="flex items-center justify-between pt-2 pb-1">
+          <h2 className="font-extrabold text-[12px] text-slate-400 uppercase tracking-widest">My Support History</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-[#1F7A63] text-white px-4 py-2 rounded-xl font-extrabold text-[13px] hover:bg-[#155a49] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+            >
+              <span>{showForm ? 'Cancel' : '+ New Complaint'}</span>
+            </button>
+            <button onClick={fetchRequests} className="p-2 text-[#1F7A63] hover:bg-[#1F7A63]/10 rounded-xl active:rotate-180 transition-all cursor-pointer bg-white border border-slate-200/60 shadow-xs" title="Refresh">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
         {/* Submit Form */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 border border-outline-variant/20 shadow-xs space-y-4 animate-fadeIn">
-            <h2 className="font-bold text-[15px] text-on-surface">Submit Complaint</h2>
+          <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-5 animate-in fade-in duration-200">
+            <h2 className="font-extrabold text-[16px] text-slate-900">Submit Complaint</h2>
 
             <div>
-              <label className="block text-[10px] font-bold text-outline uppercase mb-2 tracking-wider">Reason *</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">Reason *</label>
+              <div className="flex flex-wrap gap-2.5">
                 {REASONS.map(r => (
                   <button
                     type="button"
                     key={r}
                     onClick={() => setReason(r)}
-                    className={`px-3 py-2 rounded-xl text-[13px] font-medium border transition-all ${
+                    className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border transition-all cursor-pointer ${
                       reason === r
-                        ? 'bg-primary text-on-primary border-primary shadow-sm'
-                        : 'bg-white text-on-surface-variant border-outline-variant hover:border-primary/50'
+                        ? 'bg-[#1F7A63] text-white border-[#1F7A63] shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-[#1F7A63]/50'
                     }`}
                   >
                     {r}
@@ -140,15 +151,15 @@ export default function CustomerServicePage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-outline uppercase mb-2 tracking-wider">Additional Details (Optional)</label>
+              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">Additional Details (Optional)</label>
               <div className="relative">
-                <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-outline" />
+                <MessageSquare className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Explain the issue in detail..."
                   rows={3}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-outline-variant rounded-xl text-[13px] text-on-surface focus:outline-none focus:border-primary resize-none"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-2xl text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1F7A63] focus:ring-2 focus:ring-[#1F7A63]/20 resize-none transition-all font-medium"
                 />
               </div>
             </div>
@@ -156,90 +167,85 @@ export default function CustomerServicePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-12 bg-primary text-on-primary font-bold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm mt-2"
+              className="w-full h-12 bg-[#1F7A63] text-white font-extrabold text-sm rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md hover:bg-[#155a49] cursor-pointer mt-2"
             >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               Submit to Support
             </button>
           </form>
         )}
 
         {/* Requests List */}
-        <div className="flex items-center justify-between mt-6 mb-1">
-          <h2 className="font-bold text-[12px] text-outline uppercase tracking-wider">My Support History</h2>
-          <button onClick={fetchRequests} className="p-1 text-primary active:rotate-180 transition-transform">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
         
         {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-[#1F7A63]" />
           </div>
         ) : requests.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border border-outline-variant/20 shadow-xs">
-            <HandCoins className="w-8 h-8 text-outline mx-auto mb-2 opacity-50" />
-            <p className="text-on-surface-variant text-[13px] font-medium">No complaints or refund requests found.</p>
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
+            <HandCoins className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-700 text-[14px] font-bold">No complaints or refund requests found.</p>
+            <p className="text-xs text-slate-400 mt-1">Need help with an order? Click New Complaint above.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {requests.map(req => {
               const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
               const StatusIcon = cfg.icon;
               return (
-                <div key={req._id} className={`bg-white rounded-2xl p-4 border ${cfg.bg} transition-all shadow-xs`}>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="font-bold text-[14px] text-on-surface">{req.reason}</span>
-                      </div>
-                      <p className="text-[10px] text-outline font-medium">{formatDate(req.createdAt)}</p>
-                      {req.remarks && <p className="text-[13px] text-on-surface-variant mt-1 leading-snug">{req.remarks}</p>}
+                <div key={req._id} className={`bg-white rounded-2xl p-5 border ${cfg.bg} transition-all shadow-xs flex flex-col justify-between`}>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-[15px] text-slate-900">{req.reason}</span>
+                      <span className="text-[11px] text-slate-400 font-medium shrink-0">{formatDate(req.createdAt)}</span>
                     </div>
+                    {req.remarks && <p className="text-[13px] text-slate-600 leading-snug font-medium">{req.remarks}</p>}
                   </div>
                   
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-black/5">
-                    <div className={`flex items-center gap-1 text-[11px] font-bold uppercase ${cfg.color}`}>
-                      <StatusIcon className="w-4 h-4" />
-                      {cfg.label}
+                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide ${cfg.color}`}>
+                        <StatusIcon className="w-4 h-4" />
+                        {cfg.label}
+                      </div>
+                      {req.status === 'approved' && req.refundAmount > 0 && (
+                        <div className="text-[12px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
+                          +₹{req.refundAmount} Refunded
+                        </div>
+                      )}
                     </div>
-                    {req.status === 'approved' && req.refundAmount > 0 && (
-                      <div className="text-[12px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
-                        +₹{req.refundAmount} Refunded
+
+                    {req.requestType === 'customer_refund' && req.status === 'pending' && req.requesterRole === 'SYSTEM' && (
+                      <div className="flex gap-2.5 pt-1">
+                        {(!req.subscriptionId?.deliverySlots || req.subscriptionId.deliverySlots.length <= 1 || (req.slots && req.slots.length === req.subscriptionId.deliverySlots.length)) && (
+                          <button
+                            onClick={() => handleExtend(req._id)}
+                            className="flex-1 py-2.5 bg-[#1F7A63]/10 text-[#1F7A63] rounded-xl text-xs font-extrabold hover:bg-[#1F7A63]/20 transition-colors cursor-pointer"
+                          >
+                            Add Day
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRefund(req._id)}
+                          className="flex-1 py-2.5 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-extrabold hover:bg-emerald-200 transition-colors cursor-pointer"
+                        >
+                          Request Refund
+                        </button>
+                      </div>
+                    )}
+
+                    {req.adminNotes && (
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <p className="text-[12px] text-slate-600 font-medium"><span className="font-bold text-slate-900">Support Team:</span> {req.adminNotes}</p>
                       </div>
                     )}
                   </div>
-
-                  {req.requestType === 'customer_refund' && req.status === 'pending' && req.requesterRole === 'SYSTEM' && (
-                    <div className="mt-3 flex gap-2 pt-3 border-t border-black/5">
-                      {(!req.subscriptionId?.deliverySlots || req.subscriptionId.deliverySlots.length <= 1 || (req.slots && req.slots.length === req.subscriptionId.deliverySlots.length)) && (
-                        <button
-                          onClick={() => handleExtend(req._id)}
-                          className="flex-1 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
-                        >
-                          Add Day
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleRefund(req._id)}
-                        className="flex-1 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors"
-                      >
-                        Request Refund
-                      </button>
-                    </div>
-                  )}
-
-                  {req.adminNotes && (
-                    <div className="mt-2 bg-black/5 rounded-lg p-2">
-                      <p className="text-[11px] text-on-surface-variant"><span className="font-bold text-on-surface">Support Team:</span> {req.adminNotes}</p>
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

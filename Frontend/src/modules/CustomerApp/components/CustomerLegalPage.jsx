@@ -62,17 +62,17 @@ export function CustomerLegalPage({ pageType }) {
       <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button
           onClick={handleBack}
-          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"
+          className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-lg font-extrabold text-primary text-center truncate max-w-[200px]">
+        <h1 className="text-xl font-extrabold text-primary text-center truncate">
           {title}
         </h1>
         <div className="w-8" />
       </header>
 
-      <main className="flex-grow pt-20 px-5 pb-12">
+      <main className="flex-grow pt-20 px-4 sm:px-8 lg:px-10 pb-12 w-full max-w-7xl mx-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-primary">
             <Loader2 className="animate-spin w-8 h-8" />

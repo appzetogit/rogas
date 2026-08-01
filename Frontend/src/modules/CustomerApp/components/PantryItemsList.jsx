@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from '@food/api';
 import { API_BASE_URL } from '@food/api/config';
-import { Plus, Minus, ShoppingBag, Package, ChevronRight } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, Package, ChevronRight, Search, X } from 'lucide-react';
 import { usePantryCart } from './PantryCartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function PantryItemsList() {
   const [items, setItems] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const { cart, addItem, removeItem, getItemQuantity, cartTotal, totalItems } = usePantryCart();
   const navigate = useNavigate();
@@ -48,6 +49,15 @@ export function PantryItemsList() {
     addItem(item, item.vendorId?._id || item.vendorId);
   };
 
+  const filteredItems = items.filter((i) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    const titleMatch = (i.title || "").toLowerCase().includes(q);
+    const vendorMatch = (i.vendorId?.restaurantName || i.vendorId?.name || "").toLowerCase().includes(q);
+    const descMatch = (i.description || "").toLowerCase().includes(q);
+    return titleMatch || vendorMatch || descMatch;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center p-10">
@@ -56,20 +66,47 @@ export function PantryItemsList() {
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="text-center p-10">
-        <Package className="text-[40px] text-[#bec9c3]" />
-        <p className="text-[16px] font-bold mt-2">No Pantry Items</p>
-        <p className="text-[13px] text-[#6e7a74]">Vendors haven't added any items yet.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="relative pb-24">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 mb-4 px-2">
-        {items.map((item) => {
+      {/* Functional Search Bar */}
+      <div className="mb-6 relative max-w-xl">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search pantry items, snacks, sweets, vendors..."
+          className="w-full h-12 pl-12 pr-10 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1F7A63] focus:ring-2 focus:ring-[#1F7A63]/20 shadow-xs transition-all"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {filteredItems.length === 0 ? (
+        <div className="text-center p-10 bg-white rounded-2xl border border-slate-100 shadow-xs my-4">
+          <Package className="text-[40px] text-[#bec9c3] mx-auto mb-2" />
+          <p className="text-[16px] font-bold text-slate-900">No Pantry Items Found</p>
+          <p className="text-[13px] text-slate-500 mt-1">
+            {searchQuery ? `No results for "${searchQuery}". Try a different keyword.` : "Vendors haven't added any items yet."}
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-3 text-xs font-bold text-[#1F7A63] hover:underline"
+            >
+              Clear Search Filter
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 mb-4 px-1">
+        {filteredItems.map((item) => {
           const qty = getItemQuantity(item._id);
           return (
             <div 
@@ -117,7 +154,8 @@ export function PantryItemsList() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Cart Sticky Bottom Bar */}
       {totalItems > 0 && (
