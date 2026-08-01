@@ -1861,3 +1861,35 @@ export async function getAllSubscribersSummaryController(req, res) {
         res.status(400).json({ success: false, message: error.message });
     }
 }
+
+export async function getShiftChangeRequestsController(req, res) {
+    try {
+        const { status, page, limit } = req.query;
+        const data = await adminService.getShiftChangeRequests({ status, page, limit });
+        res.status(200).json({ success: true, message: 'Shift change requests fetched successfully', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function approveShiftChangeRequestController(req, res) {
+    try {
+        const { id } = req.params;
+        const adminId = req.user?.userId;
+        const data = await adminService.approveShiftChangeRequest(id, adminId);
+        res.status(200).json({ success: true, message: 'Shift change request approved', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}
+
+export async function rejectShiftChangeRequestController(req, res) {
+    try {
+        const { id } = req.params;
+        const adminId = req.user?.userId;
+        const data = await adminService.rejectShiftChangeRequest(id, adminId);
+        res.status(200).json({ success: true, message: 'Shift change request rejected', data });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+}

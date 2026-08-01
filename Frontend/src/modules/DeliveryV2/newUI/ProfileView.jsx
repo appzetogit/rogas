@@ -319,8 +319,8 @@ const ProfileView = ({
         <div className="flex items-center gap-3">
           <span className="text-xl">📅</span>
           <div>
-            <h4 className="font-bold text-sm text-[#00604c]">Quick Shifts Tracker</h4>
-            <p className="text-[11px] text-[#3e4945] font-medium">Log hours, adjust timetables or cancel sprints.</p>
+            <h4 className="font-bold text-sm text-[#00604c]">Change Shifts</h4>
+            <p className="text-[11px] text-[#3e4945] font-medium">Request to add or remove your delivery shifts.</p>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-[#00604c]" />

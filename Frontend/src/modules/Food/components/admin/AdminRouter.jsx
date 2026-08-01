@@ -73,6 +73,8 @@ const DeliveryBoyWallet = lazy(() => import("@food/pages/admin/DeliveryBoyWallet
 const DeliveryEmergencyHelp = lazy(() => import("@food/pages/admin/DeliveryEmergencyHelp"));
 const DeliverySupportTickets = lazy(() => import("@food/pages/admin/DeliverySupportTickets"));
 const JoinRequest = lazy(() => import("@food/pages/admin/delivery-partners/JoinRequest"));
+const OrderBasedDeliveryFee = lazy(() => import("@food/pages/admin/delivery-partners/OrderBasedDeliveryFee"));
+const ShiftChangeRequests = lazy(() => import("@food/pages/admin/delivery-partners/ShiftChangeRequests"));
 const AddDeliveryman = lazy(() => import("@food/pages/admin/delivery-partners/AddDeliveryman"));
 const DeliverymanList = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanList"));
 const DeliverymanReviews = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanReviews"));
@@ -80,7 +82,6 @@ const DeliverymanBonus = lazy(() => import("@food/pages/admin/delivery-partners/
 const EarningAddon = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddon"));
 const EarningAddonHistory = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddonHistory"));
 const DeliveryEarnings = lazy(() => import("@food/pages/admin/delivery-partners/DeliveryEarnings"));
-const OrderBasedDeliveryFee = lazy(() => import("@food/pages/admin/delivery-partners/OrderBasedDeliveryFee"));
 // Disbursement Management
 // Report Management
 const TransactionReport = lazy(() => import("@food/pages/admin/reports/TransactionReport"));
@@ -282,6 +283,7 @@ export default function AdminRouter() {
             <Route path="delivery-partners/earning-addon" element={<EarningAddon />} />
             <Route path="delivery-partners/earning-addon-history" element={<EarningAddonHistory />} />
             <Route path="delivery-partners/earnings" element={<DeliveryEarnings />} />
+            <Route path="delivery-partners/shift-requests" element={<ShiftChangeRequests />} />
             <Route path="order-based-delivery-fee" element={<OrderBasedDeliveryFee />} />
 
 

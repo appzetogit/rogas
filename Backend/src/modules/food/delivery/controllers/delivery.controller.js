@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, updateDeliveryLocation, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats, getDeliveryPartnerRatings, getDeliveryPartnerTips } from '../services/delivery.service.js';
+import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, updateDeliveryLocation, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats, getDeliveryPartnerRatings, getDeliveryPartnerTips, createShiftChangeRequest, getActiveShiftChangeRequest } from '../services/delivery.service.js';
 import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
@@ -316,6 +316,26 @@ export const getTipsController = async (req, res, next) => {
         const deliveryPartnerId = req.user?.userId;
         const data = await getDeliveryPartnerTips(deliveryPartnerId);
         return sendResponse(res, 200, 'Tips fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createShiftChangeRequestController = async (req, res, next) => {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const result = await createShiftChangeRequest(deliveryPartnerId, req.body.requestedShifts);
+        return sendResponse(res, 201, 'Shift change request submitted', result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getActiveShiftChangeRequestController = async (req, res, next) => {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const result = await getActiveShiftChangeRequest(deliveryPartnerId);
+        return sendResponse(res, 200, 'Fetched shift change request', result);
     } catch (error) {
         next(error);
     }

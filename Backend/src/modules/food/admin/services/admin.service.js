@@ -4,6 +4,7 @@ import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { VendorSubscriptionPlan } from '../../../dailymealbox/subscription/vendorSubscriptionPlan.model.js';
 import { buildRawDownloadUrlFromFileUrl } from '../../../../services/cloudinary.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { DeliveryShiftChangeRequest } from '../../delivery/models/shiftChangeRequest.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
 import { FoodZone } from '../models/zone.model.js';
 import { FoodCategory } from '../models/category.model.js';
@@ -6407,4 +6408,58 @@ export async function getVendorEarningsList(query = {}) {
     }
 
     return { data, total, page, limit, pages: Math.ceil(total / limit) || 1 };
+}
+
+export async function getShiftChangeRequests(options = {}) {
+    const { status, page = 1, limit = 20 } = options;
+    const filter = {};
+    if (status) filter.status = status;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [requests, total] = await Promise.all([
+        DeliveryShiftChangeRequest.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit))
+            .populate('partnerId', 'name phone profilePhoto')
+            .lean(),
+        DeliveryShiftChangeRequest.countDocuments(filter)
+    ]);
+
+    return { requests, total, page: Number(page), limit: Number(limit) };
+}
+
+export async function approveShiftChangeRequest(requestId, adminId) {
+    const request = await DeliveryShiftChangeRequest.findById(requestId);
+    if (!request) throw new Error('Request not found');
+    if (request.status !== 'pending') throw new Error(`Request is already ${request.status}`);
+
+    const partner = await FoodDeliveryPartner.findById(request.partnerId);
+    if (!partner) throw new Error('Partner not found');
+
+    // Update partner shifts
+    partner.allowedShifts = request.requestedShifts;
+    await partner.save();
+
+    // Update request status
+    request.status = 'approved';
+    request.adminId = adminId;
+    request.resolvedAt = new Date();
+    await request.save();
+
+    return request;
+}
+
+export async function rejectShiftChangeRequest(requestId, adminId) {
+    const request = await DeliveryShiftChangeRequest.findById(requestId);
+    if (!request) throw new Error('Request not found');
+    if (request.status !== 'pending') throw new Error(`Request is already ${request.status}`);
+
+    request.status = 'rejected';
+    request.adminId = adminId;
+    request.resolvedAt = new Date();
+    await request.save();
+
+    return request;
 }

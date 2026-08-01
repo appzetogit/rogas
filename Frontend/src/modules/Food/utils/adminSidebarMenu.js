@@ -91,6 +91,7 @@ export const adminSidebarMenu = [
           { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon" },
           { label: "Earning Addon History", path: "/admin/food/delivery-partners/earning-addon-history" },
           { label: "Delivery Earnings", path: "/admin/food/delivery-partners/earnings" },
+          { label: "Shift Requests", path: "/admin/food/delivery-partners/shift-requests" },
         ],
       },
       // { type: "link", label: "Driver Document Review", path: "/admin/food/fleet/driver-documents", icon: "FileText", roles: ["SUPER_ADMIN", "FLEET_MANAGER"] },

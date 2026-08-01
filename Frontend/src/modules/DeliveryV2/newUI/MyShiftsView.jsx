@@ -1,202 +1,172 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, Zap, Plus, Sparkles, ArrowLeft } from "lucide-react";
-const MyShiftsView = ({
-  initialShifts,
-  stats,
-  onGoBack,
-  onUpdateStats
-}) => {
-  const [shifts, setShifts] = useState(initialShifts);
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const calculateHoursLogged = (items) => {
-    let hrs = 0;
-    items.forEach((s) => {
-      if (s.status === "done") {
-        hrs += 6;
-      } else if (s.status === "active") {
-        hrs += 5.5;
-      } else if (s.status === "scheduled") {
+import { useState, useEffect } from "react";
+import { ArrowLeft, Clock, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+const MyShiftsView = ({ onGoBack }) => {
+  const [currentShifts, setCurrentShifts] = useState([]);
+  const [activeRequest, setActiveRequest] = useState(null);
+  const [selectedShifts, setSelectedShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchShiftData();
+  }, []);
+
+  const fetchShiftData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('delivery_accessToken');
+      const response = await fetch('/api/v1/food/delivery/shift-request/active', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCurrentShifts(data.data?.currentShifts || []);
+        setActiveRequest(data.data?.request || null);
+        if (!data.data?.request) {
+           setSelectedShifts(data.data?.currentShifts || []);
+        }
       }
-    });
-    return hrs + 21;
-  };
-  const handleCancelShift = (id) => {
-    const updated = shifts.map((s) => {
-      if (s.id === id) {
-        return { ...s, status: "none", name: "No shift today", timeSlot: "", durationText: "" };
-      }
-      return s;
-    });
-    setShifts(updated);
-    const newHrs = calculateHoursLogged(updated);
-    onUpdateStats(newHrs);
-  };
-  const handleAddShift = (dayId) => {
-    const updated = shifts.map((s) => {
-      if (s.id === dayId || s.day === parseInt(dayId)) {
-        return {
-          ...s,
-          status: "scheduled",
-          name: "Afternoon Refresh",
-          timeSlot: "12:00 - 18:00",
-          durationText: "6h total"
-        };
-      }
-      return s;
-    });
-    setShifts(updated);
-    const newHrs = calculateHoursLogged(updated);
-    onUpdateStats(newHrs);
-    setShowAddMenu(false);
-  };
-  const handleFABAdd = () => {
-    const emptyDay = shifts.find((s) => s.status === "none");
-    if (emptyDay) {
-      handleAddShift(emptyDay.id);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load shift data');
+    } finally {
+      setLoading(false);
     }
   };
-  const currentHrs = calculateHoursLogged(shifts);
-  const completionRate = Math.min(100, Math.round(currentHrs / stats.hoursTarget * 100));
-  return <div className="space-y-4 pb-20 animate-fadeIn text-gray-800">
-      {
-    /* Header Info */
+
+  const handleSubmit = async () => {
+    if (selectedShifts.length === 0) {
+      toast.error('Please select at least one shift');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('delivery_accessToken');
+      const response = await fetch('/api/v1/food/delivery/shift-request', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ requestedShifts: selectedShifts })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Shift change requested successfully');
+        fetchShiftData();
+      } else {
+        toast.error(data.message || 'Failed to request shift change');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Something went wrong');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleShift = (shift) => {
+    if (selectedShifts.includes(shift)) {
+      setSelectedShifts(selectedShifts.filter(s => s !== shift));
+    } else {
+      setSelectedShifts([...selectedShifts, shift]);
+    }
+  };
+
+  const availableShifts = [
+    { id: 'breakfast', label: 'Breakfast (06:00 - 11:00)' },
+    { id: 'lunch', label: 'Lunch (11:00 - 16:00)' },
+    { id: 'dinner', label: 'Dinner (16:00 - 23:00)' }
+  ];
+
+  if (loading) {
+    return <div className="p-8 text-center text-[#2b2b2b] bg-[#f5f5f0] min-h-screen">Loading...</div>;
   }
-      <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-[#e0e3e0]">
-        <button
-    onClick={onGoBack}
-    className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-1.5 text-[#00604c] font-bold text-xs"
-  >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Profile</span>
+
+  return (
+    <div className="space-y-4 pb-20 animate-fadeIn text-[#2b2b2b] bg-[#f5f5f0] min-h-screen p-4">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={onGoBack} className="p-2 bg-white rounded-full shadow-sm text-[#1f7a63]">
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="text-center">
-          <h2 className="text-sm font-bold text-gray-900">Shift Planner</h2>
-        </div>
-        <div className="w-8 h-8" />
+        <h2 className="text-xl font-bold">Change Shifts</h2>
       </div>
 
-      {
-    /* Week Selector Banner */
-  }
-      <section className="space-y-2">
-        <h2 className="text-lg font-bold text-gray-900 px-1">My Shifts</h2>
-        <div className="flex items-center justify-between bg-white p-3.5 rounded-xl border border-[#e0e3e0] shadow-xs">
-          <ChevronLeft className="w-5 h-5 text-[#5d5f5b] cursor-pointer hover:text-black" />
-          <span className="font-bold text-sm text-[#3e4945]">Week of 12-18 May</span>
-          <ChevronRight className="w-5 h-5 text-[#5d5f5b] cursor-pointer hover:text-black" />
-        </div>
-      </section>
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e0e3e0]">
+        <h3 className="font-bold text-[#1f7a63] flex items-center gap-2 mb-3">
+          <Clock className="w-5 h-5" /> Current Shifts
+        </h3>
+        {currentShifts.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {currentShifts.map(s => (
+              <span key={s} className="px-3 py-1 bg-[#1f7a63]/10 text-[#1f7a63] rounded-full text-sm font-semibold capitalize">
+                {s}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[#5d5f5b]">No shifts assigned currently.</p>
+        )}
+      </div>
 
-      {
-    /* Stats Card Row */
-  }
-      <section className="grid grid-cols-12 gap-3">
-        <div className="col-span-8 bg-white border border-[#e0e3e0] p-4 rounded-xl shadow-xs">
-          <p className="text-[10px] uppercase font-bold text-[#5d5f5b] tracking-wider mb-1">Hours Logged</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#00604c]">{currentHrs.toFixed(1)}</span>
-            <span className="text-xs text-[#3e4945] font-semibold">/ {stats.hoursTarget}h target</span>
+      {activeRequest ? (
+        <div className="bg-[#fff9e6] border border-[#ffe082] rounded-2xl p-5 shadow-sm mt-4">
+          <div className="flex gap-3">
+            <AlertCircle className="w-6 h-6 text-[#f57c00] shrink-0" />
+            <div>
+              <h4 className="font-bold text-[#f57c00]">Pending Request</h4>
+              <p className="text-sm text-[#795548] mt-1">You have requested to change your shifts to:</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {activeRequest.requestedShifts.map(s => (
+                  <span key={s} className="px-3 py-1 bg-white border border-[#f57c00]/30 text-[#f57c00] rounded-full text-xs font-semibold capitalize">
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-[#795548] mt-4 opacity-80">Waiting for admin approval...</p>
+            </div>
           </div>
         </div>
-        
-        <div className="col-span-4 bg-[#1f7a63] text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-xs">
-          <TrendingUp className="w-5 h-5 mb-1" />
-          <p className="text-[10px] font-extrabold text-center tracking-wider">{completionRate}% Comp.</p>
+      ) : (
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e0e3e0] mt-4">
+          <h3 className="font-bold text-[#2b2b2b] mb-4">Select New Shifts</h3>
+          <div className="space-y-3">
+            {availableShifts.map(shift => {
+              const isSelected = selectedShifts.includes(shift.id);
+              return (
+                <div 
+                  key={shift.id} 
+                  onClick={() => toggleShift(shift.id)}
+                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                    isSelected ? 'border-[#1f7a63] bg-[#1f7a63]/5' : 'border-transparent bg-[#f5f5f0]'
+                  }`}
+                >
+                  <span className={`font-semibold ${isSelected ? 'text-[#1f7a63]' : 'text-[#2b2b2b]'}`}>
+                    {shift.label}
+                  </span>
+                  {isSelected && <CheckCircle2 className="w-5 h-5 text-[#1f7a63]" />}
+                </div>
+              );
+            })}
+          </div>
+
+          <button 
+            onClick={handleSubmit} 
+            disabled={submitting}
+            className="mt-6 w-full py-3.5 bg-[#1f7a63] text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-all"
+          >
+            {submitting ? 'Submitting...' : (
+              <>
+                <Send className="w-4 h-4" /> Request Change
+              </>
+            )}
+          </button>
         </div>
-      </section>
-
-      {
-    /* Day Shifts Calendar list */
-  }
-      <div className="space-y-3">
-        {shifts.map((shift) => <div key={shift.id}>
-            {shift.status !== "none" ? <div
-    className={`bg-white p-4 rounded-xl flex items-center justify-between transition-all border ${shift.status === "active" ? "border-[#ffb300] border-2 shadow-sm" : "border-[#e0e3e0]"}`}
-  >
-                <div className="flex gap-4 items-center">
-                  <div className="flex flex-col items-center min-w-[44px]">
-                    <span className="text-[10px] font-extrabold text-[#5d5f5b]">{shift.dayName}</span>
-                    <span className="text-base font-black text-gray-900">{shift.day}</span>
-                  </div>
-                  
-                  <div className="h-8 w-px bg-[#bec9c3]" />
-                  
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{shift.name}</p>
-                    <p className="text-xs text-[#5d5f5b]">{shift.timeSlot} • {shift.durationText}</p>
-                  </div>
-                </div>
-
-                <div>
-                  {shift.status === "done" && <div className="bg-[#e5e9e5] text-[#005140] px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-bold">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Done</span>
-                    </div>}
-
-                  {shift.status === "active" && <div className="bg-[#ffebe8] text-amber-600 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-bold animate-pulse">
-                      <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      <span>Active</span>
-                    </div>}
-
-                  {shift.status === "scheduled" && <button
-    onClick={() => handleCancelShift(shift.id)}
-    className="border border-[#ba1a1a] text-[#ba1a1a] hover:bg-red-50 px-3.5 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition-all shadow-xs"
-  >
-                      Cancel
-                    </button>}
-                </div>
-              </div> : (
-    /* Shift is empty / None scheduled */
-    <div className="bg-[#e3e3de]/30 border border-dashed border-[#bec9c3] rounded-xl p-4 flex items-center justify-between opacity-75 hover:opacity-100 transition-opacity">
-                <div className="flex gap-4 items-center w-full">
-                  <div className="flex flex-col items-center min-w-[44px]">
-                    <span className="text-[10px] font-extrabold text-[#bec9c3]">{shift.dayName}</span>
-                    <span className="text-base font-black text-gray-400">{shift.day}</span>
-                  </div>
-                  
-                  <div className="h-8 w-px bg-[#bec9c3]/50" />
-                  
-                  <div className="flex-1 flex justify-between items-center pr-1">
-                    <p className="text-xs italic font-medium text-gray-400">No shift scheduled</p>
-                    <button
-      onClick={() => handleAddShift(shift.id)}
-      className="text-[#00604c] hover:scale-110 active:scale-95 transition-transform"
-    >
-                      <Plus className="w-6 h-6 stroke-[3]" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-  )}
-          </div>)}
-      </div>
-
-      {
-    /* Featured Resource Image Block: Shift Analytics */
-  }
-      <section className="bg-white border border-[#e0e3e0] rounded-2xl overflow-hidden relative h-48 block shadow-sm group cursor-pointer">
-        <img
-    alt="Schedule dashboard telemetry graphics"
-    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
-    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDpIFzve6exfEGcFFL4QVArtxV2UzbNKfinICmwm1yigMg3JO9-0IMrdUSJRl5gptDLXz4tkwRuAstX_MAHwYA9-5U3H5P9-J3v2aOTwjY9Wrv8Vkx7lLaO8wZyKuqAarGYeajjC7MvLDd9JyF2TKJYUS-VA-8y0D5Z2Pg46theC7DqelqI1_rjAsNBn9YOw4ra2NOwsVZ_wAAaAHRrKSppCWcl6n5k5FW6mVSwrA7tCCj9wA7f62H5kpIdoA8iv3FH5i4w2N7zM7w"
-  />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4">
-          <h3 className="text-white font-extrabold text-[#9ef3d7] text-sm flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[#9ef3d7]" /> Shift Analytics</h3>
-          <p className="text-gray-200 text-[11px] font-medium leading-normal mt-0.5">Review average earnings, active run completion speeds, and delivery streak payouts.</p>
-        </div>
-      </section>
-
-      {
-    /* Floating Action Button (FAB) strictly matching the mockup addition specs */
-  }
-      <button
-    onClick={handleFABAdd}
-    className="fixed right-6 bottom-20 bg-[#00604c] text-white h-14 w-14 rounded-full shadow-lg hover:bg-[#1f7a63] flex items-center justify-center active:scale-90 transition-transform z-40"
-  >
-        <Plus className="w-7 h-7 stroke-[3]" />
-      </button>
-    </div>;
+      )}
+    </div>
+  );
 };
-export {
-  MyShiftsView
-};
+
+export { MyShiftsView };

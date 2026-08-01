@@ -3,7 +3,7 @@ import { upload } from '../../../../middleware/upload.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../../core/roles/role.middleware.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
-import { registerDeliveryPartnerController, updateDeliveryPartnerProfileController, updateDeliveryPartnerBankDetailsController, listSupportTicketsController, createSupportTicketController, getSupportTicketByIdController, updateDeliveryPartnerDetailsController, updateDeliveryPartnerProfilePhotoBase64Controller, updateAvailabilityController, updateLocationController, getWalletController, createWithdrawalRequestController, createCashDepositOrderController, verifyCashDepositPaymentController, getEarningsController, getTripHistoryController, getPocketDetailsController, getEmergencyHelpController, getCashLimitController, getDeliveryReferralStatsController, getActiveEarningAddonsController, getDashboardStatsController, getRatingsController, getTipsController } from '../controllers/delivery.controller.js';
+import { registerDeliveryPartnerController, updateDeliveryPartnerProfileController, updateDeliveryPartnerBankDetailsController, listSupportTicketsController, createSupportTicketController, getSupportTicketByIdController, updateDeliveryPartnerDetailsController, updateDeliveryPartnerProfilePhotoBase64Controller, updateAvailabilityController, updateLocationController, getWalletController, createWithdrawalRequestController, createCashDepositOrderController, verifyCashDepositPaymentController, getEarningsController, getTripHistoryController, getPocketDetailsController, getEmergencyHelpController, getCashLimitController, getDeliveryReferralStatsController, getActiveEarningAddonsController, getDashboardStatsController, getRatingsController, getTipsController, createShiftChangeRequestController, getActiveShiftChangeRequestController } from '../controllers/delivery.controller.js';
 import { deleteDeliveryAccountController } from '../controllers/deleteAccount.controller.js';
 
 const router = express.Router();
@@ -38,6 +38,10 @@ router.patch('/location', authMiddleware, requireRoles('DELIVERY_PARTNER'), upda
 router.get('/support-tickets', authMiddleware, requireRoles('DELIVERY_PARTNER'), listSupportTicketsController);
 router.post('/support-tickets', authMiddleware, requireRoles('DELIVERY_PARTNER'), createSupportTicketController);
 router.get('/support-tickets/:id', authMiddleware, requireRoles('DELIVERY_PARTNER'), getSupportTicketByIdController);
+
+// ----- Shift Change Requests -----
+router.post('/shift-request', authMiddleware, requireRoles('DELIVERY_PARTNER'), createShiftChangeRequestController);
+router.get('/shift-request/active', authMiddleware, requireRoles('DELIVERY_PARTNER'), getActiveShiftChangeRequestController);
 
 // ----- Orders -----
 router.get('/orders/current', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.getCurrentTripDeliveryController);

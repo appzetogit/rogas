@@ -320,6 +320,11 @@ router.get('/delivery/support-tickets/stats', requirePermission('driverManagemen
 router.get('/delivery/support-tickets', requirePermission('driverManagement', 'view'), adminController.getSupportTickets);
 router.patch('/delivery/support-tickets/:id', requirePermission('driverManagement', 'edit'), adminController.updateSupportTicket);
 router.get('/delivery/partners', requirePermission('driverManagement', 'view'), adminController.getDeliveryPartners);
+// ----- Shift Change Requests (Admin) -----
+router.get('/delivery/shift-requests', requirePermission('driverManagement', 'view'), adminController.getShiftChangeRequestsController);
+router.post('/delivery/shift-requests/:id/approve', requirePermission('driverManagement', 'edit'), adminController.approveShiftChangeRequestController);
+router.post('/delivery/shift-requests/:id/reject', requirePermission('driverManagement', 'edit'), adminController.rejectShiftChangeRequestController);
+
 router.get('/delivery/:id', requirePermission('driverManagement', 'view'), adminController.getDeliveryPartnerById);
 router.patch('/delivery/:id/approve', requirePermission('driverManagement', 'edit'), adminController.approveDeliveryPartner);
 router.patch('/delivery/:id/reject', requirePermission('driverManagement', 'edit'), adminController.rejectDeliveryPartner);

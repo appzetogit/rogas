@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { FoodDeliveryPartner } from '../models/deliveryPartner.model.js';
+import { DeliveryShiftChangeRequest } from '../models/shiftChangeRequest.model.js';
 import { DeliverySupportTicket } from '../models/supportTicket.model.js';
 import { AdminComplaint } from '../../admin/models/complaint.model.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
@@ -1208,5 +1209,56 @@ export const getDeliveryPartnerTips = async (deliveryPartnerId) => {
         weeklyTips,
         monthlyTips,
         history: history.slice(0, 50)
+    };
+};
+
+export const createShiftChangeRequest = async (partnerId, requestedShifts) => {
+    // Validate partner
+    const partner = await FoodDeliveryPartner.findById(partnerId);
+    if (!partner) throw new Error('Delivery partner not found');
+
+    // Check for existing pending request
+    const existing = await DeliveryShiftChangeRequest.findOne({
+        partnerId,
+        status: 'pending'
+    });
+    if (existing) {
+        throw new Error('You already have a pending shift change request.');
+    }
+
+    const currentShifts = partner.allowedShifts || [];
+    
+    // Validate requestedShifts
+    if (!Array.isArray(requestedShifts)) {
+        throw new Error('requestedShifts must be an array');
+    }
+    const validShifts = ['breakfast', 'lunch', 'dinner'];
+    const invalid = requestedShifts.find(s => !validShifts.includes(s));
+    if (invalid) {
+        throw new Error(`Invalid shift: ${invalid}`);
+    }
+
+    const request = new DeliveryShiftChangeRequest({
+        partnerId,
+        currentShifts,
+        requestedShifts,
+        status: 'pending'
+    });
+    
+    await request.save();
+    return request;
+};
+
+export const getActiveShiftChangeRequest = async (partnerId) => {
+    const active = await DeliveryShiftChangeRequest.findOne({
+        partnerId,
+        status: 'pending'
+    }).sort({ createdAt: -1 });
+
+    const partner = await FoodDeliveryPartner.findById(partnerId).select('allowedShifts');
+
+    return {
+        request: active || null,
+        currentShifts: partner?.allowedShifts || []
     };
 };
