@@ -135,7 +135,15 @@ export function HomeScreen({
       const patchCard = (card) => {
         if (!card) return card;
         return new Date(card.deliveryDate).toDateString() === updatedDate
-          ? { ...card, status: data.status }
+          ? { 
+              ...card, 
+              status: data.status,
+              meals: data.meals && data.meals.length > 0 ? data.meals.map((m, i) => ({
+                ...(card.meals?.[i] || {}),
+                ...m,
+                mealPlanName: m.mealPlanName || m.name
+              })) : card.meals
+            }
           : card;
       };
       setTodayMeal((prev) => {
@@ -271,7 +279,7 @@ export function HomeScreen({
   // ─── Render helpers ───────────────────────────────────────────────────────
   const renderTomorrowMealPreviewCard = (meal) => {
     if (!meal) return null;
-    const mealName = meal.meals?.[0]?.name || "Your Meal";
+    const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
     const mealPhoto = meal.meals?.[0]?.photo || FALLBACK_MEAL_PHOTO;
     const calories = meal.meals?.[0]?.nutrition?.calories ?? 450;
 
@@ -322,7 +330,7 @@ export function HomeScreen({
 
   const renderMealCard = (meal, label, isToday = false) => {
     if (!meal) return null;
-    const mealName = meal.meals?.[0]?.name || "Your Meal";
+    const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
     const vendorName = meal.vendor?.name || "";
     const slot = SLOT_LABELS[meal.deliverySlot] || meal.deliverySlot;
     const status = meal.status || "scheduled";

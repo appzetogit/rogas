@@ -147,7 +147,15 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       setOrders(prev =>
         prev.map(o =>
           o.orderId === data.orderId || String(o._id) === String(data._id)
-            ? { ...o, status: data.status }
+            ? { 
+                ...o, 
+                status: data.status,
+                meals: data.meals && data.meals.length > 0 ? data.meals.map((m, i) => ({
+                  ...(o.meals?.[i] || {}),
+                  ...m,
+                  mealPlanName: m.mealPlanName || m.name
+                })) : o.meals
+              }
             : o
         )
       );
@@ -388,7 +396,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         return {
           order,
           isLocked,
-          mealName: order.meals?.[0]?.name || "Meal Box",
+          mealName: order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || "Meal Box",
           status: order.status
         };
       })

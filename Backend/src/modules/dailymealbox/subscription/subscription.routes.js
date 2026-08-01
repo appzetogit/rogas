@@ -205,10 +205,17 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
                 status: order.status,
                 deliveryDate: order.deliveryDate,
                 deliverySlot: order.deliverySlot,
-                meals: order.meals.map(m => ({
-                    name: m.name,
-                    quantity: m.quantity
-                })),
+                meals: order.meals.map(m => {
+                    const plan = plans.find(p => String(p._id) === String(m.mealPlanId));
+                    return {
+                        name: m.name,
+                        mealPlanName: m.name,
+                        quantity: m.quantity,
+                        photo: m.customPhoto || plan?.photos?.[0] || null,
+                        nutrition: m.customNutrition || plan?.nutrition || null,
+                        description: m.customDescription || plan?.description || ''
+                    };
+                }),
                 updatedAt: new Date().toISOString()
             };
             io.to(`sub_${order.subscriptionId}`).emit('order_status_updated', payload);

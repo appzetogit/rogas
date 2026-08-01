@@ -104,8 +104,8 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
 
   // ─── Load daily orders from backend ──────────────────────────────────────
-  const loadDailyOrders = async (dateLabel = 'today') => {
-    setLoading(true);
+  const loadDailyOrders = async (dateLabel = 'today', { silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const dateParam = dateLabel === 'tomorrow'
         ? new Date(Date.now() + 86400000).toISOString().split('T')[0]
@@ -117,9 +117,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       }
     } catch (err) {
       console.error('Failed to load daily orders:', err);
-      setDailyOrders([]);
+      if (!silent) setDailyOrders([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -129,7 +129,24 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
   useEffect(() => {
     const handleStatusUpdate = (e) => {
-      loadDailyOrders(activeDate);
+      const detail = e?.detail || {};
+      // Determine which date label ('today' or 'tomorrow') the changed order belongs to
+      const todayStr = new Date().toISOString().split('T')[0];
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      let orderDateLabel = null;
+      if (detail.deliveryDate) {
+        const orderDate = new Date(detail.deliveryDate).toISOString().split('T')[0];
+        if (orderDate === todayStr) orderDateLabel = 'today';
+        else if (orderDate === tomorrowStr) orderDateLabel = 'tomorrow';
+      }
+
+      // Always silently reload the current view
+      loadDailyOrders(activeDate, { silent: true });
+
+      // If the changed order is for a different date than what's displayed, show a toast
+      if (orderDateLabel && orderDateLabel !== activeDate) {
+        showToast(`📋 An order for ${orderDateLabel} was updated`);
+      }
     };
     window.addEventListener('restaurantOrderStatusUpdate', handleStatusUpdate);
     return () => {
@@ -405,7 +422,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 space-y-0">
               {filteredOrders.map(order => {
                 const sc = STATUS_CONFIG[order.status] || STATUS_CONFIG.scheduled;
-                const mealName = order.meals?.[0]?.name || 'Meal';
+                const mealName = order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || 'Meal';
                 const extraMeals = (order.meals?.length || 1) - 1;
                 const canPrepare = order.status === 'scheduled';
                 const canReady = order.status === 'preparing';
@@ -426,6 +443,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                             {mealName}
                             {extraMeals > 0 && <span className="text-[12px] text-slate-400 font-medium"> +{extraMeals} more</span>}
                           </h3>
+                          {order.meals?.[0]?.mealPlanName && order.meals?.[0]?.name && order.meals[0].name !== order.meals[0].mealPlanName && (
+                            <p className="text-[11px] text-[#1F7A63] font-medium mt-0.5">🍽️ {order.meals[0].name}</p>
+                          )}
                           <p className="text-[12px] text-slate-500 font-medium mt-0.5">
                             👤 {order.customer?.name || ''}
                           </p>

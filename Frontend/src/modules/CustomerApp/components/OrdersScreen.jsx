@@ -136,7 +136,7 @@ const OrderCard = memo(function OrderCard({
   onRaiseComplaint,
 }) {
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
-  const mealName = order.meals?.[0]?.name || "Meal";
+  const mealName = order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || "Meal";
   const extraMeals = (order.meals?.length ?? 1) - 1;
 
   // Compute date string once per render of this card

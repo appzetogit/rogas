@@ -878,16 +878,8 @@ const refreshMealNameFromDailyMenu = async (order) => {
                     date: dayStart,
                     slot: order.deliverySlot
                 }).lean();
-                if (!dailyMenuItem) {
-                    dailyMenuItem = await DMBDailyMenu.findOne({
-                        vendorId: order.vendorId,
-                        date: dayStart,
-                        slot: order.deliverySlot
-                    }).lean();
-                }
-                const targetName = dailyMenuItem?.dishName || "No meal set";
-                if (m.name !== targetName) {
-                    m.name = targetName;
+                if (dailyMenuItem?.dishName && m.name !== dailyMenuItem.dishName) {
+                    m.name = dailyMenuItem.dishName;
                     updated = true;
                 }
             } catch (e) { /* ignore */ }
@@ -920,19 +912,12 @@ const attachDailyMenuDetails = async (orders) => {
                         slot: order.deliverySlot
                     }).lean();
                 }
-                if (!dailyMenuItem) {
-                    dailyMenuItem = await DMBDailyMenu.findOne({
-                        vendorId: order.vendorId?._id || order.vendorId,
-                        date: dayStart,
-                        slot: order.deliverySlot
-                    }).lean();
-                }
                 if (dailyMenuItem && dailyMenuItem.dishName) {
                     m.name = dailyMenuItem.dishName;
                     if (dailyMenuItem.photo) m.customPhoto = dailyMenuItem.photo;
                     if (dailyMenuItem.nutrition) m.customNutrition = dailyMenuItem.nutrition;
                     if (dailyMenuItem.description) m.customDescription = dailyMenuItem.description;
-                } else {
+                } else if (!m.name) {
                     m.name = "No meal set";
                 }
             }
@@ -1300,12 +1285,12 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date, page,
     const today = toDateOnly(new Date());
 
     const filter = { userId };
-    
+
     if (date) {
         const targetDate = toDateOnly(new Date(date));
         const nextDay = new Date(targetDate);
         nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-        
+
         filter.deliveryDate = { $gte: targetDate, $lt: nextDay };
         // We do not filter by status or 'type' logic here, return all for the requested date.
     } else {
@@ -1366,7 +1351,7 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date, page,
         currentPage = parseInt(page, 10) || 1;
         const pageLimit = parseInt(limit, 10) || 9;
         const skip = (currentPage - 1) * pageLimit;
-        
+
         totalOrders = await DMBDailyOrder.countDocuments(filter);
         totalPages = Math.ceil(totalOrders / pageLimit);
 
@@ -1439,6 +1424,7 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
         },
         meals: o.meals.map(m => ({
             name: m.name || 'No meal set',
+            mealPlanName: m.mealPlanId?.name || null,
             quantity: m.quantity,
             photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
             nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
@@ -1475,7 +1461,7 @@ export const checkAdminTimingWindow = async (slot) => {
         const now = new Date();
         const curMinutes = now.getHours() * 60 + now.getMinutes();
         const start = hhmmToMinutes(slotCfg.startTime);
-        const end   = hhmmToMinutes(slotCfg.endTime);
+        const end = hhmmToMinutes(slotCfg.endTime);
 
         if (start === null || end === null) return { allowed: true };
 
@@ -1951,6 +1937,7 @@ const formatOrderCard = (order) => ({
     meals: (order.meals || []).map(m => ({
         mealPlanId: m.mealPlanId?._id || m.mealPlanId || null,
         name: m.name || 'No meal set',
+        mealPlanName: m.mealPlanId?.name || null,
         photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
         nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
         description: m.customDescription || m.mealPlanId?.description || '',
@@ -1995,7 +1982,7 @@ export async function notifyVendorsOfDriverUpdate(driver) {
 
         for (const vendor of vendors) {
             const vendorId = vendor._id.toString();
-            
+
             // Check for any active/pending batch for this vendor today
             const today = new Date();
             today.setUTCHours(0, 0, 0, 0);
