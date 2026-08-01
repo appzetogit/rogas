@@ -71,9 +71,13 @@ router.get('/today', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (re
 router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.userId;
-        const { type = 'upcoming', date } = req.query;
-        const orders = await getCustomerOrders(userId, { type, date });
-        res.json({ success: true, orders });
+        const { type = 'upcoming', date, page, limit } = req.query;
+        const result = await getCustomerOrders(userId, { type, date, page, limit });
+        if (result.pagination) {
+            res.json({ success: true, orders: result.orders, pagination: result.pagination });
+        } else {
+            res.json({ success: true, orders: result });
+        }
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

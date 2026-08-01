@@ -360,6 +360,8 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   const [orders, setOrders] = useState(() => getCached("upcoming") ?? []);
   const [loading, setLoading] = useState(() => !getCached("upcoming"));
   const [ratedOrders, setRatedOrders] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // ─── Rating & Tip States ──────────────────────────────────────────────────
   const [ratingModal, setRatingModal] = useState({ show: false, order: null, rating: 0, comment: "", loading: false });
@@ -383,12 +385,12 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   useEffect(() => { ensureSlotTimings(); }, []);
 
   // ─── loadOrders — stale-proof via type argument + ref check ──────────────
-  const loadOrders = useCallback(async (type, section, { bustCache = false } = {}) => {
+  const loadOrders = useCallback(async (type, section, page = 1, { bustCache = false } = {}) => {
     const currentSection = section || activeSectionRef.current;
     const isMeals = currentSection === "Meals";
     const key = isMeals 
-      ? (type === "Upcoming" ? "upcoming" : "past") 
-      : (type === "Upcoming" ? "pantry_upcoming" : "pantry_past");
+      ? (type === "Upcoming" ? "upcoming" : `past_page_${page}`) 
+      : (type === "Upcoming" ? "pantry_upcoming" : `pantry_past_page_${page}`);
 
     const isStale = () => activeTabRef.current !== type || activeSectionRef.current !== currentSection;
 
@@ -402,29 +404,37 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       if (!bustCache) {
         const hit = getCached(key);
         if (hit && !isStale()) {
-          setOrders(hit);
+          setOrders(hit.orders || hit);
+          if (hit.pagination) {
+            setTotalPages(hit.pagination.totalPages);
+          }
           setLoading(false);
         }
       }
 
       if (isMeals) {
-        const res = await dmbCustomerAPI.getMyOrders(type === "Upcoming" ? "upcoming" : "past");
+        const apiParams = type === "Upcoming" ? "upcoming" : { type: "past", page, limit: 9 };
+        const res = await dmbCustomerAPI.getMyOrders(apiParams);
         if (isStale()) return;
 
         if (res.data?.success) {
           const fresh = res.data.orders ?? [];
-          setCached(key, fresh);
+          const pagination = res.data.pagination;
+          setCached(key, pagination ? { orders: fresh, pagination } : fresh);
           setOrders(fresh);
+          if (pagination) setTotalPages(pagination.totalPages);
         }
       } else {
-        const apiType = type === "Upcoming" ? "upcoming" : "past";
-        const res = await dmbCustomerAPI.getMyPantryOrders(apiType);
+        const apiParams = type === "Upcoming" ? "upcoming" : { type: "past", page, limit: 9 };
+        const res = await dmbCustomerAPI.getMyPantryOrders(apiParams);
         if (isStale()) return;
         
         if (res.data?.success) {
           const fresh = res.data.orders ?? [];
-          setCached(key, fresh);
+          const pagination = res.data.pagination;
+          setCached(key, pagination ? { orders: fresh, pagination } : fresh);
           setOrders(fresh);
+          if (pagination) setTotalPages(pagination.totalPages);
         }
       }
     } catch (err) {
@@ -437,14 +447,21 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
   // Re-fetch when tab changes
   useEffect(() => {
+    setCurrentPage(1); // Reset page on tab switch
     const isMeals = activeSection === "Meals";
     const key = isMeals 
-      ? (activeTab === "Upcoming" ? "upcoming" : "past") 
-      : (activeTab === "Upcoming" ? "pantry_upcoming" : "pantry_past");
+      ? (activeTab === "Upcoming" ? "upcoming" : "past_page_1") 
+      : (activeTab === "Upcoming" ? "pantry_upcoming" : "pantry_past_page_1");
     const hit = getCached(key);
-    if (hit) { setOrders(hit); setLoading(false); }
-    else { setOrders([]); setLoading(true); }
-    loadOrders(activeTab, activeSection);
+    if (hit) { 
+        setOrders(hit.orders || hit); 
+        if (hit.pagination) setTotalPages(hit.pagination.totalPages);
+        setLoading(false); 
+    } else { 
+        setOrders([]); 
+        setLoading(true); 
+    }
+    loadOrders(activeTab, activeSection, 1);
   }, [activeTab, activeSection, loadOrders]);
 
   // ─── Socket: real-time status + daily menu updates ───────────────────────
@@ -814,6 +831,39 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
               />;
             })}
           </section>
+        )}
+
+        {/* Pagination Controls */}
+        {isPast && totalPages > 1 && !loading && (
+          <div className="flex items-center justify-between mt-6 px-2 pb-6">
+            <button
+              onClick={() => {
+                const next = Math.max(1, currentPage - 1);
+                setCurrentPage(next);
+                loadOrders(activeTab, activeSection, next);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-[14px] font-medium text-[#006a5c] border border-[#006a5c] rounded-xl disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all"
+            >
+              Previous
+            </button>
+            <span className="text-[14px] text-gray-500 font-medium">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => {
+                const next = Math.min(totalPages, currentPage + 1);
+                setCurrentPage(next);
+                loadOrders(activeTab, activeSection, next);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 text-[14px] font-medium text-[#006a5c] border border-[#006a5c] rounded-xl disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all"
+            >
+              Next
+            </button>
+          </div>
         )}
       </main>
 

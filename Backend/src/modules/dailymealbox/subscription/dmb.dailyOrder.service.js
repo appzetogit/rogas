@@ -1294,7 +1294,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
 /**
  * Get upcoming + past orders for a customer (OrdersScreen)
  */
-export const getCustomerOrders = async (userId, { type = 'upcoming', date } = {}) => {
+export const getCustomerOrders = async (userId, { type = 'upcoming', date, page, limit } = {}) => {
     await ensureOrdersForUser(userId);
 
     const today = toDateOnly(new Date());
@@ -1324,8 +1324,7 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date } = {}
 
     if (!date && type === 'upcoming') {
         const orderDocs = await DMBDailyOrder.find(filter)
-            .sort({ deliveryDate: 1 })
-            .limit(50);
+            .sort({ deliveryDate: 1 });
         for (const order of orderDocs) {
             let dirty = false;
             if (!order.deliveryPin) {
@@ -1352,14 +1351,31 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date } = {}
         }
     }
 
-    const orders = await DMBDailyOrder.find(filter)
+    let queryObj = DMBDailyOrder.find(filter)
         .populate('vendorId', 'restaurantName profileImage city location')
         .populate('dispatch.deliveryPartnerId', 'name profilePhoto vehicleType phone')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
         .populate('subscriptionId', 'deliveryDays')
-        .sort(type === 'upcoming' ? { deliveryDate: 1 } : { deliveryDate: -1 })
-        .limit(50)
-        .lean();
+        .sort(type === 'upcoming' ? { deliveryDate: 1 } : { deliveryDate: -1 });
+
+    let totalOrders = 0;
+    let totalPages = 1;
+    let currentPage = 1;
+
+    if (!date && page && limit) {
+        currentPage = parseInt(page, 10) || 1;
+        const pageLimit = parseInt(limit, 10) || 9;
+        const skip = (currentPage - 1) * pageLimit;
+        
+        totalOrders = await DMBDailyOrder.countDocuments(filter);
+        totalPages = Math.ceil(totalOrders / pageLimit);
+
+        queryObj = queryObj.skip(skip).limit(pageLimit);
+    } else if (!date) {
+        queryObj = queryObj.limit(50);
+    }
+
+    const orders = await queryObj.lean();
 
     await attachDailyMenuDetails(orders);
 
@@ -1373,8 +1389,20 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date } = {}
         }
         return { ...order, status };
     });
+    const formattedOrders = mappedOrders.map(formatOrderCard);
 
-    return mappedOrders.map(formatOrderCard);
+    if (!date && page && limit) {
+        return {
+            orders: formattedOrders,
+            pagination: {
+                currentPage,
+                totalPages,
+                totalOrders
+            }
+        };
+    }
+
+    return formattedOrders;
 };
 
 /**

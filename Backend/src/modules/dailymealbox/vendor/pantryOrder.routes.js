@@ -217,7 +217,7 @@ router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'),
 router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-        const { type, date } = req.query; // 'upcoming' or 'past' or 'date'
+        const { type, date, page, limit } = req.query; // 'upcoming' or 'past' or 'date'
 
         let query = { userId };
 
@@ -235,10 +235,32 @@ router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async
             query.status = { $in: ['delivered', 'failed', 'cancelled', 'skipped'] };
         }
 
-        const orders = await PantryOrder.find(query)
+        let queryObj = PantryOrder.find(query)
             .populate('vendorId', 'restaurantName logo')
             .sort({ createdAt: -1 });
-        res.status(200).json({ success: true, orders });
+            
+        let totalOrders = 0;
+        let totalPages = 1;
+        let currentPage = 1;
+
+        if (!date && page && limit) {
+            currentPage = parseInt(page, 10) || 1;
+            const pageLimit = parseInt(limit, 10) || 9;
+            const skip = (currentPage - 1) * pageLimit;
+            
+            totalOrders = await PantryOrder.countDocuments(query);
+            totalPages = Math.ceil(totalOrders / pageLimit);
+
+            queryObj = queryObj.skip(skip).limit(pageLimit);
+        }
+
+        const orders = await queryObj;
+
+        if (!date && page && limit) {
+            res.status(200).json({ success: true, orders, pagination: { currentPage, totalPages, totalOrders } });
+        } else {
+            res.status(200).json({ success: true, orders });
+        }
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
