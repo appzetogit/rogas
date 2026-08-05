@@ -5450,10 +5450,11 @@ export async function getFinancialOverviewSummary() {
     const { DeliveryBonusTransaction } = await import('../models/deliveryBonusTransaction.model.js');
     const { getVendorEarningsSummary } = await import('../../restaurant/services/restaurantFinance.service.js');
 
-    // 1. Calculate Vendor Wallet Balances & Total Vendor Earnings across all Restaurants
+    // 1. Calculate Vendor Wallet Balances, Total Vendor Earnings, and extracted Commission VAT across all Restaurants
     let totalVendorEarned = 0;
     let totalVendorPaid = 0;
     let totalVendorWalletBalance = 0;
+    let totalVendorCommissionVat = 0; // The platform tax/commission deducted from vendors
     try {
         const restaurants = await FoodRestaurant.find({}).select('_id').lean();
         for (const rest of restaurants) {
@@ -5461,9 +5462,12 @@ export async function getFinancialOverviewSummary() {
             const net = Number(summaryObj?.summary?.netEarnings || summaryObj?.summary?.grossEarnings || 0);
             const paid = Number(summaryObj?.summary?.totalWithdrawals || 0);
             const available = Number(summaryObj?.summary?.availableBalance ?? Math.max(0, net - paid));
+            const commVat = Number(summaryObj?.summary?.commissionVatDeduction || 0);
+            
             totalVendorEarned += net;
             totalVendorPaid += paid;
             totalVendorWalletBalance += available;
+            totalVendorCommissionVat += commVat;
         }
     } catch (_) {}
 
@@ -5529,26 +5533,28 @@ export async function getFinancialOverviewSummary() {
     try {
         const [orderPricingAgg, txAgg] = await Promise.all([
             FoodOrder.aggregate([
+                { $match: { orderStatus: { $in: ['delivered'] } } },
                 {
                     $group: {
                         _id: null,
-                        totalComm: { $sum: { $ifNull: ['$pricing.platformCommission', 0] } },
-                        totalCust: { $sum: { $ifNull: ['$pricing.totalAmount', 0] } },
-                        totalTax: { $sum: { $ifNull: ['$pricing.taxAmount', 0] } },
-                        totalVendorShare: { $sum: { $ifNull: ['$pricing.restaurantNetShare', 0] } },
+                        totalComm: { $sum: { $add: [{ $ifNull: ['$pricing.restaurantCommission', 0] }, { $ifNull: ['$pricing.platformFee', 0] }] } },
+                        totalCust: { $sum: { $ifNull: ['$pricing.total', 0] } },
+                        totalTax: { $sum: { $max: [{ $ifNull: ['$vatBreakdown.commissionVatAmount', 0] }, { $ifNull: ['$pricing.restaurantCommission', 0] }, { $ifNull: ['$pricing.tax', 0] }] } },
+                        totalVendorShare: { $sum: { $subtract: [{ $ifNull: ['$pricing.subtotal', 0] }, { $ifNull: ['$pricing.restaurantCommission', 0] }] } },
                         totalRiderShare: { $sum: { $ifNull: ['$pricing.deliveryFee', 0] } }
                     }
                 }
             ]),
             FoodTransaction.aggregate([
+                { $match: { status: { $in: ['captured', 'authorized'] } } },
                 {
                     $group: {
                         _id: null,
-                        totalComm: { $sum: { $ifNull: ['$amounts.restaurantCommission', { $ifNull: ['$amounts.commissionVatAmount', 0] }] } },
-                        totalCust: { $sum: { $ifNull: ['$amounts.totalAmount', 0] } },
-                        totalTax: { $sum: { $ifNull: ['$amounts.foodVatAmount', 0] } },
-                        totalVendorShare: { $sum: { $ifNull: ['$amounts.restaurantShare', 0] } },
-                        totalRiderShare: { $sum: { $ifNull: ['$amounts.deliveryFee', 0] } }
+                        totalComm: { $sum: { $add: [{ $ifNull: ['$amounts.restaurantCommission', { $ifNull: ['$pricing.restaurantCommission', 0] }] }, { $ifNull: ['$pricing.platformFee', 0] }] } },
+                        totalCust: { $sum: { $ifNull: ['$pricing.total', 0] } },
+                        totalTax: { $sum: { $max: [{ $ifNull: ['$amounts.commissionVatAmount', 0] }, { $ifNull: ['$amounts.restaurantCommission', 0] }, { $ifNull: ['$pricing.restaurantCommission', 0] }] } },
+                        totalVendorShare: { $sum: { $subtract: [{ $ifNull: ['$pricing.subtotal', 0] }, { $ifNull: ['$amounts.restaurantCommission', { $ifNull: ['$pricing.restaurantCommission', 0] }] }] } },
+                        totalRiderShare: { $sum: { $ifNull: ['$pricing.deliveryFee', 0] } }
                     }
                 }
             ])
@@ -5557,9 +5563,9 @@ export async function getFinancialOverviewSummary() {
         const o = orderPricingAgg[0] || {};
         const t = txAgg[0] || {};
 
-        adminCommission = Math.max(Number(o.totalComm || 0), Number(t.totalComm || 0));
+        adminCommission = totalVendorCommissionVat + Math.max(Number(o.totalComm || 0), Number(t.totalComm || 0));
         totalCustomerPayments = Math.max(Number(o.totalCust || 0), Number(t.totalCust || 0));
-        totalTaxCollected = Math.max(Number(o.totalTax || 0), Number(t.totalTax || 0));
+        totalTaxCollected = totalVendorCommissionVat + Math.max(Number(o.totalTax || 0), Number(t.totalTax || 0));
 
         if (totalVendorEarned === 0) {
             totalVendorEarned = Math.max(Number(o.totalVendorShare || 0), Number(t.totalVendorShare || 0));
@@ -5572,22 +5578,34 @@ export async function getFinancialOverviewSummary() {
     // 4. Customer Subscriptions with Tax
     let subRevenueWithTax = 0;
     let subCount = 0;
+    let subTax = 0;
     try {
         const subAgg = await DMBSubscription.aggregate([
             {
+                $match: {
+                    status: { $in: ['active', 'paused', 'cancelled', 'expired'] }
+                }
+            },
+            {
                 $group: {
                     _id: null,
-                    total: { $sum: { $ifNull: ['$totalAmount', { $ifNull: ['$price', 0] }] } },
+                    total: { $sum: { $ifNull: ['$pricing.totalPrice', 0] } },
+                    totalTax: { $sum: { $ifNull: ['$pricing.foodVatAmount', 0] } },
                     count: { $sum: 1 }
                 }
             }
         ]);
         subRevenueWithTax = Number(subAgg[0]?.total || 0);
+        subTax = Number(subAgg[0]?.totalTax || 0);
         subCount = Number(subAgg[0]?.count || 0);
     } catch (_) {}
 
+    // Calculate final summary totals
+    const finalTotalCustomerPayments = totalCustomerPayments + subRevenueWithTax;
+    const finalTotalFoodTaxCollected = totalTaxCollected;
+
     return {
-        adminTotalEarnings: adminCommission,
+        adminTotalEarnings: finalTotalCustomerPayments + finalTotalFoodTaxCollected,
         vendorStats: {
             totalEarned: totalVendorEarned,
             totalPaidByAdmin: totalVendorPaid,
@@ -5605,8 +5623,8 @@ export async function getFinancialOverviewSummary() {
             totalSubscriptions: subCount
         },
         summary: {
-            totalCustomerPayments: totalCustomerPayments + subRevenueWithTax,
-            totalFoodTaxCollected: totalTaxCollected
+            totalCustomerPayments: finalTotalCustomerPayments,
+            totalFoodTaxCollected: finalTotalFoodTaxCollected
         }
     };
 }

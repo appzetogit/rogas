@@ -66,36 +66,36 @@ export default function FinancialManagement() {
         <button
           onClick={fetchFinancialOverview}
           disabled={refreshing}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00604c] hover:bg-[#004b3b] text-white font-extrabold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00604c] hover:bg-[#004b3b] !text-white font-extrabold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh Financials</span>
+          <RefreshCw className={`w-4 h-4 !text-white ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="!text-white">Refresh Financials</span>
         </button>
       </div>
 
       {/* Main Admin Earnings Hero Card - Fixed High Contrast Theme */}
-      <div className="bg-[#00604c] rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-[#00604c] rounded-3xl p-6 md:p-8 !text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <span className="text-[11px] font-black uppercase tracking-wider text-[#00604c] bg-white px-3 py-1 rounded-full shadow-xs">
               Platform Revenue
             </span>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white mt-3">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight !text-white mt-3">
               {formatCurrency(adminTotalEarnings)}
             </h2>
-            <p className="text-xs text-emerald-100 font-semibold">
+            <p className="text-xs font-semibold !text-emerald-100">
               Total Admin Net Commission & Platform Share Earned
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 bg-black/25 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-left md:w-80">
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-100">Total User Payments</p>
-              <p className="text-xl font-black text-white mt-1">{formatCurrency(summary.totalCustomerPayments)}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider !text-emerald-100">Total User Payments</p>
+              <p className="text-xl font-black !text-white mt-1">{formatCurrency(summary.totalCustomerPayments)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-100">Food Tax Collected</p>
-              <p className="text-xl font-black text-white mt-1">{formatCurrency(summary.totalFoodTaxCollected)}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider !text-emerald-100">Food Tax Collected</p>
+              <p className="text-xl font-black !text-white mt-1">{formatCurrency(summary.totalFoodTaxCollected)}</p>
             </div>
           </div>
         </div>
