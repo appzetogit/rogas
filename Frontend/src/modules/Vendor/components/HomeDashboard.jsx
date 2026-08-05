@@ -170,16 +170,16 @@ export default function HomeDashboard({
   join(' · ');
 
   return (
-    <div className="flex-grow pt-4 pb-20 md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left">
+    <div className="flex-grow pt-0 md:pt-6 pb-20 md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left">
       {/* Premium Hero Header Banner */}
-      <div className="bg-gradient-to-r from-[#00604c] via-[#056f59] to-[#0a7e65] rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden mb-6 -mx-4 md:mx-0">
+      <div className="bg-gradient-to-r from-[#00604c] via-[#056f59] to-[#0a7e65] rounded-b-3xl rounded-t-none md:rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden mb-6 -mx-4 md:mx-0">
         {/* Decorative glows */}
         <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="absolute left-1/3 bottom-0 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          {/* Greeting */}
-          <div className="text-left space-y-1">
+          {/* Greeting & Profile */}
+          <div className="flex items-center justify-between w-full md:w-auto">
             <div className="flex items-center gap-3">
               <span className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md inline-flex items-center justify-center">
                 <ChefHat className="w-6 h-6 text-white" />
@@ -188,6 +188,19 @@ export default function HomeDashboard({
                 <h1 className="text-xl md:text-2xl font-black tracking-tight">Good morning, {profile.name.split(' ')[0]}</h1>
                 <p className="text-xs text-white/80 font-medium">Monday · 22 May 2026</p>
               </div>
+            </div>
+
+            {/* Profile Avatar button */}
+            <div
+              onClick={() => onNavigateToTab('profile')}
+              className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white flex items-center justify-center font-bold text-sm overflow-hidden shrink-0 cursor-pointer shadow-md transition-all active:scale-95 ml-4"
+              title="Go to Profile"
+            >
+              {profile?.profileImage?.url || (typeof profile?.profileImage === 'string' && profile?.profileImage) ? (
+                <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                profile.avatarInitials || 'VP'
+              )}
             </div>
           </div>
 

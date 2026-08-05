@@ -35,7 +35,7 @@ import { VendorLegalPage } from './components/VendorLegalPage';
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
 import { dmbVendorAPI, authAPI, restaurantAPI } from '../../services/api/index';
-import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle, ChefHat, LogOut } from 'lucide-react';
+import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle, ChefHat, LogOut, ArrowLeft, Star } from 'lucide-react';
 
 export default function App() {
   const navigate = useNavigate();
@@ -64,6 +64,22 @@ export default function App() {
 
   const [authPhone, setAuthPhone] = useState('');
   const [showSubView, setShowSubView] = useState(null);
+  const [appLogoUrl, setAppLogoUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchAppLogo = async () => {
+      try {
+        const res = await restaurantClient.get('/app-config/restaurant_app');
+        const logo = res.data?.data?.logoUrl || res.data?.logoUrl;
+        if (logo) {
+          setAppLogoUrl(logo);
+        }
+      } catch (err) {
+        console.error("Failed to fetch restaurant_app config:", err);
+      }
+    };
+    fetchAppLogo();
+  }, []);
 
   const [showGlobalToast, setShowGlobalToast] = useState(false);
   const [toastText, setToastText] = useState('');
@@ -692,11 +708,13 @@ export default function App() {
 
   const getPageTitle = () => {
     if (location.pathname.includes('/orders')) return "Today's Orders";
-    if (location.pathname.includes('/menu')) return 'Menu Management';
+    if (location.pathname.includes('/menu')) return 'Meal Plans';
     if (location.pathname.includes('/earnings')) return 'Earnings Ledger';
     if (location.pathname.includes('/profile')) return 'My Profile';
     return 'Vendor Hub';
   };
+
+  const isDashboardPage = location.pathname.includes('/dashboard') || location.pathname === '/vendor' || location.pathname === '/vendor/';
 
   return (
     <div className="vendor-app-container min-h-screen bg-[#F5F5F0]">
@@ -705,8 +723,12 @@ export default function App() {
         {/* Desktop Sidebar (visible on md and up) */}
         <aside className="hidden md:flex flex-col w-64 fixed left-0 top-0 bottom-0 bg-[#00604c] text-white z-50 p-6">
           <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/10">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-              <ChefHat className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-xs">
+              {appLogoUrl ? (
+                <img src={appLogoUrl} alt="App Logo" className="w-full h-full object-contain rounded-lg" />
+              ) : (
+                <ChefHat className="w-6 h-6 text-[#00604c]" />
+              )}
             </div>
             <div>
               <h2 className="font-extrabold text-[15px] leading-tight tracking-tight text-white truncate max-w-[160px]">
@@ -756,37 +778,67 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Mobile Header (visible only on mobile) */}
-        <header className="fixed top-0 left-0 right-0 w-full md:hidden z-50 h-14 flex items-center justify-center bg-primary text-on-primary shadow-sm">
-          <h1 className="font-semibold text-[16px] tracking-tight">
-            {getPageTitle()}
-          </h1>
-        </header>
+        {/* Mobile Header (hidden on dashboard) */}
+        {!isDashboardPage && (
+          <header className="fixed top-0 left-0 right-0 w-full md:hidden z-50 h-14 px-4 flex items-center justify-between bg-white border-b border-slate-200/80 shadow-xs">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-[#00604c] transition-colors cursor-pointer shrink-0"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#00604c]" />
+            </button>
+
+            <h1 className="font-extrabold text-[17px] tracking-tight text-[#00604c] text-center flex-1 mx-2 truncate">
+              {getPageTitle()}
+            </h1>
+
+            {/* Spacer to keep title centered */}
+            <div className="w-8 shrink-0" />
+          </header>
+        )}
 
         {/* Content Wrapper next to Desktop Sidebar */}
         <div className="flex-grow flex flex-col md:pl-64 w-full">
-          {/* Desktop Topbar */}
-          <header className="hidden md:flex items-center justify-between h-16 px-8 bg-white border-b border-outline-variant/20 sticky top-0 z-40">
-            <h1 className="text-lg font-black tracking-tight text-on-surface">{getPageTitle()}</h1>
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col text-right">
-                <span className="text-sm font-bold text-on-surface">{profile.name}</span>
-                <span className="text-[10px] font-bold text-outline uppercase tracking-wider mt-0.5">
-                  Rating: ⭐️ {profile.rating || '4.9'}
-                </span>
+          {/* Desktop Topbar (fixed at top, hidden on dashboard) */}
+          {!isDashboardPage && (
+            <header className="hidden md:flex fixed top-0 right-0 left-64 z-40 h-16 px-8 items-center justify-between bg-white border-b border-slate-200/80 shadow-xs">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-[#00604c] transition-colors cursor-pointer shrink-0"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5 text-[#00604c]" />
+              </button>
+
+              <h1 className="text-xl font-extrabold tracking-tight text-[#00604c] text-center flex-1 mx-4">
+                {getPageTitle()}
+              </h1>
+
+              <div
+                onClick={() => navigate('/vendor/profile')}
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                title="View Profile"
+              >
+                <div className="flex flex-col text-right">
+                  <span className="text-sm font-bold text-slate-800">{profile.name || 'Vendor Partner'}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Rating: ⭐️ {profile.rating || '4.9'}
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 overflow-hidden shrink-0 shadow-xs">
+                  {profile?.profileImage?.url || (typeof profile?.profileImage === 'string' && profile?.profileImage) ? (
+                    <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    profile.avatarInitials || 'VP'
+                  )}
+                </div>
               </div>
-              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 overflow-hidden">
-                {profile?.profileImage?.url || typeof profile?.profileImage === 'string' ? (
-                  <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  profile.avatarInitials || 'VP'
-                )}
-              </div>
-            </div>
-          </header>
+            </header>
+          )}
 
           {/* Main Content Area */}
-          <main className="flex-grow pt-14 md:pt-0 pb-[83px] md:pb-6 bg-slate-50/50 flex flex-col">
+          <main className={`flex-grow ${isDashboardPage ? 'pt-0 md:pt-6' : 'pt-14 md:pt-16'} pb-[83px] md:pb-6 bg-slate-50/50 flex flex-col`}>
             <Routes>
               <Route path="/dashboard" element={<HomeDashboard profile={profile} orders={orders} meals={meals} transactions={transactions} onMarkAllReady={handleMarkAllReady} onNavigateToTab={(t) => navigate(`/vendor/${t.toLowerCase()}`)} onOpenSubView={setShowSubView} subscriberCount={subscriberCount} />} />
               {profile.vendorType === 'pantry_shop' ? (
