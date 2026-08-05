@@ -23,7 +23,10 @@ export const getVendorEarningsSummaryController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         if (!restaurantId) return sendError(res, 401, 'Restaurant authentication required');
 
-        const data = await getVendorEarningsSummary(restaurantId);
+        const tab = req.query.tab;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const data = await getVendorEarningsSummary(restaurantId, tab, page, limit);
         if (!data) return sendError(res, 404, 'Restaurant not found');
         return sendResponse(res, 200, 'Earnings fetched successfully', data);
     } catch (error) {

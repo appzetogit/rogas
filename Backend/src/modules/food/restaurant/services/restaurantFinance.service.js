@@ -230,7 +230,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
  * Used by the new /earnings endpoint in the Vendor Panel.
  * Does NOT affect or replace getRestaurantFinance.
  */
-export async function getVendorEarningsSummary(restaurantId) {
+export async function getVendorEarningsSummary(restaurantId, tab, page = 1, limit = 10) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
     const rid = new mongoose.Types.ObjectId(restaurantId);
 
@@ -377,10 +377,15 @@ export async function getVendorEarningsSummary(restaurantId) {
         });
     }
 
-    // Sort by date desc and slice top 20
-    const recentTransactions = mergedTxList
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 20);
+    // Sort by date desc
+    mergedTxList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const totalTransactions = mergedTxList.length;
+    const totalPages = Math.ceil(totalTransactions / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    
+    const recentTransactions = mergedTxList.slice(startIndex, endIndex);
 
     // Available balance (net - effective withdrawals)
     let totalWithdrawals = 0;
@@ -405,7 +410,7 @@ export async function getVendorEarningsSummary(restaurantId) {
 
     const availableBalance = Math.max(0, netEarnings - totalWithdrawals);
 
-    return {
+    const result = {
         restaurant: {
             name: restaurant?.restaurantName || '',
             restaurantId: rid.toString()
@@ -415,8 +420,11 @@ export async function getVendorEarningsSummary(restaurantId) {
             commissionVatType,
             platformCommissionVatRate,
             foodVatRate
-        },
-        summary: {
+        }
+    };
+
+    if (!tab || tab === 'summary') {
+        result.summary = {
             totalOrders,
             grossEarnings: Math.round(grossEarnings * 100) / 100,
             commissionVatDeduction: Math.round(commissionVatDeduction * 100) / 100,
@@ -425,7 +433,17 @@ export async function getVendorEarningsSummary(restaurantId) {
             totalDeductions: Math.round((commissionVatDeduction + platformCommissionVatDeduction + foodVatDeduction) * 100) / 100,
             netEarnings: Math.round(netEarnings * 100) / 100,
             availableBalance: Math.round(availableBalance * 100) / 100
-        },
-        recentTransactions
-    };
+        };
+    }
+
+    if (!tab || tab === 'transactions') {
+        result.recentTransactions = recentTransactions;
+        result.pagination = {
+            currentPage: page,
+            totalPages: totalPages === 0 ? 1 : totalPages,
+            totalRecords: totalTransactions
+        };
+    }
+
+    return result;
 }

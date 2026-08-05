@@ -32,18 +32,28 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   useEffect(() => {
     fetchEarnings();
-  }, []);
+  }, [subView, page]);
 
   const fetchEarnings = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await dmbVendorAPI.getVendorEarningsSummary();
+      const res = await dmbVendorAPI.getVendorEarningsSummary(subView, page, limit);
       const data = res?.data?.data;
       if (data) {
-        setEarningsData(data);
+        setEarningsData((prev) => ({
+          ...prev,
+          ...(data.summary && { summary: data.summary }),
+          ...(data.commissionRates && { commissionRates: data.commissionRates }),
+          ...(data.recentTransactions && { recentTransactions: data.recentTransactions }),
+          ...(data.restaurant && { restaurant: data.restaurant }),
+          ...(data.pagination && { pagination: data.pagination }),
+        }));
       } else {
         setError('No earnings data available yet.');
       }
@@ -53,6 +63,10 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
   };
 
   const summary = earningsData?.summary || {};
@@ -265,6 +279,27 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {earningsData?.pagination && earningsData.pagination.totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <button
+                disabled={page === 1}
+                onClick={() => handlePageChange(page - 1)}
+                className="px-4 py-2 text-[12px] font-bold rounded-lg border bg-white text-primary border-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                Previous
+              </button>
+              <span className="text-[12px] font-bold text-outline">
+                Page {page} of {earningsData.pagination.totalPages}
+              </span>
+              <button
+                disabled={page === earningsData.pagination.totalPages}
+                onClick={() => handlePageChange(page + 1)}
+                className="px-4 py-2 text-[12px] font-bold rounded-lg border bg-white text-primary border-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                Next
+              </button>
             </div>
           )}
         </div>

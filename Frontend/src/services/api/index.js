@@ -2060,7 +2060,11 @@ export const dmbVendorAPI = {
   /** Get admin-configured meal timing windows */
   getTimingSettings: () => restaurantClient.get("/dmb/vendor/timing-settings"),
   /** NEW: Live dynamic earnings breakdown from food restaurant module (replaces static earnings) */
-  getVendorEarningsSummary: () => restaurantClient.get("/food/restaurant/earnings"),
+  getVendorEarningsSummary: (tab, page = 1, limit = 10) => {
+    let url = `/food/restaurant/earnings?page=${page}&limit=${limit}`;
+    if (tab) url += `&tab=${tab}`;
+    return restaurantClient.get(url);
+  },
   // Pantry Items Endpoints
   getPantryItems: () => restaurantClient.get("/dmb/vendor/pantry-items"),
   createPantryItem: (data) => restaurantClient.post("/dmb/vendor/pantry-items", data, {
