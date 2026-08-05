@@ -41,8 +41,8 @@ export default function RestaurantCommission() {
     restaurant: true,
     restaurantId: true,
     defaultCommission: true,
-    platformCommissionVatPercent: true,
-    foodVatPercent: true,
+    platformCommissionVatPercent: false,
+    foodVatPercent: false,
     status: true,
     actions: true,
   })
@@ -297,13 +297,6 @@ export default function RestaurantCommission() {
       errors.defaultCommission = "Percentage must be between 0-100"
     }
 
-    if (parseFloat(formData.platformCommissionVatPercent) < 0 || parseFloat(formData.platformCommissionVatPercent) > 100) {
-      errors.platformCommissionVatPercent = "Must be between 0-100"
-    }
-
-    if (parseFloat(formData.foodVatPercent) < 0 || parseFloat(formData.foodVatPercent) > 100) {
-      errors.foodVatPercent = "Must be between 0-100"
-    }
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -351,8 +344,8 @@ export default function RestaurantCommission() {
 
   const columnsConfig = {
     si: "Serial Number",
-    restaurant: "Restaurant Name",
-    restaurantId: "Restaurant ID",
+    restaurant: "Vendor Name",
+    restaurantId: "Vendor ID",
     defaultCommission: "Commission VAT %",
     platformCommissionVatPercent: "Platform VAT %",
     foodVatPercent: "Food VAT %",
@@ -366,7 +359,7 @@ export default function RestaurantCommission() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900">Restaurant Commission</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Vendor Commission</h1>
               <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
                 {filteredCommissions.length}
               </span>
@@ -387,7 +380,7 @@ export default function RestaurantCommission() {
             <div className="relative flex-1 sm:flex-initial min-w-[250px]">
               <input
                 type="text"
-                placeholder="Ex: Search by restaurant name or ID"
+                placeholder="Ex: Search by vendor name or ID"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
@@ -415,12 +408,12 @@ export default function RestaurantCommission() {
                     )}
                     {visibleColumns.restaurant && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant Name
+                        Vendor Name
                       </th>
                     )}
                     {visibleColumns.restaurantId && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant ID
+                        Vendor ID
                       </th>
                     )}
                     {visibleColumns.defaultCommission && (
@@ -428,16 +421,7 @@ export default function RestaurantCommission() {
                         Commission VAT %
                       </th>
                     )}
-                    {visibleColumns.platformCommissionVatPercent && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Platform VAT %
-                      </th>
-                    )}
-                    {visibleColumns.foodVatPercent && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Food VAT %
-                      </th>
-                    )}
+
                     {visibleColumns.status && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         Status
@@ -486,20 +470,7 @@ export default function RestaurantCommission() {
                             </span>
                           </td>
                         )}
-                        {visibleColumns.platformCommissionVatPercent && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-900">
-                              {commission.platformCommissionVatPercent ?? 0}%
-                            </span>
-                          </td>
-                        )}
-                        {visibleColumns.foodVatPercent && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-900">
-                              {commission.foodVatPercent ?? 0}%
-                            </span>
-                          </td>
-                        )}
+
                         {visibleColumns.status && (
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
@@ -550,13 +521,13 @@ export default function RestaurantCommission() {
       <Dialog open={isRestaurantSelectOpen} onOpenChange={setIsRestaurantSelectOpen}>
         <DialogContent className="max-w-xl bg-white p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
-            <DialogTitle className="text-lg font-semibold text-slate-900">Select Restaurant</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-slate-900">Select Vendor</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 px-6 py-4">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search restaurants..."
+                placeholder="Search vendors..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -582,7 +553,7 @@ export default function RestaurantCommission() {
                   </button>
                 ))}
               {filteredRestaurants.filter(r => !r.hasCommissionSetup).length === 0 && (
-                <p className="text-center text-sm text-slate-500 py-4">No restaurants available</p>
+                <p className="text-center text-sm text-slate-500 py-4">No vendors available</p>
               )}
             </div>
           </div>
@@ -594,7 +565,7 @@ export default function RestaurantCommission() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
             <DialogTitle className="text-lg font-semibold text-slate-900">
-              {selectedCommission ? "Edit Restaurant Commission" : "Add Restaurant Commission"}
+              {selectedCommission ? "Edit Vendor Commission" : "Add Vendor Commission"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 px-6 py-4">
@@ -649,51 +620,7 @@ export default function RestaurantCommission() {
               <p className="text-xs text-slate-500 mt-1">Platform's commission deducted from vendor's gross earnings.</p>
             </div>
 
-            {/* Platform Commission VAT % */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Platform Commission VAT %
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formData.platformCommissionVatPercent}
-                onChange={(e) => setFormData(prev => ({ ...prev, platformCommissionVatPercent: e.target.value }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  formErrors.platformCommissionVatPercent ? "border-red-500" : "border-slate-300"
-                }`}
-                placeholder="e.g., 5"
-              />
-              {formErrors.platformCommissionVatPercent && (
-                <p className="text-xs text-red-500 mt-1">{formErrors.platformCommissionVatPercent}</p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">Additional VAT applied on platform commission (0–100%).</p>
-            </div>
 
-            {/* Food VAT % Per Meal */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Food VAT % Per Meal
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formData.foodVatPercent}
-                onChange={(e) => setFormData(prev => ({ ...prev, foodVatPercent: e.target.value }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  formErrors.foodVatPercent ? "border-red-500" : "border-slate-300"
-                }`}
-                placeholder="e.g., 8"
-              />
-              {formErrors.foodVatPercent && (
-                <p className="text-xs text-red-500 mt-1">{formErrors.foodVatPercent}</p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">GST/food tax percentage deducted from vendor earnings per meal (0–100%).</p>
-            </div>
 
             {/* Notes */}
             <div>
@@ -732,7 +659,7 @@ export default function RestaurantCommission() {
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="max-w-md bg-white">
           <DialogHeader>
-            <DialogTitle>Delete Restaurant Commission</DialogTitle>
+            <DialogTitle>Delete Vendor Commission</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-slate-700">

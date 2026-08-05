@@ -293,11 +293,13 @@ export async function getVendorEarningsSummary(restaurantId) {
             continue;
         }
         totalOrders++;
-        const gross = Number(tx.amounts?.totalCustomerPaid || 0);
         const netShare = Number(tx.amounts?.restaurantShare || 0);
         const commVat = Number(tx.amounts?.commissionVatAmount || tx.amounts?.restaurantCommission || 0);
         const platVat = Number(tx.amounts?.platformCommissionVatAmount || 0);
         const foodVat = Number(tx.amounts?.foodVatAmount || 0);
+        
+        // Use food cost (net + commission) as gross, instead of total customer paid
+        const gross = netShare + commVat;
 
         grossEarnings += gross;
         commissionVatDeduction += commVat;
@@ -324,14 +326,24 @@ export async function getVendorEarningsSummary(restaurantId) {
     // Map DMB transactions
     for (const order of dmbOrders) {
         totalOrders++;
-        const foodCost = order.pricing?.foodCost || order.pricing?.totalPrice || 0;
+        
+        // Calculate foodCost based on the actual vendor meal price (product price)
+        let mealPriceSum = 0;
+        if (order.meals && order.meals.length > 0) {
+            for (const m of order.meals) {
+                if (m.mealPlanId && m.mealPlanId.pricePerDay) {
+                    mealPriceSum += m.mealPlanId.pricePerDay * (m.quantity || 1);
+                }
+            }
+        }
+        
+        const foodCost = mealPriceSum > 0 ? mealPriceSum : (order.pricing?.foodCost || order.pricing?.totalPrice || 0);
+        
         const foodVat = order.pricing?.foodVat || 0;
         const foodVatAmount = order.pricing?.foodVatAmount || 0;
         const deliveryFee = order.pricing?.deliveryFee || 0;
         const deliveryVatAmount = order.pricing?.deliveryVatAmount || 0;
         const platformFeeAmount = order.pricing?.platformFee || 0;
-
-        const gross = order.pricing?.totalPrice || (foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFeeAmount);
 
         let commissionAmount = 0;
         if (commissionVatRate > 0) {
@@ -339,6 +351,9 @@ export async function getVendorEarningsSummary(restaurantId) {
         }
         
         const restaurantShare = Math.max(0, Math.round((foodCost - commissionAmount) * 100) / 100);
+
+        // Gross for vendor should just be foodCost
+        const gross = foodCost;
 
         grossEarnings += gross;
         commissionVatDeduction += commissionAmount;

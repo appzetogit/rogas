@@ -186,34 +186,8 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                   </div>
                 )}
 
-                {/* Platform Commission VAT */}
-                {(platformCommissionVatRate > 0 || platVatDed > 0) && (
-                  <div className="flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className="text-on-surface-variant">Platform Commission VAT {platformCommissionVatRate > 0 ? `${platformCommissionVatRate}%` : ''}</span>
-                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform VAT)</span>
-                    </div>
-                    <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
-                      -{fmt(platVatDed)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Food VAT */}
-                {(foodVatRate > 0 || foodVatDed > 0) && (
-                  <div className="flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className="text-on-surface-variant">Food VAT {foodVatRate > 0 ? `${foodVatRate}%` : ''}</span>
-                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(you declare)</span>
-                    </div>
-                    <span className="bg-secondary-container/10 text-on-secondary-container px-2.5 py-0.5 rounded-full font-bold text-[12px]">
-                      -{fmt(foodVatDed)}
-                    </span>
-                  </div>
-                )}
-
                 {/* No deductions configured */}
-                {commissionVatRate === 0 && platformCommissionVatRate === 0 && foodVatRate === 0 && totalDeductions === 0 && (
+                {commissionVatRate === 0 && totalDeductions === 0 && (
                   <div className="text-[12px] text-outline italic py-1">
                     No commission rates configured by admin yet.
                   </div>
@@ -283,9 +257,9 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                   <div className="flex flex-col items-end">
                     <span className="font-extrabold text-[14px] text-primary">+{fmt(tx.netAmount)}</span>
                     <span className="text-[10px] text-outline font-medium">Gross: {fmt(tx.grossAmount)}</span>
-                    {(tx.commissionVatAmount + tx.platformCommissionVatAmount + tx.foodVatAmount) > 0 && (
+                    {(tx.commissionVatAmount) > 0 && (
                       <span className="text-[10px] text-error font-medium">
-                        -{fmt(tx.commissionVatAmount + tx.platformCommissionVatAmount + tx.foodVatAmount)}
+                        -{fmt(tx.commissionVatAmount)}
                       </span>
                     )}
                   </div>

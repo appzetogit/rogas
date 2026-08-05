@@ -63,12 +63,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/subscribers",
         icon: "Users",
       },
-      // {
-      //   type: "link",
-      //   label: "Restaurant Commission",
-      //   path: "/admin/food/restaurants/commission",
-      //   icon: "DollarSign",
-      // },
+      {
+        type: "link",
+        label: "Vendor Commission",
+        path: "/admin/food/restaurants/commission",
+        icon: "DollarSign",
+      },
     ],
   },
 
