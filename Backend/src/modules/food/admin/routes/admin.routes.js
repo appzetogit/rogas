@@ -131,6 +131,7 @@ router.patch('/restaurants/complaints/:id', requirePermission('complaintsRefunds
 // ----- Restaurants -----
 router.get('/restaurants', requirePermission('vendorManagement', 'view'), adminController.getRestaurants);
 router.get('/dashboard-stats', requirePermission('dashboard', 'view'), adminController.getDashboardStats);
+router.get('/reports/financial-overview', requirePermission('reports', 'view'), adminController.getFinancialOverviewSummaryController);
 router.get('/reports/restaurants', requirePermission('reports', 'view'), adminController.getRestaurantReport);
 router.get('/reports/transactions', requirePermission('reports', 'view'), adminController.getTransactionReport);
 router.get('/reports/tax', requirePermission('reports', 'view'), adminController.getTaxReport);

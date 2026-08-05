@@ -5439,6 +5439,178 @@ export async function deleteZone(id) {
     return zone ? { id } : null;
 }
 
+// ----- Financial Overview Summary (admin) -----
+export async function getFinancialOverviewSummary() {
+    const { FoodOrder } = await import('../../orders/models/order.model.js');
+    const { FoodTransaction } = await import('../../orders/models/foodTransaction.model.js');
+    const { FoodRestaurantWithdrawal } = await import('../../restaurant/models/foodRestaurantWithdrawal.model.js');
+    const { FoodDeliveryWithdrawal } = await import('../../delivery/models/foodDeliveryWithdrawal.model.js');
+    const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+    const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+    const { DeliveryBonusTransaction } = await import('../models/deliveryBonusTransaction.model.js');
+    const { getVendorEarningsSummary } = await import('../../restaurant/services/restaurantFinance.service.js');
+
+    // 1. Calculate Vendor Wallet Balances & Total Vendor Earnings across all Restaurants
+    let totalVendorEarned = 0;
+    let totalVendorPaid = 0;
+    let totalVendorWalletBalance = 0;
+    try {
+        const restaurants = await FoodRestaurant.find({}).select('_id').lean();
+        for (const rest of restaurants) {
+            const summaryObj = await getVendorEarningsSummary(rest._id);
+            const net = Number(summaryObj?.summary?.netEarnings || summaryObj?.summary?.grossEarnings || 0);
+            const paid = Number(summaryObj?.summary?.totalWithdrawals || 0);
+            const available = Number(summaryObj?.summary?.availableBalance ?? Math.max(0, net - paid));
+            totalVendorEarned += net;
+            totalVendorPaid += paid;
+            totalVendorWalletBalance += available;
+        }
+    } catch (_) {}
+
+    // Direct Withdrawal sum fallback if needed
+    let directVendorPaid = 0;
+    try {
+        const vAgg = await FoodRestaurantWithdrawal.aggregate([
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+        directVendorPaid = Number(vAgg[0]?.total || 0);
+    } catch (_) {}
+    totalVendorPaid = Math.max(totalVendorPaid, directVendorPaid);
+
+    // 2. Calculate Delivery Driver Wallet Balances & Total Driver Earnings
+    let totalDriverEarned = 0;
+    let totalDriverPaid = 0;
+    let totalDriverWalletBalance = 0;
+    try {
+        const { FoodDeliveryPartner } = await import('../../delivery/models/deliveryPartner.model.js');
+        const { FoodDeliveryWallet } = await import('../../delivery/models/deliveryWallet.model.js');
+        const { getDeliveryPartnerWalletEnhanced } = await import('../../delivery/services/deliveryFinance.service.js');
+
+        // Sum via enhanced wallets for each driver individually (Strict definition)
+        const partners = await FoodDeliveryPartner.find({}).select('_id').lean();
+        
+        for (const p of partners) {
+            try {
+                const w = await getDeliveryPartnerWalletEnhanced(p._id);
+                // totalBalance = Gross lifetime earnings (totalEarned + totalBonus)
+                totalDriverEarned += Number(w?.totalBalance || 0); 
+                // totalWithdrawn = Actually paid out
+                totalDriverPaid += Number(w?.totalWithdrawn || 0);
+                // pocketBalance = Available to withdraw (Wallet Balance)
+                totalDriverWalletBalance += Number(w?.pocketBalance || 0);
+            } catch (_) {}
+        }
+
+        // Fallback to FoodDeliveryWallet model sum if enhanced calculation somehow returns 0
+        if (totalDriverEarned === 0 && totalDriverWalletBalance === 0) {
+            const walletAgg = await FoodDeliveryWallet.aggregate([
+                { 
+                    $group: { 
+                        _id: null, 
+                        totalBalance: { $sum: { $ifNull: ['$balance', 0] } },
+                        totalEarnings: { $sum: { $ifNull: ['$totalEarnings', 0] } },
+                        totalBonus: { $sum: { $ifNull: ['$totalBonus', 0] } },
+                        totalSettled: { $sum: { $ifNull: ['$totalSettled', 0] } }
+                    } 
+                }
+            ]);
+            
+            totalDriverWalletBalance = Number(walletAgg[0]?.totalBalance || 0);
+            totalDriverEarned = Number(walletAgg[0]?.totalEarnings || 0) + Number(walletAgg[0]?.totalBonus || 0);
+            totalDriverPaid = Number(walletAgg[0]?.totalSettled || 0);
+        }
+    } catch (_) {}
+
+    // 3. Platform Revenue (Admin Commission) & Orders Gross Payments & Tax
+    let adminCommission = 0;
+    let totalCustomerPayments = 0;
+    let totalTaxCollected = 0;
+
+    try {
+        const [orderPricingAgg, txAgg] = await Promise.all([
+            FoodOrder.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalComm: { $sum: { $ifNull: ['$pricing.platformCommission', 0] } },
+                        totalCust: { $sum: { $ifNull: ['$pricing.totalAmount', 0] } },
+                        totalTax: { $sum: { $ifNull: ['$pricing.taxAmount', 0] } },
+                        totalVendorShare: { $sum: { $ifNull: ['$pricing.restaurantNetShare', 0] } },
+                        totalRiderShare: { $sum: { $ifNull: ['$pricing.deliveryFee', 0] } }
+                    }
+                }
+            ]),
+            FoodTransaction.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalComm: { $sum: { $ifNull: ['$amounts.restaurantCommission', { $ifNull: ['$amounts.commissionVatAmount', 0] }] } },
+                        totalCust: { $sum: { $ifNull: ['$amounts.totalAmount', 0] } },
+                        totalTax: { $sum: { $ifNull: ['$amounts.foodVatAmount', 0] } },
+                        totalVendorShare: { $sum: { $ifNull: ['$amounts.restaurantShare', 0] } },
+                        totalRiderShare: { $sum: { $ifNull: ['$amounts.deliveryFee', 0] } }
+                    }
+                }
+            ])
+        ]);
+
+        const o = orderPricingAgg[0] || {};
+        const t = txAgg[0] || {};
+
+        adminCommission = Math.max(Number(o.totalComm || 0), Number(t.totalComm || 0));
+        totalCustomerPayments = Math.max(Number(o.totalCust || 0), Number(t.totalCust || 0));
+        totalTaxCollected = Math.max(Number(o.totalTax || 0), Number(t.totalTax || 0));
+
+        if (totalVendorEarned === 0) {
+            totalVendorEarned = Math.max(Number(o.totalVendorShare || 0), Number(t.totalVendorShare || 0));
+        }
+        if (totalDriverEarned === 0) {
+            totalDriverEarned = Math.max(Number(o.totalRiderShare || 0), Number(t.totalRiderShare || 0));
+        }
+    } catch (_) {}
+
+    // 4. Customer Subscriptions with Tax
+    let subRevenueWithTax = 0;
+    let subCount = 0;
+    try {
+        const subAgg = await DMBSubscription.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: { $ifNull: ['$totalAmount', { $ifNull: ['$price', 0] }] } },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+        subRevenueWithTax = Number(subAgg[0]?.total || 0);
+        subCount = Number(subAgg[0]?.count || 0);
+    } catch (_) {}
+
+    return {
+        adminTotalEarnings: adminCommission,
+        vendorStats: {
+            totalEarned: totalVendorEarned,
+            totalPaidByAdmin: totalVendorPaid,
+            pendingBalance: totalVendorWalletBalance,
+            walletBalance: totalVendorWalletBalance
+        },
+        deliveryStats: {
+            totalEarned: totalDriverEarned,
+            totalPaidByAdmin: totalDriverPaid,
+            pendingBalance: totalDriverWalletBalance,
+            walletBalance: totalDriverWalletBalance
+        },
+        subscriptionStats: {
+            totalRevenueWithTax: subRevenueWithTax,
+            totalSubscriptions: subCount
+        },
+        summary: {
+            totalCustomerPayments: totalCustomerPayments + subRevenueWithTax,
+            totalFoodTaxCollected: totalTaxCollected
+        }
+    };
+}
+
 // ----- Withdrawals (admin) -----
 export async function getWithdrawals(query = {}) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 500);

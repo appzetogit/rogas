@@ -15,6 +15,16 @@ import { FoodBusinessSettings } from '../models/businessSettings.model.js';
 import { sendRestaurantOnboardingEmail } from '../../../../utils/email.js';
 import * as assignmentService from '../services/assignment.service.js';
 
+// ----- Financial Overview Summary -----
+export async function getFinancialOverviewSummaryController(req, res, next) {
+    try {
+        const data = await adminService.getFinancialOverviewSummary();
+        res.status(200).json({ success: true, message: 'Financial overview summary fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // ----- Customers / Users -----
 export async function getCustomers(req, res, next) {
     try {
