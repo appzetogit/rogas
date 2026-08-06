@@ -46,7 +46,7 @@ export default function RegularOrderReport() {
   
   const [filters, setFilters] = useState({
     zone: "All Zones",
-    restaurant: "All restaurants",
+    restaurant: "All vendors",
     customer: "All customers",
     time: "All Time",
   })
@@ -268,12 +268,22 @@ export default function RegularOrderReport() {
       result = result.filter((order) => String(order.zoneId || "") === String(filters.zone))
     }
 
-    if (filters.restaurant !== "All restaurants") {
-      result = result.filter((order) => String(order.restaurantId || "") === String(filters.restaurant))
+    if (filters.restaurant !== "All vendors") {
+      console.log("Filtering by vendor:", filters.restaurant, "Orders before:", result.length);
+      result = result.filter((order) => {
+          const match = String(order.restaurantId || "") === String(filters.restaurant);
+          if (!match) console.log("Vendor mismatch:", String(order.restaurantId), "!==", String(filters.restaurant));
+          return match;
+      })
     }
 
     if (filters.customer !== "All customers") {
-      result = result.filter((order) => String(order.customerId || "") === String(filters.customer))
+      console.log("Filtering by customer:", filters.customer, "Orders before:", result.length);
+      result = result.filter((order) => {
+          const match = String(order.customerId || "") === String(filters.customer);
+          if (!match) console.log("Customer mismatch:", String(order.customerId), "!==", String(filters.customer));
+          return match;
+      })
     }
 
     if (!searchQuery.trim()) return result
@@ -292,7 +302,7 @@ export default function RegularOrderReport() {
     }
     const headers = [
       { key: "orderId", label: "Order ID" },
-      { key: "restaurant", label: "Restaurant" },
+      { key: "restaurant", label: "Vendor" },
       { key: "customerName", label: "Customer Name" },
       { key: "deliverymanName", label: "Deliveryman Name" },
       { key: "orderStatus", label: "Status" },
@@ -312,7 +322,7 @@ export default function RegularOrderReport() {
   const handleResetFilters = () => {
     setFilters({
       zone: "All Zones",
-      restaurant: "All restaurants",
+      restaurant: "All vendors",
       customer: "All customers",
       time: "All Time",
     })
@@ -320,7 +330,7 @@ export default function RegularOrderReport() {
     setCurrentPage(1)
   }
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All vendors" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
 
@@ -454,7 +464,7 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("restaurant", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All restaurants">All restaurants</option>
+                <option value="All vendors">All vendors</option>
                 {restaurants.map((restaurant) => (
                   <option key={restaurant._id} value={restaurant._id}>
                     {restaurant.restaurantName || restaurant.name}
@@ -473,7 +483,7 @@ export default function RegularOrderReport() {
                 <option value="All customers">All customers</option>
                 {customers.map((customer) => (
                   <option key={customer._id} value={customer._id}>
-                    {customer.name}
+                    {customer.name} {customer.phone ? `(${customer.phone})` : ""}
                   </option>
                 ))}
               </select>
@@ -597,7 +607,7 @@ export default function RegularOrderReport() {
                     Order Id
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "20%" }}>
-                    Restaurant
+                    Vendor
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "20%" }}>
                     Customer Name

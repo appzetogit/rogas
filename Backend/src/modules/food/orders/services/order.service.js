@@ -1542,6 +1542,9 @@ export async function getDeliveredOrdersAdmin(query) {
   const filter = {
     orderStatus: { $in: ["preparing", "ready_for_pickup", "picked_up", "delivered"] }
   };
+  const dmbFilter = {
+    status: { $in: ["preparing", "ready", "out_for_delivery", "delivered"] }
+  };
 
   const restaurantIdRaw =
     typeof query.restaurantId === "string" ? query.restaurantId.trim() : "";
@@ -1551,7 +1554,9 @@ export async function getDeliveredOrdersAdmin(query) {
     typeof query.endDate === "string" ? query.endDate.trim() : "";
 
   if (restaurantIdRaw && mongoose.Types.ObjectId.isValid(restaurantIdRaw)) {
-    filter.restaurantId = new mongoose.Types.ObjectId(restaurantIdRaw);
+    const oid = new mongoose.Types.ObjectId(restaurantIdRaw);
+    filter.restaurantId = oid;
+    dmbFilter.vendorId = oid;
   }
 
   if (startDateRaw || endDateRaw) {
@@ -1566,10 +1571,13 @@ export async function getDeliveredOrdersAdmin(query) {
     }
     if (Object.keys(createdAt).length > 0) {
       filter.createdAt = createdAt;
+      dmbFilter.deliveryDate = createdAt;
     }
   }
 
-  const [docs, total] = await Promise.all([
+  const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+
+  const [foodDocs, dmbDocs, foodTotal, dmbTotal] = await Promise.all([
     FoodOrder.find(filter)
       .select("+deliveryOtp")
       .populate("userId", "name phone email")
@@ -1579,9 +1587,42 @@ export async function getDeliveredOrdersAdmin(query) {
       .skip(skip)
       .limit(limit)
       .lean(),
+    DMBDailyOrder.find(dmbFilter)
+      .populate("userId", "name phone email")
+      .populate("vendorId", "restaurantName area city ownerPhone")
+      .populate("dispatch.deliveryPartnerId", "name phone")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     FoodOrder.countDocuments(filter),
+    DMBDailyOrder.countDocuments(dmbFilter),
   ]);
-  const paginated = buildPaginatedResult({ docs: docs.map(d => normalizeOrderForClient(d)), total, page, limit });
+
+  const mappedFood = foodDocs.map(d => normalizeOrderForClient(d));
+  const mappedDmb = dmbDocs.map(d => ({
+      ...d,
+      orderMongoId: d._id.toString(),
+      orderId: d.orderId || d._id.toString(),
+      orderStatus: d.status,
+      restaurantId: d.vendorId, // mapped for frontend
+      createdAt: d.deliveryDate || d.createdAt,
+      pricing: {
+          subtotal: d.pricing?.foodCost || 0,
+          deliveryFee: d.pricing?.deliveryFee || 0,
+          platformFee: d.pricing?.platformFee || 0,
+          tax: (d.pricing?.foodVatAmount || 0) + (d.pricing?.deliveryVatAmount || 0),
+          discount: 0,
+          total: d.pricing?.totalPrice || 0
+      }
+  }));
+
+  let combined = [...mappedFood, ...mappedDmb];
+  combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  combined = combined.slice(0, limit);
+
+  const total = foodTotal + dmbTotal;
+  const paginated = buildPaginatedResult({ docs: combined, total, page, limit });
   return { ...paginated, orders: paginated.data };
 }
 
