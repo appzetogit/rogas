@@ -1098,6 +1098,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                   <NewOrderModal 
                     order={incomingOrder} 
                     onAccept={async (o) => {
+                      // Guard: delivery boy must be online to accept any order
+                      if (!isOnline) {
+                        toast.error('You are offline! Please go Online first before accepting orders.', { duration: 4000 });
+                        return;
+                      }
                       try {
                         await acceptOrder(o);
                         // Only dismiss the modal on successful accept

@@ -455,6 +455,15 @@ function NewDeliveryDashboard({ children }) {
       ? stopOrId
       : stops.find(s => s.id === stopOrId || s.orderId === stopOrId);
 
+    // Guard: if stop is already completed, don't open pickup/delivery page
+    if (stop) {
+      const stopStatus = String(stop.status || '').toLowerCase();
+      if (stopStatus === 'completed' || stopStatus === 'delivered' || stopStatus === 'done') {
+        toast.info('This stop has already been completed.');
+        return;
+      }
+    }
+
     if (stop && (stop.type === 'delivery' || stop.type === 'D')) {
       const hasPendingPickup = stops.some(s => (s.type === 'pickup' || s.type === 'P') && s.status !== 'COMPLETED' && s.status !== 'completed');
       if (stop.awaitingPickup || hasPendingPickup) {
@@ -475,6 +484,7 @@ function NewDeliveryDashboard({ children }) {
       }
     }
   };
+
 
   const renderActiveScreen = () => {
     switch (currentScreen) {

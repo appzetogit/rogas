@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChefHat, MapPin, Phone, 
   ChevronDown, ChevronUp, Package, 
-  Navigation, CheckCircle2, Camera, Loader2, Image as ImageIcon
+  Navigation, CheckCircle2, Camera, Loader2, Image as ImageIcon, WifiOff
 } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import { uploadAPI } from '@food/api';
 import { toast } from 'sonner';
 import { openCamera } from "@food/utils/imageUploadUtils";
+import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 
 /**
  * PickupActionModal - Unified White/Green Theme with Slider Actions.
@@ -24,6 +25,7 @@ export const PickupActionModal = ({
   onPickedUp,
   onMinimize
 }) => {
+  const { isOnline } = useDeliveryStore();
   const [showItems, setShowItems] = useState(false);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
   const [billImageUploaded, setBillImageUploaded] = useState(false);
@@ -141,20 +143,37 @@ export const PickupActionModal = ({
 
         {/* Action Sliders */}
           <div className="space-y-4 sm:space-y-6">
+
+          {/* Offline Warning Banner */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+              <WifiOff className="w-4 h-4 text-red-500 shrink-0" />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-red-600">
+                You are Offline — Go Online before pickup from vendor
+              </p>
+            </div>
+          )}
+
           {!isAtPickup ? (
             <div>
               <p className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 transition-colors ${
-                isWithinRange ? 'text-green-600' : 'text-orange-500 animate-pulse'
+                !isOnline ? 'text-red-500' : isWithinRange ? 'text-green-600' : 'text-orange-500 animate-pulse'
               }`}>
-                {isWithinRange ? 'Ready - Swipe to confirm arrival' : 'Get closer to restaurant'}
+                {!isOnline ? 'Go Online First' : isWithinRange ? 'Ready - Swipe to confirm arrival' : 'Get closer to restaurant'}
               </p>
               <ActionSlider 
                 key="action-reach"
-                label="Slide to Reach" 
+                label={isOnline ? "Slide to Reach" : "Go Online First"} 
                 successLabel="Reached!"
-                disabled={!isWithinRange}
-                onConfirm={onReachedPickup}
-                color="bg-green-600"
+                disabled={!isWithinRange || !isOnline}
+                onConfirm={() => {
+                  if (!isOnline) {
+                    toast.error('You are offline! Please go Online first before reaching the vendor.', { duration: 4000 });
+                    return;
+                  }
+                  onReachedPickup();
+                }}
+                color={isOnline ? "bg-green-600" : "bg-gray-400"}
               />
             </div>
           ) : (
@@ -250,11 +269,17 @@ export const PickupActionModal = ({
                     </div>
                     <ActionSlider
                       key="action-pickup"
-                      label="Slide to Pick Up"
+                      label={isOnline ? "Slide to Pick Up" : "Go Online First"}
                       successLabel="Picked Up!"
-                      disabled={pickupOtp.length !== 4}
-                      onConfirm={() => onPickedUp(billImageUrl, pickupOtp)}
-                      color="bg-orange-500"
+                      disabled={pickupOtp.length !== 4 || !isOnline}
+                      onConfirm={() => {
+                        if (!isOnline) {
+                          toast.error('You are offline! Please go Online first before picking up from vendor.', { duration: 4000 });
+                          return;
+                        }
+                        onPickedUp(billImageUrl, pickupOtp);
+                      }}
+                      color={isOnline ? "bg-orange-500" : "bg-gray-400"}
                     />
                   </>
                 )}

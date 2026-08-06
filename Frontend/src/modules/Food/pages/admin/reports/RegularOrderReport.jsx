@@ -132,12 +132,17 @@ export default function RegularOrderReport() {
           endDate: toDate ? toDate.toISOString().split('T')[0] : undefined,
         }
 
-        const response = await adminAPI.getOrders(params)
+        const response = await adminAPI.getDeliveredOrdersReport(params)
         
         if (response.data?.success) {
           // Transform backend orders (FoodOrder docs) to report format
-          const rawOrders = response.data.data.orders || []
-          const transformedOrders = rawOrders.map((order) => {
+          const rawOrders =
+            response?.data?.data?.orders ??
+            response?.data?.orders ??
+            response?.data?.data?.docs ??
+            response?.data?.data ?? []
+          
+          const transformedOrders = (Array.isArray(rawOrders) ? rawOrders : []).map((order) => {
             const pricing = order.pricing || {}
             const items = Array.isArray(order.items) ? order.items : []
 
@@ -197,6 +202,8 @@ export default function RegularOrderReport() {
               restaurantMeta?.zoneId ||
               ""
 
+            const deliverymanName = order.dispatch?.deliveryPartnerId?.name || "N/A"
+
             const backendStatus = String(order.orderStatus || "").toLowerCase()
             let displayStatus = order.orderStatus
             if (!backendStatus || backendStatus === "created" || backendStatus === "confirmed") {
@@ -219,6 +226,7 @@ export default function RegularOrderReport() {
               restaurant: restaurantName,
               customerId: String(customerId || ""),
               customerName,
+              deliverymanName,
               zoneId: String(zoneId || ""),
               totalItemAmount: subtotal,
               couponDiscount,
@@ -250,6 +258,12 @@ export default function RegularOrderReport() {
   const filteredOrders = useMemo(() => {
     let result = [...orders]
 
+    // Only show orders that are delivered or ready for delivery
+    result = result.filter((order) => {
+      const status = String(order.orderStatus || "").toLowerCase();
+      return status === "delivered" || status === "food on the way" || status === "processing";
+    });
+
     if (filters.zone !== "All Zones") {
       result = result.filter((order) => String(order.zoneId || "") === String(filters.zone))
     }
@@ -280,12 +294,7 @@ export default function RegularOrderReport() {
       { key: "orderId", label: "Order ID" },
       { key: "restaurant", label: "Restaurant" },
       { key: "customerName", label: "Customer Name" },
-      { key: "totalItemAmount", label: "Total Item Amount" },
-      { key: "couponDiscount", label: "Coupon Discount" },
-      { key: "vatTax", label: "VAT/Tax" },
-      { key: "deliveryCharge", label: "Delivery Charge" },
-      { key: "platformFee", label: "Platform Fee" },
-      { key: "totalAmount", label: "Order Amount" },
+      { key: "deliverymanName", label: "Deliveryman Name" },
       { key: "orderStatus", label: "Status" },
     ]
     switch (format) {
@@ -507,18 +516,7 @@ export default function RegularOrderReport() {
           </div>
         </div>
 
-        {/* Status Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 mb-3">
-          {renderStatusRow("Scheduled")}
-          {renderStatusRow("Pending")}
-          {renderStatusRow("Processing")}
-          {renderStatusRow("Food On The Way")}
-          {renderStatusRow("Accepted")}
-          {renderStatusRow("Delivered")}
-          {renderStatusRow("Canceled")}
-          {renderStatusRow("Payment Failed")}
-          {renderStatusRow("Refunded")}
-        </div>
+
 
         {/* Total Orders & Table */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3">
@@ -592,37 +590,22 @@ export default function RegularOrderReport() {
             <table className="w-full" style={{ tableLayout: "fixed", width: "100%" }}>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "3%" }}>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "5%" }}>
                     SI
                   </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "8%" }}>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "15%" }}>
                     Order Id
                   </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "12%" }}>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "20%" }}>
                     Restaurant
                   </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "12%" }}>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "20%" }}>
                     Customer Name
                   </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "8%" }}>
-                    Total Item Amount
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "20%" }}>
+                    Deliveryman Name
                   </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
-                    Coupon Discount
-                  </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
-                    Vat/Tax
-                  </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
-                    Delivery Charge
-                  </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
-                    Platform Fee
-                  </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "8%" }}>
-                    Order Amount
-                  </th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "5%" }}>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "10%" }}>
                     Status
                   </th>
                 </tr>
@@ -630,7 +613,7 @@ export default function RegularOrderReport() {
               <tbody className="bg-white divide-y divide-slate-100">
                 {paginatedOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-20 text-center">
+                    <td colSpan={6} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No orders match your filters</p>
@@ -655,22 +638,7 @@ export default function RegularOrderReport() {
                         <span className="text-[10px] text-slate-700 truncate block">{order.customerName}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.totalAmount)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.couponDiscount)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.vatTax)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.deliveryCharge)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.platformFee)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-900">{formatAmount(order.totalAmount || order.totalItemAmount)}</span>
+                        <span className="text-[10px] text-slate-700 truncate block">{order.deliverymanName}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-700">

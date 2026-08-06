@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
    ArrowLeft, RefreshCw, Navigation2, MapPin, Package,
    ChevronRight, CheckCircle2, Clock, Loader2, AlertCircle,
-   Phone, Route, Bike, UtensilsCrossed, ChefHat, Flame, Star, X
+   Phone, Route, Bike, UtensilsCrossed, ChefHat, Flame, Star, X, WifiOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { dmbDeliveryAPI } from '../../../services/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
@@ -46,8 +47,9 @@ function formatTimeAgo(dateStr) {
 const VendorStatusBadge = ({ status }) => {
    const map = {
       scheduled: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Pending', icon: <Clock className="w-2.5 h-2.5" /> },
-      preparing: { cls: 'bg-orange-50 text-orange-700 border-orange-200', label: 'Preparation 🔥', icon: <Flame className="w-2.5 h-2.5" /> },
-      ready: { cls: 'bg-[#1F7A63]/10 text-[#1F7A63] border-[#1F7A63]/25', label: 'Ready ✓', icon: <CheckCircle2 className="w-2.5 h-2.5" /> }
+      preparing: { cls: 'bg-orange-50 text-orange-700 border-orange-200', label: 'Preparing', icon: <Flame className="w-2.5 h-2.5" /> },
+      ready: { cls: 'bg-[#1F7A63]/10 text-[#1F7A63] border-[#1F7A63]/25', label: 'Ready ✓', icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
+      picked: { cls: 'bg-blue-50 text-blue-700 border-blue-200', label: 'Picked ✓', icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
    };
    const { cls, label, icon } = map[status] || map.scheduled;
    return (
@@ -72,10 +74,10 @@ const StopTypeChip = ({ type }) => {
    );
 };
 
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({ status, isPickup = false }) => {
    const map = {
       pending: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Pending' },
-      completed: { cls: 'bg-green-50 text-green-700 border-green-200', label: 'Done' },
+      completed: { cls: 'bg-green-50 text-green-700 border-green-200', label: isPickup ? 'Picked ✓' : 'Done ✓' },
       skipped: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Skipped' }
    };
    const { cls, label } = map[status] || map.pending;
@@ -144,9 +146,9 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
                   </div>
                </div>
                {/* Show vendor status badge or regular status badge */}
-               {isPickup && stop.vendorStatus
+               {isPickup && stop.vendorStatus && !isCompleted
                   ? <VendorStatusBadge status={stop.vendorStatus} />
-                  : <StatusBadge status={stop.status} />
+                  : <StatusBadge status={stop.status} isPickup={isPickup} />
                }
             </div>
 
@@ -281,6 +283,8 @@ const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
 
 export const RoutesView = ({ onSelectStop }) => {
    const goBack = useDeliveryBackNavigation();
+   const navigate = useNavigate();
+   const { isOnline } = useDeliveryStore();
 
    const [routeData, setRouteData] = useState(null);
    const [loading, setLoading] = useState(true);
@@ -289,6 +293,7 @@ export const RoutesView = ({ onSelectStop }) => {
    const [lastRefresh, setLastRefresh] = useState(null);
    const [activeTab, setActiveTab] = useState('list');
    const [timingModal, setTimingModal] = useState(null); // { stop }
+   const [offlineWarning, setOfflineWarning] = useState(false); // offline warning modal
 
    // ── Fetch slot-based route ─────────────────────────────────────────────────
    const fetchSlotRoute = useCallback(async (silent = false) => {
@@ -369,6 +374,17 @@ export const RoutesView = ({ onSelectStop }) => {
 
    // ── Handle stop click ──────────────────────────────────────────────────────
    const handleStopClick = (stop) => {
+      // Guard: delivery boy must be online to act on any stop
+      if (!isOnline) {
+         setOfflineWarning(true);
+         return;
+      }
+      // Guard: if stop is already completed, don't navigate
+      const stopStatus = String(stop?.status || '').toLowerCase();
+      if (stopStatus === 'completed' || stopStatus === 'delivered' || stopStatus === 'done') {
+         toast.info('This stop has already been completed.');
+         return;
+      }
       if (!routeData?.isSlotActive) {
          // Between slots — show timing info modal
          setTimingModal({ stop });
@@ -377,6 +393,7 @@ export const RoutesView = ({ onSelectStop }) => {
       // Active slot — navigate normally
       if (onSelectStop) onSelectStop(stop);
    };
+
 
    // ── Derived state ──────────────────────────────────────────────────────────
    const stops = routeData?.stops || [];
@@ -679,8 +696,82 @@ export const RoutesView = ({ onSelectStop }) => {
                />
             )}
          </AnimatePresence>
+
+         {/* ── Offline Warning Modal ────────────────────────────────────────── */}
+         <AnimatePresence>
+            {offlineWarning && (
+               <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-end justify-center px-4 pb-6"
+                  onClick={() => setOfflineWarning(false)}
+               >
+                  <motion.div
+                     initial={{ y: 80, opacity: 0 }}
+                     animate={{ y: 0, opacity: 1 }}
+                     exit={{ y: 80, opacity: 0 }}
+                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                     onClick={(e) => e.stopPropagation()}
+                     className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+                  >
+                     {/* Header */}
+                     <div className="flex flex-col items-center relative mb-4">
+                        <button
+                           onClick={() => setOfflineWarning(false)}
+                           className="absolute right-0 top-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                        >
+                           <X className="w-4 h-4 text-gray-500" />
+                        </button>
+                        <div className="w-16 h-16 rounded-3xl bg-red-50 flex items-center justify-center mb-3">
+                           <WifiOff className="w-8 h-8 text-red-500" />
+                        </div>
+                     </div>
+
+                     <h3 className="text-lg text-center font-black text-gray-900 mb-2">
+                        You are Offline!
+                     </h3>
+                     <p className="text-xs text-gray-500 font-medium mb-5 leading-relaxed">
+                        You must be <strong className="text-gray-800">Online</strong> before accessing any stop.
+                        Please go back to the main screen and turn on the{' '}
+                        <span className="text-[#1F7A63] font-black">Online</span> toggle,
+                        then you can access your stops.
+                     </p>
+
+                     {/* Visual indicator */}
+                     <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                           <div className="w-3 h-3 rounded-full bg-gray-400" />
+                        </div>
+                        <div>
+                           <p className="text-xs font-black text-gray-700">Status: OFFLINE</p>
+                           <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                              Toggle to Online to start deliveries
+                           </p>
+                        </div>
+                        <div className="ml-auto">
+                           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-600 rounded-full text-[10px] font-black border border-red-200">
+                              🔴 Offline
+                           </span>
+                        </div>
+                     </div>
+
+                     <button
+                        onClick={() => {
+                           setOfflineWarning(false);
+                           navigate('/food/delivery');
+                        }}
+                        className="w-full py-3.5 bg-[#1F7A63] text-white font-black text-sm rounded-2xl active:scale-95 transition-all shadow-lg shadow-[#1F7A63]/20"
+                     >
+                        Got It — Go Online First
+                     </button>
+                  </motion.div>
+               </motion.div>
+            )}
+         </AnimatePresence>
       </div>
    );
 };
 
 export default RoutesView;
+

@@ -422,6 +422,8 @@ export const adminAPI = {
   /** Orders (admin) – list, get by id, assign delivery partner */
   getOrders: (params = {}) =>
     adminClient.get("/food/admin/orders", { params: { limit: 50, page: 1, ...params } }),
+  getDeliveredOrdersReport: (params = {}) =>
+    adminClient.get("/food/admin/orders/delivered-report", { params: { limit: 50, page: 1, ...params } }),
   getOrderById: (orderId) =>
     adminClient.get(`/food/admin/orders/${String(orderId)}`),
   deleteOrder: (orderId) =>

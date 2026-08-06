@@ -1537,6 +1537,54 @@ export async function listOrdersAdmin(query) {
   return { ...paginated, orders: paginated.data };
 }
 
+export async function getDeliveredOrdersAdmin(query) {
+  const { page, limit, skip } = buildPaginationOptions(query);
+  const filter = {
+    orderStatus: { $in: ["preparing", "ready_for_pickup", "picked_up", "delivered"] }
+  };
+
+  const restaurantIdRaw =
+    typeof query.restaurantId === "string" ? query.restaurantId.trim() : "";
+  const startDateRaw =
+    typeof query.startDate === "string" ? query.startDate.trim() : "";
+  const endDateRaw =
+    typeof query.endDate === "string" ? query.endDate.trim() : "";
+
+  if (restaurantIdRaw && mongoose.Types.ObjectId.isValid(restaurantIdRaw)) {
+    filter.restaurantId = new mongoose.Types.ObjectId(restaurantIdRaw);
+  }
+
+  if (startDateRaw || endDateRaw) {
+    const createdAt = {};
+    const start = startDateRaw ? new Date(startDateRaw) : null;
+    const end = endDateRaw ? new Date(endDateRaw) : null;
+    if (start && !Number.isNaN(start.getTime())) {
+      createdAt.$gte = start;
+    }
+    if (end && !Number.isNaN(end.getTime())) {
+      createdAt.$lte = end;
+    }
+    if (Object.keys(createdAt).length > 0) {
+      filter.createdAt = createdAt;
+    }
+  }
+
+  const [docs, total] = await Promise.all([
+    FoodOrder.find(filter)
+      .select("+deliveryOtp")
+      .populate("userId", "name phone email")
+      .populate("restaurantId", "restaurantName area city ownerPhone")
+      .populate("dispatch.deliveryPartnerId", "name phone")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    FoodOrder.countDocuments(filter),
+  ]);
+  const paginated = buildPaginatedResult({ docs: docs.map(d => normalizeOrderForClient(d)), total, page, limit });
+  return { ...paginated, orders: paginated.data };
+}
+
 export async function assignDeliveryPartnerAdmin(
   orderId,
   deliveryPartnerId,

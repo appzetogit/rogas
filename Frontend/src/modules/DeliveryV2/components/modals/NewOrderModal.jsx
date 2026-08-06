@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown } from 'lucide-react';
+import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown, WifiOff } from 'lucide-react';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { getHaversineDistance, calculateETA } from '@/modules/DeliveryV2/utils/geo';
+import { toast } from 'sonner';
 
 /**
  * NewOrderModal - Ported to Original 1:1 Theme with Slider Accept.
  * Matches the Zomato/Swiggy style Green Header + White Card.
  */
 export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
-  const { riderLocation } = useDeliveryStore();
+  const { riderLocation, isOnline } = useDeliveryStore();
   const [timeLeft, setTimeLeft] = useState(30);
 
   useEffect(() => {
@@ -204,10 +205,25 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
         {/* Action Area */}
           <div className="space-y-4 sm:space-y-6 pt-1 sm:pt-2">
+            {/* Offline Warning Banner */}
+            {!isOnline && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                <WifiOff className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-[11px] font-bold uppercase tracking-widest text-red-600">
+                  You are Offline — Go Online to Accept Orders
+                </p>
+              </div>
+            )}
             <ActionSlider 
-              label="Slide to Accept" 
-              onConfirm={() => onAccept(order)} 
-              color="bg-black"
+              label={isOnline ? "Slide to Accept" : "Go Online First"} 
+              onConfirm={() => {
+                if (!isOnline) {
+                  toast.error('You are offline! Please go Online first before accepting orders.', { duration: 4000 });
+                  return;
+                }
+                onAccept(order);
+              }} 
+              color={isOnline ? "bg-black" : "bg-gray-400"}
               successLabel="Order Accepted ✓"
             />
 

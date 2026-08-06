@@ -308,8 +308,14 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         for (const [vendorId, { vendor, orders: vendorOrders }] of vendorMap) {
             // Determine vendor's preparation status from orders
             const statuses = vendorOrders.map(o => o.status);
+            
+            // Check if all orders from this vendor have been picked up (out_for_delivery or delivered)
+            const allPickedUp = statuses.every(s => s === 'out_for_delivery' || s === 'delivered');
+
             let vendorStatus = 'scheduled';
-            if (statuses.every(s => s === 'ready' || s === 'out_for_delivery')) {
+            if (allPickedUp) {
+                vendorStatus = 'picked'; // All orders collected from vendor
+            } else if (statuses.every(s => s === 'ready' || s === 'out_for_delivery')) {
                 vendorStatus = 'ready';
             } else if (statuses.some(s => s === 'preparing' || s === 'ready')) {
                 vendorStatus = 'preparing';
@@ -322,9 +328,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 || (vendor?.location?.coordinates && vendor.location.coordinates[0])
                 || null;
 
-            // Collection PIN: only reveal when ready
+            // Collection PIN: only reveal when ready (not when already picked)
             let collectionPin = null;
-            if (vendorStatus === 'ready' || vendorStatus === 'out_for_delivery') {
+            if (vendorStatus === 'ready') {
                 // Use the collectionPin stored on first order, or from CollectionBatch
                 const existingBatch = await CollectionBatch.findOne({
                     vendorId: vendor?._id || vendorId,
@@ -333,6 +339,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 }).lean();
                 collectionPin = existingBatch?.collectionPinHash || vendorOrders[0]?.collectionPin || null;
             }
+
+            // Pickup stop status: 'completed' if all orders are picked up, else 'pending'
+            const pickupStopStatus = allPickedUp ? 'completed' : 'pending';
 
             stops.push({
                 stopIndex: stopIdx++,
@@ -345,10 +354,10 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 lng: vendorLng,
                 vendorId,
                 slot: targetSlot,
-                vendorStatus,  // scheduled | preparing | ready
+                vendorStatus,  // scheduled | preparing | ready | picked
                 collectionPin,
                 orderCount: vendorOrders.length,
-                status: 'pending',
+                status: pickupStopStatus,  // 'completed' when all orders picked up
                 isSlotActive
             });
 

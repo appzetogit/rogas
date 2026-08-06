@@ -344,6 +344,7 @@ router.delete('/zones/:id', requirePermission('zoneCityManagement', 'delete'), a
 
 // ----- Orders -----
 router.post('/orders/manual', requirePermission('orderManagement', 'create'), prdAdminController.createManualOrder);
+router.get('/orders/delivered-report', requirePermission('orderManagement', 'view'), orderController.getDeliveredOrdersAdminController);
 router.get('/orders', requirePermission('orderManagement', 'view'), orderController.listOrdersAdminController);
 router.get('/orders/:orderId', requirePermission('orderManagement', 'view'), orderController.getOrderByIdAdminController);
 router.delete('/orders/:orderId', requirePermission('orderManagement', 'delete'), orderController.deleteOrderAdminController);

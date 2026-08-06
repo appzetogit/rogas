@@ -343,6 +343,15 @@ export async function listOrdersAdminController(req, res, next) {
     }
 }
 
+export async function getDeliveredOrdersAdminController(req, res, next) {
+    try {
+        const result = await orderService.getDeliveredOrdersAdmin(req.query);
+        return sendResponse(res, 200, 'Delivered orders retrieved', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function getOrderByIdAdminController(req, res, next) {
     try {
         const orderId = req.params.orderId;
