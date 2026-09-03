@@ -103,7 +103,11 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
 
         // If no active slot, find the next upcoming slot
         if (!activeSlot) {
-            for (const slot of SLOTS) {
+            if (timingSettings?.bypassPrepTimingRestrictions) {
+                activeSlot = 'lunch';
+                slotWindow = { start: '00:00', end: '23:59', startMins: 0, endMins: 1440 };
+            } else {
+                for (const slot of SLOTS) {
                 const cfg = timingSettings[slot];
                 if (!cfg || cfg.isEnabled === false) continue;
                 const start = hhmmToMins(cfg.startTime);
@@ -123,18 +127,19 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 nextSlotWindow = { start: cfg.startTime || '17:00', end: cfg.endTime || '21:00', startMins: start, endMins: end };
             }
             
-            // STRICT SLOT ENFORCEMENT: Do not show future slots if the current slot is not active
-            return res.json({
-                success: true,
-                isSlotActive: false,
-                activeSlot: null,
-                slotWindow: null,
-                nextSlot: nextSlot,
-                nextSlotWindow: nextSlotWindow,
-                stops: [],
-                totalOrders: 0,
-                message: `Next slot: ${nextSlot} starts at ${fmtTime(nextSlotWindow?.startMins)}`
-            });
+                // STRICT SLOT ENFORCEMENT: Do not show future slots if the current slot is not active
+                return res.json({
+                    success: true,
+                    isSlotActive: false,
+                    activeSlot: null,
+                    slotWindow: null,
+                    nextSlot: nextSlot,
+                    nextSlotWindow: nextSlotWindow,
+                    stops: [],
+                    totalOrders: 0,
+                    message: `Next slot: ${nextSlot} starts at ${fmtTime(nextSlotWindow?.startMins)}`
+                });
+            }
         }
 
         const targetSlot = activeSlot;
@@ -467,13 +472,17 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
 
         const allowedSlots = [];
         const SLOTS = ['breakfast', 'lunch', 'dinner'];
-        for (const slot of SLOTS) {
-            const cfg = timingSettings[slot];
-            if (cfg && cfg.isEnabled !== false) {
-                const start = hhmmToMins(cfg.startTime);
-                // If the slot's start time is now or in the past, it's allowed (active or previous)
-                if (start !== null && start <= nowMins) {
-                    allowedSlots.push(slot);
+        if (timingSettings?.bypassPrepTimingRestrictions) {
+            allowedSlots.push(...SLOTS);
+        } else {
+            for (const slot of SLOTS) {
+                const cfg = timingSettings[slot];
+                if (cfg && cfg.isEnabled !== false) {
+                    const start = hhmmToMins(cfg.startTime);
+                    // If the slot's start time is now or in the past, it's allowed (active or previous)
+                    if (start !== null && start <= nowMins) {
+                        allowedSlots.push(slot);
+                    }
                 }
             }
         }
@@ -482,9 +491,12 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         let orders = [];
         let pOrders = []; // Add pantry orders array
 
+        const currentDriverId = (req.user.userId || req.user._id).toString();
+
         for (const candidate of batches) {
-            // STRICT SLOT ENFORCEMENT: Skip future slots
-            if (!allowedSlots.includes(candidate.deliverySlot)) {
+            // STRICT SLOT ENFORCEMENT: Skip future slots UNLESS driver already accepted this batch or testing mode is active
+            const isMyAssignedBatch = candidate.driverId && candidate.driverId.toString() === currentDriverId;
+            if (!isMyAssignedBatch && !allowedSlots.includes(candidate.deliverySlot)) {
                 continue;
             }
 
@@ -948,8 +960,7 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
 
         const io = getIO();
         if (io) {
-            // Notify the vendor that the batch has been accepted and who the driver is
-            io.to(`vendor_${batch.vendorId}`).emit('batch_accepted', {
+            const batchPayload = {
                 batchId: batch.batchId,
                 driver: {
                     _id: driver._id,
@@ -958,11 +969,22 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
                     vehicleNumber: driver.vehicleNumber,
                     profilePhoto: driver.profilePhoto
                 },
-                otp // The vendor can see this OTP or the driver tells the vendor this OTP
-            });
+                driverName: driver.name,
+                driverPhone: driver.phone,
+                driverPhoto: driver.profilePhoto,
+                driverVehicle: driver.vehicleNumber,
+                otp,
+                boxCount: batch.boxCount || batch.orderIds.length,
+                totalOrders: batch.boxCount || batch.orderIds.length,
+                slot: batch.deliverySlot,
+                status: 'driver_assigned'
+            };
 
-            // Optionally, emit a broadcast to clear the modal from other drivers
-            // This might require a specific namespace or a broadcast flag
+            // Notify vendor on both rooms (vendor_${vendorId} and restaurant:${vendorId})
+            io.to(`vendor_${batch.vendorId}`).emit('batch_accepted', batchPayload);
+            io.to(`restaurant:${String(batch.vendorId)}`).emit('batch_accepted', batchPayload);
+
+            // Clear modal from other drivers
             io.emit('remove_delivery_request', { batchId: batch.batchId });
         }
 

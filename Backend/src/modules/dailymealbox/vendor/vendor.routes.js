@@ -1203,13 +1203,23 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
 
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
 
-        // Let's find any batch for this vendor/date/slot
-        let batch = await CollectionBatch.findOne({
-            vendorId,
-            deliveryDate: targetDate,
-            deliverySlot: slot || 'lunch',
-            status: { $in: ['pending', 'driver_assigned', 'collected', 'driver_en_route'] }
-        });
+        // Find batch for this vendor/date/slot, or any active batch for today
+        let batch = null;
+        if (slot) {
+            batch = await CollectionBatch.findOne({
+                vendorId,
+                deliveryDate: targetDate,
+                deliverySlot: slot,
+                status: { $in: ['pending', 'driver_assigned', 'collected', 'driver_en_route'] }
+            });
+        }
+        if (!batch) {
+            batch = await CollectionBatch.findOne({
+                vendorId,
+                deliveryDate: targetDate,
+                status: { $in: ['pending', 'driver_assigned', 'collected', 'driver_en_route'] }
+            }).sort({ createdAt: -1 });
+        }
 
         // Determine boxCount
         let boxCount = 0;
@@ -1220,7 +1230,7 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
             boxCount = await DMBDailyOrder.countDocuments({
                 vendorId,
                 deliveryDate: targetDate,
-                deliverySlot: slot || 'lunch',
+                ...(slot ? { deliverySlot: slot } : {}),
                 status: 'ready'
             });
         }
@@ -1228,69 +1238,10 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
         const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
         let driver = null;
 
+        // ONLY return driver if a driver has actually been assigned to this batch
         if (batch && batch.driverId) {
             driver = await FoodDeliveryPartner.findById(batch.driverId)
                 .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
-        }
-
-        if (!driver) {
-            // No driver assigned to a specific batch yet, look up explicitly assigned driver or fallback to online and approved driver assigned to this vendor's zone
-            const vendor = await FoodRestaurant.findById(vendorId).select('assignedDeliveryPartnerId zoneId serviceZone city location');
-
-            if (vendor && vendor.assignedDeliveryPartnerId) {
-                driver = await FoodDeliveryPartner.findById(vendor.assignedDeliveryPartnerId)
-                    .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
-            }
-
-            if (!driver) {
-                const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
-                const vendorCity = vendor?.city || vendor?.location?.city;
-
-                const driverFilter = {
-                    status: 'approved',
-                };
-
-                const locationConditions = [];
-
-                if (vendorZoneId) {
-                    locationConditions.push({ zoneIds: vendorZoneId });
-                    locationConditions.push({ zoneIds: vendorZoneId.toString() }); // handle ObjectId vs string mismatch
-                    try {
-                        const mongoose = (await import('mongoose')).default;
-                        if (mongoose.Types.ObjectId.isValid(vendorZoneId)) {
-                            locationConditions.push({ zoneIds: new mongoose.Types.ObjectId(vendorZoneId.toString()) });
-                        }
-                    } catch (e) {
-                        // ignore
-                    }
-                }
-
-                if (vendorCity) {
-                    const trimmedCity = vendorCity.trim();
-                    if (trimmedCity) {
-                        locationConditions.push({ city: { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
-                        locationConditions.push({ 'location.city': { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
-                    }
-                }
-
-                if (locationConditions.length > 0) {
-                    driverFilter.$or = locationConditions;
-                }
-
-                let matchedDrivers = await FoodDeliveryPartner.find(driverFilter)
-                    .select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
-
-                if (matchedDrivers.length > 0) {
-                    // Prioritize online driver, otherwise first matched driver
-                    driver = matchedDrivers.find(d => d.availabilityStatus === 'online') || matchedDrivers[0];
-                } else {
-                    // Last-resort fallback: fetch ANY approved driver in the system
-                    let fallbackDrivers = await FoodDeliveryPartner.find({
-                        status: 'approved'
-                    }).select('name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
-                    driver = fallbackDrivers.find(d => d.availabilityStatus === 'online') || fallbackDrivers[0] || null;
-                }
-            }
         }
 
 

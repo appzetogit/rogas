@@ -64,6 +64,11 @@ async function ensureSlotTimings() {
 // ─── Returns true if the order's slot is the currently active delivery window ─
 // Uses dynamic timings from backend (admin-configurable), falls back to defaults
 function isCurrentActiveSlot(order) {
+  // If order is already active, preparing, ready, or out for delivery, ALWAYS show tracking!
+  if (['preparing', 'ready', 'out_for_delivery'].includes(order.status)) {
+    return true;
+  }
+
   const orderDateStr = getUTCFormatDateStr(order.deliveryDate);
   if (orderDateStr !== getISTDateStr(0)) return false; // only today's orders
 
@@ -86,6 +91,7 @@ const CACHE_TTL_MS = 60_000; // 1 minute
 function getCached(type) {
   const entry = _ordersCache[type];
   if (!entry) return null;
+  if (Array.isArray(entry.data) && entry.data.length === 0) return null;
   if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) { _ordersCache[type] = null; return null; }
   return entry.data;
 }
@@ -738,7 +744,14 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   const ratedOrderSet = useMemo(() => new Set(ratedOrders), [ratedOrders]);
   const filteredOrders = useMemo(() => {
     if (isPast) return orders;
-    return orders.filter(o => o.meals?.[0]?.name !== "No meal set");
+    // Only hide "No meal set" for future scheduled orders (daily menu not published yet).
+    // Active orders (preparing, ready, out_for_delivery) must always be shown.
+    const ACTIVE_STATUSES = new Set(['preparing', 'ready', 'out_for_delivery']);
+    return orders.filter(o => {
+      if (ACTIVE_STATUSES.has(o.status)) return true; // always show active orders
+      if (o.meals?.[0]?.mealPlanName || o.meals?.[0]?.photo) return true; // has real meal data
+      return o.meals?.[0]?.name !== "No meal set";
+    });
   }, [orders, isPast]);
 
   // Manage sheet derived values

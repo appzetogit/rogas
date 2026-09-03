@@ -1295,9 +1295,7 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date, page,
         // We do not filter by status or 'type' logic here, return all for the requested date.
     } else {
         if (type === 'upcoming') {
-            const nextDay = new Date(today);
-            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-            filter.deliveryDate = { $gte: today, $lt: nextDay };
+            filter.deliveryDate = { $gte: today };
             filter.status = { $nin: ['delivered', 'failed'] };
         } else {
             filter.$or = [
@@ -1453,6 +1451,12 @@ export const checkAdminTimingWindow = async (slot) => {
     try {
         const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
         const timing = await getVendorTimingSettings();
+
+        // ── Developer / QA Testing Override ──
+        if (timing?.bypassPrepTimingRestrictions === true) {
+            return { allowed: true };
+        }
+
         const slotCfg = timing[slot];
 
         if (!slotCfg) return { allowed: true }; // unknown slot → don't block

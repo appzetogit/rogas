@@ -409,4 +409,14 @@ export const adminSidebarMenu = [
       // { type: "link", label: "Delivery Boy Commission", path: "/admin/food/delivery-boy-commission", icon: "DollarSign" },
     ],
   },
+
+  // ─── DEVELOPER SETTINGS ──────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "DEVELOPER SETTINGS",
+    roles: ["SUPER_ADMIN"],
+    items: [
+      { type: "link", label: "Developer Controls", path: "/admin/food/developer-settings", icon: "Code" },
+    ],
+  },
 ];

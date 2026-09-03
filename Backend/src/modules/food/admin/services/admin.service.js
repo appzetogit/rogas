@@ -6238,7 +6238,8 @@ export async function getVendorTimingSettings() {
         breakfast: doc.breakfast || DEFAULT_TIMING.breakfast,
         lunch:     doc.lunch     || DEFAULT_TIMING.lunch,
         dinner:    doc.dinner    || DEFAULT_TIMING.dinner,
-        mealChangeCutoffTime: doc.mealChangeCutoffTime || '20:00'
+        mealChangeCutoffTime: doc.mealChangeCutoffTime || '20:00',
+        bypassPrepTimingRestrictions: Boolean(doc.bypassPrepTimingRestrictions)
     };
 }
 
@@ -6263,6 +6264,7 @@ export async function upsertVendorTimingSettings(payload) {
         lunch:     sanitizeSlot(payload.lunch,     DEFAULT_TIMING.lunch),
         dinner:    sanitizeSlot(payload.dinner,    DEFAULT_TIMING.dinner),
         mealChangeCutoffTime: isValidTime(payload.mealChangeCutoffTime) ? payload.mealChangeCutoffTime : '20:00',
+        ...(payload.bypassPrepTimingRestrictions !== undefined ? { bypassPrepTimingRestrictions: Boolean(payload.bypassPrepTimingRestrictions) } : {}),
         isActive:  true
     };
 
