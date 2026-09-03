@@ -82,7 +82,7 @@ export default function HomeDashboard({
       try {
         const todayStr = new Date().toISOString().split('T')[0];
         const res = await dmbVendorAPI.getAssignedDriver(todayStr, getCurrentSlot());
-        if (res.data?.success) {
+        if (res.data?.success && res.data.batchId) {
           // Normalize to match what socket event expects
           setLocalBatch({
             batchId: res.data.batchId,
@@ -95,6 +95,8 @@ export default function HomeDashboard({
             status: res.data.batchStatus || null,
             slot: res.data.slot || getCurrentSlot()
           });
+        } else {
+          setLocalBatch(null);
         }
       } catch (err) {
         // Ignore, probably no active batch

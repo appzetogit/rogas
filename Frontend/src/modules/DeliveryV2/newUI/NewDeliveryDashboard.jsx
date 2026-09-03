@@ -324,12 +324,12 @@ function NewDeliveryDashboard({ children }) {
 
   const handleNextRouteStep = () => {
     setBackScreen("route");
-    if (activeOrder?.status === "ready_for_pickup") {
-      setCurrentScreen("pickup");
-    } else if (activeOrder?.status === "picked_up") {
+    const isPickedUp = activeOrder?.status === "picked_up" || activeOrder?.status === "out_for_delivery";
+    if (isPickedUp) {
       setCurrentScreen("delivery");
     } else {
-      setCurrentScreen("route");
+      // Navigate to pickup at the kitchen where live Google Map and PIN verification are displayed
+      setCurrentScreen("pickup");
     }
   };
 

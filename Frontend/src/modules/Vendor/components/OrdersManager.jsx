@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dmbVendorAPI } from '../../../services/api/index';
-import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Sun, CloudSun, Moon, Clock } from 'lucide-react';
+import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Sun, CloudSun, Moon, Clock, Zap } from 'lucide-react';
 
 const SLOT_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 const SLOT_EMOJI = { breakfast: '', lunch: '', dinner: '' };
@@ -164,6 +164,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   };
 
   const isWithinPrepWindow = (slot, date = now) => {
+    if (timingConfig?.bypassPrepTimingRestrictions) return true;
     const win = getWindowForSlot(slot);
     if (!win) return true; // no config → always allowed
     const cur = date.getHours() * 60 + date.getMinutes();
@@ -331,6 +332,14 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
           {/* Timing Window Banner */}
           {(() => {
+            if (timingConfig?.bypassPrepTimingRestrictions) {
+              return (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold border bg-purple-50 border-purple-200 text-purple-700 transition-all">
+                  <Zap className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span>Testing Mode: Preparation allowed anytime (restrictions bypassed)</span>
+                </div>
+              );
+            }
             const win = getWindowLabel(activeSlot);
             const allowed = isWithinPrepWindow(activeSlot);
             const slotLabel = SLOT_LABEL[activeSlot] || activeSlot;

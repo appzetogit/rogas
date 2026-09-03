@@ -94,6 +94,19 @@ const RouteView = ({
         }
     };
 
+    const targetLat = currentStop?.type === 'P' ? (currentStop?.vendorLat || routeMetadata?.vendorLocation?.latitude) : currentStop?.customerLat;
+    const targetLng = currentStop?.type === 'P' ? (currentStop?.vendorLng || routeMetadata?.vendorLocation?.longitude) : currentStop?.customerLng;
+
+    const handleOpenGoogleMaps = (e) => {
+        e.stopPropagation();
+        if (targetLat && targetLng) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}`, '_blank');
+        } else {
+            const query = encodeURIComponent(`${currentStop?.name || ''} ${currentStop?.address || ''}`);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }
+    };
+
     return (
         <div className="space-y-4 pb-12 animate-fadeIn text-left">
             {/* Route Info Bento Grid */}
@@ -172,19 +185,33 @@ const RouteView = ({
                         </div>
                     </div>
 
-                    {/* Map Preview Placeholder Block */}
-                    <div className="w-full h-32 rounded-xl bg-gray-200 overflow-hidden mb-4 relative border border-gray-100">
+                    {/* Map Preview Block with Directions Button */}
+                    <div 
+                        onClick={onNextStep}
+                        className="w-full h-36 rounded-xl bg-gray-900 overflow-hidden mb-4 relative border border-gray-100 cursor-pointer group shadow-inner"
+                    >
                         <img
                             alt="Street map routing overview"
-                            className="w-full h-full object-cover grayscale opacity-85"
+                            className="w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-300"
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFm1z0cbR-ro9wKCDpsH-rTQEMEvlGTuFF_BrTJyJ1vmPINaDOpNQIQihBzUifn80AYEyCHxwrVs8mS6KLosE-UDl2l-Gv5swaLKKvnvMRupEUCC8DlTTBJ5CFd1ysVjdPjOlNcja4KWSnWqkw_EBf-Xm98mJq_7vrenDvZoMAIBgHR7uD6vutPIZg3XA0hkTdCnXZNPekeI3s049OdjI7fkhcVIwJ-SC5gTtmo2oS2QGxRUsIL8BXhGUNK-4bOLGehKu9X2nITAAq"
                             referrerPolicy="no-referrer"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                        <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
-                            ETA 4 mins • 1.2 miles away
+                        <div className="absolute bottom-2.5 left-3 flex items-center gap-2">
+                            <span className="bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                                📍 {currentStop?.name || 'Current Stop'}
+                            </span>
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={handleOpenGoogleMaps}
+                            className="absolute bottom-2.5 right-3 bg-[#1F7A63] hover:bg-[#175d4b] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 active:scale-95 transition-all"
+                        >
+                            <Navigation className="w-3.5 h-3.5" />
+                            Navigate
+                        </button>
                     </div>
 
                     {/* Accept Slide Gesture vs Next Target */}
@@ -213,7 +240,7 @@ const RouteView = ({
                             {/* Slider Handle */}
                             <div
                                 onMouseDown={handleTouchStart}
-                                onTouchStart={handleTouchStart}
+                                touchStart={handleTouchStart}
                                 className="absolute left-1 w-11 h-11 bg-[#1F7A63] text-white rounded-lg flex items-center justify-center cursor-ew-resize hover:bg-[#1F7A63]/90 transition-transform active:scale-95 shadow-md flex-shrink-0 z-10"
                                 style={{ transform: `translateX(${sliderPosition}px)` }}
                             >
@@ -225,15 +252,7 @@ const RouteView = ({
                             onClick={onNextStep}
                             className="w-full h-[52px] bg-[#1F7A63] text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#1F7A63]/90 shadow-md shadow-[#1F7A63]/10"
                         >
-                            {isAccepted && justAccepted ? (
-                                <>
-                                    ACCEPTED <Check className="w-5 h-5 stroke-[3]" />
-                                </>
-                            ) : (
-                                <>
-                                    START CURRENT STEP <ArrowRight className="w-5 h-5" />
-                                </>
-                            )}
+                            START PICKUP STEP <ArrowRight className="w-5 h-5" />
                         </button>
                     )}
                 </div>

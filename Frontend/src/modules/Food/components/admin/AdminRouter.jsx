@@ -160,6 +160,7 @@ const OfficePayments  = lazy(() => import("@food/pages/admin/office/OfficePaymen
 const AdminDeliveryService = lazy(() => import("@food/pages/admin/service-management/AdminDeliveryService"));
 const AdminVendorService = lazy(() => import("@food/pages/admin/service-management/AdminVendorService"));
 const AdminCustomerService = lazy(() => import("@food/pages/admin/service-management/AdminCustomerService"));
+const DeveloperSettingsPage = lazy(() => import("@food/pages/admin/DeveloperSettingsPage"));
 
 export default function AdminRouter() {
   return (
@@ -377,6 +378,8 @@ export default function AdminRouter() {
             <Route path="service/delivery" element={<AdminDeliveryService />} />
             <Route path="service/vendor" element={<AdminVendorService />} />
             <Route path="service/customer" element={<AdminCustomerService />} />
+            {/* DEVELOPER SETTINGS */}
+            <Route path="developer-settings" element={<DeveloperSettingsPage />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}
