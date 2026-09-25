@@ -4,6 +4,7 @@ import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/aut
 import { getCompanyDetailsApi } from '../services/officeApi';
 import { Utensils, Mail, Lock, RefreshCw, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
 export default function LoginPage() {
   const { t } = useTranslation("office");
@@ -123,7 +124,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9F8] flex items-center justify-center p-4 sm:p-8 font-sans">
+    <div className="relative min-h-screen bg-[#F8F9F8] flex items-center justify-center p-4 sm:p-8 font-sans">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher selectClassName="rounded-lg border border-gray-300 bg-white/90 px-2 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer" />
+      </div>
       <div className="w-full max-w-[1000px] bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row">
         
         {/* Left Side: Branding */}

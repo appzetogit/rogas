@@ -10,6 +10,7 @@ import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
 const mapContainerStyle = {
   width: '100%',
@@ -971,6 +972,16 @@ export default function ProfileSettings({
           </div>
 
           <div className="space-y-5">
+            <div>
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Language")}</h3>
+              <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🌐</span>
+                  <span className="font-bold text-[13px]">{tr("App language")}</span>
+                </div>
+                <LanguageSwitcher selectClassName="rounded-lg border border-outline-variant/40 bg-white px-2 py-1.5 text-xs font-semibold text-on-surface focus:outline-none cursor-pointer" />
+              </div>
+            </div>
             {/* Kitchen Management Links Lists block */}
             <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Kitchen")}</h3>

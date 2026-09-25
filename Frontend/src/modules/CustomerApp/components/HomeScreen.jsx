@@ -167,7 +167,7 @@ export function HomeScreen({
 
     const handleDailyMenuUpdated = (data) => {
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.(`📢 Tomorrow's meal updated to: "${data.dishName}"!`);
+      onShowNotificationToast?.(t("📢 Tomorrow's meal updated to: \"{{dishName}}\"!", { dishName: data.dishName }));
     };
 
     socket.on("order_status_updated", handleStatusUpdate);
@@ -193,14 +193,14 @@ export function HomeScreen({
     try {
       await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
+      onShowNotificationToast?.(t("✅ Order skipped. Credit will be added to your wallet."));
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to skip order");
+      onShowNotificationToast?.(err.response?.data?.message || t("Failed to skip order"));
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, loadTodayMeals, onShowNotificationToast, closeManage]);
+  }, [manageOrder, loadTodayMeals, onShowNotificationToast, closeManage, t]);
 
   const handleUndoSkip = useCallback(async (meal) => {
     if (!meal) return;
@@ -208,13 +208,13 @@ export function HomeScreen({
     try {
       await dmbCustomerAPI.undoSkipDailyOrder(meal._id);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.("✅ Order skip undone. Meal restored.");
+      onShowNotificationToast?.(t("✅ Order skip undone. Meal restored."));
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to undo skip");
+      onShowNotificationToast?.(err.response?.data?.message || t("Failed to undo skip"));
     } finally {
       setLoadingAction(false);
     }
-  }, [loadTodayMeals, onShowNotificationToast]);
+  }, [loadTodayMeals, onShowNotificationToast, t]);
 
   const handlePause = useCallback(async () => {
     if (!manageOrder) return;
@@ -231,7 +231,7 @@ export function HomeScreen({
       );
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
+      onShowNotificationToast?.(err.response?.data?.message || t("Failed to pause subscription"));
     } finally {
       setLoadingAction(false);
     }
@@ -256,14 +256,14 @@ export function HomeScreen({
     try {
       await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.("✅ Meal updated for this delivery!");
+      onShowNotificationToast?.(t("✅ Meal updated for this delivery!"));
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
+      onShowNotificationToast?.(err.response?.data?.message || t("Failed to change meal"));
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, selectedMealIds, loadTodayMeals, onShowNotificationToast, closeManage]);
+  }, [manageOrder, selectedMealIds, loadTodayMeals, onShowNotificationToast, closeManage, t]);
 
   const toggleMealSelection = useCallback((id) => {
     setSelectedMealIds([id]);

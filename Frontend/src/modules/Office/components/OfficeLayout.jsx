@@ -20,6 +20,7 @@ import {
 } from '../services/officeApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
 export default function App() {
   const { t } = useTranslation("office");
@@ -326,6 +327,7 @@ export default function App() {
 
           {/* Quick global widgets */}
           <div className="flex items-center gap-4">
+            <LanguageSwitcher selectClassName="rounded-lg border border-brand-divider bg-transparent px-2 py-1 text-xs font-semibold text-brand-muted focus:outline-none cursor-pointer" />
             <button
               onClick={handleTriggerNotificationAlert}
               className="p-2 text-brand-muted hover:bg-brand-bg rounded-full transition-colors cursor-pointer relative"

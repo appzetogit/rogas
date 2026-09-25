@@ -14,11 +14,11 @@ const STATUS_CONFIG = {
 };
 
 const REASONS = [
-  'Food quality issue',
-  'Late delivery',
-  'Missing item',
-  'Wrong order',
-  'Other',
+  tKey('Food quality issue'),
+  tKey('Late delivery'),
+  tKey('Missing item'),
+  tKey('Wrong order'),
+  tKey('Other'),
 ];
 
 export default function CustomerServicePage() {
@@ -147,7 +147,7 @@ export default function CustomerServicePage() {
                         : 'bg-white text-slate-700 border-slate-200 hover:border-[#1F7A63]/50'
                     }`}
                   >
-                    {r}
+                    {t(r)}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Camera, AlertTriangle, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 const CannotDeliverReport = ({
   order,
   onGoBack,
@@ -8,10 +9,10 @@ const CannotDeliverReport = ({
 }) => {
   const { t } = useTranslation("driver");
   const reasons = [
-    "No one home",
-    "Wrong address",
-    "Customer refused",
-    "Access issues (Gated/Code)"
+    tKey("No one home"),
+    tKey("Wrong address"),
+    tKey("Customer refused"),
+    tKey("Access issues (Gated/Code)")
   ];
   const disposals = [
     { id: "HOLDING", label: t("Holding"), desc: t("Keep in carrier van") },
@@ -83,7 +84,7 @@ const CannotDeliverReport = ({
     key={reason}
     className="flex items-center justify-between w-full p-4 cursor-pointer hover:bg-gray-50 transition-colors select-none"
   >
-              <span className="text-sm font-bold text-gray-900">{reason}</span>
+              <span className="text-sm font-bold text-gray-900">{t(reason)}</span>
               <input
     type="radio"
     name="fail_reason"

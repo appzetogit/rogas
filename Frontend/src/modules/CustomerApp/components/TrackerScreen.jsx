@@ -24,7 +24,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
         if (data.status) {
           setOrderStatus(data.status);
           if (data.status === "delivered") {
-            onShowNotificationToast?.("🎉 Order has been delivered!");
+            onShowNotificationToast?.(t("🎉 Order has been delivered!"));
           }
         }
       }

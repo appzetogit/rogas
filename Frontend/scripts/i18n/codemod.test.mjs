@@ -222,3 +222,11 @@ test('validation messages, message variables and label helpers are translated; c
   assert.ok(res.report.some((r) => r.kind === 'compared' && r.text === 'Done'));
   assert.match(res.code, /const \{ t \} = useTranslation/);
 });
+
+test('optional-call toasts (onShowToast?.("...")) are translated too', () => {
+  const res = run(`const A = ({ onShowToast }) => {
+  const go = () => { onShowToast?.("Order skipped"); onShowToast?.(err.message || "Failed to skip order"); };
+  return <button onClick={go}>Go</button>;
+};`);
+  assert.deepEqual(keysOf(res).sort(), ['Failed to skip order', 'Go', 'Order skipped']);
+});

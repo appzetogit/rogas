@@ -231,7 +231,7 @@ const EarningsView = ({ stats }) => {
               <Trans t={t} i18nKey={"Pocket Balance: <0>{{pocketBalance}} PLN</0>"} defaults={"Pocket Balance: <0>{{pocketBalance}} PLN</0>"} values={{ pocketBalance: walletData?.pocketBalance?.toFixed(2) || "0.00" }} components={[<span 
                 className="font-bold text-[#00604c] cursor-pointer hover:underline"
                 onClick={() => setWithdrawAmount(String(walletData?.pocketBalance || 0))}
-                title="Click to fill full balance" />]} />
+                title={t("Click to fill full balance")} />]} />
             </p>
           </div>
           <span className="text-[10px] font-bold text-[#3e4945] bg-[#ebefeb] px-2.5 py-1 rounded-lg">

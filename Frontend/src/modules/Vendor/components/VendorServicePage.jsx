@@ -15,12 +15,12 @@ const STATUS_CONFIG = {
 };
 
 const REASONS = [
-  'Kitchen maintenance',
-  'Ingredient shortage',
-  'Staff unavailability',
-  'Equipment issue',
-  'Personal emergency',
-  'Other',
+  tKey('Kitchen maintenance'),
+  tKey('Ingredient shortage'),
+  tKey('Staff unavailability'),
+  tKey('Equipment issue'),
+  tKey('Personal emergency'),
+  tKey('Other'),
 ];
 
 export default function VendorServicePage() {
@@ -159,7 +159,7 @@ export default function VendorServicePage() {
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {r}
+                    {t(r)}
                   </button>
                 ))}
               </div>

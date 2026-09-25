@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, Check } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
 export function VendorWelcomeScreen() {
   const { t } = useTranslation("vendor");
@@ -9,7 +10,10 @@ export function VendorWelcomeScreen() {
   const logoUrl = localStorage.getItem('restaurant_app_logo');
 
   return (
-    <div className="bg-primary-container text-on-primary min-h-screen flex flex-col items-center justify-between overflow-hidden">
+    <div className="relative bg-primary-container text-on-primary min-h-screen flex flex-col items-center justify-between overflow-hidden">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher selectClassName="rounded-lg border border-gray-300 bg-white/90 px-2 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer" />
+      </div>
       {/* Status Bar Area (Simulated) */}
 
       {/* Main Content Container */}

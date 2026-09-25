@@ -5,6 +5,7 @@ import CountrySelector from "../../../shared/components/CountrySelector";
 import { ArrowLeft, Utensils, ShieldCheck, Lock, Leaf, Mail, ArrowRight } from 'lucide-react';
 import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
 export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
   const { t } = useTranslation("customer");
@@ -28,6 +29,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
     <div className="min-h-screen flex flex-col bg-[#F9F9F9] text-on-surface">
       <header className="px-5 h-14 flex items-center">
         <ArrowLeft className="text-primary cursor-pointer active:scale-95" onClick={onBack} />
+        <LanguageSwitcher className="ml-auto" selectClassName="rounded-lg border border-gray-300 bg-white/90 px-2 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer" />
       </header>
 
       <main className="px-5 flex-1 flex flex-col pb-6">
@@ -149,6 +151,7 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
     <div className="min-h-screen flex flex-col bg-[#F9F9F9] text-on-surface">
       <header className="px-5 h-14 flex items-center">
         <ArrowLeft className="text-primary cursor-pointer active:scale-95" onClick={onBack} />
+        <LanguageSwitcher className="ml-auto" selectClassName="rounded-lg border border-gray-300 bg-white/90 px-2 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer" />
       </header>
 
       <main className="px-5 flex-1 flex flex-col items-center pt-8">

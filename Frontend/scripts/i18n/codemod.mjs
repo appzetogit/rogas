@@ -632,12 +632,12 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
       }
     },
 
-    CallExpression(p) {
+    'CallExpression|OptionalCallExpression'(p) {
       if (isConsumed(p.node)) { p.skip(); return; }
       const callee = p.node.callee;
       let name = null;
       if (callee.type === 'Identifier') name = callee.name;
-      else if (callee.type === 'MemberExpression' && callee.object.type === 'Identifier') {
+      else if (['MemberExpression', 'OptionalMemberExpression'].includes(callee.type) && callee.object.type === 'Identifier') {
         if (callee.object.name === 'toast' && callee.property.type === 'Identifier' && TOAST_METHODS.has(callee.property.name)) name = 'toast.*';
         if (callee.object.name === 'window' && callee.property.type === 'Identifier' && ['alert', 'confirm'].includes(callee.property.name)) name = 'alert';
       }

@@ -490,7 +490,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     patchCache("upcoming", patch);
     patchCache("past", patch);
     const label = tr(STATUS_CONFIG[data.status]?.label || data.status);
-    onShowNotificationToast?.(`🔔 Order ${data.orderId} → ${label}`);
+    onShowNotificationToast?.(tr("🔔 Order {{orderId}} → {{label}}", { orderId: data.orderId, label }));
   };
 
   handleDailyMenuRef.current = () => {
@@ -533,14 +533,14 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       setOrders(prev => patch(prev));
       const key = activeTabRef.current === "Upcoming" ? "upcoming" : "past";
       patchCache(key, patch);
-      onShowNotificationToast?.("✅ Order skipped. Credit will be added to your wallet.");
+      onShowNotificationToast?.(tr("✅ Order skipped. Credit will be added to your wallet."));
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to skip order");
+      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to skip order"));
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, onShowNotificationToast, closeManage]);
+  }, [manageOrder, onShowNotificationToast, closeManage, tr]);
 
   const handlePause = useCallback(async () => {
     if (!manageOrder) return;
@@ -555,7 +555,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       loadOrders(activeTabRef.current, activeSectionRef.current, { bustCache: true });
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to pause subscription");
+      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to pause subscription"));
     } finally {
       setLoadingAction(false);
     }
@@ -576,15 +576,15 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     setLoadingAction(true);
     try {
       await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
-      onShowNotificationToast?.("✅ Meal updated for this delivery!");
+      onShowNotificationToast?.(tr("✅ Meal updated for this delivery!"));
       loadOrders(activeTabRef.current, { bustCache: true });
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to change meal");
+      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to change meal"));
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, selectedMealIds, loadOrders, onShowNotificationToast, closeManage]);
+  }, [manageOrder, selectedMealIds, loadOrders, onShowNotificationToast, closeManage, tr]);
 
   const toggleMealSelection = useCallback((id) => {
     setSelectedMealIds([id]);
@@ -620,13 +620,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     const { order, rating, comment } = ratingModal;
     if (!order) return;
     if (rating < 1 || rating > 5) {
-      onShowNotificationToast?.("Please select a rating between 1 and 5 stars");
+      onShowNotificationToast?.(tr("Please select a rating between 1 and 5 stars"));
       return;
     }
     setRatingModal(prev => ({ ...prev, loading: true }));
     try {
       await dmbCustomerAPI.rateOrder(order._id, { rating, comment });
-      onShowNotificationToast?.("Rating submitted successfully!");
+      onShowNotificationToast?.(tr("Rating submitted successfully!"));
       const patch = (list) =>
         list.map(o =>
           o._id === order._id
@@ -637,7 +637,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       patchCache("past", patch);
       setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false });
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to submit rating");
+      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to submit rating"));
       setRatingModal(prev => ({ ...prev, loading: false }));
     }
   };
@@ -647,7 +647,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     if (!order) return;
     const numAmount = Number(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      onShowNotificationToast?.("Please enter a valid tip amount");
+      onShowNotificationToast?.(tr("Please enter a valid tip amount"));
       return;
     }
     setTipModal(prev => ({ ...prev, loading: true }));
@@ -657,7 +657,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
         const rpOpts = res.data.razorpay;
 
         if (rpOpts.key === "rzp_test_dummy" || rpOpts.order_id.startsWith("rzp_tip_dev_")) {
-          onShowNotificationToast?.("Demo mode: Simulating payment...");
+          onShowNotificationToast?.(tr("Demo mode: Simulating payment..."));
           setTimeout(async () => {
             try {
               const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
@@ -666,7 +666,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 razorpay_signature: `rzp_sig_dev_${Math.random().toString(36).substr(2, 9)}`
               });
               if (verifyRes.data?.success) {
-                onShowNotificationToast?.("Tip payment simulated successfully!");
+                onShowNotificationToast?.(tr("Tip payment simulated successfully!"));
                 const patch = (list) =>
                   list.map(o =>
                     o._id === order._id
@@ -677,11 +677,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 patchCache("past", patch);
                 setTipModal({ show: false, order: null, amount: "", loading: false });
               } else {
-                onShowNotificationToast?.("Failed to verify simulated tip");
+                onShowNotificationToast?.(tr("Failed to verify simulated tip"));
                 setTipModal(prev => ({ ...prev, loading: false }));
               }
             } catch (err) {
-              onShowNotificationToast?.(err.response?.data?.message || "Simulation failed");
+              onShowNotificationToast?.(err.response?.data?.message || tr("Simulation failed"));
               setTipModal(prev => ({ ...prev, loading: false }));
             }
           }, 1500);
@@ -703,7 +703,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 razorpay_signature: response.razorpay_signature
               });
               if (verifyRes.data?.success) {
-                onShowNotificationToast?.("Tip payment verified and credited!");
+                onShowNotificationToast?.(tr("Tip payment verified and credited!"));
                 const patch = (list) =>
                   list.map(o =>
                     o._id === order._id
@@ -714,11 +714,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 patchCache("past", patch);
                 setTipModal({ show: false, order: null, amount: "", loading: false });
               } else {
-                onShowNotificationToast?.("Failed to verify tip payment signature");
+                onShowNotificationToast?.(tr("Failed to verify tip payment signature"));
                 setTipModal(prev => ({ ...prev, loading: false }));
               }
             } catch (err) {
-              onShowNotificationToast?.(err.response?.data?.message || "Verification failed");
+              onShowNotificationToast?.(err.response?.data?.message || tr("Verification failed"));
               setTipModal(prev => ({ ...prev, loading: false }));
             }
           },
@@ -727,18 +727,18 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
             setTipModal(prev => ({ ...prev, loading: false }));
           },
           onClose: function () {
-            onShowNotificationToast?.("Payment modal closed");
+            onShowNotificationToast?.(tr("Payment modal closed"));
             setTipModal(prev => ({ ...prev, loading: false }));
           }
         };
 
         await initRazorpayPayment(checkoutOptions);
       } else {
-        onShowNotificationToast?.("Failed to create tip order");
+        onShowNotificationToast?.(tr("Failed to create tip order"));
         setTipModal(prev => ({ ...prev, loading: false }));
       }
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || "Failed to initialize tip payment");
+      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to initialize tip payment"));
       setTipModal(prev => ({ ...prev, loading: false }));
     }
   };

@@ -114,14 +114,15 @@ export function keysInBackend() {
       if (e.isDirectory()) { if (e.name !== 'node_modules') stack.push(f); continue; }
       if (!/\.js$/.test(e.name) || /modules[\\/]i18n[\\/]/.test(f)) continue;
       const code = fs.readFileSync(f, 'utf8');
-      if (!/\bmsg\(|\bpushText\(/.test(code)) continue;
+      if (!/\bmsg\(|\bpushText\(|\btranslateFor\(/.test(code)) continue;
       let ast;
       try { ast = parse(code, { sourceType: 'module', plugins: ['optionalChaining', 'dynamicImport', 'topLevelAwait'] }); } catch { continue; }
       traverse(ast, {
         CallExpression(p) {
           const c = p.node.callee;
-          if (c.type !== 'Identifier' || !['msg', 'pushText'].includes(c.name)) return;
-          const a = p.node.arguments[0];
+          if (c.type !== 'Identifier' || !['msg', 'pushText', 'translateFor'].includes(c.name)) return;
+          // msg(key, vars) / pushText(key) take the key first; translateFor(role, id, key, vars) takes it third.
+          const a = p.node.arguments[c.name === 'translateFor' ? 2 : 0];
           const key = a?.type === 'StringLiteral' ? a.value : a?.type === 'TemplateLiteral' && a.expressions.length === 0 ? a.quasis[0].value.cooked : null;
           if (key === null) problems.push(`non-literal ${c.name}() at ${toPosix(path.relative(BACKEND, f))}:${p.node.loc.start.line}`);
           else out.push({ key, ns: 'notifications' });

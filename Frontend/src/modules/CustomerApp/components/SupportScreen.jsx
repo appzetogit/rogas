@@ -3,14 +3,15 @@ import { useSearchParams } from "react-router-dom";
 import { userAPI, uploadAPI } from "@food/api";
 import { X, Loader2, Camera, MessageCircle, ArrowLeft } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 const ISSUE_TYPES = [
-  "Delivery Delay",
-  "Missing / Wrong Items",
-  "Food Quality Issue",
-  "Payment / Billing Issue",
-  "App Bug / Tech Support",
-  "Other"
+  tKey("Delivery Delay"),
+  tKey("Missing / Wrong Items"),
+  tKey("Food Quality Issue"),
+  tKey("Payment / Billing Issue"),
+  tKey("App Bug / Tech Support"),
+  tKey("Other")
 ];
 
 export function SupportScreen({ onGoBack, onShowNotificationToast }) {
@@ -220,7 +221,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                 >
                   <option value="">{tr("Select Issue Category")}</option>
                   {ISSUE_TYPES.map((it) => (
-                    <option key={it} value={it}>{it}</option>
+                    <option key={it} value={it}>{tr(it)}</option>
                   ))}
                 </select>
               </div>

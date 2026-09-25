@@ -15,11 +15,11 @@ const STATUS_CONFIG = {
 };
 
 const REASONS = [
-  'Vehicle breakdown',
-  'Personal emergency',
-  'Health issue',
-  'Traffic block/accident',
-  'Other',
+  tKey('Vehicle breakdown'),
+  tKey('Personal emergency'),
+  tKey('Health issue'),
+  tKey('Traffic block/accident'),
+  tKey('Other'),
 ];
 
 export default function DeliveryServicePage() {
@@ -155,7 +155,7 @@ export default function DeliveryServicePage() {
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {r}
+                    {t(r)}
                   </button>
                 ))}
               </div>
