@@ -8,7 +8,8 @@ import { setAuthData } from "@food/utils/auth"
 import logoNew from "@food/assets/logo.png"
 import { SUPPORTED_COUNTRIES } from "@/config/countries"
 import CountrySelector from "@/shared/components/CountrySelector"
-import { useTranslation } from "@/contexts/LanguageContext"
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 
 export default function UnifiedOTPFastLogin() {
-  const { t, changeLanguage } = useTranslation()
+  const { t } = useTranslation("common")
   const RESEND_COOLDOWN_SECONDS = 60
   const matchCountryFromPhone = (phone) => {
     if (!phone) return SUPPORTED_COUNTRIES[0];
@@ -322,20 +323,12 @@ export default function UnifiedOTPFastLogin() {
 
       {/* Main Content */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
-        <select
-          value={localStorage.getItem("app_lang") || "en"}
-          onChange={(e) => changeLanguage(e.target.value)}
-          className="bg-transparent border border-gray-300 dark:border-gray-700 text-gray-500 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer"
-        >
-          <option value="en">English</option>
-          <option value="pl">Polski</option>
-          <option value="hi">हिन्दी</option>
-        </select>
+        <LanguageSwitcher selectClassName="bg-transparent border border-gray-300 dark:border-gray-700 text-gray-500 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer" />
 
         <Link to="/user/auth/support">
           <Button variant="ghost" className="text-gray-400 hover:text-primary font-medium flex items-center gap-1.5 text-sm">
             <Info className="w-5 h-5" />
-            <span className="hidden sm:inline">{t("help")}</span>
+            <span className="hidden sm:inline">{t("Help")}</span>
           </Button>
         </Link>
       </div>
@@ -367,12 +360,12 @@ export default function UnifiedOTPFastLogin() {
               {step === 1 ? (
                 <>Delicious food<br />Delivered fast <span className="inline-block hover:scale-110 transition-transform cursor-pointer">🍕</span></>
               ) : (
-                t("verify_otp")
+                t("Verify OTP")
               )}
             </h1>
             <p className="text-[#8D6E63] dark:text-gray-400 font-medium text-[15px]">
               {step === 1
-                ? t("login_phone_subtitle")
+                ? t("Login with your mobile number")
                 : `We've sent a code to ${selectedCountry.code} ${phoneNumber}`}
             </p>
           </motion.div>
@@ -423,7 +416,7 @@ export default function UnifiedOTPFastLogin() {
                   {loading ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
-                    t("send_otp")
+                    t("Send OTP")
                   )}
                 </button>
               </motion.form>
@@ -484,7 +477,7 @@ export default function UnifiedOTPFastLogin() {
                         onClick={handleResendOTP}
                         className="text-primary hover:underline"
                       >
-                        {t("resend_otp")}
+                        {t("Didn't receive code? Resend")}
                       </button>
                     )}
                   </div>
@@ -494,7 +487,7 @@ export default function UnifiedOTPFastLogin() {
                     onClick={handleEditNumber}
                     className="text-xs text-gray-400 hover:text-primary transition-colors"
                   >
-                    {t("edit_phone")}
+                    {t("Edit phone number")}
                   </button>
                 </div>
 
@@ -503,7 +496,7 @@ export default function UnifiedOTPFastLogin() {
                   disabled={loading || otp.length < 6}
                   className="w-full h-[56px] mt-4 rounded-full bg-gradient-to-r from-[#FF5252] to-[#E53935] text-white font-bold text-lg shadow-[0_10px_25px_rgba(229,57,53,0.4)] hover:shadow-[0_15px_35px_rgba(229,57,53,0.5)] hover:-translate-y-0.5 transition-all active:scale-[0.98] flex items-center justify-center disabled:opacity-70 disabled:hover:translate-y-0"
                 >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : t("verify_continue")}
+                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : t("Verify & Continue")}
                 </button>
               </motion.form>
             )}

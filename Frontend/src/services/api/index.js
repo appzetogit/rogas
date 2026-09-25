@@ -647,6 +647,16 @@ export const adminAPI = {
   createDeliverySlot: (body) => adminClient.post("/food/admin/delivery-slots", body ?? {}),
   updateDeliverySlot: (id, body) => adminClient.put(`/food/admin/delivery-slots/${String(id)}`, body ?? {}),
   deleteDeliverySlot: (id) => adminClient.delete(`/food/admin/delivery-slots/${String(id)}`),
+
+  /** Languages & translations (admin) */
+  getLanguages: () => adminClient.get("/food/admin/i18n/languages"),
+  createLanguage: (body) => adminClient.post("/food/admin/i18n/languages", body ?? {}),
+  updateLanguage: (id, body) => adminClient.put(`/food/admin/i18n/languages/${String(id)}`, body ?? {}),
+  deleteLanguage: (id) => adminClient.delete(`/food/admin/i18n/languages/${String(id)}`),
+  getTranslations: (params = {}) => adminClient.get("/food/admin/i18n/translations", { params }),
+  saveTranslation: (body) => adminClient.put("/food/admin/i18n/translations", body ?? {}),
+  importTranslations: (body) => adminClient.post("/food/admin/i18n/translations/import", body ?? {}),
+  exportTranslations: (params = {}) => adminClient.get("/food/admin/i18n/translations/export", { params }),
 };
 
 /** Public delivery slots (customer / vendor / driver apps) */

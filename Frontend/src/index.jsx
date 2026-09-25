@@ -1,6 +1,7 @@
 
 import { createRoot } from 'react-dom/client'
 import { Toaster, toast } from 'sonner'
+import './shared/i18n'
 import App from './app/App.jsx'
 import { isModuleAuthenticated } from './modules/Food/utils/auth.js'
 import './shared/styles/global.css'

@@ -369,6 +369,8 @@ export const adminSidebarMenu = [
     items: [
       // { type: "link", label: "OTA Config & Theme", path: "/admin/food/ota-config", icon: "Palette" },
       // { type: "link", label: "Email Templates", path: "/admin/food/email-template", icon: "Mail" },
+      { type: "link", label: "Languages", path: "/admin/food/languages", icon: "Globe" },
+      { type: "link", label: "Translations", path: "/admin/food/translations", icon: "FileText" },
       { type: "link", label: "About Us", path: "/admin/food/pages-social-media/about", icon: "Globe" },
       { type: "link", label: "Terms & Conditions", path: "/admin/food/pages-social-media/terms", icon: "FileText" },
       { type: "link", label: "Privacy Policy", path: "/admin/food/pages-social-media/privacy", icon: "Lock" },

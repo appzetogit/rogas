@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2, Calendar, Repeat } from "lucide-react";
 import { deliveryAPI } from "@food/api";
-import { useTranslation } from "../../../contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 
 const ProfileView = ({
   stats,
@@ -10,7 +11,7 @@ const ProfileView = ({
   onLogout
 }) => {
   const navigate = useNavigate();
-  const { lang, changeLanguage, t } = useTranslation();
+  const { t } = useTranslation("driver");
   const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -545,18 +546,10 @@ const ProfileView = ({
           <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 group">
             <div className="flex items-center gap-3">
               <Globe className="w-4.5 h-4.5 text-[#5d5f5b]" />
-              <p className="text-xs font-bold text-gray-900">{t("change_lang", "Language")}</p>
+              <p className="text-xs font-bold text-gray-900">{t("Change Language")}</p>
             </div>
             <div className="flex items-center gap-2">
-              <select
-                value={lang}
-                onChange={(e) => changeLanguage(e.target.value)}
-                className="bg-transparent border border-gray-300 dark:border-gray-700 text-xs font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer text-[#5d5f5b]"
-              >
-                <option value="en">English</option>
-                <option value="pl">Polski</option>
-                <option value="hi">हिन्दी</option>
-              </select>
+              <LanguageSwitcher selectClassName="bg-transparent border border-gray-300 dark:border-gray-700 text-xs font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer text-[#5d5f5b]" />
             </div>
           </div>
 

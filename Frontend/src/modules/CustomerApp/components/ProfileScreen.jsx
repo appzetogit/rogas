@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
-import { useTranslation } from "../../../contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
 
@@ -22,7 +23,7 @@ export function ProfileScreen({
   onUpdateProfile,
   onUpdateProfileState
 }) {
-  const { lang, changeLanguage, t } = useTranslation();
+  const { t } = useTranslation("customer");
   const navigate = useNavigate();
   const [walletCredits, setWalletCredits] = useState(0);
 
@@ -469,19 +470,11 @@ export function ProfileScreen({
                   <Globe className="text-[22px]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("change_lang", "Language")}</h3>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Change Language")}</h3>
                   <p className="text-xs text-on-surface-variant font-medium">Select your preferred language</p>
                 </div>
               </div>
-              <select
-                value={lang}
-                onChange={(e) => changeLanguage(e.target.value)}
-                className="bg-transparent border border-[#bec9c3]/40 rounded-xl px-2 py-1.5 text-xs font-bold focus:outline-none cursor-pointer text-[#1b1c1c] dark:bg-[#1a1a1a] dark:text-white"
-              >
-                <option value="en">English</option>
-                <option value="pl">Polski</option>
-                <option value="hi">हिन्दी</option>
-              </select>
+              <LanguageSwitcher selectClassName="bg-transparent border border-[#bec9c3]/40 rounded-xl px-2 py-1.5 text-xs font-bold focus:outline-none cursor-pointer text-[#1b1c1c] dark:bg-[#1a1a1a] dark:text-white" />
             </div>
           </div>
 

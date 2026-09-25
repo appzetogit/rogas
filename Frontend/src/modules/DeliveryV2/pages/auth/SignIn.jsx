@@ -5,7 +5,8 @@ import { deliveryAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { SUPPORTED_COUNTRIES } from "@/config/countries";
 import CountrySelector from "@/shared/components/CountrySelector";
-import { useTranslation } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -67,7 +68,7 @@ const getPhoneInitialValue = (draft, country) => {
 
 export default function DeliverySignIn() {
   const navigate = useNavigate();
-  const { t, changeLanguage } = useTranslation();
+  const { t } = useTranslation("driver");
   const submitting = useRef(false);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -230,11 +231,9 @@ export default function DeliverySignIn() {
             </div>
 
             {/* Language Switcher */}
-            <select
-              value={localStorage.getItem("app_lang") || "en"}
-              onChange={(e) => changeLanguage(e.target.value)}
-              style={{
-                marginLeft: "auto",
+            <LanguageSwitcher
+              className="ml-auto"
+              selectStyle={{
                 background: "transparent",
                 border: `1px solid ${COLORS.outlineVariant}`,
                 borderRadius: "8px",
@@ -245,11 +244,7 @@ export default function DeliverySignIn() {
                 cursor: "pointer",
                 outline: "none",
               }}
-            >
-              <option value="en">English</option>
-              <option value="pl">Polski</option>
-              <option value="hi">हिन्दी</option>
-            </select>
+            />
           </div>
         </header>
 
@@ -290,7 +285,7 @@ export default function DeliverySignIn() {
                   margin: 0,
                 }}
               >
-                {t("welcome_heading", "Welcome")}
+                {t("Welcome")}
               </h2>
               <p
                 style={{
@@ -301,7 +296,7 @@ export default function DeliverySignIn() {
                   margin: 0,
                 }}
               >
-                {t("login_phone_subtitle", "Enter your phone number to sign in")}
+                {t("Login with your mobile number")}
               </p>
             </div>
 
@@ -426,7 +421,7 @@ export default function DeliverySignIn() {
                   if (!loading && normalizedPhone()) e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                {loading ? "Sending..." : t("send_otp")}
+                {loading ? "Sending..." : t("Send OTP")}
                 <MaterialIcon name="chevron_right" style={{ color: "#ffffff" }} />
               </button>
             </form>
