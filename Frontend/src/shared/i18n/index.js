@@ -174,6 +174,12 @@ export const syncLanguages = async () => {
 
 export const getCurrentLanguage = () => i18n.language || FALLBACK_LANGUAGE;
 
+/**
+ * Marks a string constant as translatable without translating it yet (module-level data cannot call a hook).
+ * The catalog extractor picks these up; translate where it is displayed: t(item.label).
+ */
+export const tKey = (text) => text;
+
 const PANEL_TOKENS = {
   user: () => safeGet("user_accessToken") || safeGet("accessToken"),
   restaurant: () => safeGet("restaurant_accessToken"),
