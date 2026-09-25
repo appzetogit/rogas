@@ -16,6 +16,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { listTargets } from './codemod.mjs';
+import { findMissingDeps } from './fix-hook-deps.mjs';
 
 const require = createRequire(import.meta.url);
 const { parse } = require('@babel/parser');
@@ -58,6 +59,11 @@ export function verifyFile(file, code = fs.readFileSync(file, 'utf8')) {
   traverse(ast, {
     CallExpression(p) {
       const c = p.node.callee;
+      // A t()/tr() call in a file that never declares one is exactly what a hand edit can get wrong.
+      if (c.type === 'Identifier' && ['t', 'tr', 'tx', 'tt'].includes(c.name) && !p.scope.hasBinding(c.name)) {
+        problems.push(`${c.name}() used but not defined (${at(p.node)})`);
+        return;
+      }
       const isT = c.type === 'Identifier' && tNames.has(c.name);
       const isI18nT = c.type === 'MemberExpression' && c.object.name === 'i18n' && c.property.name === 't';
 
@@ -116,6 +122,9 @@ export function verifyFile(file, code = fs.readFileSync(file, 'utf8')) {
     perFn.set(fn.node, (perFn.get(fn.node) || 0) + 1);
   }
   for (const [, n] of perFn) if (n > 1) problems.push('useTranslation called more than once in the same function');
+  for (const m of findMissingDeps(code, file)) {
+    problems.push(`${m.hook} uses ${m.names.join(', ')}() but does not list it as a dependency, so it keeps the old language (line ${m.line})`);
+  }
   if (hookCalls.length && !importsUseTranslation) problems.push('useTranslation is used but not imported from react-i18next');
   if (/\bi18n\.t\(/.test(code) && !importsI18n && !/\bconst\s+i18n\b|\bimport\s+\*\s+as\s+i18n/.test(code)) problems.push('i18n.t is used but i18n is not imported');
   return problems;

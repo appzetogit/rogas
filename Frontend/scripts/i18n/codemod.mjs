@@ -51,12 +51,22 @@ const TEXT_ATTRS = new Set([
   'message', 'text', 'buttonText', 'confirmText', 'cancelText', 'emptyText', 'tooltip', 'caption', 'header',
 ]);
 const ALWAYS_TEXT_ATTRS = new Set(['placeholder', 'title', 'alt', 'aria-label']);
-const CONFIG_PROPS = new Set(['label', 'title', 'text', 'description', 'subtitle', 'placeholder', 'heading', 'tooltip', 'caption', 'desc']);
+const CONFIG_PROPS = new Set(['label', 'title', 'text', 'description', 'subtitle', 'placeholder', 'heading', 'tooltip', 'caption', 'desc', 'errorMessage', 'hint', 'helperText']);
 const MESSAGE_FNS = new Set([
   'showToast', 'triggerToast', 'triggerGlobalToast', 'onShowToast', 'onShowNotificationToast', 'setToast', 'setToastMessage',
   'setError', 'setErrorMessage', 'setErrorMsg', 'setMessage', 'setSuccess', 'setSuccessMessage', 'setStatusMessage', 'setAlert', 'alert', 'confirm',
 ]);
 const TOAST_METHODS = new Set(['success', 'error', 'info', 'warning', 'message', 'loading', 'warn']);
+const isMessageFn = (name) => MESSAGE_FNS.has(name)
+  || /^set\w*(Error|Errors|Message|Msg|Toast|Alert|Warning|Success|Notice|Text)$/.test(name)
+  || /^(show|trigger|push|add)(Toast|Error|Success|Alert|Notification|Message)$/.test(name)
+  || ['setTitle', 'setHeading', 'setSubtitle'].includes(name);
+/** Variables / properties that hold user-facing message text. */
+const MESSAGE_VAR = /^(err|error|errMsg|errorMsg|errorMessage|errorText|errText|msg|message|successMsg|successMessage|statusText|statusLabel|label|title|heading|subtitle|caption|greeting|badge|badgeText|buttonLabel|buttonText|tooltip|hint|helperText)$/i;
+/** Objects that collect validation errors: errors.name = "...", newErrors[field] = "...". */
+const ERROR_OBJECT = /^(new|form|field|validation)?errors?$/i;
+/** Functions whose return value is display text. */
+const LABEL_FN = /(label|text|title|desc|message|badge|greeting|heading|caption|statusname)/i;
 const SKIP_ELEMENTS = new Set(['style', 'script', 'code', 'pre']);
 const INLINE_TAGS = new Set(['span', 'strong', 'b', 'em', 'i', 'u', 'small', 'mark', 'a', 'sup', 'sub', 'abbr', 'br', 'label']);
 const ICON_CLASS = /material-symbols|material-icons|\bicon\b|\bfa-|lucide|notranslate/i;
@@ -197,7 +207,10 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
     let e = expr;
     while (['LogicalExpression', 'BinaryExpression'].includes(e.type)) e = e.left;
     if (e.type === 'ConditionalExpression') e = e.consequent;
-    if (e.type === 'CallExpression' || e.type === 'OptionalCallExpression') e = ['MemberExpression', 'OptionalMemberExpression'].includes(e.callee.type) ? e.callee.object : e.callee;
+    if (e.type === 'CallExpression' || e.type === 'OptionalCallExpression') {
+      if (e.callee.type === 'MemberExpression' && e.callee.object.type === 'Identifier' && e.callee.object.name === 'Math') return 'value';
+      e = ['MemberExpression', 'OptionalMemberExpression'].includes(e.callee.type) ? e.callee.object : e.callee;
+    }
     if (e.type === 'NewExpression' && e.callee.name === 'Date') base = 'date';
     else if (e.type === 'Identifier') base = e.name;
     else if ((e.type === 'MemberExpression' || e.type === 'OptionalMemberExpression') && !e.computed && e.property.type === 'Identifier') base = e.property.name;
@@ -234,6 +247,19 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
   };
 
   const record = (key, kind) => { keys.push({ key, kind }); edits++; };
+
+  // Strings compared with ===, used in switch/includes/lookups are data values: never translate them.
+  const comparedLiterals = new Set();
+  traverse(ast, {
+    StringLiteral(p) {
+      const par = p.parent;
+      const v = p.node.value.trim();
+      if (par.type === 'BinaryExpression' && ['===', '!==', '==', '!='].includes(par.operator)) comparedLiterals.add(v);
+      else if (par.type === 'SwitchCase' && par.test === p.node) comparedLiterals.add(v);
+      else if (par.type === 'MemberExpression' && par.computed && par.property === p.node) comparedLiterals.add(v);
+      else if (par.type === 'CallExpression' && par.callee.type === 'MemberExpression' && ['includes', 'indexOf', 'has', 'startsWith', 'endsWith'].includes(par.callee.property.name)) comparedLiterals.add(v);
+    },
+  });
 
   // Source ranges already rewritten as a whole (a <Trans> sentence): nothing inside may be edited again.
   const consumed = [];
@@ -272,6 +298,7 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
       const lead = /^\s*/.exec(key)[0];
       const trail = /\s*$/.exec(key)[0];
       const trimmed = key.trim();
+      if (opts.guardCompared && comparedLiterals.has(trimmed)) { report.push({ kind: 'compared', text: trimmed }); return; }
       if (!looksTranslatable(trimmed, opts) || !safeKey(trimmed)) {
         if (FRAGMENT_WORDS.has(trimmed.toLowerCase()) && trimmed === trimmed.toLowerCase()) report.push({ kind: 'fragment', text: trimmed });
         return;
@@ -614,7 +641,7 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
         if (callee.object.name === 'toast' && callee.property.type === 'Identifier' && TOAST_METHODS.has(callee.property.name)) name = 'toast.*';
         if (callee.object.name === 'window' && callee.property.type === 'Identifier' && ['alert', 'confirm'].includes(callee.property.name)) name = 'alert';
       }
-      if (!name || !(name === 'toast' || name === 'toast.*' || MESSAGE_FNS.has(name))) return;
+      if (!name || !(name === 'toast' || name === 'toast.*' || isMessageFn(name))) return;
       const arg = p.get('arguments.0');
       if (!arg || !arg.node) return;
       rewriteLeaves(arg, { kind: 'message' });
@@ -654,6 +681,35 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
         return;
       }
       rewriteLeaves(v, { kind: 'config', strict: true });
+    },
+
+    VariableDeclarator(p) {
+      if (isConsumed(p.node)) { p.skip(); return; }
+      const id = p.node.id;
+      if (id.type !== 'Identifier' || !p.node.init || !MESSAGE_VAR.test(id.name)) return;
+      rewriteLeaves(p.get('init'), { kind: 'message-var', guardCompared: true });
+    },
+
+    AssignmentExpression(p) {
+      if (isConsumed(p.node)) { p.skip(); return; }
+      const l = p.node.left;
+      let match = false;
+      if (l.type === 'Identifier') match = MESSAGE_VAR.test(l.name);
+      else if (l.type === 'MemberExpression') {
+        const objName = l.object.type === 'Identifier' ? l.object.name : l.object.type === 'MemberExpression' ? l.object.property.name : '';
+        if (ERROR_OBJECT.test(objName || '')) match = true;
+        else if (!l.computed && l.property.type === 'Identifier' && MESSAGE_VAR.test(l.property.name)) match = true;
+      }
+      if (match) rewriteLeaves(p.get('right'), { kind: 'message-var', guardCompared: true });
+    },
+
+    ReturnStatement(p) {
+      if (isConsumed(p.node) || !p.node.argument) return;
+      const fp = p.getFunctionParent();
+      if (!fp) return;
+      const name = fnNameOf(fp) || '';
+      if (!LABEL_FN.test(name) || /(id|key|code|class|color|type)$/i.test(name)) return;
+      rewriteLeaves(p.get('argument'), { kind: 'return', guardCompared: true });
     },
 
     ClassMethod(p) {

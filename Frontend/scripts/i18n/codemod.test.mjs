@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'module';
 import { processSource } from './codemod.mjs';
+import { findMissingDeps } from './fix-hook-deps.mjs';
 
 const require = createRequire(import.meta.url);
 const { parse } = require('@babel/parser');
@@ -174,4 +175,50 @@ test('single-letter fallbacks, "3x" quantities and connector words are not trans
   const res = run(`const A = ({ name, q, t2 }) => <div><i>{name?.[0] || 'U'}</i><b>{q}x</b><em>and</em><p>Real text here</p></div>;`);
   assert.deepEqual(keysOf(res), ['Real text here']);
   assert.ok(res.report.some((r) => r.kind === 'fragment' && r.text === 'and'));
+});
+
+test('memoised callbacks that use t() must list it; effects are deliberately exempt', () => {
+  const src = `import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useMemo } from "react";
+const A = () => {
+  const { t } = useTranslation("x");
+  const a = useCallback(() => toast(t("Saved")), []);
+  const b = useCallback(() => toast(t("Saved")), [t]);
+  const c = useMemo(() => [t("One")], [1]);
+  useEffect(() => { toast(t("Loaded")); }, []);
+  return null;
+};`;
+  const found = findMissingDeps(src);
+  assert.deepEqual(found.map((f) => f.hook), ['useCallback', 'useMemo']);
+  assert.equal(found[0].text, 't');
+  assert.equal(found[1].text, ', t');
+});
+
+test('validation messages, message variables and label helpers are translated; compared values are not', () => {
+  const res = run(`const A = ({ status }) => {
+  const [errors, setErrors] = useState({});
+  const validate = () => {
+    const newErrors = {};
+    newErrors.name = "Name is required";
+    errors.email = "Email is required";
+    setErrors(newErrors);
+  };
+  const errMsg = err.message || "Failed to save";
+  setFormError("Please describe your issue.");
+  const getStatusLabel = (s) => { if (s === "active") return "Active"; return "Unknown state"; };
+  const kind = status === "Pending Payment" ? "Pending Payment" : "Other kind";
+  const label = status === "Done" ? "Done" : "Not done";
+  return <p>{getStatusLabel(status)}</p>;
+};`);
+  const keys = keysOf(res).sort();
+  assert.ok(keys.includes('Name is required'));
+  assert.ok(keys.includes('Email is required'));
+  assert.ok(keys.includes('Failed to save'));
+  assert.ok(keys.includes('Please describe your issue.'));
+  assert.ok(keys.includes('Active'));
+  assert.ok(keys.includes('Unknown state'));
+  assert.ok(keys.includes('Not done'));
+  assert.ok(!keys.includes('Done'), '"Done" is compared with === so it is data');
+  assert.ok(res.report.some((r) => r.kind === 'compared' && r.text === 'Done'));
+  assert.match(res.code, /const \{ t \} = useTranslation/);
 });
