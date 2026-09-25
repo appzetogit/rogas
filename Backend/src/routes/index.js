@@ -33,6 +33,7 @@ import pantryOrderRoutes from '../modules/dailymealbox/vendor/pantryOrder.routes
 import officeRoutes from '../modules/dailymealbox/office/routes/office.routes.js';
 import officeAuthRoutes from '../modules/dailymealbox/office/routes/officeAuth.routes.js';
 import serviceManagementRoutes from '../modules/dailymealbox/serviceManagement/serviceManagement.routes.js';
+import { publicSlotRouter } from '../modules/dailymealbox/deliverySlot/deliverySlot.routes.js';
 
 const router = express.Router();
 
@@ -90,6 +91,8 @@ router.use('/v1/dmb/office/auth', officeAuthRoutes);
 router.use('/v1/dmb/office', officeRoutes);
 // DMB Service Management routes
 router.use('/v1/dmb/service', serviceManagementRoutes);
+// DMB Delivery Slots (public read; admin CRUD lives under /v1/food/admin/delivery-slots)
+router.use('/v1/dmb/slots', publicSlotRouter);
 
 // ─── Development Helper Routes ──────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {

@@ -20,6 +20,7 @@ import kitchenPartnerRoutes from './kitchenPartner.routes.js';
 import roleRoutes from './role.routes.js';
 import adminWalletRoutes from './adminWallet.routes.js';
 import { requirePermission } from '../../../../middleware/rbac.middleware.js';
+import { adminSlotRouter } from '../../../dailymealbox/deliverySlot/deliverySlot.routes.js';
 
 const router = express.Router();
 
@@ -373,6 +374,9 @@ router.get('/vendor-subscription-plans', requirePermission('vendorManagement', '
 router.post('/vendor-subscription-plans', requirePermission('vendorManagement', 'create'), adminController.createVendorSubscriptionPlan);
 router.put('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'edit'), adminController.updateVendorSubscriptionPlan);
 router.delete('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'delete'), adminController.deleteVendorSubscriptionPlan);
+
+// ----- Delivery Slots (dynamic meal slots CRUD) -----
+router.use('/delivery-slots', adminSlotRouter);
 
 // ----- Vendor Timing Settings -----
 router.get('/vendor-timing-settings', requirePermission('vendorManagement', 'view'), adminController.getVendorTimingSettingsController);

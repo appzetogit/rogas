@@ -51,7 +51,6 @@ const rideTransferSchema = new mongoose.Schema(
         /** Delivery slot */
         slot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
 

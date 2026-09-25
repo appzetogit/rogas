@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dmbVendorAPI } from '../../../services/api/index';
-import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Sun, CloudSun, Moon, Clock, Zap } from 'lucide-react';
+import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Clock, Zap } from 'lucide-react';
+import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
 
-const SLOT_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
-const SLOT_EMOJI = { breakfast: '', lunch: '', dinner: '' };
 
 const STATUS_CONFIG = {
   scheduled: { label: 'Scheduled', color: 'bg-slate-100 text-slate-600', border: 'border-slate-300' },
@@ -34,34 +33,13 @@ const fmtMin = (mins) => {
 
 export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatus, onBatchUpdateStatus }) {
   const navigate = useNavigate();
+  const { slots: slotList, label: slotName } = useDeliverySlots();
   const [viewMode, setViewMode] = useState('daily');
   const [activeDate, setActiveDate] = useState('today');
   const [timingConfig, setTimingConfig] = useState(null); // admin timing from backend
   const timingFetched = useRef(false);
 
-  // Auto-detect slot based on current hour / admin timing config
-  const getInitialSlot = (config = timingConfig) => {
-    const now = new Date();
-    const curMin = now.getHours() * 60 + now.getMinutes();
-
-    if (config) {
-      for (const slot of ['breakfast', 'lunch', 'dinner']) {
-        const cfg = config[slot];
-        if (cfg && cfg.isEnabled !== false) {
-          const start = hhmmToMin(cfg.startTime);
-          const end   = hhmmToMin(cfg.endTime);
-          if (start !== null && end !== null && curMin >= start && curMin <= end) {
-            return slot;
-          }
-        }
-      }
-    }
-
-    const hr = now.getHours();
-    if (hr < 10) return 'breakfast';
-    if (hr < 15) return 'lunch';
-    return 'dinner';
-  };
+  const getInitialSlot = (config = timingConfig) => pickCurrentSlot(config, slotList);
 
   const [activeSlot, setActiveSlot] = useState(() => getInitialSlot(null));
   const [dailyOrders, setDailyOrders] = useState([]);
@@ -100,7 +78,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   // Reset slot filter on date change
   useEffect(() => {
     setActiveSlot(getInitialSlot(timingConfig));
-  }, [activeDate, timingConfig]);
+  }, [activeDate, timingConfig, slotList]);
 
 
   // ─── Load daily orders from backend ──────────────────────────────────────
@@ -182,7 +160,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   const handleStatusChange = async (orderId, newStatus, deliverySlot) => {
     if ((newStatus === 'preparing' || newStatus === 'ready') && activeDate === 'today') {
       if (!isWithinPrepWindow(deliverySlot)) {
-        const label = SLOT_LABEL[deliverySlot] || deliverySlot;
+        const label = slotName(deliverySlot);
         const win = getWindowLabel(deliverySlot);
         showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
         return;
@@ -203,7 +181,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   // ─── Mark ALL orders ready ────────────────────────────────────────────────
   const handleMarkAllReady = async () => {
     if (activeDate === 'today' && !isWithinPrepWindow(activeSlot)) {
-      const label = SLOT_LABEL[activeSlot] || activeSlot;
+      const label = slotName(activeSlot);
       const win = getWindowLabel(activeSlot);
       showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
       return;
@@ -220,7 +198,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           o.deliverySlot === activeSlot
         ) ? { ...o, status: 'ready' } : o)
       );
-      const slotLabel = activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1);
+      const slotLabel = slotName(activeSlot);
       showToast(`✅ ${slotLabel} orders marked as Ready!`);
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to mark all ready');
@@ -236,7 +214,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
       const res = await dmbVendorAPI.resendBatch(dateParam, activeSlot);
       if (res.data?.success) {
-        showToast(`✅ Delivery partner requested for ${activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)}!`);
+        showToast(`✅ Delivery partner requested for ${slotName(activeSlot)}!`);
         loadDailyOrders(activeDate);
       }
     } catch (err) {
@@ -248,9 +226,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
 
   // Slot counts based on dailyOrders for the active date
-  const breakfastCount = dailyOrders.filter(o => o.deliverySlot === 'breakfast').length;
-  const lunchCount = dailyOrders.filter(o => o.deliverySlot === 'lunch').length;
-  const dinnerCount = dailyOrders.filter(o => o.deliverySlot === 'dinner').length;
+  const countFor = (key) => dailyOrders.filter(o => o.deliverySlot === key).length;
 
   const filteredOrders = dailyOrders.filter(o => o.deliverySlot === activeSlot);
 
@@ -301,13 +277,8 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           </div>
 
           {/* Slot Filter Chips */}
-          <div className="flex gap-1.5 select-none">
-            {[
-              { id: 'breakfast', label: 'Breakfast', count: breakfastCount, icon: Sun },
-              { id: 'lunch', label: 'Lunch', count: lunchCount, icon: CloudSun },
-              { id: 'dinner', label: 'Dinner', count: dinnerCount, icon: Moon }
-            ].map(slot => {
-              const Icon = slot.icon;
+          <div className="flex gap-1.5 select-none overflow-x-auto">
+            {slotList.map(sl => ({ id: sl.key, label: sl.name, count: countFor(sl.key), emoji: sl.icon })).map(slot => {
               return (
               <button
                 key={slot.id}
@@ -318,7 +289,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <span className="text-sm leading-none shrink-0">{slot.emoji}</span>
                 <span>{slot.label}</span>
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
                   activeSlot === slot.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200'
@@ -342,7 +313,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             }
             const win = getWindowLabel(activeSlot);
             const allowed = isWithinPrepWindow(activeSlot);
-            const slotLabel = SLOT_LABEL[activeSlot] || activeSlot;
+            const slotLabel = slotName(activeSlot);
             if (!win) return null; // no admin config — no banner
             return (
               <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold border transition-all ${
@@ -363,18 +334,12 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left">
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Meal Box Counts</h4>
             <div className="grid grid-cols-3 gap-2 text-center text-[12px] font-bold text-slate-700">
-              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
-                <p className="text-[9px] text-slate-400 uppercase font-bold">Breakfast</p>
-                <p className="text-[14px] text-primary font-black mt-0.5">{breakfastCount} Boxes</p>
-              </div>
-              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
-                <p className="text-[9px] text-slate-400 uppercase font-bold">Lunch</p>
-                <p className="text-[14px] text-primary font-black mt-0.5">{lunchCount} Boxes</p>
-              </div>
-              <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
-                <p className="text-[9px] text-slate-400 uppercase font-bold">Dinner</p>
-                <p className="text-[14px] text-primary font-black mt-0.5">{dinnerCount} Boxes</p>
-              </div>
+              {slotList.map(sl => (
+                <div key={sl.key} className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold truncate">{sl.name}</p>
+                  <p className="text-[14px] text-primary font-black mt-0.5">{countFor(sl.key)} Boxes</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -397,7 +362,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               className="w-full bg-primary text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
             >
               <CheckCheck className="text-[18px]" />
-              Mark All {pendingCount} {activeSlot.charAt(0).toUpperCase() + activeSlot.slice(1)} Orders as Ready
+              Mark All {pendingCount} {slotName(activeSlot)} Orders as Ready
             </button>
           )}
 
@@ -424,7 +389,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6 animate-fadeIn">
               <Inbox className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">No {activeSlot} orders {activeDate}</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">No {slotName(activeSlot)} orders {activeDate}</p>
               <p className="text-[12px] text-slate-400 mt-1">Select another slot or check back later</p>
             </div>
           ) : (
@@ -446,7 +411,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                            {SLOT_LABEL[order.deliverySlot] || order.deliverySlot}
+                            {slotName(order.deliverySlot)}
                           </p>
                           <h3 className="text-[15px] font-bold text-on-surface mt-0.5">
                             {mealName}

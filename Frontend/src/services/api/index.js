@@ -640,6 +640,18 @@ export const adminAPI = {
     adminClient.get("/food/admin/vendor-timing-settings"),
   updateVendorTimingSettings: (body) =>
     adminClient.put("/food/admin/vendor-timing-settings", body ?? {}),
+
+  /** Delivery Slots CRUD (admin) */
+  getDeliverySlots: () => adminClient.get("/food/admin/delivery-slots"),
+  getDeliverySlotUsage: (id) => adminClient.get(`/food/admin/delivery-slots/${String(id)}/usage`),
+  createDeliverySlot: (body) => adminClient.post("/food/admin/delivery-slots", body ?? {}),
+  updateDeliverySlot: (id, body) => adminClient.put(`/food/admin/delivery-slots/${String(id)}`, body ?? {}),
+  deleteDeliverySlot: (id) => adminClient.delete(`/food/admin/delivery-slots/${String(id)}`),
+};
+
+/** Public delivery slots (customer / vendor / driver apps) */
+export const dmbSlotAPI = {
+  list: () => userClient.get("/dmb/slots"),
 };
 
 

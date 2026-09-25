@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { dmbCustomerAPI } from "@food/api";
 import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
+import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
+  const { label: slotName } = useDeliverySlots();
   const [subscriptions, setSubscriptions] = useState([]);
   const [pantryOrders, setPantryOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("meals");
@@ -311,8 +313,8 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Delivery Preferences</span>
                       <span className="text-[#1b1c1c] font-bold block">
                         {sub.deliverySlots && sub.deliverySlots.length > 0
-                          ? sub.deliverySlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(", ")
-                          : (sub.deliverySlot ? sub.deliverySlot.charAt(0).toUpperCase() + sub.deliverySlot.slice(1) : "Lunch")}
+                          ? sub.deliverySlots.map(s => slotName(s)).join(", ")
+                          : (sub.deliverySlot ? slotName(sub.deliverySlot) : "")}
                       </span>
                       <span className="text-[11px] text-on-surface-variant block">
                         {sub.deliveryDays === "mon_fri" ? "Monday - Friday" : "Full Week"}

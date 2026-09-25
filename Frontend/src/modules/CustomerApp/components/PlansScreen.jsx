@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { IMAGES } from "../types";
 import { PantryItemsList } from "./PantryItemsList";
+import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 
 const mapContainerStyle = {
   width: '100%',
@@ -30,11 +31,6 @@ const getPrimaryImage = (vendor) => {
   return normalizeImageUrl(vendor?.profileImage) || normalizeImageUrl(vendor?.logo) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
 };
 
-const DELIVERY_SLOTS = [
-  { id: "breakfast", label: "Breakfast", time: "7:00 – 9:00 AM", icon: "☀️" },
-  { id: "lunch", label: "Lunch", time: "12:00 – 2:00 PM", icon: "🌤️" },
-  { id: "dinner", label: "Dinner", time: "7:00 – 9:00 PM", icon: "🌙" },
-];
 
 
 // ─── Menu Modal ────────────────────────────────────────────────────────────────
@@ -142,9 +138,20 @@ const getTomorrowDateStr = () => {
 
 function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub, matchDietary, dietaryPrefs }) {
   const [mealPlans, setMealPlans] = useState([]);
+  const [selectedMealPlan, setSelectedMealPlan] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [selectedSlots, setSelectedSlots] = useState(["lunch"]);
+  const { enabledSlots: liveSlots, window: slotWindow } = useDeliverySlots();
+  const DELIVERY_SLOTS = liveSlots.map((s) => ({ id: s.key, label: s.name, time: slotWindow(s.key), icon: s.icon, description: s.description }));
+  const [selectedSlots, setSelectedSlots] = useState([]);
+  useEffect(() => {
+    if (!liveSlots.length) return;
+    setSelectedSlots((prev) => {
+      const valid = prev.filter((k) => liveSlots.some((s) => s.key === k));
+      if (valid.length) return valid;
+      return [liveSlots[0].key];
+    });
+  }, [liveSlots]);
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(true);
   const [showActiveSubWarning, setShowActiveSubWarning] = useState(false);
@@ -222,6 +229,9 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
         const plans = plansRes.data?.mealPlans || [];
         setMealPlans(plans);
+        if (plans.length > 0) {
+          setSelectedMealPlan(plans[0]);
+        }
 
         const activeZones = zonesRes.data?.data?.zones || zonesRes.data?.zones || [];
         setZones(activeZones);
@@ -242,12 +252,12 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     fetchPlansAndDurations();
   }, [vendorId]);
 
-  const defaultMeal = mealPlans[0];
-  const selectedMealsList = defaultMeal ? [{
-    mealPlanId: defaultMeal._id,
+  const activeMeal = selectedMealPlan || mealPlans[0];
+  const selectedMealsList = activeMeal ? [{
+    mealPlanId: activeMeal._id,
     quantity: 1,
-    name: defaultMeal.name,
-    pricePerDay: defaultMeal.pricePerDay
+    name: activeMeal.name,
+    pricePerDay: activeMeal.pricePerDay
   }] : [];
 
   const toggleSlotSelection = (slotId) => {
@@ -335,7 +345,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       meals: selectedMealsList,
       duration: durationCodeMap[selectedPlan.duration] || "weekly",
       durationLabel: durationLabelMap[selectedPlan.duration] || "Weekly",
-      deliverySlot: selectedSlots[0] || "lunch",
+      deliverySlot: selectedSlots[0] || DELIVERY_SLOTS[0]?.id,
       deliverySlots: selectedSlots,
       deliveryDays: selectedPlan.deliveryDays || "full_week",
       startDate: selectedStartDate,
@@ -395,6 +405,52 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
             </div>
           ) : (
             <div className="space-y-5">
+              {/* Select Meal Box / Plan */}
+              {mealPlans.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest">Select Meal Box / Plan</h3>
+                    <span className="text-[11px] text-primary font-bold">{mealPlans.length} options</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {mealPlans.map((mp) => {
+                      const isSelected = activeMeal?._id === mp._id;
+                      return (
+                        <button
+                          key={mp._id}
+                          type="button"
+                          onClick={() => setSelectedMealPlan(mp)}
+                          className={`p-3 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
+                            isSelected
+                              ? "border-primary bg-primary/5 shadow-xs"
+                              : "border-[#e4e2e1] bg-[#f9f9f7] hover:border-primary/20"
+                          }`}
+                        >
+                          {mp.photos?.[0] ? (
+                            <img
+                              src={normalizeImageUrl(mp.photos[0])}
+                              alt={mp.name}
+                              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-xl flex-shrink-0">
+                              🍲
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-extrabold text-[14px] text-[#1b1c1c] truncate">{mp.name}</p>
+                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">₹{mp.pricePerDay}/day</p>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle className="text-primary w-5 h-5 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
               {/* Select Subscription Plan */}
               <section>
                 <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Select Subscription Plan</h3>
@@ -452,10 +508,13 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 )}
               </section>
 
-              {/* Step 4: Delivery Slots (Breakfast/Lunch/Dinner) */}
+              {/* Step 4: Delivery Slots (admin-configured) */}
               <section>
                 <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Time Slots</h3>
                 <div className="space-y-2">
+                  {DELIVERY_SLOTS.length === 0 && (
+                    <p className="text-[12px] text-[#6e7a74] py-3">No delivery slots are available right now.</p>
+                  )}
                   {DELIVERY_SLOTS.map((slot) => {
                     const isSlotSelected = selectedSlots.includes(slot.id);
                     return (
@@ -578,10 +637,10 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                   <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Price Summary</h3>
                   <div className="space-y-2 text-[13px]">
                     <div className="space-y-1">
-                      {defaultMeal ? (
+                      {activeMeal ? (
                         <div className="flex justify-between text-[#6e7a74]">
-                          <span>Default Meal: {defaultMeal.name}</span>
-                          <span>(Initial)</span>
+                          <span>Selected Meal Box: <strong className="text-[#1b1c1c]">{activeMeal.name}</strong></span>
+                          <span className="font-bold text-primary">₹{activeMeal.pricePerDay}/day</span>
                         </div>
                       ) : (
                         <div className="text-[#ea4335] text-[12px] font-bold">
@@ -646,7 +705,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
               {/* CTA */}
               <button
                 onClick={handleProceed}
-                disabled={selectedMealsList.length === 0 || !selectedZone || !address.trim()}
+                disabled={selectedMealsList.length === 0 || !selectedZone || !address.trim() || selectedSlots.length === 0}
                 className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="text-[20px]" />

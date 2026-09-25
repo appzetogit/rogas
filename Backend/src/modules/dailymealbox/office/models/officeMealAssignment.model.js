@@ -32,7 +32,6 @@ const officeMealAssignmentSchema = new mongoose.Schema(
         },
         mealSlots: {
             type: [String],
-            enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
         status: {

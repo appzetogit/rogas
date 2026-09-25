@@ -4,6 +4,7 @@ import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { logger } from '../../../utils/logger.js';
 import { getIO } from '../../../config/socket.js';
+import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const toDateOnly = (date) => {
@@ -126,7 +127,9 @@ export const createSubscription = async ({
     const finalSlots = deliverySlots && deliverySlots.length > 0
         ? deliverySlots
         : (deliverySlot ? [deliverySlot] : []);
-    const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
+    if (finalSlots.length === 0) throw new Error('At least one delivery slot is required');
+    await assertValidSlotKeys(finalSlots);
+    const finalSlot = finalSlots[0];
 
     // Fetch user to check role — for EMPLOYEE, always use company's central delivery address
     const user = await FoodUser.findById(userId).lean();

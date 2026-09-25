@@ -35,9 +35,7 @@ const dailyMenuSchema = new mongoose.Schema(
         },
         slot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             required: true,
-            default: 'lunch',
             index: true
         },
         nutrition: {

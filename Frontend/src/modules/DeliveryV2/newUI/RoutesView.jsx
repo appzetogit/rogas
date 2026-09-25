@@ -11,20 +11,11 @@ import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
 import RoutesMap from './RoutesMap';
 import { useDeliveryStore } from '../store/useDeliveryStore';
+import useDeliverySlots, { to12h } from '../../../shared/hooks/useDeliverySlots';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SLOT_ICONS = {
-   breakfast: '🌅',
-   lunch: '☀️',
-   dinner: '🌙'
-};
-
-const SLOT_COLORS = {
-   breakfast: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', accent: '#F97316' },
-   lunch: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', accent: '#D97706' },
-   dinner: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', accent: '#4F46E5' }
-};
+const SLOT_COLORS = { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', accent: '#D97706' };
 
 function formatDistance(meters) {
    if (!meters || meters === 0) return '—';
@@ -216,8 +207,9 @@ const SkeletonCard = () => (
 
 // ─── Slot Timing Modal (shown between slots when clicking a stop) ──────────────
 const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
-   const slotLabel = slot ? (slot.charAt(0).toUpperCase() + slot.slice(1)) : 'Next';
-   const slotIcon = SLOT_ICONS[slot] || '🕐';
+   const { label, icon } = useDeliverySlots();
+   const slotLabel = slot ? label(slot) : 'Next';
+   const slotIcon = slot ? icon(slot) : '🕐';
    return (
       <motion.div
          initial={{ opacity: 0 }}
@@ -285,6 +277,7 @@ export const RoutesView = ({ onSelectStop }) => {
    const goBack = useDeliveryBackNavigation();
    const navigate = useNavigate();
    const { isOnline } = useDeliveryStore();
+   const { label: slotName, icon: slotIconOf } = useDeliverySlots();
 
    const [routeData, setRouteData] = useState(null);
    const [loading, setLoading] = useState(true);
@@ -398,10 +391,11 @@ export const RoutesView = ({ onSelectStop }) => {
    // ── Derived state ──────────────────────────────────────────────────────────
    const stops = routeData?.stops || [];
    const isSlotActive = routeData?.isSlotActive ?? true;
-   const slotLabel = routeData?.slotLabel || '';
-   const slotIcon = SLOT_ICONS[routeData?.activeSlot] || '🕐';
-   const nextSlotStartTime = routeData?.nextSlotStartTime || '';
    const activeSlot = routeData?.activeSlot || '';
+   const shownSlot = activeSlot || routeData?.nextSlot || '';
+   const slotLabel = slotName(shownSlot);
+   const slotIcon = shownSlot ? slotIconOf(shownSlot) : '🕐';
+   const nextSlotStartTime = routeData?.nextSlotStartTime || to12h(routeData?.nextSlotWindow?.start);
    const slotWindow = routeData?.slotWindow;
    const totalOrders = routeData?.totalOrders || 0;
    const totalVendors = routeData?.totalVendors || 0;
@@ -411,7 +405,7 @@ export const RoutesView = ({ onSelectStop }) => {
    const readyVendors = stops.filter(s => s.type === 'pickup' && s.vendorStatus === 'ready').length;
    const totalVendorStops = stops.filter(s => s.type === 'pickup').length;
 
-   const slotColors = SLOT_COLORS[activeSlot] || SLOT_COLORS.dinner;
+   const slotColors = SLOT_COLORS;
 
    return (
       <div className="min-h-screen bg-[#F5F5F0] font-poppins pb-32">

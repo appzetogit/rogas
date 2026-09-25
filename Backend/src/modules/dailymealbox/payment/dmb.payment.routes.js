@@ -5,6 +5,7 @@ import { authMiddleware } from '../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { createSubscription, activateSubscription } from '../subscription/subscription.service.js';
 import { logger } from '../../../utils/logger.js';
+import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 
 const router = express.Router();
 
@@ -42,11 +43,12 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
         const finalSlots = deliverySlots && deliverySlots.length > 0
             ? deliverySlots
             : (deliverySlot ? [deliverySlot] : []);
-        const finalSlot = deliverySlot || (finalSlots.length > 0 ? finalSlots[0] : 'lunch');
-
         if (!vendorId || finalMeals.length === 0 || finalSlots.length === 0 || !deliveryAddress || !pricing) {
             return res.status(400).json({ success: false, message: 'vendorId, meals/mealPlanId, deliverySlots, deliveryAddress, and pricing are required' });
         }
+
+        await assertValidSlotKeys(finalSlots);
+        const finalSlot = finalSlots[0];
 
         const userId = req.user.userId || req.user._id;
         const targetPrice = pricing.totalPrice !== undefined ? pricing.totalPrice : pricing.totalPerWeek;

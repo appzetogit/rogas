@@ -215,7 +215,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   const [accountNumber, setAccountNumber] = useState('');
   const [ownerIdFile, setOwnerIdFile] = useState(null);
   const [ownerIdFileName, setOwnerIdFileName] = useState('');
-  const [mealSlots, setMealSlots] = useState(['breakfast', 'lunch', 'dinner']);
+  const [mealSlots, setMealSlots] = useState([]);
   const [vendorTimings, setVendorTimings] = useState(null);
 
   // Zone & Location additions
@@ -263,7 +263,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
     // Fetch vendor timings
     import('../../../services/api/axios').then(({ restaurantClient }) => {
        restaurantClient.get("/food/restaurant/vendor-timing-settings/public")
-        .then(res => setVendorTimings(res?.data?.data))
+        .then(res => {
+          const d = res?.data?.data;
+          setVendorTimings(d);
+          setMealSlots(prev => (prev.length ? prev : (d?.slots || []).filter(s => s.isEnabled).map(s => s.key)));
+        })
         .catch(err => console.error("Failed to fetch timings", err));
     });
   }, []);
@@ -888,10 +892,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 Select one or more meal slots. (Timings are set by admin)
               </p>
               <div className="mt-2 flex flex-col gap-3">
-                {['breakfast', 'lunch', 'dinner'].map((slot) => {
+                {(vendorTimings?.slots || []).filter((sl) => sl.isEnabled).map((slotDef) => {
+                   const slot = slotDef.key
                    const active = mealSlots.includes(slot)
-                   const t = vendorTimings?.[slot]
-                   const labelStr = slot.charAt(0).toUpperCase() + slot.slice(1)
+                   const t = slotDef
+                   const labelStr = `${slotDef.icon || ''} ${slotDef.name}`.trim()
                    
                    const formatTime = (time24) => {
                       if (!time24) return '';

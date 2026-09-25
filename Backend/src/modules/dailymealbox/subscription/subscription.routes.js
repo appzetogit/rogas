@@ -17,6 +17,7 @@ import {
 } from './dmb.dailyOrder.service.js';
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { listSlots } from '../deliverySlot/deliverySlot.service.js';
 import { VendorTimingSettings } from '../../food/admin/models/vendorTimingSettings.model.js';
 
 const router = express.Router();
@@ -122,6 +123,15 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
                 const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
                 const formattedCutoff = `${h12}:${m} ${ampm}`;
                 return res.status(400).json({ success: false, message: `Cannot skip tomorrow's meal after ${formattedCutoff}` });
+            }
+        }
+
+        // Per-slot cutoff configured by admin (hours before the slot's start time)
+        const slotDef = (await listSlots()).find(sl => sl.key === order.deliverySlot);
+        if (slotDef?.orderCutoffHours > 0 && slotDef.startTime) {
+            const deadline = new Date(`${orderDateStr}T${slotDef.startTime}:00+05:30`).getTime() - slotDef.orderCutoffHours * 3600 * 1000;
+            if (Date.now() >= deadline) {
+                return res.status(400).json({ success: false, message: `Cannot skip ${slotDef.name} meals within ${slotDef.orderCutoffHours} hour(s) of the slot start` });
             }
         }
 

@@ -6222,22 +6222,16 @@ export async function getDeliveryCommissionAudit(query = {}) {
 
 // ─── Vendor Timing Settings ────────────────────────────────────────────────
 
-const DEFAULT_TIMING = {
-    breakfast: { startTime: '04:00', endTime: '10:00', maxPrepMinutes: 60, isEnabled: true },
-    lunch:     { startTime: '11:00', endTime: '15:00', maxPrepMinutes: 60, isEnabled: true },
-    dinner:    { startTime: '17:00', endTime: '21:00', maxPrepMinutes: 90, isEnabled: true }
-};
-
+// Slot windows live in the DeliverySlot collection (admin CRUD). This document only keeps global rules.
+// The returned object stays keyed by slot key ({ lunch: {...}, early_bird: {...} }) for existing consumers,
+// and also exposes the ordered `slots` array.
 export async function getVendorTimingSettings() {
     const { VendorTimingSettings } = await import('../models/vendorTimingSettings.model.js');
-    let doc = await VendorTimingSettings.findOne({ isActive: true }).lean();
-    if (!doc) {
-        doc = DEFAULT_TIMING;
-    }
+    const { listSlots, getSlotTimingMap } = await import('../../../dailymealbox/deliverySlot/deliverySlot.service.js');
+    const doc = (await VendorTimingSettings.findOne({ isActive: true }).lean()) || {};
     return {
-        breakfast: doc.breakfast || DEFAULT_TIMING.breakfast,
-        lunch:     doc.lunch     || DEFAULT_TIMING.lunch,
-        dinner:    doc.dinner    || DEFAULT_TIMING.dinner,
+        ...(await getSlotTimingMap()),
+        slots: await listSlots(),
         mealChangeCutoffTime: doc.mealChangeCutoffTime || '20:00',
         bypassPrepTimingRestrictions: Boolean(doc.bypassPrepTimingRestrictions)
     };
@@ -6248,21 +6242,7 @@ const isValidTime = (t) => /^\d{2}:\d{2}$/.test(t || '');
 export async function upsertVendorTimingSettings(payload) {
     const { VendorTimingSettings } = await import('../models/vendorTimingSettings.model.js');
 
-    const sanitizeSlot = (slot, defaults) => {
-        if (!slot || typeof slot !== 'object') return defaults;
-        const startTime      = isValidTime(slot.startTime)  ? slot.startTime  : defaults.startTime;
-        const endTime        = isValidTime(slot.endTime)    ? slot.endTime    : defaults.endTime;
-        const maxPrepMinutes = Number.isFinite(Number(slot.maxPrepMinutes)) && Number(slot.maxPrepMinutes) > 0
-            ? Number(slot.maxPrepMinutes)
-            : defaults.maxPrepMinutes;
-        const isEnabled      = slot.isEnabled !== undefined ? Boolean(slot.isEnabled) : defaults.isEnabled;
-        return { startTime, endTime, maxPrepMinutes, isEnabled };
-    };
-
     const update = {
-        breakfast: sanitizeSlot(payload.breakfast, DEFAULT_TIMING.breakfast),
-        lunch:     sanitizeSlot(payload.lunch,     DEFAULT_TIMING.lunch),
-        dinner:    sanitizeSlot(payload.dinner,    DEFAULT_TIMING.dinner),
         mealChangeCutoffTime: isValidTime(payload.mealChangeCutoffTime) ? payload.mealChangeCutoffTime : '20:00',
         ...(payload.bypassPrepTimingRestrictions !== undefined ? { bypassPrepTimingRestrictions: Boolean(payload.bypassPrepTimingRestrictions) } : {}),
         isActive:  true

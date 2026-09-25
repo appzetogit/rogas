@@ -40,8 +40,7 @@ const mealPlanSchema = new mongoose.Schema(
         // ─── Schedule ─────────────────────────────────────────────────────────
         availableSlots: {
             type: [String],
-            enum: ['breakfast', 'lunch', 'dinner'],
-            default: ['lunch']
+            default: []
         },
         availableDays: {
             type: [String],

@@ -148,7 +148,7 @@ export default function DeveloperSettingsPage() {
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               {bypassPrep
                 ? 'Vendors on /vendor/orders can start preparing and mark orders ready at any time without waiting for slot preparation windows.'
-                : 'All operational windows (Breakfast, Lunch, Dinner) are strictly enforced according to vendor timing settings.'}
+                : 'All operational windows (every delivery slot) are strictly enforced according to vendor timing settings.'}
             </p>
           </div>
         </div>
@@ -230,41 +230,16 @@ export default function DeveloperSettingsPage() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Breakfast */}
-            <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-extrabold text-amber-800 uppercase tracking-wider">Breakfast</span>
-                <span className="text-[11px] font-bold text-amber-600">{timingSettings?.breakfast?.isEnabled ? 'Enabled' : 'Disabled'}</span>
+            {(timingSettings?.slots || []).map((sl) => (
+              <div key={sl.key} className="p-3.5 rounded-xl border bg-slate-50/60" style={{ borderColor: `${sl.color}66` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: sl.color }}>{sl.icon} {sl.name}</span>
+                  <span className="text-[11px] font-bold text-slate-500">{sl.isEnabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <p className="text-sm font-black text-slate-800">{to12h(sl.startTime)} – {to12h(sl.endTime)}</p>
+                <p className="text-[11px] text-slate-500 mt-1">Max prep: {sl.maxPrepMinutes || 60} min</p>
               </div>
-              <p className="text-sm font-black text-slate-800">
-                {to12h(timingSettings?.breakfast?.startTime)} – {to12h(timingSettings?.breakfast?.endTime)}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1">Max prep: {timingSettings?.breakfast?.maxPrepMinutes || 60} min</p>
-            </div>
-
-            {/* Lunch */}
-            <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">Lunch</span>
-                <span className="text-[11px] font-bold text-emerald-600">{timingSettings?.lunch?.isEnabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
-              <p className="text-sm font-black text-slate-800">
-                {to12h(timingSettings?.lunch?.startTime)} – {to12h(timingSettings?.lunch?.endTime)}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1">Max prep: {timingSettings?.lunch?.maxPrepMinutes || 60} min</p>
-            </div>
-
-            {/* Dinner */}
-            <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/50">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider">Dinner</span>
-                <span className="text-[11px] font-bold text-indigo-600">{timingSettings?.dinner?.isEnabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
-              <p className="text-sm font-black text-slate-800">
-                {to12h(timingSettings?.dinner?.startTime)} – {to12h(timingSettings?.dinner?.endTime)}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1">Max prep: {timingSettings?.dinner?.maxPrepMinutes || 90} min</p>
-            </div>
+            ))}
           </div>
         </div>
       </div>

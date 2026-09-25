@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
+import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ArrowLeft, CheckCircle, Banknote, Lock } from 'lucide-react';
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
@@ -26,6 +27,7 @@ export function CheckoutScreen({
   selectedPlanDetails,
 }) {
   const [paying, setPaying] = useState(false);
+  const { getSlot, window: slotWindow, label: slotName, icon: slotIcon } = useDeliverySlots();
   const plan = selectedPlanDetails || {};
   const pricing = plan.pricing || {};
   const meals = plan.meals || [];
@@ -34,14 +36,14 @@ export function CheckoutScreen({
   const basePricePerDay = pricing.basePricePerDay || 0;
   const totalPrice = pricing.totalPrice || 0;
   const deliveryDays = plan.deliveryDays === "full_week" ? "Full Week" : "Mon – Fri";
-  const slotDetails = {
-    breakfast: "☀️ Breakfast (7–9 AM)",
-    lunch: "🌤️ Lunch (12–2 PM)",
-    dinner: "🌙 Dinner (7–9 PM)"
+  const describeSlot = (key) => {
+    if (!key) return "";
+    const win = slotWindow(key);
+    return `${slotIcon(key)} ${slotName(key)}${win ? ` (${win})` : ""}`;
   };
   const slotLabel = plan.deliverySlots && plan.deliverySlots.length > 0
-    ? plan.deliverySlots.map(s => slotDetails[s] || s).join(" + ")
-    : (slotDetails[plan.deliverySlot] || "Lunch");
+    ? plan.deliverySlots.map(describeSlot).join(" + ")
+    : describeSlot(plan.deliverySlot);
 
   const handleRazorpayPayment = async () => {
     if (paying) return;

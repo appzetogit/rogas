@@ -278,7 +278,7 @@ export default function MealPlansTab({
 
                   // Delivery window details
                   const slotLabel = emp.deliverySlot || '—';
-                  let slotColor = 'bg-gray-400';
+                  let slotColor = emp.deliverySlot ? 'bg-brand-primary' : 'bg-gray-400';
                   if (emp.deliverySlot === 'Breakfast') slotColor = 'bg-orange-400';
                   if (emp.deliverySlot === 'Lunch') slotColor = 'bg-brand-primary';
                   if (emp.deliverySlot === 'Dinner') slotColor = 'bg-indigo-400';

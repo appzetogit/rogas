@@ -1,3 +1,4 @@
+import { getSlotPriorityMap, listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.js';
 // import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 // import { DMBSubscription } from './subscription.model.js';
 // import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
@@ -938,6 +939,7 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
     const dayOfWeek = dayStart.getUTCDay();
+    const slotDefs = await listSlots();
 
     const activeSubscriptions = await DMBSubscription.find({ status: 'active' })
         .populate('meals.mealPlanId', 'name pricePerDay')
@@ -966,11 +968,18 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
             }
             // ─────────────────────────────────────────────────────────────────────
 
-            const slots = sub.deliverySlots && sub.deliverySlots.length > 0
+            const slots = sub.deliverySlots?.length
                 ? sub.deliverySlots
-                : (sub.deliverySlot ? [sub.deliverySlot] : ['lunch']);
+                : (sub.deliverySlot ? [sub.deliverySlot] : []);
+
+            if (slots.length === 0) {
+                logger.warn(`[DAILY-ORDERS] Subscription ${sub.subscriptionId} has no delivery slot — skipping`);
+                skipped++;
+                continue;
+            }
 
             for (const slot of slots) {
+                if (!slotServesDay(slotDefs, slot, dayOfWeek)) { continue; }
                 const existing = await DMBDailyOrder.findOne({
                     subscriptionId: sub._id,
                     deliveryDate: { $gte: dayStart, $lt: dayEnd },
@@ -1104,6 +1113,7 @@ export const ensureOrdersForUser = async (userId) => {
             }
         }
 
+        const slotDefs = await listSlots();
         for (const targetDate of targetDates) {
             const dayStart = toDateOnly(targetDate);
             const dayEnd = new Date(dayStart);
@@ -1121,11 +1131,12 @@ export const ensureOrdersForUser = async (userId) => {
             if (sub.deliveryDays === 'mon_fri' && !isWeekday) continue;
             if (dayOfWeek === 0 && sub.deliveryDays !== 'full_week') continue;
 
-            const slots = sub.deliverySlots && sub.deliverySlots.length > 0
+            const slots = sub.deliverySlots?.length
                 ? sub.deliverySlots
-                : (sub.deliverySlot ? [sub.deliverySlot] : ['lunch']);
+                : (sub.deliverySlot ? [sub.deliverySlot] : []);
 
             for (const slot of slots) {
+                if (!slotServesDay(slotDefs, slot, dayOfWeek)) { continue; }
                 const existing = await DMBDailyOrder.findOne({
                     subscriptionId: sub._id,
                     deliveryDate: { $gte: dayStart, $lt: dayEnd },
@@ -1251,7 +1262,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
         .lean();
 
-    const slotPriority = { breakfast: 1, lunch: 2, dinner: 3 };
+    const slotPriority = await getSlotPriorityMap();
     orders.sort((a, b) => {
         const dateA = new Date(a.deliveryDate).getTime();
         const dateB = new Date(b.deliveryDate).getTime();
@@ -1896,7 +1907,10 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
         }
     }
 
-    await triggerDriverNotificationIfAllReady(vendorId, targetDate, slot || 'lunch');
+    // With no slot filter every slot was marked ready, so each one needs its own batch check.
+    for (const readySlot of slot ? [slot] : [...new Set(orders.map((o) => o.deliverySlot))]) {
+        await triggerDriverNotificationIfAllReady(vendorId, targetDate, readySlot);
+    }
 
     // ─── NEW: Broadcast "ready" status to all drivers in this vendor's zone ──
     if (io && count > 0) {
@@ -2011,7 +2025,7 @@ export async function notifyVendorsOfDriverUpdate(driver) {
                 },
                 otp: batch ? batch.collectionPinHash : null,
                 boxCount: batch ? batch.boxCount : 0,
-                slot: batch ? batch.deliverySlot : 'lunch'
+                slot: batch ? batch.deliverySlot : null
             });
             logger.info(`[REALTIME-DRIVER-ASSIGN] Notified vendor_${vendorId} of driver ${driver.name} zone assignment`);
         }

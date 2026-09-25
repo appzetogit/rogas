@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI, restaurantAPI } from "@food/api";
 import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft, MoreVertical, UtensilsCrossed, Check } from 'lucide-react';
+import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -36,17 +37,6 @@ const getISTFormatDateStr = (dateInput) => {
   return formatter.format(d);
 };
 
-const SLOT_INFO = {
-  breakfast: { label: "Breakfast ☀️", time: "7–9 AM", color: "bg-amber-50 text-amber-800 border-amber-200" },
-  lunch: { label: "Lunch 🌤️", time: "12–2 PM", color: "bg-[#e8f3f0] text-primary border-primary/20" },
-  dinner: { label: "Dinner 🌙", time: "7–9 PM", color: "bg-indigo-50 text-indigo-800 border-indigo-200" },
-};
-
-const SLOT_ORDER = {
-  breakfast: 1,
-  lunch: 2,
-  dinner: 3
-};
 
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
   const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
@@ -81,6 +71,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   selectedDateStrRef.current = selectedDateStr;
 
   const [cutoffTime, setCutoffTime] = useState(null);
+  const { slots: liveSlots, getSlot, window: slotWindow } = useDeliverySlots();
+  const slotRank = (key) => { const i = liveSlots.findIndex((s) => s.key === key); return i === -1 ? 99 : i + 1; };
 
   useEffect(() => {
     restaurantAPI.getVendorTimingSettingsPublic()
@@ -463,8 +455,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   // Sort orders within each date key by slot order
   Object.keys(orderMap).forEach(key => {
     orderMap[key].sort((a, b) => {
-      const rankA = SLOT_ORDER[a.deliverySlot?.toLowerCase()] || 2;
-      const rankB = SLOT_ORDER[b.deliverySlot?.toLowerCase()] || 2;
+      const rankA = slotRank(a.deliverySlot?.toLowerCase());
+      const rankB = slotRank(b.deliverySlot?.toLowerCase());
       return rankA - rankB;
     });
   });
@@ -669,18 +661,23 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                     </div>
                   ) : (
                     day.orders.map((m, idx) => {
-                      const slotKey = m.order.deliverySlot?.toLowerCase() || "lunch";
-                      const slot = SLOT_INFO[slotKey] || SLOT_INFO.lunch;
+                      const slotKey = m.order.deliverySlot?.toLowerCase();
+                      const slotDef = getSlot(slotKey);
 
                       return (
                         <div key={m.order._id || idx} className={`flex items-center justify-between ${idx > 0 ? "border-t border-[#bec9c3]/20 pt-4" : ""}`}>
                           <div className="flex-grow pr-3">
                             {/* Slot Badge */}
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${slot.color}`}>
-                                {slot.label} · {slot.time}
-                              </span>
-                            </div>
+                            {slotDef && (
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span
+                                  style={{ backgroundColor: `${slotDef.color}1a`, color: slotDef.color, borderColor: `${slotDef.color}55` }}
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border"
+                                >
+                                  {slotDef.name} {slotDef.icon} · {slotWindow(slotKey)}
+                                </span>
+                              </div>
+                            )}
 
                             <h3 className={`text-base font-bold text-on-surface leading-snug ${m.status === "skipped" ? "line-through opacity-50" : ""}`}>
                               {m.mealName}

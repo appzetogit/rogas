@@ -23,6 +23,13 @@ import apiClient, { dmbDeliveryAPI, deliveryAPI } from "../../../services/api";
 import { useDMBTracking } from "../hooks/useDMBTracking";
 import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
+import { fetchDeliverySlots, getCachedSlots } from "../../../shared/hooks/useDeliverySlots";
+
+const dropBeforeFor = (slotKey) => {
+  const def = getCachedSlots().find((x) => x.key === slotKey);
+  const t = def?.deliveryEndTime || def?.endTime;
+  return t ? `Before ${t}` : "";
+};
 
 function NewDeliveryDashboard({ children }) {
   useDMBTracking();
@@ -32,6 +39,8 @@ function NewDeliveryDashboard({ children }) {
   const [shifts, setShifts] = useState(INITIAL_SHIFTS);
   const [pickupFirstModalOpen, setPickupFirstModalOpen] = useState(false);
   const [appLogo, setAppLogo] = useState(null);
+
+  useEffect(() => { fetchDeliverySlots().catch(() => {}); }, []);
 
   useEffect(() => {
     const fetchAppConfig = async () => {
@@ -212,7 +221,7 @@ function NewDeliveryDashboard({ children }) {
             pin: o.pin,
             riderEarning: o.riderEarning || 0,
             pickupTimeStr: o.deliverySlot,
-            dropTimeStr: "Before " + (o.deliverySlot === 'lunch' ? '13:00' : '19:00'),
+            dropTimeStr: dropBeforeFor(o.deliverySlot),
             pickedUpAt: o.pickedUpAt,
             vendorId: o.vendorId?._id || o.vendorId || null,
             slot: o.deliverySlot || null

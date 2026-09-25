@@ -11,6 +11,7 @@ import { DMBSubscription } from '../../subscription/subscription.model.js';
 import { VendorSubscriptionPlan } from '../../subscription/vendorSubscriptionPlan.model.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
 import { createRazorpayOrder, verifyPaymentSignature, isRazorpayConfigured, getRazorpayKeyId } from '../../../food/orders/helpers/razorpay.helper.js';
+import { assertValidSlotKeys, listSlots, getSlotLabel } from '../../deliverySlot/deliverySlot.service.js';
 
 // ─── Employee Controllers ─────────────────────────────────────────────────────
 
@@ -323,6 +324,9 @@ export const assignMealPlan = async (req, res) => {
         const mealPlan = await DMBMealPlan.findById(mealPlanId);
         const pricePerDay = mealPlan ? Number(mealPlan.pricePerDay || 0) : 0;
         const normalizedSlots = Array.isArray(slots) ? slots.map(s => s.toLowerCase()) : [slots.toLowerCase()];
+        await assertValidSlotKeys(normalizedSlots);
+        const _slotDefs = await listSlots();
+        const slotDisplay = (keys) => keys.map(k => getSlotLabel(_slotDefs, k)).join(', ');
 
         // ── Fetch the VendorSubscriptionPlan to get the correct duration ─────────
         // The frontend always sends subscriptionPlanId; planType in the body is NOT
@@ -469,7 +473,7 @@ export const assignMealPlan = async (req, res) => {
 
                 // Update FoodUser's subscriptionStatus and deliverySlot
                 user.subscriptionStatus = 'active';
-                user.deliverySlot = normalizedSlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+                user.deliverySlot = slotDisplay(normalizedSlots);
                 await user.save();
             }
 
@@ -478,7 +482,7 @@ export const assignMealPlan = async (req, res) => {
             // Update employee's denormalized fields
             employee.assignedVendorId = vendorId;
             employee.assignedMealPlanId = mealPlanId;
-            employee.deliverySlot = normalizedSlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+            employee.deliverySlot = slotDisplay(normalizedSlots);
             employee.subscriptionStatus = 'active';
             await employee.save();
         }

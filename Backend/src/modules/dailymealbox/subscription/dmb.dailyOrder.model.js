@@ -55,7 +55,6 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 
         deliverySlot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
 

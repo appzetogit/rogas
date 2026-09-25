@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportDeliverymenToExcel, exportDeliverymenToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { toast } from "sonner"
+import SlotCheckboxes from '../../../../../shared/components/SlotCheckboxes';
 const debugError = () => {}
 
 
@@ -1148,24 +1149,11 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                             
                             <div>
                               <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Allowed Shifts</label>
-                              <div className="flex flex-wrap gap-3 bg-white p-2 border border-slate-200 rounded">
-                                {['breakfast', 'lunch', 'dinner'].map(shift => (
-                                  <label key={shift} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
-                                    <input 
-                                      type="checkbox" 
-                                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                      checked={editAssignmentData.allowedShifts.includes(shift)}
-                                      onChange={(e) => {
-                                        const newShifts = e.target.checked 
-                                          ? [...editAssignmentData.allowedShifts, shift]
-                                          : editAssignmentData.allowedShifts.filter(s => s !== shift)
-                                        handleAssignmentChange('allowedShifts', newShifts)
-                                      }}
-                                    />
-                                    {shift}
-                                  </label>
-                                ))}
-                              </div>
+                              <SlotCheckboxes
+                                className="flex flex-wrap gap-3 bg-white p-2 border border-slate-200 rounded"
+                                value={editAssignmentData.allowedShifts}
+                                onChange={(newShifts) => handleAssignmentChange('allowedShifts', newShifts)}
+                              />
                               
                               <div className="mt-4">
                                 <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Max Vendor Capacity</label>

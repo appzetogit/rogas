@@ -3,6 +3,7 @@ import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
 import { ArrowLeft, Calendar, Clock, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCircle, ChevronDown, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 
 const STATUS_CONFIG = {
   pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Pending' },
@@ -28,7 +29,9 @@ export default function DeliveryServicePage() {
 
   // Form state
   const [date, setDate] = useState('');
-  const [slot, setSlot] = useState('lunch');
+  const { slots: allSlots, enabledSlots: slotList, window: slotWin } = useDeliverySlots();
+  const [slot, setSlot] = useState('');
+  useEffect(() => { if (slotList.length && !slot) setSlot(slotList[0].key); }, [slotList]);
   const [reason, setReason] = useState('');
   const [remarks, setRemarks] = useState('');
 
@@ -57,7 +60,7 @@ export default function DeliveryServicePage() {
       await serviceManagementAPI.submitDeliveryUnavailable({ date, slot, reason, remarks });
       toast.success('Request submitted successfully');
       setShowForm(false);
-      setDate(''); setSlot('lunch'); setReason(''); setRemarks('');
+      setDate(''); setSlot(slotList[0]?.key || ''); setReason(''); setRemarks('');
       fetchRequests();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit request');
@@ -127,9 +130,9 @@ export default function DeliveryServicePage() {
                   onChange={(e) => setSlot(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none bg-white"
                 >
-                  <option value="breakfast">Breakfast (8 AM - 10 AM)</option>
-                  <option value="lunch">Lunch (12 PM - 2 PM)</option>
-                  <option value="dinner">Dinner (7 PM - 9 PM)</option>
+                  {slotList.map((sd) => (
+                    <option key={sd.key} value={sd.key}>{sd.name} ({slotWin(sd.key)})</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
@@ -204,7 +207,7 @@ export default function DeliveryServicePage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="font-semibold text-[#2B2B2B] text-sm">{formatDate(req.date)}</span>
-                        <span className="capitalize bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium">{req.slot}</span>
+                        <span className="capitalize bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium">{allSlots.find(x => x.key === req.slot)?.name}</span>
                       </div>
                       <p className="text-sm text-gray-600">{req.reason}</p>
                       {req.remarks && <p className="text-xs text-gray-400 italic">{req.remarks}</p>}

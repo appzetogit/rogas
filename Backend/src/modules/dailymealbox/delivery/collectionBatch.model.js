@@ -37,7 +37,6 @@ const collectionBatchSchema = new mongoose.Schema(
         deliveryDate: { type: Date, required: true, index: true },
         deliverySlot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             required: true
         },
 

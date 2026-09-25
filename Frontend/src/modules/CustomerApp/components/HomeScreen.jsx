@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
+import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
 
-const SLOT_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 
 const STATUS_COLORS = {
   scheduled: "bg-[#E8F3F0] text-primary",
@@ -61,6 +61,7 @@ export function HomeScreen({
   onLogout,
   socket,
 }) {
+  const { label: slotLabel } = useDeliverySlots();
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
 
@@ -411,7 +412,7 @@ export function HomeScreen({
             </h1>
             <p className="text-[14px] opacity-90 font-medium">
               {filteredTomorrowMealData
-                ? `Next delivery: ${SLOT_LABELS[filteredTomorrowMealData.deliverySlot] || "Lunch"} · ${new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
+                ? `Next delivery: ${slotLabel(filteredTomorrowMealData.deliverySlot)} · ${new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
                 : "No upcoming deliveries"}
             </p>
           </div>

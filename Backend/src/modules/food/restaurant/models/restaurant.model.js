@@ -328,8 +328,7 @@ const restaurantSchema = new mongoose.Schema(
     /** Offered meal slots */
     mealSlots: {
       type: [String],
-      enum: ['breakfast', 'lunch', 'dinner'],
-      default: ['breakfast', 'lunch', 'dinner'],
+      default: [],
     },
     /** Platform commission rate (default 15%) */
     commissionRate: { type: Number, default: 0.15, min: 0, max: 1 },

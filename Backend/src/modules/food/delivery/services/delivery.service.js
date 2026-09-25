@@ -1232,7 +1232,8 @@ export const createShiftChangeRequest = async (partnerId, requestedShifts) => {
     if (!Array.isArray(requestedShifts)) {
         throw new Error('requestedShifts must be an array');
     }
-    const validShifts = ['breakfast', 'lunch', 'dinner'];
+    const { getSlotKeys } = await import('../../../dailymealbox/deliverySlot/deliverySlot.service.js');
+    const validShifts = await getSlotKeys();
     const invalid = requestedShifts.find(s => !validShifts.includes(s));
     if (invalid) {
         throw new Error(`Invalid shift: ${invalid}`);

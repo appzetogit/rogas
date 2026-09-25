@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
 import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle } from 'lucide-react';
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 
 const toLocalDateStr = (d) => {
   if (!d) return "";
@@ -38,6 +39,7 @@ export default function MenuManager({
   onEndSurpriseBox,
   onToggleMealStatus
 }) {
+  const { enabledSlots: slotList } = useDeliverySlots();
   const currentWeekDates = React.useMemo(() => {
     const days = [];
     const today = new Date();
@@ -87,7 +89,7 @@ export default function MenuManager({
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [photoSchedule, setPhotoSchedule] = useState('');
-  const [selectedSlotForSchedule, setSelectedSlotForSchedule] = useState('lunch');
+  const [selectedSlotForSchedule, setSelectedSlotForSchedule] = useState('');
 
   const generateUpcomingDays = () => {
     const days = [];
@@ -126,21 +128,11 @@ export default function MenuManager({
     }
   };
 
-  const getScheduledDishForMealAndDate = (mealId, date, slot = 'lunch') => {
-    const dateStr = toLocalDateStr(date);
-    return dailyMenus.find(dm => {
-      const dmDateStr = new Date(dm.date).toISOString().split('T')[0];
-      const dmMealPlanId = dm.mealPlanId?._id || dm.mealPlanId;
-      const dmSlot = dm.slot || 'lunch';
-      return dmMealPlanId === mealId && dmDateStr === dateStr && dmSlot === slot;
-    });
-  };
-
   const getScheduledDishForSlotAndDate = (slot, date) => {
     const dateStr = toLocalDateStr(date);
     return dailyMenus.find(dm => {
       const dmDateStr = new Date(dm.date).toISOString().split('T')[0];
-      const dmSlot = dm.slot || 'lunch';
+      const dmSlot = dm.slot;
       return dmSlot === slot && dmDateStr === dateStr;
     });
   };
@@ -154,7 +146,7 @@ export default function MenuManager({
     });
   };
 
-  const handleSelectMealForSchedule = async (targetPlan, selectedMeal, slot = 'lunch') => {
+  const handleSelectMealForSchedule = async (targetPlan, selectedMeal, slot) => {
     try {
       const targetDate = selectedDateForSchedule || selectedDate;
       const payload = {
@@ -185,7 +177,7 @@ export default function MenuManager({
     }
   };
 
-  const handleDeleteScheduledMeal = async (mealPlanId, date, slot = 'lunch') => {
+  const handleDeleteScheduledMeal = async (mealPlanId, date, slot) => {
     if (!window.confirm("Are you sure you want to remove this meal from today's weekly schedule?")) {
       return;
     }
@@ -208,7 +200,7 @@ export default function MenuManager({
     fetchDailyMenus();
   }, []);
 
-  const handleOpenScheduler = (meal, date, slot = 'lunch', existingDish) => {
+  const handleOpenScheduler = (meal, date, slot, existingDish) => {
     setSelectedMealForSchedule(meal);
     setSelectedDateForSchedule(date);
     setSelectedSlotForSchedule(slot);
@@ -651,9 +643,10 @@ export default function MenuManager({
                       </h2>
                     </div>
 
-                    {/* Slots columns: Breakfast, Lunch, Dinner */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 space-y-0">
-                      {['breakfast', 'lunch', 'dinner'].map((slot) => {
+                    {/* Slots columns (admin-configured) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 space-y-0">
+                      {slotList.map((slotDef) => {
+                        const slot = slotDef.key;
                         const existingDish = getScheduledDishForSlotAndDate(slot, activeDate);
                         const existingMeal = existingDish
                           ? meals.find(m => {
@@ -662,8 +655,8 @@ export default function MenuManager({
                             })
                           : null;
 
-                        const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
-                        const slotIcon = { breakfast: "☀️", lunch: "🌤️", dinner: "🌙" }[slot];
+                        const slotLabel = slotDef.name;
+                        const slotIcon = slotDef.icon;
 
                         return (
                           <div key={slot} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/15 space-y-3">

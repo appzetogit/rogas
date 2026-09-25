@@ -4,6 +4,7 @@ import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportJoinRequestsToExcel, exportJoinRequestsToPDF } from "@food/components/admin/deliveryman/joinRequestExportUtils"
+import SlotCheckboxes from '../../../../../shared/components/SlotCheckboxes';
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -566,22 +567,11 @@ export default function JoinRequest() {
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Allowed Shift(s) <span className="text-slate-400 font-normal ml-1">(Optional)</span>
               </label>
-              <div className="flex flex-wrap gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                {['breakfast', 'lunch', 'dinner'].map(shift => (
-                  <label key={shift} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      checked={allowedShifts.includes(shift)} 
-                      onChange={(e) => {
-                        if (e.target.checked) setAllowedShifts([...allowedShifts, shift])
-                        else setAllowedShifts(allowedShifts.filter(s => s !== shift))
-                      }}
-                    />
-                    {shift}
-                  </label>
-                ))}
-              </div>
+              <SlotCheckboxes
+                className="flex flex-wrap gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200"
+                value={allowedShifts}
+                onChange={setAllowedShifts}
+              />
             </div>
 
             <div>

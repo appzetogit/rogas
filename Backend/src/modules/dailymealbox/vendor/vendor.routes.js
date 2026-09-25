@@ -20,6 +20,7 @@ import { PantryItem } from '../../food/restaurant/models/pantryItem.model.js';
 import { FoodItem } from '../../food/admin/models/food.model.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { upload } from '../../../middleware/upload.js';
+import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 
 const router = express.Router();
 
@@ -136,6 +137,7 @@ router.get('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req
 
 router.post('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
+        if (req.body?.availableSlots?.length) await assertValidSlotKeys(req.body.availableSlots);
         const plan = await DMBMealPlan.create({ vendorId: req.user.userId, ...req.body });
         res.status(201).json({ success: true, plan });
     } catch (err) {
@@ -145,6 +147,7 @@ router.post('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (re
 
 router.put('/meal-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
+        if (req.body?.availableSlots?.length) await assertValidSlotKeys(req.body.availableSlots, { allowDisabled: true });
         const plan = await DMBMealPlan.findOneAndUpdate(
             { _id: req.params.planId, vendorId: req.user.userId },
             req.body,
@@ -181,13 +184,13 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
     try {
         const vendorId = req.user.userId;
         const { mealPlanId, date, slot, dishName, description, photo, nutrition } = req.body;
-        if (!mealPlanId || !date || !dishName) {
-            return res.status(400).json({ success: false, message: 'mealPlanId, date, and dishName are required' });
+        if (!mealPlanId || !date || !dishName || !slot) {
+            return res.status(400).json({ success: false, message: 'mealPlanId, date, slot and dishName are required' });
         }
 
         const normalizedDate = new Date(date);
         normalizedDate.setUTCHours(0, 0, 0, 0);
-        const finalSlot = slot || 'lunch';
+        const finalSlot = slot;
 
         // ─── Enforce: ONE meal per vendor per day per slot ───────────────────────
         // Delete any existing daily menu for this vendor+date+slot with a DIFFERENT mealPlanId
@@ -325,13 +328,13 @@ router.delete('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async 
     try {
         const vendorId = req.user.userId;
         const { mealPlanId, date, slot } = req.query;
-        if (!mealPlanId || !date) {
-            return res.status(400).json({ success: false, message: 'mealPlanId and date are required' });
+        if (!mealPlanId || !date || !slot) {
+            return res.status(400).json({ success: false, message: 'mealPlanId, date and slot are required' });
         }
 
         const normalizedDate = new Date(date);
         normalizedDate.setUTCHours(0, 0, 0, 0);
-        const finalSlot = slot || 'lunch';
+        const finalSlot = slot;
 
         await DMBDailyMenu.deleteOne({ vendorId, mealPlanId, date: normalizedDate, slot: finalSlot });
 
@@ -970,7 +973,10 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
     try {
         const vendorId = req.user.userId || req.user._id;
         const { date, slot } = req.body;
-        const requestedSlot = slot || 'lunch';
+        if (!slot) {
+            return res.status(400).json({ success: false, message: 'slot is required' });
+        }
+        const requestedSlot = slot;
 
         const targetDate = date ? new Date(date) : new Date();
         targetDate.setUTCHours(0, 0, 0, 0);
@@ -1262,7 +1268,7 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
             otp: batch ? batch.collectionPinHash : null,
             boxCount: boxCount,
             batchStatus: batch ? batch.status : null,
-            slot: batch ? batch.deliverySlot : (slot || 'lunch')
+            slot: batch ? batch.deliverySlot : (slot || null)
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

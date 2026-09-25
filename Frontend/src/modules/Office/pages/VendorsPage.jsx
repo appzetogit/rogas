@@ -4,10 +4,11 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Sparkles, ClipboardCheck, UserPlus, Star, Search, X, Sun, Moon, Utensils, Check, ArrowLeft } from 'lucide-react';
+import { Sparkles, ClipboardCheck, UserPlus, Star, Search, X, Utensils, Check, ArrowLeft } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionPlansApi } from '../services/officeApi';
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 
 
 export default function VendorsTab({
@@ -24,6 +25,7 @@ export default function VendorsTab({
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardSearch, setWizardSearch] = useState('');
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
+  const { enabledSlots: allSlots, window: slotWindow, label: slotLabelOf } = useDeliverySlots();
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [selectedMealPlan, setSelectedMealPlan] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -81,7 +83,7 @@ export default function VendorsTab({
       .slice(0, 3) // select first 3 unassigned by default to guide the user
       .map((emp) => emp.id);
     setSelectedEmployeeIds(initiallySelected);
-    setSelectedSlots(['Lunch']);
+    setSelectedSlots(allSlots.length ? [allSlots[0].key] : []);
     setSelectedMealPlan(null);
     setIsProcessingPayment(false);
   };
@@ -407,71 +409,28 @@ export default function VendorsTab({
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      {/* Breakfast card */}
-                      {(selectedVendor.mealSlots || []).includes('breakfast') && (
-                        <label className="cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="delivery-slot-option"
-                            className="peer hidden"
-                            value="Breakfast"
-                            checked={selectedSlots.includes('Breakfast')}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedSlots([...selectedSlots, 'Breakfast']);
-                              else setSelectedSlots(selectedSlots.filter(s => s !== 'Breakfast'));
-                            }}
-                          />
-                          <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
-                            <Sun className="w-10 h-10 mb-3 text-orange-400" />
-                            <span className="font-bold text-sm text-brand-text">Breakfast</span>
-                            <span className="text-[10px] text-brand-muted mt-1">08:00 AM - 10:00 AM</span>
-                          </div>
-                        </label>
-                      )}
-
-                      {/* Lunch card */}
-                      {(selectedVendor.mealSlots || []).includes('lunch') && (
-                        <label className="cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="delivery-slot-option"
-                            className="peer hidden"
-                            value="Lunch"
-                            checked={selectedSlots.includes('Lunch')}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedSlots([...selectedSlots, 'Lunch']);
-                              else setSelectedSlots(selectedSlots.filter(s => s !== 'Lunch'));
-                            }}
-                          />
-                          <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
-                            <Utensils className="w-10 h-10 mb-3 text-brand-primary" />
-                            <span className="font-bold text-sm text-brand-text">Lunch</span>
-                            <span className="text-[10px] text-brand-muted mt-1">12:00 PM - 02:00 PM</span>
-                          </div>
-                        </label>
-                      )}
-
-                      {/* Dinner card */}
-                      {(selectedVendor.mealSlots || []).includes('dinner') && (
-                        <label className="cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="delivery-slot-option"
-                            className="peer hidden"
-                            value="Dinner"
-                            checked={selectedSlots.includes('Dinner')}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedSlots([...selectedSlots, 'Dinner']);
-                              else setSelectedSlots(selectedSlots.filter(s => s !== 'Dinner'));
-                            }}
-                          />
-                          <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
-                            <Moon className="w-10 h-10 mb-3 text-indigo-400" />
-                            <span className="font-bold text-sm text-brand-text">Dinner</span>
-                            <span className="text-[10px] text-brand-muted mt-1">06:00 PM - 08:00 PM</span>
-                          </div>
-                        </label>
-                      )}
+                      {allSlots
+                        .filter((sl) => (selectedVendor.mealSlots || []).includes(sl.key))
+                        .map((sl) => (
+                          <label key={sl.key} className="cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="delivery-slot-option"
+                              className="peer hidden"
+                              value={sl.key}
+                              checked={selectedSlots.includes(sl.key)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedSlots([...selectedSlots, sl.key]);
+                                else setSelectedSlots(selectedSlots.filter((k) => k !== sl.key));
+                              }}
+                            />
+                            <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
+                              <span className="text-4xl mb-3">{sl.icon}</span>
+                              <span className="font-bold text-sm text-brand-text">{sl.name}</span>
+                              <span className="text-[10px] text-brand-muted mt-1">{slotWindow(sl.key)}</span>
+                            </div>
+                          </label>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -603,7 +562,7 @@ export default function VendorsTab({
                           <Row label="Plan Price"        value={`₹${planPrice.toFixed(2)}`} />
                           <Row label="Duration"          value={selectedMealPlan.duration === 'week' ? 'Weekly (Mon–Fri)' : selectedMealPlan.duration === 'month' ? 'Monthly (Full Week)' : 'Daily'} />
                           <Row label="Assigned Employees" value={`× ${empCount}`} />
-                          <Row label="Meal Slots"        value={`${selectedSlots.join(', ')} (× ${slotCount})`} />
+                          <Row label="Meal Slots"        value={`${selectedSlots.map((k) => slotLabelOf(k)).join(', ')} (× ${slotCount})`} />
                         </div>
 
                         {/* Cost breakdown — shown only when user clicks ⓘ */}

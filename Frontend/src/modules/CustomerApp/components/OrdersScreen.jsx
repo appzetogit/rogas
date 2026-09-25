@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
+import useDeliverySlots, { fetchDeliverySlots, to12h } from "../../../shared/hooks/useDeliverySlots";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
-const SLOT_LABELS = {
-  breakfast: "Breakfast ☀️",
-  lunch: "Lunch 🌤️",
-  dinner: "Dinner 🌙",
+// Slot labels/timings come from admin-configured delivery slots (see useDeliverySlots)
+let _slotList = [];
+const slotLabelOf = (key) => {
+  const s = _slotList.find((x) => x.key === key);
+  return s ? `${s.name} ${s.icon}` : "";
 };
 
 const STATUS_CONFIG = {
@@ -44,21 +46,18 @@ function getISTDateStr(offsetDays = 0) {
 }
 
 // ─── Slot timings cache — fetched once from backend, fallback to defaults ────────
-let _slotTimings = {
-  breakfast: { startHour: 6,  endHour: 11 },
-  lunch:     { startHour: 11, endHour: 16 },
-  dinner:    { startHour: 16, endHour: 23 },
-};
-let _slotTimingsFetched = false;
+let _slotTimings = {};
 
 async function ensureSlotTimings() {
-  if (_slotTimingsFetched) return;
-  _slotTimingsFetched = true;
   try {
-    const res = await publicGetOnce('/app-config/slot-timings');
-    const timings = res?.data?.data?.slotTimings;
-    if (timings) _slotTimings = { ..._slotTimings, ...timings };
-  } catch (_) { /* use defaults */ }
+    const list = await fetchDeliverySlots();
+    _slotList = list;
+    const toMins = (t) => { const [h, m] = (t || "0:0").split(":").map(Number); return h * 60 + (m || 0); };
+    _slotTimings = Object.fromEntries(list.map((s) => [s.key, {
+      startMins: toMins(s.deliveryStartTime || s.startTime),
+      endMins: toMins(s.deliveryEndTime || s.endTime),
+    }]));
+  } catch (_) { /* keep previous */ }
 }
 
 // ─── Returns true if the order's slot is the currently active delivery window ─
@@ -72,15 +71,15 @@ function isCurrentActiveSlot(order) {
   const orderDateStr = getUTCFormatDateStr(order.deliveryDate);
   if (orderDateStr !== getISTDateStr(0)) return false; // only today's orders
 
-  const slot = (order.deliverySlot || 'lunch').toLowerCase();
+  const slot = (order.deliverySlot || '').toLowerCase();
   const nowIST = new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
   );
-  const h = nowIST.getHours();
+  const nowMins = nowIST.getHours() * 60 + nowIST.getMinutes();
 
   const cfg = _slotTimings[slot];
   if (!cfg) return false;
-  return h >= cfg.startHour && h < cfg.endHour;
+  return nowMins >= cfg.startMins && nowMins < cfg.endMins;
 }
 
 // ─── Module-level cache (survives tab switches within a session) ──────────────
@@ -758,7 +757,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
   const manageDeliveryInfo = useMemo(() => {
     if (!manageOrder) return null;
     const dateStr = formatDate(manageOrder.deliveryDate);
-    const slotLabel = SLOT_LABELS[manageOrder.deliverySlot] || "";
+    const slotLabel = slotLabelOf(manageOrder.deliverySlot) || "";
     const isTomorrow = getUTCFormatDateStr(manageOrder.deliveryDate) === getISTDateStr(1);
     return { dateStr, slotLabel, isTomorrow };
   }, [manageOrder, formatDate]);

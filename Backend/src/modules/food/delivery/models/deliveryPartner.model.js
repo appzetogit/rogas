@@ -159,13 +159,12 @@ const deliveryPartnerSchema = new mongoose.Schema(
         /** Current active shift */
         currentShift: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner', 'none'],
             default: 'none'
         },
         /** Assigned delivery zones */
         zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
         /** Allowed shifts for vendor assignment */
-        allowedShifts: [{ type: String, enum: ['breakfast', 'lunch', 'dinner'] }],
+        allowedShifts: [{ type: String }],
         /** Maximum number of vendors this partner can handle */
         maxVendorCapacity: { type: Number, default: 0, min: 0 },
         /** List of assigned vendors (load balancing) */

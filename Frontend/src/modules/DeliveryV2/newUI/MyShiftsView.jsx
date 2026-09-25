@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Clock, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import useDeliverySlots, { to12h } from '../../../shared/hooks/useDeliverySlots';
 
 const MyShiftsView = ({ onGoBack }) => {
   const [currentShifts, setCurrentShifts] = useState([]);
@@ -75,11 +76,8 @@ const MyShiftsView = ({ onGoBack }) => {
     }
   };
 
-  const availableShifts = [
-    { id: 'breakfast', label: 'Breakfast (06:00 - 11:00)' },
-    { id: 'lunch', label: 'Lunch (11:00 - 16:00)' },
-    { id: 'dinner', label: 'Dinner (16:00 - 23:00)' }
-  ];
+  const { slots: liveSlots, enabledSlots: selectableSlots, window: slotWin } = useDeliverySlots();
+  const availableShifts = selectableSlots.map((s) => ({ id: s.key, label: `${s.name} (${slotWin(s.key)})` }));
 
   if (loading) {
     return <div className="p-8 text-center text-[#2b2b2b] bg-[#f5f5f0] min-h-screen">Loading...</div>;
@@ -102,7 +100,7 @@ const MyShiftsView = ({ onGoBack }) => {
           <div className="flex flex-wrap gap-2">
             {currentShifts.map(s => (
               <span key={s} className="px-3 py-1 bg-[#1f7a63]/10 text-[#1f7a63] rounded-full text-sm font-semibold capitalize">
-                {s}
+                {liveSlots.find(x => x.key === s)?.name}
               </span>
             ))}
           </div>

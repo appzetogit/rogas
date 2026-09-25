@@ -328,7 +328,6 @@ const orderSchema = new mongoose.Schema(
         /** Delivery slot: breakfast / lunch / dinner */
         deliverySlot: {
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner'],
             default: null
         },
         /** Order type: subscription (auto) or one-time */

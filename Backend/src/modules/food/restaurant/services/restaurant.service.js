@@ -464,7 +464,7 @@ export const registerRestaurant = async (payload, files) => {
             vendorType: vendorType || 'restaurant',
             kitchenPartnerId: kitchenPartnerId || null,
             vatNumber: vatNumber || '',
-            mealSlots: Array.isArray(mealSlots) ? mealSlots : (typeof mealSlots === 'string' ? mealSlots.split(',').map(s=>s.trim()) : ['breakfast', 'lunch', 'dinner']),
+            mealSlots: Array.isArray(mealSlots) ? mealSlots : (typeof mealSlots === 'string' ? mealSlots.split(',').map(s=>s.trim()).filter(Boolean) : []),
             foodLicenceUrl: foodLicenceUrl || '',
             foodLicenceStatus: foodLicenceUrl ? 'valid' : 'not_uploaded',
             pendingUpdateReason: 'New Registration',

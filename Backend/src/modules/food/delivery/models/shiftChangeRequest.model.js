@@ -10,11 +10,9 @@ const shiftChangeRequestSchema = new mongoose.Schema(
         },
         currentShifts: [{
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner']
         }],
         requestedShifts: [{
             type: String,
-            enum: ['breakfast', 'lunch', 'dinner']
         }],
         status: {
             type: String,

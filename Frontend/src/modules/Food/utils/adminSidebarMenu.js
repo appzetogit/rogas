@@ -47,7 +47,7 @@ export const adminSidebarMenu = [
       },
       {
         type: "link",
-        label: "Vendor Timing",
+        label: "Delivery Slots",
         path: "/admin/food/vendor-timing",
         icon: "Clock",
       },

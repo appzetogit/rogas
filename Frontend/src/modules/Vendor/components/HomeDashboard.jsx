@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { dmbVendorAPI } from '../../../services/api';
 import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPin, ArrowRight, CheckCircle, BarChart, ChefHat } from 'lucide-react';
+import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
 
 export default function HomeDashboard({
   profile,
@@ -27,6 +28,7 @@ export default function HomeDashboard({
   const [localBatch, setLocalBatch] = useState(null);
 
   const [timingConfig, setTimingConfig] = useState(null);
+  const { slots: slotList } = useDeliverySlots();
 
   // Fetch admin timing config once on mount
   useEffect(() => {
@@ -45,36 +47,13 @@ export default function HomeDashboard({
     return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
   };
 
-  const getArrivalTime = (slotName) => {
-    const s = (slotName || getCurrentSlot()).toLowerCase();
-    if (s === 'breakfast') return '07:45';
-    if (s === 'dinner') return '18:15';
-    return '11:45'; // default lunch
+  const getArrivalTime = (slotKey) => {
+    const def = slotList.find((sl) => sl.key === (slotKey || getCurrentSlot()));
+    return def?.startTime || '';
   };
 
 
-  const getCurrentSlot = (config = timingConfig) => {
-    const now = new Date();
-    const curMin = now.getHours() * 60 + now.getMinutes();
-
-    if (config) {
-      for (const slot of ['breakfast', 'lunch', 'dinner']) {
-        const cfg = config[slot];
-        if (cfg && cfg.isEnabled !== false) {
-          const start = hhmmToMin(cfg.startTime);
-          const end   = hhmmToMin(cfg.endTime);
-          if (start !== null && end !== null && curMin >= start && curMin <= end) {
-            return slot;
-          }
-        }
-      }
-    }
-
-    const hr = now.getHours();
-    if (hr < 10) return 'breakfast';
-    if (hr < 15) return 'lunch';
-    return 'dinner';
-  };
+  const getCurrentSlot = (config = timingConfig) => pickCurrentSlot(config, slotList);
 
   // Recover state if page was refreshed
   useEffect(() => {

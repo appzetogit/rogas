@@ -3,6 +3,7 @@ import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
 import { ArrowLeft, Calendar, Clock, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCircle, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 
 const STATUS_CONFIG = {
   pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Pending' },
@@ -29,7 +30,9 @@ export default function VendorServicePage() {
 
   // Form state
   const [date, setDate] = useState('');
-  const [slots, setSlots] = useState(['lunch']);
+  const { enabledSlots: slotList } = useDeliverySlots();
+  const [slots, setSlots] = useState([]);
+  useEffect(() => { if (slotList.length && slots.length === 0) setSlots([slotList[0].key]); }, [slotList]);
   const [reason, setReason] = useState('');
   const [remarks, setRemarks] = useState('');
 
@@ -59,7 +62,7 @@ export default function VendorServicePage() {
       toast.success('Request submitted successfully');
       setShowForm(false);
       setDate('');
-      setSlots(['lunch']);
+      setSlots(slotList.length ? [slotList[0].key] : []);
       setReason('');
       setRemarks('');
       fetchRequests();
@@ -116,7 +119,7 @@ export default function VendorServicePage() {
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Meal Slots *</label>
               <div className="flex flex-wrap gap-2">
-                {['breakfast', 'lunch', 'dinner'].map(s => (
+                {slotList.map(sd => sd.key).map(s => (
                   <button
                     type="button"
                     key={s}
@@ -133,7 +136,7 @@ export default function VendorServicePage() {
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {s}
+                    {slotList.find(x => x.key === s)?.name || s}
                   </button>
                 ))}
               </div>
