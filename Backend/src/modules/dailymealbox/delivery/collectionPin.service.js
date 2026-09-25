@@ -9,6 +9,7 @@ import { logger } from '../../../utils/logger.js';
 import { enqueueOrderEvent } from '../../food/orders/services/order.helpers.js';
 import * as foodTransactionService from '../../food/orders/services/foodTransaction.service.js';
 import { FoodTransaction } from '../../food/orders/models/foodTransaction.model.js';
+import { msg } from '../../i18n/i18n.service.js';
 
 const COLLECTION_PIN_EXPIRY_SECONDS = parseInt(process.env.COLLECTION_PIN_EXPIRY_SECONDS || '7200'); // 2 hours
 const MAX_PIN_ATTEMPTS = 3;
@@ -104,8 +105,8 @@ export const markVendorReady = async ({ vendorId, deliveryDate, deliverySlot }) 
             await sendNotificationToUser({
                 recipientId: driverId,
                 recipientType: 'driver',
-                title: `Orders ready for pickup! 🟢`,
-                body: `${batchOrders.length} boxes ready. Collection PIN: ${pin}. Tap to navigate.`,
+                title: msg('Orders ready for pickup! 🟢'),
+                body: msg('{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate.', { count: batchOrders.length, pin }),
                 data: {
                     screen: 'pickup_detail',
                     vendor_id: vendorId.toString(),
@@ -213,8 +214,8 @@ export const verifyCollectionPin = async ({ batchId, pinEntered, driverId, colle
     await sendNotificationToUser({
         recipientId: batch.vendorId,
         recipientType: 'vendor',
-        title: `Batch ${batchId} collected ✓`,
-        body: `Driver collected ${batch.boxCount} boxes at ${new Date().toLocaleTimeString()}. PIN verified.`,
+        title: msg('Batch {{batchId}} collected ✓', { batchId }),
+        body: msg('Driver collected {{count}} boxes at {{time}}. PIN verified.', { count: batch.boxCount, time: new Date().toLocaleTimeString() }),
         data: { screen: 'delivery_assignment', event: 'batch_collected', batchId }
     });
 
@@ -322,8 +323,8 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
         await sendNotificationToUser({
             recipientId: order.userId,
             recipientType: 'customer',
-            title: 'Delivered! 🎉',
-            body: 'Your DailyMealBox has been delivered. Enjoy!',
+            title: msg('Delivered! 🎉'),
+            body: msg('Your DailyMealBox has been delivered. Enjoy!'),
             data: { screen: 'order_detail', orderId: order._id.toString(), event: 'delivered' }
         });
 
@@ -414,8 +415,8 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
         await sendNotificationToUser({
             recipientId: order.userId,
             recipientType: 'customer',
-            title: 'Delivered! 🎉',
-            body: 'Your meal has been delivered. Enjoy! Rate your experience →',
+            title: msg('Delivered! 🎉'),
+            body: msg('Your meal has been delivered. Enjoy! Rate your experience →'),
             data: { screen: 'order_detail', orderId: order._id.toString(), event: 'delivered' }
         });
 

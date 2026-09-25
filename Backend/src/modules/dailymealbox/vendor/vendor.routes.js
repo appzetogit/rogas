@@ -21,6 +21,7 @@ import { FoodItem } from '../../food/admin/models/food.model.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { upload } from '../../../middleware/upload.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
+import { msg, translateFor } from '../../i18n/i18n.service.js';
 
 const router = express.Router();
 
@@ -722,20 +723,20 @@ router.put('/meal-plans/:planId/toggle-status', authMiddleware, requireRoles('RE
                     sendNotificationToUser({
                         recipientId: sub.userId,
                         recipientType: 'user',
-                        title: '🍱 Tomorrow\'s Meal Ready!',
-                        body: `${plan.name} will be delivered on ${tomorrowStr}. Get ready!`,
+                        title: msg("🍱 Tomorrow's Meal Ready!"),
+                        body: msg('{{planName}} will be delivered on {{date}}. Get ready!', { planName: plan.name, date: tomorrowStr }),
                         data: { screen: 'home', event: 'meal_activated', planName: plan.name }
                     }).catch(e => logger.warn(`Notification failed for user ${sub.userId}: ${e.message}`))
                 );
 
                 // Also create in-app inbox notifications
-                const inboxNotifications = subs.map(sub => ({
+                const inboxNotifications = await Promise.all(subs.map(async (sub) => ({
                     ownerType: 'USER',
                     ownerId: sub.userId,
-                    title: '🍱 Tomorrow\'s Meal is Confirmed!',
-                    message: `${plan.name} from your vendor is confirmed for tomorrow. Bon appétit!`,
+                    title: await translateFor('USER', sub.userId, "🍱 Tomorrow's Meal is Confirmed!"),
+                    message: await translateFor('USER', sub.userId, '{{planName}} from your vendor is confirmed for tomorrow. Bon appétit!', { planName: plan.name }),
                     category: 'meal_update'
-                }));
+                })));
 
                 await Promise.allSettled([
                     ...notificationPromises,

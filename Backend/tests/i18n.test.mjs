@@ -436,3 +436,26 @@ test('HTTP admin API: CRUD, guards and validation reports (through the real RBAC
         await new Promise((r) => srv.close(r));
     }
 });
+
+test('formatting tags must be kept exactly: <0>..</0> cannot be dropped, added or renumbered', async () => {
+    const { Translation, TranslationKey } = await import('../src/modules/i18n/translation.model.js');
+    await TranslationKey.updateOne({ namespace: 'customer', key: 'I agree to the <0>Terms</0> and <1>Privacy</1>.' }, { $set: {} }, { upsert: true });
+    const key = 'I agree to the <0>Terms</0> and <1>Privacy</1>.';
+    await rejects(svc.upsertTranslation({ language: 'pl', namespace: 'customer', key, value: 'Akceptuję Regulamin i Politykę.' }), 422, /Formatting tags/);
+    await rejects(svc.upsertTranslation({ language: 'pl', namespace: 'customer', key, value: 'Akceptuję <0>Regulamin</0> i <2>Politykę</2>.' }), 422, /Formatting tags/);
+    await rejects(svc.upsertTranslation({ language: 'pl', namespace: 'customer', key, value: 'Akceptuję <0>Regulamin</0> i <1>Politykę.' }), 422, /Formatting tags/);
+    // moving the tags around is allowed
+    const ok = await svc.upsertTranslation({ language: 'pl', namespace: 'customer', key, value: '<1>Politykę</1> oraz <0>Regulamin</0> akceptuję.' });
+    assert.equal(ok.value, '<1>Politykę</1> oraz <0>Regulamin</0> akceptuję.');
+    await Translation.deleteOne({ language: 'pl', namespace: 'customer', key });
+    await TranslationKey.deleteOne({ namespace: 'customer', key });
+    assert.deepEqual(svc.tagsOf('a <0>b</0> <1/> c'), ['</0>', '<0>', '<1/>']);
+});
+
+test('translateFor resolves the recipient language and interpolates', async () => {
+    const { FoodUser } = await import('../src/core/users/user.model.js');
+    const pl = await FoodUser.collection.insertOne({ name: 'PL user', phone: '+48000000010', languagePreference: 'pl', role: 'USER' });
+    const en = await FoodUser.collection.insertOne({ name: 'EN user', phone: '+48000000011', role: 'USER' });
+    assert.equal(await svc.translateFor('USER', pl.insertedId, 'Your meal plan starts {{startDate}}.', { startDate: '2026-10-01' }), 'Twój plan posiłków zaczyna się 2026-10-01.');
+    assert.equal(await svc.translateFor('USER', en.insertedId, 'Your meal plan starts {{startDate}}.', { startDate: '2026-10-01' }), 'Your meal plan starts 2026-10-01.');
+});

@@ -5,6 +5,7 @@ import { sendNotificationToUser } from '../../../core/notifications/notification
 import { logger } from '../../../utils/logger.js';
 import { getIO } from '../../../config/socket.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
+import { msg } from '../../i18n/i18n.service.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const toDateOnly = (date) => {
@@ -215,8 +216,8 @@ export const activateSubscription = async (subscriptionId) => {
     await sendNotificationToUser({
         recipientId: sub.vendorId,
         recipientType: 'vendor',
-        title: 'New Subscriber! 🎉',
-        body: `A new customer subscribed to your meal plan.`,
+        title: msg('New Subscriber! 🎉'),
+        body: msg('A new customer subscribed to your meal plan.'),
         data: { screen: 'subscribers', event: 'new_subscriber', subscriptionId }
     });
 
@@ -258,8 +259,8 @@ export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason })
     await sendNotificationToUser({
         recipientId: sub.vendorId,
         recipientType: 'vendor',
-        title: 'Customer Skip',
-        body: `A customer skipped tomorrow's delivery. Update your preparation count.`,
+        title: msg('Customer Skip'),
+        body: msg("A customer skipped tomorrow's delivery. Update your preparation count."),
         data: { screen: 'orders', event: 'subscriber_skip', subscriptionId, skipDate }
     });
 
@@ -559,8 +560,8 @@ export const cancelSubscription = async ({ subscriptionId, userId, reason }) => 
     await sendNotificationToUser({
         recipientId: sub.vendorId,
         recipientType: 'vendor',
-        title: 'Subscriber Cancelled',
-        body: `A subscriber cancelled. Check your analytics for retention tips.`,
+        title: msg('Subscriber Cancelled'),
+        body: msg('A subscriber cancelled. Check your analytics for retention tips.'),
         data: { screen: 'analytics', event: 'subscriber_cancelled', subscriptionId }
     });
 

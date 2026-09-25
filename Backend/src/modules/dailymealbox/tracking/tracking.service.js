@@ -4,6 +4,7 @@ import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.
 import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { logger } from '../../../utils/logger.js';
+import { msg } from '../../i18n/i18n.service.js';
 
 const DRIVER_LOCATION_TTL = 30; // Redis TTL in seconds (5s emit, 30s TTL)
 const GPS_ARRIVING_SOON_THRESHOLD = 500; // meters
@@ -138,8 +139,8 @@ const triggerArrivingSoon = async (order, driverId, distance, io) => {
     await sendNotificationToUser({
         recipientId: order.userId,
         recipientType: 'customer',
-        title: '🛵 Driver arriving soon!',
-        body: `Your delivery is ${Math.round(distance)}m away. PIN: ${pin}`,
+        title: msg('🛵 Driver arriving soon!'),
+        body: msg('Your delivery is {{distance}}m away. PIN: {{pin}}', { distance: Math.round(distance), pin }),
         data: {
             screen: 'order_tracking',
             orderId: order._id.toString(),

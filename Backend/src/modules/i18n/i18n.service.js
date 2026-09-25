@@ -29,6 +29,9 @@ export const httpError = (message, statusCode = 400, extra = {}) => Object.assig
 
 // ─── Placeholder / plural helpers ─────────────────────────────────────────────
 
+/** Numbered <Trans> tags in a string, e.g. ["<0>", "</0>"]. Translators may move them but must keep them all. */
+export const tagsOf = (text) => [...String(text).matchAll(/<\/?\d+\s*\/?>/g)].map((m) => m[0].replace(/\s+/g, '')).sort();
+
 export const placeholdersOf = (text) => [...new Set([...String(text).matchAll(PLACEHOLDER_RE)].map((m) => m[1]))].sort();
 
 /** A source string using {{count}} is pluralised: each language stores one row per plural category. */
@@ -427,6 +430,12 @@ const validateValue = ({ rowKey, sourceKey, category, value }) => {
         const missing = [...source].filter((p) => !target.includes(p));
         if (missing.length) return `Missing placeholder {{${missing.join('}}, {{')}}} - it must appear in the translation`;
     }
+    // Formatting tags such as <0>...</0> map to links/bold text in the app: they must all be kept, none invented.
+    const sourceTags = tagsOf(sourceKey);
+    const targetTags = tagsOf(value);
+    if (sourceTags.join('|') !== targetTags.join('|')) {
+        return `Formatting tags do not match the English text. Expected: ${sourceTags.join(' ') || 'none'} - found: ${targetTags.join(' ') || 'none'}`;
+    }
     return null;
 };
 
@@ -547,6 +556,12 @@ const localizeField = async (value, code) => {
     if (value && typeof value === 'object' && value.__i18n) return translate(code, value.namespace, value.key, value.vars);
     if (typeof value === 'string') return translate(code, 'notifications', value);
     return value;
+};
+
+/** Translates one string for one recipient (used for rows created in bulk, e.g. in-app inbox notifications). */
+export const translateFor = async (role, accountId, key, vars = {}, namespace = 'notifications') => {
+    await ensureSeeded();
+    return translate(await resolveOwnerLanguage(role, accountId), namespace, key, vars);
 };
 
 /** Plain-English rendering of a payload, used only if translation itself fails. */
