@@ -371,7 +371,18 @@ export const sendPushNotification = async (tokens, payload = {}) => {
 
 export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, platform } = {}) => {
     // 💡 Clone the payload to avoid side-effects (e.g. adding multiple prefixes to the same object during broadcasting)
-    const enrichedPayload = { ...payload };
+    let enrichedPayload = { ...payload };
+
+    // 🌐 Translate title/body into the recipient's chosen language (English when no translation exists).
+    // A translation failure must never drop the push, so it degrades to the English text.
+    try {
+        const { resolveOwnerLanguage, localizePayload } = await import('../../modules/i18n/i18n.service.js');
+        enrichedPayload = await localizePayload(enrichedPayload, await resolveOwnerLanguage(ownerType, ownerId));
+    } catch (error) {
+        logger.warn(`[i18n] Push localization failed for ${ownerType}:${ownerId}, sending English: ${error.message}`);
+        const { toEnglishPayload } = await import('../../modules/i18n/i18n.service.js');
+        enrichedPayload = toEnglishPayload(enrichedPayload);
+    }
 
     // 🏷️ Add Highlighter Prefix to the Title
     if (enrichedPayload && !enrichedPayload.skipHighlighter) {

@@ -325,6 +325,8 @@ const restaurantSchema = new mongoose.Schema(
     accountNumber: { type: String, default: '' },
     /** Owner ID Upload Image URL */
     ownerIdImage: { type: String, default: '' },
+    /** Language chosen by the vendor (admin-managed language code). null = default language. */
+    languagePreference: { type: String, default: null, trim: true, lowercase: true },
     /** Offered meal slots */
     mealSlots: {
       type: [String],

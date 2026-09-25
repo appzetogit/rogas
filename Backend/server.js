@@ -52,6 +52,14 @@ const startServer = async () => {
         // 1. Connect to Database (MongoDB)
         await connectDB();
 
+        // 1-i18n. Sync languages + translation catalog. Failure is not fatal: the apps fall back to English.
+        try {
+            const { ensureSeeded } = await import('./src/modules/i18n/i18n.service.js');
+            await ensureSeeded();
+        } catch (err) {
+            logger.error(`[i18n] Seeding failed: ${err.message}`);
+        }
+
         // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
         try {
             const db = mongoose.connection.db;

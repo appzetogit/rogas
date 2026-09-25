@@ -130,6 +130,13 @@ const userSchema = new mongoose.Schema(
             default: true,
             index: true
         },
+        /** Language chosen by the account holder (code from the admin-managed language list). null = use the default. */
+        languagePreference: {
+            type: String,
+            default: null,
+            trim: true,
+            lowercase: true
+        },
         role: {
             type: String,
             default: 'USER'

@@ -19,7 +19,14 @@ const officeAccountSchema = new mongoose.Schema(
             enum: ['active', 'blocked'],
             default: 'active'
         },
-        // A link to the company once onboarding is completed (or created)
+        // Language chosen by the office admin (admin-managed language code). null = default language.
+        languagePreference: {
+            type: String,
+            default: null,
+            trim: true,
+            lowercase: true
+        },
+        // A link to the company once onboarding is completed (or created)        // A link to the company once onboarding is completed (or created)
         companyId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'OfficeCompany'
