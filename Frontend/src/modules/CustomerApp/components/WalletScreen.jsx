@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from "@food/api";
 import { ArrowLeft, PlusCircle, Loader2, Info } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -14,6 +15,7 @@ function loadRazorpayScript() {
 }
 
 export function WalletScreen({ onBack, currentUser }) {
+    const { t } = useTranslation("customer");
     const [walletData, setWalletData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showTopupModal, setShowTopupModal] = useState(false);
@@ -61,7 +63,7 @@ export function WalletScreen({ onBack, currentUser }) {
                 amount: orderAmount,
                 currency: currency,
                 name: 'DailyMealBox',
-                description: 'Wallet Top-up',
+                description: t("Wallet Top-up"),
                 order_id: razorpayOrderId,
                 handler: async (response) => {
                     try {
@@ -116,7 +118,7 @@ export function WalletScreen({ onBack, currentUser }) {
                 <button onClick={onBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-xl font-extrabold text-primary text-center">My Wallet</h1>
+                <h1 className="text-xl font-extrabold text-primary text-center">{t("My Wallet")}</h1>
                 <div className="w-8" />
             </header>
 
@@ -128,15 +130,15 @@ export function WalletScreen({ onBack, currentUser }) {
                         {/* Abstract decorative element */}
                         <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#1f7a63]/5 rounded-full blur-3xl"></div>
                         <div>
-                            <p className="text-[14px] font-semibold text-[#3e4945] opacity-70">Current Balance</p>
-                            <h2 className="text-[32px] text-[#1f7a63] font-extrabold mt-1">PLN {balance.toFixed(2)}</h2>
+                            <p className="text-[14px] font-semibold text-[#3e4945] opacity-70">{t("Current Balance")}</p>
+                            <h2 className="text-[32px] text-[#1f7a63] font-extrabold mt-1">{t("PLN {{balance}}", { balance: balance.toFixed(2) })}</h2>
                         </div>
                         <button 
                             onClick={() => setShowTopupModal(true)}
                             className="bg-[#1f7a63] hover:bg-[#155a49] text-white font-semibold text-[16px] py-3.5 rounded-lg w-full transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
                         >
                             <PlusCircle className="text-[20px]" />
-                            Top up wallet
+                            {t("Top up wallet")}
                         </button>
                     </div>
                 </section>
@@ -144,7 +146,7 @@ export function WalletScreen({ onBack, currentUser }) {
                 {/* Transaction History */}
                 <section className="mt-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-[18px] font-extrabold text-[#1b1c1c]">Transaction History</h3>
+                        <h3 className="text-[18px] font-extrabold text-[#1b1c1c]">{t("Transaction History")}</h3>
                         {/* <button className="text-[#1f7a63] font-semibold text-[14px]">See all</button> */}
                     </div>
                     {loading ? (
@@ -152,7 +154,7 @@ export function WalletScreen({ onBack, currentUser }) {
                             <Loader2 className="animate-spin text-[#1f7a63]" />
                         </div>
                     ) : transactions.length === 0 ? (
-                        <p className="text-center text-sm text-gray-500 py-4">No transactions yet.</p>
+                        <p className="text-center text-sm text-gray-500 py-4">{t("No transactions yet.")}</p>
                     ) : (
                         <div className="space-y-3">
                             {transactions.map((tx, idx) => {
@@ -170,7 +172,7 @@ export function WalletScreen({ onBack, currentUser }) {
                                             </div>
                                         </div>
                                         <span className={`font-semibold text-[16px] ${isPositive ? 'text-[#1f7a63]' : 'text-[#3e4945]'}`}>
-                                            {isPositive ? '+' : '-'} PLN {Number(tx.amount).toFixed(2)}
+                                            {t("{{value}} PLN", { value: isPositive ? '+' : '-' })} {Number(tx.amount).toFixed(2)}
                                         </span>
                                     </div>
                                 );
@@ -184,7 +186,7 @@ export function WalletScreen({ onBack, currentUser }) {
                     <div className="bg-[#fea619]/10 border border-[#fea619]/20 rounded-xl p-4 flex gap-4">
                         <Info className="text-[#855300]" />
                         <p className="font-normal text-[14px] text-[#684000]">
-                            Use wallet funds to receive 2% cashback on every order.
+                            {t("Use wallet funds to receive 2% cashback on every order.")}
                         </p>
                     </div>
                 </section>
@@ -194,12 +196,12 @@ export function WalletScreen({ onBack, currentUser }) {
             {showTopupModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-                        <h3 className="text-xl font-bold mb-4">Top up wallet</h3>
-                        <p className="text-sm text-gray-500 mb-4">Enter amount to add to your wallet</p>
+                        <h3 className="text-xl font-bold mb-4">{t("Top up wallet")}</h3>
+                        <p className="text-sm text-gray-500 mb-4">{t("Enter amount to add to your wallet")}</p>
                         <input
                             type="number"
                             className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-[#1f7a63] mb-6"
-                            placeholder="Amount in PLN"
+                            placeholder={t("Amount in PLN")}
                             value={topupAmount}
                             onChange={(e) => setTopupAmount(e.target.value)}
                         />
@@ -208,14 +210,14 @@ export function WalletScreen({ onBack, currentUser }) {
                                 onClick={() => setShowTopupModal(false)}
                                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg active:scale-95 transition-transform"
                             >
-                                Cancel
+                                {t("Cancel")}
                             </button>
                             <button 
                                 onClick={handleTopup}
                                 disabled={processing || !topupAmount}
                                 className="flex-1 py-3 bg-[#1f7a63] text-white font-bold rounded-lg active:scale-95 transition-transform disabled:opacity-50 flex justify-center items-center gap-2"
                             >
-                                {processing ? <Loader2 className="animate-spin" /> : 'Proceed'}
+                                {processing ? <Loader2 className="animate-spin" /> : t("Proceed")}
                             </button>
                         </div>
                     </div>

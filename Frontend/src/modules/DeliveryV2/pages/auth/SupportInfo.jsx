@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
 import { publicGetOnce } from "@food/api";
+import { useTranslation } from "react-i18next";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -30,6 +31,7 @@ const MaterialIcon = ({ name, style = {}, className = "" }) => (
 );
 
 export default function SupportInfo() {
+  const { t } = useTranslation("driver");
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
   const [settings, setSettings] = useState(null);
@@ -102,13 +104,13 @@ export default function SupportInfo() {
               margin: 0,
             }}
           >
-            Support
+            {t("Support")}
           </h1>
         </header>
 
       <main style={{ padding: "24px", flexGrow: 1 }}>
         {loading ? (
-          <p style={{ textAlign: "center", color: COLORS.onSurfaceVariant }}>Loading...</p>
+          <p style={{ textAlign: "center", color: COLORS.onSurfaceVariant }}>{t("Loading...")}</p>
         ) : settings ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             
@@ -138,9 +140,9 @@ export default function SupportInfo() {
                 <MaterialIcon name="mail" style={{ color: COLORS.primary, fontSize: "24px" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>Email Support</h2>
+                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>{t("Email Support")}</h2>
                 <p style={{ fontSize: "16px", fontWeight: 600, color: COLORS.onSurface, margin: 0 }}>
-                  {settings.supportEmail || "N/A"}
+                  {settings.supportEmail || t("N/A")}
                 </p>
               </div>
               <MaterialIcon name="chevron_right" style={{ color: COLORS.outline }} />
@@ -172,9 +174,9 @@ export default function SupportInfo() {
                 <MaterialIcon name="call" style={{ color: COLORS.primary, fontSize: "24px" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>Call Support</h2>
+                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>{t("Call Support")}</h2>
                 <p style={{ fontSize: "16px", fontWeight: 600, color: COLORS.onSurface, margin: 0 }}>
-                  {settings.supportPhone || "N/A"}
+                  {settings.supportPhone || t("N/A")}
                 </p>
               </div>
               <MaterialIcon name="chevron_right" style={{ color: COLORS.outline }} />
@@ -198,9 +200,9 @@ export default function SupportInfo() {
                 <MaterialIcon name="schedule" style={{ color: COLORS.primary, fontSize: "24px" }} />
               </div>
               <div>
-                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>Support Hours</h2>
+                <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>{t("Support Hours")}</h2>
                 <p style={{ fontSize: "16px", fontWeight: 600, color: COLORS.onSurface, margin: 0 }}>
-                  {settings.supportHours || "Available 24/7"}
+                  {settings.supportHours || t("Available 24/7")}
                 </p>
               </div>
             </div>
@@ -230,9 +232,9 @@ export default function SupportInfo() {
                   <MaterialIcon name="description" style={{ color: COLORS.primary, fontSize: "24px" }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>Documents</h2>
+                  <h2 style={{ fontSize: "13px", color: COLORS.outline, marginBottom: "2px", fontWeight: 600 }}>{t("Documents")}</h2>
                   <p style={{ fontSize: "16px", fontWeight: 600, color: COLORS.onSurface, margin: 0 }}>
-                    Terms & Conditions
+                    {t("Terms & Conditions")}
                   </p>
                 </div>
                 <MaterialIcon name="open_in_new" style={{ color: COLORS.outline }} />
@@ -241,7 +243,7 @@ export default function SupportInfo() {
           </div>
         ) : (
           <p style={{ textAlign: "center", color: COLORS.onSurfaceVariant }}>
-            Could not load support info.
+            {t("Could not load support info.")}
           </p>
         )}
       </main>

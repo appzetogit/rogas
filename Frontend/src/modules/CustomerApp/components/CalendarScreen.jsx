@@ -3,6 +3,7 @@ import { IMAGES } from "../types";
 import { dmbCustomerAPI, restaurantAPI } from "@food/api";
 import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft, MoreVertical, UtensilsCrossed, Check } from 'lucide-react';
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
+import { Trans, useTranslation } from "react-i18next";
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -38,7 +39,16 @@ const getISTFormatDateStr = (dateInput) => {
 };
 
 
+const formatCutoffTime = (time) => {
+  if (!time) return '8:00 PM';
+  const [h, m] = time.split(':');
+  const h12 = parseInt(h, 10) % 12 || 12;
+  const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
+  return `${h12}:${m} ${ampm}`;
+};
+
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
+  const { t } = useTranslation("customer");
   const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("meals");
@@ -138,7 +148,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       }));
     } catch (err) {
       console.error("Failed to load orders for calendar:", err);
-      setError("Failed to load meal data. Please try again later.");
+      setError(t("Failed to load meal data. Please try again later."));
     } finally {
       setLoading(false);
     }
@@ -207,7 +217,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     // Extra frontend validation layer
     const targetOrder = orders.find(o => o._id === orderId);
     if (targetOrder && isOrderLocked(targetOrder)) {
-      onShowToast("🔒 This order is locked and cannot be skipped.");
+      onShowToast(t("🔒 This order is locked and cannot be skipped."));
       return;
     }
 
@@ -222,9 +232,9 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         }
         return prev;
       });
-      onShowToast(`${mealName || 'Meal'} marked as skipped`);
+      onShowToast(t("{{mealName}} marked as skipped", { mealName: mealName || 'Meal' }));
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to skip order";
+      const errMsg = err.response?.data?.message || t("Failed to skip order");
       onShowToast(errMsg);
     } finally {
       setLoadingAction(false);
@@ -235,7 +245,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const triggerSkipOrder = (orderId, mealName) => {
     const targetOrder = orders.find(o => o._id === orderId);
     if (targetOrder && isOrderLocked(targetOrder)) {
-      onShowToast("🔒 This order is locked and cannot be skipped.");
+      onShowToast(t("🔒 This order is locked and cannot be skipped."));
       return;
     }
     setSkipTarget({ orderId, mealName });
@@ -256,7 +266,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       const orderDateStr = getISTFormatDateStr(targetOrder.deliveryDate);
       const todayISTStr = getISTFormatDateStr(getISTToday());
       if (orderDateStr <= todayISTStr) {
-        onShowToast("Cannot undo skip for today's or past orders.");
+        onShowToast(t("Cannot undo skip for today's or past orders."));
         return;
       }
     }
@@ -272,9 +282,9 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         }
         return prev;
       });
-      onShowToast(`${mealName || 'Meal'} skip undone successfully`);
+      onShowToast(t("{{mealName}} skip undone successfully", { mealName: mealName || 'Meal' }));
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to undo skip";
+      const errMsg = err.response?.data?.message || t("Failed to undo skip");
       onShowToast(errMsg);
     } finally {
       setLoadingAction(false);
@@ -313,11 +323,11 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         manageOrder.subscriptionId._id || manageOrder.subscriptionId,
         pauseDays
       );
-      onShowToast(`Subscription paused for ${pauseDays} day(s).`);
+      onShowToast(t("Subscription paused for {{count}} day.", { count: pauseDays }));
       closeManage();
       loadOrdersForDate(selectedDateStrRef.current, true);
     } catch (err) {
-      onShowToast(err.response?.data?.message || "Failed to pause subscription");
+      onShowToast(err.response?.data?.message || t("Failed to pause subscription"));
     } finally {
       setLoadingAction(false);
     }
@@ -334,7 +344,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       const res = await dmbCustomerAPI.getVendorMenu(vendorId);
       setAvailableMeals(res.data?.menu ?? res.data?.meals ?? res.data?.plans ?? []);
     } catch (err) {
-      onShowToast("Failed to fetch available meals.");
+      onShowToast(t("Failed to fetch available meals."));
     }
   };
 
@@ -349,11 +359,11 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     setLoadingAction(true);
     try {
       await dmbCustomerAPI.changeDailyOrderMeal(manageOrder._id, selectedMealIds);
-      onShowToast("Meal changed successfully!");
+      onShowToast(t("Meal changed successfully!"));
       closeManage();
       loadOrdersForDate(selectedDateStrRef.current, true);
     } catch (err) {
-      onShowToast(err.response?.data?.message || "Failed to change meal");
+      onShowToast(err.response?.data?.message || t("Failed to change meal"));
     } finally {
       setLoadingAction(false);
     }
@@ -361,7 +371,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
   const handleSubmitRating = async () => {
     if (!ratingModalOrder || ratingVal === 0) {
-      onShowToast("Please select a star rating");
+      onShowToast(t("Please select a star rating"));
       return;
     }
     setLoadingAction(true);
@@ -375,7 +385,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         comment: feedbackText,
         tipAmount: finalTip
       });
-      onShowToast("Thank you for your feedback!");
+      onShowToast(t("Thank you for your feedback!"));
       setRatingModalOrder(null);
       setRatingVal(0);
       setFeedbackText("");
@@ -392,7 +402,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         return prev;
       });
     } catch (err) {
-      const errMsg = err.response?.data?.message || "Failed to submit rating";
+      const errMsg = err.response?.data?.message || t("Failed to submit rating");
       onShowToast(errMsg);
     } finally {
       setLoadingAction(false);
@@ -400,7 +410,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   };
 
   const showLockedMessage = () => {
-    onShowToast("🔒 This order is locked because it is today's or a past meal.");
+    onShowToast(t("🔒 This order is locked because it is today's or a past meal."));
   };
 
   const today = getISTToday();
@@ -508,12 +518,12 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
         <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
           <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-          <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
+          <h1 className="text-xl font-extrabold text-primary text-center">{t("Calendar")}</h1>
           <div className="w-8" />
         </header>
         <div className="flex flex-col items-center justify-center pt-40 gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-on-surface-variant font-bold text-sm">Loading your meal calendar...</p>
+          <p className="text-on-surface-variant font-bold text-sm">{t("Loading your meal calendar...")}</p>
         </div>
       </div>
     );
@@ -524,7 +534,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
         <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
           <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-          <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
+          <h1 className="text-xl font-extrabold text-primary text-center">{t("Calendar")}</h1>
           <div className="w-8" />
         </header>
         <div className="flex flex-col items-center justify-center pt-40 px-6 text-center gap-4">
@@ -534,7 +544,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             onClick={() => loadOrdersForDate(selectedDateStr, true)}
             className="px-6 py-2.5 bg-primary text-white rounded-full font-bold shadow-md hover:bg-primary/95 active:scale-95 transition-all"
           >
-            Retry
+            {t("Retry")}
           </button>
         </div>
       </div>
@@ -546,7 +556,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       {/* Top App Bar */}
       <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button onClick={onGoBack}  className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low"><ArrowLeft size={24} /></button>
-        <h1 className="text-xl font-extrabold text-primary text-center">Calendar</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{t("Calendar")}</h1>
         <div className="w-8" />
       </header>
 
@@ -582,13 +592,13 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             onClick={() => setActiveTab('meals')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'meals' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
           >
-            Meals
+            {t("Meals")}
           </button>
           <button 
             onClick={() => setActiveTab('pantry')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'pantry' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
           >
-            Pantry
+            {t("Pantry")}
           </button>
         </section>
 
@@ -655,9 +665,9 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                   {!hasOrders ? (
                     <div className="py-1">
                       <h3 className="text-base font-bold text-on-surface leading-snug">
-                        {isSunday && !hasFullWeekSub ? "Rest Day (Sunday)" : "No delivery scheduled"}
+                        {isSunday && !hasFullWeekSub ? t("Rest Day (Sunday)") : t("No delivery scheduled")}
                       </h3>
-                      <p className="text-on-surface-variant/60 text-xs font-semibold font-sans mt-0.5">No Delivery</p>
+                      <p className="text-on-surface-variant/60 text-xs font-semibold font-sans mt-0.5">{t("No Delivery")}</p>
                     </div>
                   ) : (
                     day.orders.map((m, idx) => {
@@ -685,53 +695,53 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
                             {/* Dynamic Status Badges */}
                             {m.status === "skipped" ? (
-                              <p className="text-brand-red text-xs font-bold font-sans mt-0.5">Skipped</p>
+                              <p className="text-brand-red text-xs font-bold font-sans mt-0.5">{t("Skipped")}</p>
                             ) : m.status === "preparing" ? (
                               <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5">
                                 <Soup className="text-[14px]" />
-                                <p>Preparing 🔥</p>
+                                <p>{t("Preparing 🔥")}</p>
                               </div>
                             ) : m.status === "ready" ? (
                               <div className="flex items-center gap-1 text-blue-600 text-xs font-bold font-sans mt-0.5">
                                 <CheckCircle className="text-[14px]" />
-                                <p>Ready ✓</p>
+                                <p>{t("Ready ✓")}</p>
                               </div>
                             ) : m.status === "out_for_delivery" ? (
                               <div className="flex items-center gap-1 text-purple-600 text-xs font-bold font-sans mt-0.5">
                                 <Truck className="text-[14px]" />
-                                <p>On the Way 🛵</p>
+                                <p>{t("On the Way 🛵")}</p>
                               </div>
                             ) : m.status === "delivered" ? (
                               <div className="flex items-center gap-1 text-green-600 text-xs font-bold font-sans mt-0.5">
                                 <CheckCheck className="text-[14px]" />
-                                <p>Delivered ✅</p>
+                                <p>{t("Delivered ✅")}</p>
                               </div>
                             ) : m.status === "failed" ? (
                               <div className="flex items-center gap-1 text-red-600 text-xs font-bold font-sans mt-0.5">
                                 <AlertCircle className="text-[14px]" />
-                                <p>Failed </p>
+                                <p>{t("Failed")} </p>
                               </div>
                             ) : m.isLocked ? (
                               <div className="flex items-center gap-1 text-brand-amber text-xs font-bold font-sans mt-0.5" onClick={showLockedMessage}>
                                 <Lock className="text-[14px]" />
-                                <p>Locked</p>
+                                <p>{t("Locked")}</p>
                               </div>
                             ) : (
-                              <p className="text-primary text-xs font-bold font-sans mt-0.5">Scheduled</p>
+                              <p className="text-primary text-xs font-bold font-sans mt-0.5">{t("Scheduled")}</p>
                             )}
                           </div>
 
                           <div className="flex-shrink-0 relative">
                             {m.status === "skipped" ? (
                               (day.isYesterday || day.isToday) ? (
-                                <span className="text-[12px] font-bold text-brand-red/60 font-sans pr-2">Skipped</span>
+                                <span className="text-[12px] font-bold text-brand-red/60 font-sans pr-2">{t("Skipped")}</span>
                               ) : (
                                 <button
                                   onClick={() => handleUndoSkipOrder(m.order._id, m.mealName)}
                                   disabled={loadingAction}
                                   className="px-4 py-1.5 rounded-full bg-brand-amber text-black hover:bg-amber-400 font-extrabold text-[12px] active:scale-95 transition-all disabled:opacity-50 shadow-sm"
                                 >
-                                  Undo
+                                  {t("Undo")}
                                 </button>
                               )
                             ) : (m.status !== "scheduled" || m.isLocked) ? (
@@ -752,17 +762,17 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                                     <button 
                                       onClick={() => openSkip(m.order, m.mealName)}
                                       className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-brand-red hover:bg-slate-50 transition-colors"
-                                    >Skip</button>
+                                    >{t("Skip")}</button>
                                     <div className="h-[1px] bg-slate-100 w-full" />
                                     <button 
                                       onClick={() => openPause(m.order)}
                                       className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-amber-600 hover:bg-slate-50 transition-colors"
-                                    >Pause</button>
+                                    >{t("Pause")}</button>
                                     <div className="h-[1px] bg-slate-100 w-full" />
                                     <button 
                                       onClick={() => openChangeMeal(m.order)}
                                       className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-primary hover:bg-slate-50 transition-colors"
-                                    >Change</button>
+                                    >{t("Change")}</button>
                                   </div>
                                 )}
                               </>
@@ -782,15 +792,15 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         {orders.length === 0 && (
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col items-center text-center gap-3">
             <Sandwich className="text-4xl text-primary" />
-            <h3 className="text-base font-bold text-on-surface">No Active Subscription</h3>
+            <h3 className="text-base font-bold text-on-surface">{t("No Active Subscription")}</h3>
             <p className="text-xs text-on-surface-variant leading-relaxed max-w-[280px]">
-              Subscribe to a meal plan to start receiving fresh, healthy, home-cooked meals daily.
+              {t("Subscribe to a meal plan to start receiving fresh, healthy, home-cooked meals daily.")}
             </p>
             <button
               onClick={onGoToPlans}
               className="mt-2 px-5 py-2 bg-primary text-white font-extrabold text-[13px] rounded-full active:scale-95 transition-all shadow-sm"
             >
-              Explore Plans
+              {t("Explore Plans")}
             </button>
           </section>
         )}
@@ -802,9 +812,9 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
               .map((po, idx) => (
                 <div key={po._id || po.orderId || idx} className="bg-white rounded-2xl p-4 shadow-sm flex flex-col border border-primary-container">
                   <div className="flex justify-between items-start mb-2 border-b border-[#bec9c3]/20 pb-2">
-                    <h3 className="text-[16px] font-bold text-on-surface">Pantry Order #{po.orderId?.slice(-6) || 'N/A'}</h3>
+                    <h3 className="text-[16px] font-bold text-on-surface">{t("Pantry Order #")}{po.orderId?.slice(-6) || t("N/A")}</h3>
                     <span className="text-[12px] font-bold text-primary bg-primary-container/20 px-2 py-1 rounded-md capitalize">
-                      {po.status || 'Scheduled'}
+                      {po.status || t("Scheduled")}
                     </span>
                   </div>
                   <div className="space-y-2 pt-2">
@@ -819,8 +829,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
               ))}
             {pantryOrders.filter((po) => po.deliveryDates?.includes(selectedDateStr)).length === 0 && (
               <div className="bg-white p-6 rounded-2xl border border-primary/20 flex flex-col items-center text-center gap-3">
-                <h3 className="text-base font-bold text-on-surface">No Pantry Deliveries</h3>
-                <p className="text-xs text-on-surface-variant">You have no pantry items scheduled for this day.</p>
+                <h3 className="text-base font-bold text-on-surface">{t("No Pantry Deliveries")}</h3>
+                <p className="text-xs text-on-surface-variant">{t("You have no pantry items scheduled for this day.")}</p>
               </div>
             )}
           </section>
@@ -829,7 +839,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         {/* Tip block */}
         <section className="bg-primary/5 p-4 rounded-xl border border-primary-container/20">
           <p className="text-[12px] text-primary-container font-semibold font-sans leading-relaxed">
-            💡 <strong>Pro-Tip:</strong> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <strong>{cutoffTime ? (() => { const [h, m] = cutoffTime.split(':'); const h12 = parseInt(h, 10) % 12 || 12; const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM'; return `${h12}:${m} ${ampm}`; })() : '8:00 PM'}</strong> on the day prior to delivery.
+            <Trans t={t} i18nKey={"💡 <0>Pro-Tip:</0> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <1>{{cutoff}}</1> on the day prior to delivery."} defaults={"💡 <0>Pro-Tip:</0> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <1>{{cutoff}}</1> on the day prior to delivery."} values={{ cutoff: formatCutoffTime(cutoffTime) }} components={[<strong />, <strong />]} />
           </p>
         </section>
       </main>
@@ -844,19 +854,19 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
             {manageMode === "confirm_skip" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-brand-red mb-2">Skip this Meal?</h2>
+                <h2 className="text-[17px] font-extrabold text-brand-red mb-2">{t("Skip this Meal?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6">
-                  Are you sure you want to skip <strong className="text-on-surface">{skipTarget?.mealName || "this meal"}</strong>? You will not receive delivery for this slot.
+                  <Trans t={t} i18nKey={"Are you sure you want to skip <0>{{meal}}</0>? You will not receive delivery for this slot."} defaults={"Are you sure you want to skip <0>{{meal}}</0>? You will not receive delivery for this slot."} values={{ meal: skipTarget?.mealName || t("this meal") }} components={[<strong className="text-on-surface" />]} />
                 </p>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
                   <button
                     onClick={confirmSkipOrder}
                     disabled={loadingAction}
                     className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Confirm Skip
+                    {t("Confirm Skip")}
                   </button>
                 </div>
               </>
@@ -864,8 +874,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
             {manageMode === "pause" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
-                <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription starting from this date.</p>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Pause Subscription")}</h2>
+                <p className="text-[13px] text-on-surface-variant mb-5">{t("Select how many days to pause your subscription starting from this date.")}</p>
                 <div className="flex gap-3 mb-6">
                   {[1, 2, 3].map((d) => (
                     <button
@@ -874,19 +884,19 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                       className={`flex-1 py-4 rounded-2xl font-bold text-[15px] border-2 transition-all active:scale-95 ${pauseDays === d ? "border-primary bg-[#e8f3f0] text-primary" : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
                         }`}
                     >
-                      {d} Day{d > 1 ? "s" : ""}
+                      {t("{{count}} Day", { count: d })}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
                   <button
                     onClick={handlePause}
                     disabled={loadingAction}
                     className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
+                    {t("Pause {{count}} Day", { count: pauseDays })}
                   </button>
                 </div>
               </>
@@ -894,13 +904,13 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
             {manageMode === "change_meal" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
-                <p className="text-[13px] text-on-surface-variant mb-4">Choose a meal for this delivery from the vendor's menu.</p>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Change Meal")}</h2>
+                <p className="text-[13px] text-on-surface-variant mb-4">{t("Choose a meal for this delivery from the vendor's menu.")}</p>
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
                     <UtensilsCrossed className="text-[36px] text-slate-300 mb-2 mx-auto" />
-                    <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
+                    <p className="text-[13px] text-slate-500 font-medium">{t("No alternate meals available from this vendor right now.")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 mb-5 max-h-60 overflow-y-auto pr-1">
@@ -919,7 +929,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">₹{meal.pricePerDay || meal.price || "—"}/day</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">{t("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}</p>
                           </div>
                         </button>
                       );
@@ -928,14 +938,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
                   <button
                     onClick={handleChangeMeal}
                     disabled={loadingAction || selectedMealIds.length === 0}
                     className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Confirm Change
+                    {t("Confirm Change")}
                   </button>
                 </div>
               </>
@@ -954,8 +964,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
               <PartyPopper className="text-green-500 text-[32px]" />
             </div>
 
-            <h3 className="text-xl font-black text-[#00604c] mb-1">Meal Delivered!</h3>
-            <p className="text-xs text-on-surface-variant mb-5 font-semibold">How was your delivery experience?</p>
+            <h3 className="text-xl font-black text-[#00604c] mb-1">{t("Meal Delivered!")}</h3>
+            <p className="text-xs text-on-surface-variant mb-5 font-semibold">{t("How was your delivery experience?")}</p>
 
             {/* Star Rating */}
             <div className="flex justify-center gap-2 mb-5">
@@ -973,7 +983,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
             {/* Feedback */}
             <textarea
-              placeholder="Any feedback? (Optional)"
+              placeholder={t("Any feedback? (Optional)")}
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[#00604c] focus:ring-1 focus:ring-[#00604c] mb-4 h-20 resize-none"
@@ -981,7 +991,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
 
             {/* Tip Section */}
             <div className="mb-6">
-              <p className="text-xs font-bold text-[#3e4945] mb-2 uppercase tracking-wider text-left">Add a Tip for Driver</p>
+              <p className="text-xs font-bold text-[#3e4945] mb-2 uppercase tracking-wider text-left">{t("Add a Tip for Driver")}</p>
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {[0, 5, 10, 15].map((amt) => (
                   <button
@@ -992,7 +1002,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                         : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
                       }`}
                   >
-                    {amt === 0 ? "No" : `${amt}zł`}
+                    {amt === 0 ? t("No") : t("{{amt}}zł", { amt })}
                   </button>
                 ))}
               </div>
@@ -1004,13 +1014,13 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                       : "bg-white text-gray-700 border-gray-200 hover:border-[#00604c]"
                     }`}
                 >
-                  Custom
+                  {t("Custom")}
                 </button>
                 {tipAmount === "custom" && (
                   <input
                     type="number"
                     min="1"
-                    placeholder="zł"
+                    placeholder={t("zł")}
                     value={customTip}
                     onChange={(e) => setCustomTip(e.target.value)}
                     className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-[#00604c] font-bold text-center"
@@ -1025,14 +1035,14 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                 disabled={loadingAction || ratingVal === 0}
                 className="w-full bg-[#00604c] text-white py-3.5 rounded-xl font-black text-sm hover:bg-[#1f7a63] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
               >
-                {loadingAction ? "Submitting..." : "Submit Rating"}
+                {loadingAction ? t("Submitting...") : t("Submit Rating")}
                 <Send className="text-[18px]" />
               </button>
               <button
                 onClick={() => setRatingModalOrder(null)}
                 className="w-full py-2.5 rounded-xl font-bold text-xs text-gray-500 hover:bg-gray-50 active:scale-95 transition-all"
               >
-                Maybe Later
+                {t("Maybe Later")}
               </button>
             </div>
           </div>

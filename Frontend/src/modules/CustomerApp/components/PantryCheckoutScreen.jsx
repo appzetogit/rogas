@@ -5,6 +5,8 @@ import { dmbCustomerAPI } from '@food/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 const mapContainerStyle = { width: '100%', height: '100%' };
 const MAP_LIBRARIES = ["places", "drawing", "geometry"];
@@ -38,9 +40,9 @@ const generateDates = () => {
 };
 
 const SLOTS = [
-  { id: 'breakfast', label: 'Breakfast (6AM–11AM)' },
-  { id: 'lunch', label: 'Lunch (11AM–4PM)' },
-  { id: 'dinner', label: 'Dinner (4PM–11PM)' },
+  { id: 'breakfast', label: tKey("Breakfast (6AM–11AM)") },
+  { id: 'lunch', label: tKey("Lunch (11AM–4PM)") },
+  { id: 'dinner', label: tKey("Dinner (4PM–11PM)") },
 ];
 
 // ─── Helper: Date Chip Row ───────────────────────────────────────────────────
@@ -69,6 +71,7 @@ function DateChips({ dates, selectedDates, onToggle }) {
 }
 
 export function PantryCheckoutScreen() {
+  const { t } = useTranslation("customer");
   const navigate = useNavigate();
   const { cart, cartTotal, totalItems, clearCart, updateItemDates, updateItemSlots, addItem, removeItem } = usePantryCart();
 
@@ -133,7 +136,7 @@ export function PantryCheckoutScreen() {
   const toggleGlobalDate = (dateStr) => {
     setGlobalDates(prev => {
       if (prev.includes(dateStr)) {
-        if (prev.length === 1) { toast.error('At least one date required.'); return prev; }
+        if (prev.length === 1) { toast.error(t("At least one date required.")); return prev; }
         return prev.filter(d => d !== dateStr);
       }
       return [...prev, dateStr];
@@ -146,7 +149,7 @@ export function PantryCheckoutScreen() {
     const current = item.deliveryDates && item.deliveryDates.length > 0 ? item.deliveryDates : [...globalDates];
     let next;
     if (current.includes(dateStr)) {
-      if (current.length === 1) { toast.error('At least one date required.'); return; }
+      if (current.length === 1) { toast.error(t("At least one date required.")); return; }
       next = current.filter(d => d !== dateStr);
     } else {
       next = [...current, dateStr];
@@ -162,7 +165,7 @@ export function PantryCheckoutScreen() {
   const toggleGlobalSlot = (slotId) => {
     setGlobalSlots(prev => {
       if (prev.includes(slotId)) {
-        if (prev.length === 1) { toast.error('At least one slot required.'); return prev; }
+        if (prev.length === 1) { toast.error(t("At least one slot required.")); return prev; }
         return prev.filter(s => s !== slotId);
       }
       return [...prev, slotId];
@@ -175,7 +178,7 @@ export function PantryCheckoutScreen() {
     const current = item.deliverySlots && item.deliverySlots.length > 0 ? item.deliverySlots : [...globalSlots];
     let next;
     if (current.includes(slotId)) {
-      if (current.length === 1) { toast.error('At least one slot required.'); return; }
+      if (current.length === 1) { toast.error(t("At least one slot required.")); return; }
       next = current.filter(s => s !== slotId);
     } else {
       next = [...current, slotId];
@@ -252,10 +255,10 @@ export function PantryCheckoutScreen() {
           fetchAddressFromCoordinates(coords.latitude, coords.longitude);
           setShowMap(true);
         },
-        () => { toast.error('Location permission denied.'); setShowMap(true); }
+        () => { toast.error(t("Location permission denied.")); setShowMap(true); }
       );
     } else {
-      toast.error('Geolocation not supported.');
+      toast.error(t("Geolocation not supported."));
       setShowMap(true);
     }
   };
@@ -268,7 +271,7 @@ export function PantryCheckoutScreen() {
   };
 
   const confirmMapAddress = () => {
-    if (!tempAddress) { toast.error('Please drop a pin.'); return; }
+    if (!tempAddress) { toast.error(t("Please drop a pin.")); return; }
     const parts = tempAddress.split(', ');
     setDeliveryAddress({
       label: 'Selected from Map',
@@ -283,8 +286,8 @@ export function PantryCheckoutScreen() {
 
   // ─── Payment & Grouped Order Placement ───────────────────────────────────────
   const handlePayment = async () => {
-    if (!deliveryAddress) { toast.error('Please select a delivery address.'); return; }
-    if (globalSlots.length === 0) { toast.error('Please select at least one delivery slot.'); return; }
+    if (!deliveryAddress) { toast.error(t("Please select a delivery address.")); return; }
+    if (globalSlots.length === 0) { toast.error(t("Please select at least one delivery slot.")); return; }
 
     setLoading(true);
     try {
@@ -304,7 +307,7 @@ export function PantryCheckoutScreen() {
       // 2. Single Razorpay payment for grandTotal
       const loaded = await loadRazorpayScript();
       if (!loaded || !window.Razorpay) {
-        toast.error('Razorpay SDK not loaded.');
+        toast.error(t("Razorpay SDK not loaded."));
         setLoading(false);
         return;
       }
@@ -334,7 +337,7 @@ export function PantryCheckoutScreen() {
         : frontendGrandTotalPaise; // if backend didn't return it, we trust it matched
 
       if (backendAmountPaise !== frontendGrandTotalPaise) {
-        toast.error('Server error. Please try again later.');
+        toast.error(t("Server error. Please try again later."));
         setLoading(false);
         return;
       }
@@ -345,7 +348,7 @@ export function PantryCheckoutScreen() {
         amount: frontendGrandTotalPaise,
         currency: 'INR',
         name: 'Rogas Pantry',
-        description: `Pantry Order — ${groups.length} group(s)`,
+        description: t("Pantry Order — {{length}} group(s)", { length: groups.length }),
         order_id: razorpayOrderId,
         handler: async (response) => {
           try {
@@ -376,21 +379,21 @@ export function PantryCheckoutScreen() {
             }
 
             clearCart();
-            toast.success('Payment successful! Your orders are placed.');
+            toast.success(t("Payment successful! Your orders are placed."));
             navigate('/user/orders');
           } catch (err) {
-            toast.error('Payment verification failed. Contact support.');
+            toast.error(t("Payment verification failed. Contact support."));
           }
         },
         theme: { color: '#1F7A63' },
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', () => toast.error('Payment failed or cancelled.'));
+      rzp.on('payment.failed', () => toast.error(t("Payment failed or cancelled.")));
       rzp.open();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Payment initiation failed.');
+      toast.error(err.response?.data?.message || t("Payment initiation failed."));
     } finally {
       setLoading(false);
     }
@@ -405,7 +408,7 @@ export function PantryCheckoutScreen() {
         <button onClick={() => navigate(-1)} className="absolute left-5 p-2 -ml-2 text-[#1F7A63] active:scale-95 transition-transform flex items-center justify-center">
           <ArrowLeft className="w-6 h-6" strokeWidth={2.5} />
         </button>
-        <h1 className="text-[18px] font-extrabold text-[#1F7A63] tracking-wide uppercase">Checkout</h1>
+        <h1 className="text-[18px] font-extrabold text-[#1F7A63] tracking-wide uppercase">{t("Checkout")}</h1>
       </div>
 
       <div className="px-5 space-y-6 mt-6">
@@ -416,7 +419,7 @@ export function PantryCheckoutScreen() {
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-[#e4e2e1]/50">
           <h2 className="text-[16px] font-extrabold text-[#1b1c1c] mb-4 flex items-center gap-2">
             <Receipt className="text-[18px] text-primary" />
-            Items &amp; Schedules
+            {t("Items & Schedules")}
           </h2>
           <div className="space-y-4">
             {cart.items.map(item => {
@@ -436,8 +439,8 @@ export function PantryCheckoutScreen() {
                       <p className="text-[14px] font-bold text-[#1b1c1c] truncate">{item.title}</p>
                       <p className="text-[11px] mt-0.5">
                         {hasCustomDates
-                          ? <span className="text-[#1F7A63] font-semibold">Custom Schedule</span>
-                          : <span className="text-[#a0a8a5]">Global Schedule</span>
+                          ? <span className="text-[#1F7A63] font-semibold">{t("Custom Schedule")}</span>
+                          : <span className="text-[#a0a8a5]">{t("Global Schedule")}</span>
                         }
                       </p>
                     </div>
@@ -464,7 +467,7 @@ export function PantryCheckoutScreen() {
 
                   {/* ── Qty Stepper row (always visible) ── */}
                   <div className="flex items-center justify-between px-4 pb-3">
-                    <span className="text-[12px] text-[#a0a8a5]">₹{item.price.toFixed(2)} / unit</span>
+                    <span className="text-[12px] text-[#a0a8a5]">{t("₹{{price}} / unit", { price: item.price.toFixed(2) })}</span>
                     <div className="flex items-center gap-2 bg-[#f5f5f0] rounded-full px-3 py-1">
                       <button
                         onClick={() => removeItem(item.pantryItemId)}
@@ -485,12 +488,12 @@ export function PantryCheckoutScreen() {
                       {/* Dates */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-[12px] font-extrabold text-[#1b1c1c] uppercase tracking-wide">Delivery Dates</p>
+                          <p className="text-[12px] font-extrabold text-[#1b1c1c] uppercase tracking-wide">{t("Delivery Dates")}</p>
                           {hasCustomDates && (
                             <button
                               onClick={() => resetItemDates(item.pantryItemId)}
                               className="text-[11px] text-[#1F7A63] font-semibold"
-                            >Reset</button>
+                            >{t("Reset")}</button>
                           )}
                         </div>
                         <DateChips
@@ -506,12 +509,12 @@ export function PantryCheckoutScreen() {
                       {/* Slots */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <p className="text-[12px] font-extrabold text-[#1b1c1c] uppercase tracking-wide">Delivery Slots</p>
+                          <p className="text-[12px] font-extrabold text-[#1b1c1c] uppercase tracking-wide">{t("Delivery Slots")}</p>
                           {hasCustomSlots && (
                             <button
                               onClick={() => resetItemSlots(item.pantryItemId)}
                               className="text-[11px] text-[#1F7A63] font-semibold"
-                            >Reset</button>
+                            >{t("Reset")}</button>
                           )}
                         </div>
                         <div className="flex flex-col gap-2">
@@ -525,7 +528,7 @@ export function PantryCheckoutScreen() {
                                   : 'bg-white border border-[#e4e2e1] text-[#6e7a74]'
                               }`}
                             >
-                              {slotObj.label}
+                              {t(slotObj.label)}
                             </button>
                           ))}
                         </div>
@@ -546,57 +549,57 @@ export function PantryCheckoutScreen() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-[16px] font-extrabold text-[#1b1c1c] flex items-center gap-2">
               <MapPin className="text-[18px] text-primary" />
-              Delivery Address
+              {t("Delivery Address")}
             </h2>
             {deliveryAddress && (
               <button onClick={handleLiveLocation} className="text-[#1F7A63] text-[11px] font-extrabold tracking-widest uppercase hover:underline">
-                EDIT
+                {t("EDIT")}
               </button>
             )}
           </div>
           {deliveryAddress ? (
             <div className="bg-[#eef0ec] rounded-2xl p-4">
-              <p className="text-[14px] font-bold text-[#1b1c1c]">{deliveryAddress.label || 'Home'}</p>
+              <p className="text-[14px] font-bold text-[#1b1c1c]">{deliveryAddress.label || t("Home")}</p>
               <p className="text-[13px] text-[#6e7a74] mt-1 line-clamp-2">{deliveryAddress.street}, {deliveryAddress.city}</p>
             </div>
           ) : (
             <button onClick={handleLiveLocation} className="w-full py-3 border-2 border-dashed border-primary/30 rounded-2xl text-primary font-bold text-[14px] flex items-center justify-center gap-2">
-              <MapPin className="text-[16px]" /> Set Address on Map
+              <MapPin className="text-[16px]" /> {t("Set Address on Map")}
             </button>
           )}
         </div>
 
         {/* ── PRICING SUMMARY ── */}
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-[#e4e2e1]/50">
-          <h2 className="text-[16px] font-extrabold text-[#1b1c1c] mb-3">Price Summary</h2>
+          <h2 className="text-[16px] font-extrabold text-[#1b1c1c] mb-3">{t("Price Summary")}</h2>
           <div className="space-y-2">
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
-              <span>Items Total</span>
+              <span>{t("Items Total")}</span>
               <span className="font-semibold text-[#1b1c1c]">₹{itemsTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
-              <span>Delivery Days</span>
-              <span className="font-semibold text-[#1b1c1c]">{totalDeliveryDays} day(s)</span>
+              <span>{t("Delivery Days")}</span>
+              <span className="font-semibold text-[#1b1c1c]">{t("{{totalDeliveryDays}} day(s)", { totalDeliveryDays })}</span>
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
-              <span>Delivery Slots</span>
-              <span className="font-semibold text-[#1b1c1c]">{totalDeliverySlots} slot(s)</span>
+              <span>{t("Delivery Slots")}</span>
+              <span className="font-semibold text-[#1b1c1c]">{t("{{totalDeliverySlots}} slot(s)", { totalDeliverySlots })}</span>
             </div>
             {foodVatPercent > 0 && (
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                <span>Food VAT ({foodVatPercent}%)</span>
+                <span>{t("Food VAT ({{foodVatPercent}}%)", { foodVatPercent })}</span>
                 <span className="font-semibold text-[#1b1c1c]">₹{foodVatAmount.toFixed(2)}</span>
               </div>
             )}
             {platformFee > 0 && (
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                <span>Platform Fee</span>
+                <span>{t("Platform Fee")}</span>
                 <span className="font-semibold text-[#1b1c1c]">₹{platformFee.toFixed(2)}</span>
               </div>
             )}
             <div className="h-[1px] bg-[#f0f0f0] my-1" />
             <div className="flex justify-between text-[16px] font-extrabold text-[#1b1c1c]">
-              <span>Grand Total</span>
+              <span>{t("Grand Total")}</span>
               <span className="text-primary">₹{grandTotal.toFixed(2)}</span>
             </div>
           </div>
@@ -609,7 +612,7 @@ export function PantryCheckoutScreen() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl overflow-hidden w-full max-w-md md:max-w-xl shadow-2xl flex flex-col h-[70vh]">
             <div className="px-5 py-4 border-b border-[#f0eded] flex justify-between items-center">
-              <h2 className="text-[18px] font-extrabold text-[#1b1c1c]">Set Delivery Location</h2>
+              <h2 className="text-[18px] font-extrabold text-[#1b1c1c]">{t("Set Delivery Location")}</h2>
               <button onClick={() => setShowMap(false)} className="w-8 h-8 rounded-full bg-[#f5f5f0] flex items-center justify-center">
                 <X className="text-[20px]" />
               </button>
@@ -619,13 +622,13 @@ export function PantryCheckoutScreen() {
                 <Marker position={{ lat, lng }} />
               </GoogleMap>
               <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg text-[13px] font-bold text-[#1b1c1c]">
-                Tap anywhere to move pin
+                {t("Tap anywhere to move pin")}
               </div>
             </div>
             <div className="p-5 border-t border-[#f0eded]">
-              <p className="text-[13px] text-[#6e7a74] mb-3 line-clamp-2 min-h-[38px]">{tempAddress || 'Fetching address...'}</p>
+              <p className="text-[13px] text-[#6e7a74] mb-3 line-clamp-2 min-h-[38px]">{tempAddress || t("Fetching address...")}</p>
               <button onClick={confirmMapAddress} className="w-full h-[48px] bg-primary text-white rounded-xl font-extrabold text-[15px] active:scale-[0.98] transition-all">
-                Confirm Location
+                {t("Confirm Location")}
               </button>
             </div>
           </div>
@@ -636,8 +639,8 @@ export function PantryCheckoutScreen() {
       <div className="fixed bottom-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] max-w-[480px] mx-auto bg-white px-5 py-4 border-t border-[#f0f0f0] shadow-[0_-12px_24px_rgba(0,0,0,0.06)] z-20">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-[12px] text-[#6e7a74] font-medium">Total for {totalDeliveryDays} day(s) · {totalDeliverySlots} slot(s)</p>
-            <p className="text-[11px] text-[#1F7A63] font-bold mt-0.5">{foodVatPercent > 0 ? `Includes ₹${foodVatAmount.toFixed(2)} Food VAT` : 'All charges included'}</p>
+            <p className="text-[12px] text-[#6e7a74] font-medium">{t("Total for {{totalDeliveryDays}} day(s) · {{totalDeliverySlots}} slot(s)", { totalDeliveryDays, totalDeliverySlots })}</p>
+            <p className="text-[11px] text-[#1F7A63] font-bold mt-0.5">{foodVatPercent > 0 ? t("Includes ₹{{foodVatAmount}} Food VAT", { foodVatAmount: foodVatAmount.toFixed(2) }) : t("All charges included")}</p>
           </div>
           <span className="text-[24px] font-extrabold text-[#1b1c1c]">₹{grandTotal.toFixed(2)}</span>
         </div>
@@ -649,7 +652,7 @@ export function PantryCheckoutScreen() {
           {loading ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            <>Pay &amp; Order <ArrowLeft className="w-5 h-5 rotate-180 ml-1" /></>
+            <>{t("Pay & Order")} <ArrowLeft className="w-5 h-5 rotate-180 ml-1" /></>
           )}
         </button>
       </div>

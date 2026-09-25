@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Loader2, Heart, Users, ShieldCheck, Truck, Star, CheckCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { publicAPI } from "@food/api";
+import { useTranslation } from "react-i18next";
 
 const ICON_MAP = {
   Heart, Users, ShieldCheck, Truck, Star, CheckCircle
 };
 
 export function CustomerLegalPage({ pageType }) {
+  const { t } = useTranslation("customer");
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = location.state?.backTo;
@@ -34,21 +36,21 @@ export function CustomerLegalPage({ pageType }) {
         let res;
         if (pageType === "terms") {
           res = await publicAPI.getTerms("terms");
-          setTitle(res.data?.data?.title || "Terms and Conditions");
+          setTitle(res.data?.data?.title || t("Terms and Conditions"));
           setContent(res.data?.data?.content || "Content not available.");
         } else if (pageType === "about") {
           res = await publicAPI.getTerms("about");
-          setTitle("About Us");
+          setTitle(t("About Us"));
           setAboutData(res.data?.data);
         } else {
           res = await publicAPI.getPrivacy("privacy");
-          setTitle(res.data?.data?.title || "Privacy Policy");
+          setTitle(res.data?.data?.title || t("Privacy Policy"));
           setContent(res.data?.data?.content || "Content not available.");
         }
       } catch (err) {
         console.error("Failed to load legal page:", err);
-        setError("Failed to load content. Please try again later.");
-        setTitle(pageType === "terms" ? "Terms and Conditions" : pageType === "about" ? "About Us" : "Privacy Policy");
+        setError(t("Failed to load content. Please try again later."));
+        setTitle(pageType === "terms" ? t("Terms and Conditions") : pageType === "about" ? t("About Us") : t("Privacy Policy"));
       } finally {
         setLoading(false);
       }
@@ -76,7 +78,7 @@ export function CustomerLegalPage({ pageType }) {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-primary">
             <Loader2 className="animate-spin w-8 h-8" />
-            <span className="text-sm font-bold">Loading...</span>
+            <span className="text-sm font-bold">{t("Loading...")}</span>
           </div>
         ) : error ? (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100 text-center">
@@ -90,14 +92,14 @@ export function CustomerLegalPage({ pageType }) {
               
               <div className="w-[100px] h-[100px] bg-white rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.05)] z-10 mb-5 overflow-hidden border border-white p-1">
                 {aboutData.logo ? (
-                  <img src={aboutData.logo} alt="Logo" className="w-full h-full object-contain rounded-full" />
+                  <img src={aboutData.logo} alt={t("Logo")} className="w-full h-full object-contain rounded-full" />
                 ) : (
                   <div className="text-3xl font-extrabold text-primary">{aboutData.appName?.[0] || 'A'}</div>
                 )}
               </div>
               
               <h2 className="text-[26px] font-extrabold text-[#1a1c1a] z-10 tracking-tight">{aboutData.appName}</h2>
-              <p className="text-[13px] text-[#6e7a74] font-medium mt-1 mb-6 z-10">Version {aboutData.version}</p>
+              <p className="text-[13px] text-[#6e7a74] font-medium mt-1 mb-6 z-10">{t("Version {{version}}", { version: aboutData.version })}</p>
               
               <p className="text-[#3e4945] font-medium text-[15px] leading-relaxed z-10 px-2">
                 {aboutData.description}

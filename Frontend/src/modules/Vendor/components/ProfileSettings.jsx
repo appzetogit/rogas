@@ -9,6 +9,7 @@ import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifi
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2 } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: '100%',
@@ -16,6 +17,7 @@ const mapContainerStyle = {
 };
 
 function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
+  const { t: tr } = useTranslation("vendor");
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState(profile?.zoneId || '');
   const [address, setAddress] = useState(profile?.location?.formattedAddress || profile?.location?.address || profile?.address || '');
@@ -38,7 +40,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
     restaurantAPI.getZones().then(res => {
       setZones(res.data?.data?.zones || res.data?.zones || []);
     }).catch(err => {
-      triggerToast('Failed to load zones');
+      triggerToast(tr("Failed to load zones"));
     });
   }, []);
 
@@ -102,12 +104,12 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
         setLng(longitude);
         fetchAddressFromCoordinates(latitude, longitude);
         setShowMap(true);
-        triggerToast('Live location & address fetched successfully!');
+        triggerToast(tr("Live location & address fetched successfully!"));
       }, (error) => {
-        triggerToast('Failed to get live location. Please allow location permissions.');
+        triggerToast(tr("Failed to get live location. Please allow location permissions."));
       });
     } else {
-      triggerToast('Geolocation is not supported by your browser');
+      triggerToast(tr("Geolocation is not supported by your browser"));
     }
   };
 
@@ -156,10 +158,10 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
           } 
         });
       }
-      triggerToast('Location & Zone update request submitted successfully!');
+      triggerToast(tr("Location & Zone update request submitted successfully!"));
       onBack();
     } catch (err) {
-      triggerToast('Failed to update location');
+      triggerToast(tr("Failed to update location"));
     }
   };
 
@@ -178,7 +180,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
     if (hasChanges) {
       setShowConfirmModal(true);
     } else {
-      triggerToast('No changes made to Zone or Location.');
+      triggerToast(tr("No changes made to Zone or Location."));
     }
   };
 
@@ -188,21 +190,21 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
         <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
           <ArrowLeft />
         </button>
-        <h2 className="text-[16px] font-semibold">Location & Zone</h2>
+        <h2 className="text-[16px] font-semibold">{tr("Location & Zone")}</h2>
         <div className="w-6"></div>
       </div>
 
       <div className="pt-6 space-y-5">
         {!isEditing ? (
           <section className="space-y-4">
-            <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Saved Location & Zone</h2>
+            <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Saved Location & Zone")}</h2>
             
             {/* Display Rejection Banner if rejected */}
             {profile?.zoneChangeStatus === 'rejected' && (
               <div className="bg-error/10 border border-error/25 rounded-xl p-3 flex items-start gap-2.5 text-error text-[12px] font-medium animate-fadeIn">
                 <AlertTriangle className="text-[18px] shrink-0 mt-0.5" />
                 <span>
-                  Your recent zone change request was rejected. Reason: <strong>{profile.zoneChangeRejectionReason || 'Rejected by admin'}</strong>
+                  {tr("Your recent zone change request was rejected. Reason:")} <strong>{profile.zoneChangeRejectionReason || tr("Rejected by admin")}</strong>
                 </span>
               </div>
             )}
@@ -212,22 +214,22 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
               <div className="bg-primary/10 border border-primary/25 rounded-xl p-3 flex items-start gap-2.5 text-primary text-[12px] font-medium animate-fadeIn">
                 <Info className="text-[18px] shrink-0 mt-0.5" />
                 <span>
-                  Your request to change zone to <strong>{zones.find(z => z._id === profile.pendingZoneId)?.name || 'New Zone'}</strong> is under review by the admin.
+                  <Trans t={tr} i18nKey={"Your request to change zone to <0>{{zone}}</0> is under review by the admin."} defaults={"Your request to change zone to <0>{{zone}}</0> is under review by the admin."} values={{ zone: zones.find(z => z._id === profile.pendingZoneId)?.name || tr("New Zone") }} components={[<strong />]} />
                 </span>
               </div>
             )}
 
             <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
               <div>
-                <p className="text-[10px] text-outline uppercase font-bold mb-1">Service Zone</p>
+                <p className="text-[10px] text-outline uppercase font-bold mb-1">{tr("Service Zone")}</p>
                 <p className="text-[14px] font-bold text-on-surface">
-                  {zones.find(z => z._id === selectedZone)?.name || 'Not Selected'}
+                  {zones.find(z => z._id === selectedZone)?.name || tr("Not Selected")}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-outline uppercase font-bold mb-1">Address</p>
+                <p className="text-[10px] text-outline uppercase font-bold mb-1">{tr("Address")}</p>
                 <p className="text-[13px] font-medium text-on-surface-variant">
-                  {profile?.location?.formattedAddress || profile?.location?.address || profile?.address || 'Not Selected'}
+                  {profile?.location?.formattedAddress || profile?.location?.address || profile?.address || tr("Not Selected")}
                 </p>
               </div>
             </div>
@@ -241,20 +243,20 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
               }`}
             >
               <Edit2 className="text-[18px]" />
-              Change Location & Zone
+              {tr("Change Location & Zone")}
             </button>
           </section>
         ) : (
           <>
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Service Zone</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Service Zone")}</h2>
               <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
                 <select 
                   value={selectedZone} 
                   onChange={(e) => setSelectedZone(e.target.value)}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] text-on-surface"
                 >
-                  <option value="">Select a Zone</option>
+                  <option value="">{tr("Select a Zone")}</option>
                   {zones.map(z => (
                     <option key={z._id} value={z._id}>{z.name}</option>
                   ))}
@@ -263,13 +265,13 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Location Address</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Location Address")}</h2>
               <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] resize-none"
-                  placeholder="Enter full address"
+                  placeholder={tr("Enter full address")}
                   rows={3}
                 />
                 <div className="flex gap-2">
@@ -278,14 +280,14 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                     className="flex-1 py-2.5 rounded-lg text-[13px] font-bold border border-primary text-primary flex items-center justify-center gap-2"
                   >
                     <MapPin className="text-[18px]" />
-                    {showMap ? 'Hide Map' : 'Set Pin on Map'}
+                    {showMap ? tr("Hide Map") : tr("Set Pin on Map")}
                   </button>
                   <button 
                     onClick={handleLiveLocation} 
                     className="flex-1 py-2.5 rounded-lg text-[13px] font-bold bg-primary text-on-primary flex items-center justify-center gap-2"
                   >
                     <Locate className="text-[18px]" />
-                    Live Location
+                    {tr("Live Location")}
                   </button>
                 </div>
                 
@@ -302,7 +304,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                         <Marker position={{ lat, lng }} />
                       </GoogleMap>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-outline text-[12px]">Loading Map...</div>
+                      <div className="flex items-center justify-center h-full text-outline text-[12px]">{tr("Loading Map...")}</div>
                     )}
                   </div>
                 )}
@@ -313,7 +315,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
               onClick={handleSaveClick}
               className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             >
-              Save Location & Zone
+              {tr("Save Location & Zone")}
             </button>
           </>
         )}
@@ -323,16 +325,16 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] px-4">
           <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full shadow-2xl space-y-4">
-            <h3 className="text-[16px] font-bold text-on-surface">Zone & Location Update Request</h3>
+            <h3 className="text-[16px] font-bold text-on-surface">{tr("Zone & Location Update Request")}</h3>
             <p className="text-[13px] text-on-surface-variant leading-relaxed">
-              Updating your zone or location will send your profile to the admin for review. Your request may be approved or rejected. Do you want to continue?
+              {tr("Updating your zone or location will send your profile to the admin for review. Your request may be approved or rejected. Do you want to continue?")}
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowConfirmModal(false)}
                 className="flex-1 h-11 border border-outline-variant rounded-xl font-bold text-[13px] text-outline hover:bg-surface-container active:scale-95 transition-all"
               >
-                Cancel
+                {tr("Cancel")}
               </button>
               <button
                 onClick={() => {
@@ -341,7 +343,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                 }}
                 className="flex-1 h-11 bg-primary text-on-primary rounded-xl font-bold text-[13px] shadow-sm hover:brightness-95 active:scale-95 transition-all"
               >
-                Submit Request
+                {tr("Submit Request")}
               </button>
             </div>
           </div>
@@ -353,6 +355,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
 
 
 function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
+  const { t: tr } = useTranslation("vendor");
   const [name, setName] = useState(profile?.name || profile?.restaurantName || '');
   const [phone, setPhone] = useState(profile?.primaryContactNumber || profile?.ownerPhone || '');
   
@@ -379,11 +382,11 @@ function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      triggerToast('Kitchen Name is required');
+      triggerToast(tr("Kitchen Name is required"));
       return;
     }
     if (!phone.trim()) {
-      triggerToast('Contact Number is required');
+      triggerToast(tr("Contact Number is required"));
       return;
     }
     try {
@@ -414,10 +417,10 @@ function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
         onSave(updateData);
       }
       
-      triggerToast('Kitchen Details updated successfully!');
+      triggerToast(tr("Kitchen Details updated successfully!"));
       onBack();
     } catch (err) {
-      triggerToast('Failed to update kitchen info');
+      triggerToast(tr("Failed to update kitchen info"));
     } finally {
       setLoading(false);
     }
@@ -429,40 +432,40 @@ function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
         <button onClick={onBack} className="flex items-center active:scale-95 transition-transform">
           <ArrowLeft />
         </button>
-        <h2 className="text-[16px] font-semibold">Kitchen Name & Contact</h2>
+        <h2 className="text-[16px] font-semibold">{tr("Kitchen Name & Contact")}</h2>
         <div className="w-6"></div>
       </div>
 
       <div className="pt-6 space-y-5">
         <section className="space-y-4">
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Kitchen Name</label>
+            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Kitchen Name")}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter kitchen name"
+              placeholder={tr("Enter kitchen name")}
               className="w-full h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 text-[14px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Contact Number</label>
+            <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Contact Number")}</label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Enter contact number"
+              placeholder={tr("Enter contact number")}
               className="w-full h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 text-[14px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
 
           <div className="space-y-4 pt-4 border-t border-outline-variant/20">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Profile Image</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Profile Image")}</label>
               <div className="flex items-center gap-4">
                 {profileImagePreview ? (
-                  <img src={profileImagePreview} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-outline-variant/30" />
+                  <img src={profileImagePreview} alt={tr("Profile")} className="w-16 h-16 rounded-full object-cover border border-outline-variant/30" />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center text-outline">
                     <ImagePlus size={24} />
@@ -478,10 +481,10 @@ function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">Banner / Cover Image</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Banner / Cover Image")}</label>
               <div className="flex flex-col gap-3">
                 {coverImagePreview ? (
-                  <img src={coverImagePreview} alt="Cover" className="w-full h-48 rounded-xl object-cover border border-outline-variant/30" />
+                  <img src={coverImagePreview} alt={tr("Cover")} className="w-full h-48 rounded-xl object-cover border border-outline-variant/30" />
                 ) : (
                   <div className="w-full h-48 rounded-xl bg-surface-container-highest flex items-center justify-center text-outline">
                     <ImagePlus size={32} />
@@ -505,10 +508,10 @@ function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
         >
           {loading ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+              <Loader2 className="w-4 h-4 animate-spin" /> {tr("Saving...")}
             </span>
           ) : (
-            'Save Changes'
+            tr("Save Changes")
           )}
         </button>
       </div>
@@ -525,6 +528,7 @@ export default function ProfileSettings({
   onUpdateCutoff,
   onSignOut
 }) {
+  const { t: tr } = useTranslation("vendor");
   const navigate = useNavigate();
   const [subView, setSubView] = useState('profile');
 
@@ -580,7 +584,7 @@ export default function ProfileSettings({
     if (!file) return;
     try {
       if (file.size > 5 * 1024 * 1024) {
-        triggerToast("Image size too large. Max 5MB allowed.");
+        triggerToast(tr("Image size too large. Max 5MB allowed."));
         return;
       }
       setUploadingQr(true);
@@ -588,9 +592,9 @@ export default function ProfileSettings({
       const url = response?.data?.data?.url || response?.data?.url || "";
       if (!url) throw new Error("Upload failed");
       setBankForm((prev) => ({ ...prev, upiQrImage: url }));
-      triggerToast("QR updated successfully");
+      triggerToast(tr("QR updated successfully"));
     } catch (error) {
-      triggerToast(error?.response?.data?.message || error?.message || "Failed to upload QR image");
+      triggerToast(error?.response?.data?.message || error?.message || tr("Failed to upload QR image"));
     } finally {
       setUploadingQr(false);
     }
@@ -649,10 +653,10 @@ export default function ProfileSettings({
       await restaurantAPI.updateProfile(payload);
       onUpdateProfile(payload);
       setBankErrors({});
-      triggerToast("Bank details updated successfully");
+      triggerToast(tr("Bank details updated successfully"));
       setSubView('profile');
     } catch (error) {
-      triggerToast(error?.response?.data?.message || "Failed to update bank details");
+      triggerToast(error?.response?.data?.message || tr("Failed to update bank details"));
     } finally {
       setSavingBank(false);
     }
@@ -678,7 +682,7 @@ export default function ProfileSettings({
       const list = historyRes?.data?.data || historyRes?.data || [];
       setWithdrawals(Array.isArray(list) ? list : []);
     } catch (e) {
-      triggerToast('Failed to load withdrawals');
+      triggerToast(tr("Failed to load withdrawals"));
     } finally {
       setWithdrawHistoryLoading(false);
     }
@@ -688,11 +692,11 @@ export default function ProfileSettings({
     e.preventDefault();
     const amt = Number(withdrawAmount);
     if (!amt || amt <= 0) {
-      triggerToast('Please enter a valid withdrawal amount');
+      triggerToast(tr("Please enter a valid withdrawal amount"));
       return;
     }
     if (amt > availableBalance) {
-      triggerToast(`Insufficient balance. Maximum available is ₹${availableBalance}`);
+      triggerToast(tr("Insufficient balance. Maximum available is ₹{{availableBalance}}", { availableBalance }));
       return;
     }
 
@@ -708,11 +712,11 @@ export default function ProfileSettings({
     setSubmittingWithdrawal(true);
     try {
       await restaurantAPI.createWithdrawalRequest(amt, bankPayload);
-      triggerToast('Withdrawal request submitted successfully');
+      triggerToast(tr("Withdrawal request submitted successfully"));
       setWithdrawAmount('');
       await loadWithdrawHistoryAndBalance();
     } catch (e) {
-      triggerToast(e?.response?.data?.message || 'Failed to submit withdrawal request');
+      triggerToast(e?.response?.data?.message || tr("Failed to submit withdrawal request"));
     } finally {
       setSubmittingWithdrawal(false);
     }
@@ -735,20 +739,20 @@ export default function ProfileSettings({
   const { socket } = useRestaurantNotifications();
 
   const SUPPORT_CATEGORIES = [
-    { value: 'orders',     label: '🛒 Orders' },
-    { value: 'payments',   label: '💳 Payments' },
-    { value: 'menu',       label: '🍽️ Menu' },
-    { value: 'restaurant', label: '🏪 Restaurant Profile' },
-    { value: 'technical',  label: '⚙️ Technical Issue' },
-    { value: 'other',      label: '💬 Other' },
+    { value: 'orders',     label: tr("🛒 Orders") },
+    { value: 'payments',   label: tr("💳 Payments") },
+    { value: 'menu',       label: tr("🍽️ Menu") },
+    { value: 'restaurant', label: tr("🏪 Restaurant Profile") },
+    { value: 'technical',  label: tr("⚙️ Technical Issue") },
+    { value: 'other',      label: tr("💬 Other") },
   ];
 
   const STATUS_CFG = {
-    open:       { label: 'Open',       color: '#dc2626', bg: '#fef2f2' },
-    in_review:  { label: 'In Review',  color: '#d97706', bg: '#fffbeb' },
-    escalated:  { label: 'Escalated',  color: '#9333ea', bg: '#faf5ff' },
-    resolved:   { label: 'Resolved',   color: '#16a34a', bg: '#f0fdf4' },
-    closed:     { label: 'Closed',     color: '#6b7280', bg: '#f3f4f6' },
+    open:       { label: tr("Open"),       color: '#dc2626', bg: '#fef2f2' },
+    in_review:  { label: tr("In Review"),  color: '#d97706', bg: '#fffbeb' },
+    escalated:  { label: tr("Escalated"),  color: '#9333ea', bg: '#faf5ff' },
+    resolved:   { label: tr("Resolved"),   color: '#16a34a', bg: '#f0fdf4' },
+    closed:     { label: tr("Closed"),     color: '#6b7280', bg: '#f3f4f6' },
   };
 
   const loadSupportTickets = useCallback(async () => {
@@ -758,11 +762,11 @@ export default function ProfileSettings({
       const list = res?.data?.data?.tickets || res?.data?.data || [];
       setSupportTickets(Array.isArray(list) ? list : []);
     } catch (e) {
-      triggerToast('Failed to load support tickets.');
+      triggerToast(tr("Failed to load support tickets."));
     } finally {
       setSupportLoading(false);
     }
-  }, []);
+  }, [tr]);
 
   const loadTicketDetail = useCallback(async (id) => {
     setTicketLoading(true);
@@ -770,11 +774,11 @@ export default function ProfileSettings({
       const res = await restaurantAPI.getSupportTicketById(id);
       setSelectedTicket(res?.data?.data?.complaint || res?.data?.data || null);
     } catch (e) {
-      triggerToast('Failed to load ticket detail.');
+      triggerToast(tr("Failed to load ticket detail."));
     } finally {
       setTicketLoading(false);
     }
-  }, []);
+  }, [tr]);
 
   // Real-time ticket updates via socket
   useEffect(() => {
@@ -821,8 +825,8 @@ export default function ProfileSettings({
   };
 
   const handleCreateTicket = async () => {
-    if (!newSubject.trim()) { triggerToast('Please enter a subject.'); return; }
-    if (!newDesc.trim()) { triggerToast('Please enter a description.'); return; }
+    if (!newSubject.trim()) { triggerToast(tr("Please enter a subject.")); return; }
+    if (!newDesc.trim()) { triggerToast(tr("Please enter a description.")); return; }
     setCreating(true);
     try {
       // Upload attachments first if any
@@ -854,7 +858,7 @@ export default function ProfileSettings({
         proofPhotos 
       });
 
-      triggerToast('✅ Ticket submitted successfully!');
+      triggerToast(tr("✅ Ticket submitted successfully!"));
       setNewSubject('');
       setNewDesc('');
       setNewCategory('orders');
@@ -863,7 +867,7 @@ export default function ProfileSettings({
       await loadSupportTickets();
       setSubView('support');
     } catch (e) {
-      triggerToast(e?.response?.data?.message || 'Failed to submit ticket.');
+      triggerToast(e?.response?.data?.message || tr("Failed to submit ticket."));
     } finally {
       setCreating(false);
     }
@@ -902,7 +906,7 @@ export default function ProfileSettings({
       fromDate: isNowOpen ? '' : vacStart,
       toDate: isNowOpen ? '' : vacEnd
     });
-    triggerToast(isNowOpen ? 'Kitchen successfully opened! 🍳' : 'Vacation mode activated. Kitchen is now closed 🌴');
+    triggerToast(isNowOpen ? tr("Kitchen successfully opened! 🍳") : tr("Vacation mode activated. Kitchen is now closed 🌴"));
     setSubView('profile');
   };
 
@@ -913,13 +917,13 @@ export default function ProfileSettings({
       portionsCap: portionsCap,
       closedDays: closedDays
     });
-    triggerToast('Cutoff settings updated successfully ⏱️');
+    triggerToast(tr("Cutoff settings updated successfully ⏱️"));
     setSubView('profile');
   };
 
   const handleRemoveClosedDay = (day) => {
     setClosedDays((prev) => prev.filter((d) => d !== day));
-    triggerToast(`Removed manual closure: ${day}`);
+    triggerToast(tr("Removed manual closure: {{day}}", { day }));
   };
 
   const handleAddClosedDay = () => {
@@ -927,9 +931,9 @@ export default function ProfileSettings({
     const nextDay = defaultDays.find((d) => !closedDays.includes(d));
     if (nextDay) {
       setClosedDays((prev) => [...prev, nextDay]);
-      triggerToast(`Added closed day: ${nextDay}`);
+      triggerToast(tr("Added closed day: {{nextDay}}", { nextDay }));
     } else {
-      triggerToast('All calendar dates registered');
+      triggerToast(tr("All calendar dates registered"));
     }
   };
 
@@ -944,15 +948,15 @@ export default function ProfileSettings({
             <section className="flex flex-col items-center justify-center bg-white p-5 rounded-2xl shadow-xs border border-outline-variant/15 text-center min-h-[160px]">
               <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-[20px] mb-3 shadow overflow-hidden">
                 {profile?.profileImage?.url || typeof profile?.profileImage === 'string' ? (
-                  <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={profile?.profileImage?.url || profile?.profileImage} alt={tr("Profile")} className="w-full h-full object-cover" />
                 ) : (
                   profile.avatarInitials
                 )}
               </div>
               <h2 className="text-[16px] font-bold text-on-surface">{profile.name}</h2>
-              <p className="text-on-surface-variant text-[12px]">{profile.type} · {profile.primaryContactNumber || profile.ownerPhone || 'No Number'} · ★ {profile.rating}</p>
+              <p className="text-on-surface-variant text-[12px]">{profile.type} · {profile.primaryContactNumber || profile.ownerPhone || tr("No Number")} · ★ {profile.rating}</p>
               <div className="inline-flex items-center px-3.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[11px] font-bold mt-3 animate-pulse">
-                Approved ✓
+                {tr("Approved ✓")}
               </div>
             </section>
 
@@ -960,7 +964,7 @@ export default function ProfileSettings({
             <div className="p-4 bg-primary/10 border border-primary/25 rounded-2xl flex items-center gap-3 justify-center text-left">
               <UserCheck className="text-primary text-[28px] shrink-0" />
               <div>
-                <p className="text-[9px] text-outline font-bold uppercase tracking-wider">Kitchen Partner (v3.0)</p>
+                <p className="text-[9px] text-outline font-bold uppercase tracking-wider">{tr("Kitchen Partner (v3.0)")}</p>
                 <p className="font-bold text-on-surface text-[13px] leading-snug">{profile.partner}</p>
               </div>
             </div>
@@ -969,7 +973,7 @@ export default function ProfileSettings({
           <div className="space-y-5">
             {/* Kitchen Management Links Lists block */}
             <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Kitchen</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Kitchen")}</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               
               <button
@@ -978,7 +982,7 @@ export default function ProfileSettings({
               
                 <div className="flex items-center gap-3">
                   <Store className="text-outline" />
-                  <span className="font-bold text-[13px]">Kitchen Name &amp; Contact</span>
+                  <span className="font-bold text-[13px]">{tr("Kitchen Name & Contact")}</span>
                 </div>
                 <ChevronRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
@@ -989,7 +993,7 @@ export default function ProfileSettings({
               
                 <div className="flex items-center gap-3">
                   <MapPin className="text-outline" />
-                  <span className="font-bold text-[13px]">Location &amp; Zone</span>
+                  <span className="font-bold text-[13px]">{tr("Location & Zone")}</span>
                 </div>
                 <ChevronRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
@@ -998,14 +1002,14 @@ export default function ProfileSettings({
               <button
               onClick={() => {
                 const licenceName = profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'Not Uploaded');
-                triggerToast(`EU License validated: ${licenceName} expires in June 2026`);
+                triggerToast(tr("EU License validated: {{licenceName}} expires in June 2026", { licenceName }));
               }}
               className="w-full flex items-center justify-between p-4 bg-secondary-container/10 hover:bg-secondary-container/15 transition-colors group text-on-secondary-container">
               
                 <div className="flex items-center gap-3">
                   <ClipboardCheck className="text-secondary" />
                   <span className="font-bold text-[13px]">
-                    EU Food Licence <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'licence_food_pl_2026.pdf')})</span>
+                    {tr("EU Food Licence")} <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'licence_food_pl_2026.pdf')})</span>
                   </span>
                 </div>
                 <ChevronRight className="text-secondary group-active:translate-x-0.5 transition-transform text-[18px]" />
@@ -1021,7 +1025,7 @@ export default function ProfileSettings({
               
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="text-amber-500" />
-                  <span className="font-bold text-[13px] text-amber-600">Report Meal Unavailability</span>
+                  <span className="font-bold text-[13px] text-amber-600">{tr("Report Meal Unavailability")}</span>
                 </div>
                 <ChevronRight className="text-amber-500 group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
@@ -1030,7 +1034,7 @@ export default function ProfileSettings({
 
           {/* Customer & Subscribers section block */}
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Customers & Orders</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Customers & Orders")}</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left mb-5">
               <button
                 onClick={() => navigate('/vendor/subscribers')}
@@ -1038,7 +1042,7 @@ export default function ProfileSettings({
               >
                 <div className="flex items-center gap-3">
                   <Users className="text-outline" />
-                  <span className="font-bold text-[13px]">My Subscribers</span>
+                  <span className="font-bold text-[13px]">{tr("My Subscribers")}</span>
                 </div>
                 <ArrowRight className="text-outline group-active:translate-x-0.5 transition-transform text-[18px]" />
               </button>
@@ -1047,7 +1051,7 @@ export default function ProfileSettings({
 
           {/* Financial details section block */}
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Financial Settings</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Financial Settings")}</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               {[
                 { label: 'Bank Account Details', icon: Landmark },
@@ -1064,7 +1068,7 @@ export default function ProfileSettings({
                       loadWithdrawHistoryAndBalance();
                       setSubView('withdraw');
                     } else {
-                      triggerToast(`Accessing Secure Vault: ${item.label}. This syncs automatically!`);
+                      triggerToast(tr("Accessing Secure Vault: {{label}}. This syncs automatically!", { label: item.label }));
                     }
                   }}
                   className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface"
@@ -1085,7 +1089,7 @@ export default function ProfileSettings({
 
           {/* Help & Support section */}
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">Help & Support</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1 mb-2">{tr("Help & Support")}</h3>
             <div className="bg-surface-container-lowest rounded-xl shadow-xs border border-outline-variant/15 overflow-hidden divide-y divide-outline-variant/10 text-left">
               <button
                 onClick={() => { loadSupportTickets(); setSubView('support'); }}
@@ -1094,8 +1098,8 @@ export default function ProfileSettings({
                 <div className="flex items-center gap-3">
                   <Headset className="text-primary" />
                   <div className="text-left">
-                    <span className="font-bold text-[13px] text-primary block">Help & Support</span>
-                    <span className="text-[11px] text-outline">Submit tickets & track status</span>
+                    <span className="font-bold text-[13px] text-primary block">{tr("Help & Support")}</span>
+                    <span className="text-[11px] text-outline">{tr("Submit tickets & track status")}</span>
                   </div>
                 </div>
                 <ChevronRight className="text-primary group-active:translate-x-0.5 transition-transform text-[18px]" />
@@ -1109,13 +1113,13 @@ export default function ProfileSettings({
             onClick={onSignOut}
             className="text-primary font-bold text-[13px] uppercase tracking-wider hover:underline">
             
-              Sign out / Exit Partner Account
+              {tr("Sign out / Exit Partner Account")}
             </button>
             <button
-            onClick={() => triggerToast('Account deactivation is blocked until active prep queues are cleared.')}
+            onClick={() => triggerToast(tr("Account deactivation is blocked until active prep queues are cleared."))}
             className="text-error font-bold text-[11px] uppercase tracking-wider mt-1">
             
-              Deactivate Account
+              {tr("Deactivate Account")}
             </button>
           </div>
         </div>
@@ -1152,13 +1156,13 @@ export default function ProfileSettings({
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Help & Support</h2>
+            <h2 className="text-[16px] font-semibold">{tr("Help & Support")}</h2>
             <button
               onClick={() => setSubView('support-create')}
               className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full text-[12px] font-bold active:scale-95"
             >
               <Plus className="text-[16px]" />
-              New
+              {tr("New")}
             </button>
           </div>
 
@@ -1172,8 +1176,8 @@ export default function ProfileSettings({
                 <PlusCircle className="text-[22px]" />
               </div>
               <div className="text-left">
-                <p className="font-bold text-[14px]">Raise New Ticket</p>
-                <p className="text-[12px] opacity-80">Get help from our support team</p>
+                <p className="font-bold text-[14px]">{tr("Raise New Ticket")}</p>
+                <p className="text-[12px] opacity-80">{tr("Get help from our support team")}</p>
               </div>
               <ArrowRight className="ml-auto" />
             </button>
@@ -1186,12 +1190,12 @@ export default function ProfileSettings({
             ) : supportTickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Inbox className="text-[48px] text-outline/40 mb-3" />
-                <p className="font-bold text-[14px] text-on-surface-variant">No tickets yet</p>
-                <p className="text-[12px] text-outline mt-1">Raise a ticket to get support from our team</p>
+                <p className="font-bold text-[14px] text-on-surface-variant">{tr("No tickets yet")}</p>
+                <p className="text-[12px] text-outline mt-1">{tr("Raise a ticket to get support from our team")}</p>
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Your Tickets ({supportTickets.length})</p>
+                <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{tr("Your Tickets ({{length}})", { length: supportTickets.length })}</p>
                 {supportTickets.map((ticket) => {
                   const scfg = STATUS_CFG[ticket.status] || STATUS_CFG.open;
                   const catLabel = {
@@ -1209,7 +1213,7 @@ export default function ProfileSettings({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-[13px] text-on-surface truncate">{ticket.subject || 'Support Ticket'}</span>
+                          <span className="font-bold text-[13px] text-on-surface truncate">{ticket.subject || tr("Support Ticket")}</span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0" style={{ background: scfg.bg, color: scfg.color }}>{scfg.label}</span>
                         </div>
                         <p className="text-[11px] text-outline mt-0.5">{catLabel} · {ticket.complaintRef || `#${String(ticket._id).slice(-6).toUpperCase()}`}</p>
@@ -1233,14 +1237,14 @@ export default function ProfileSettings({
             <button onClick={() => setSubView('support')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Raise New Ticket</h2>
+            <h2 className="text-[16px] font-semibold">{tr("Raise New Ticket")}</h2>
             <div className="w-8" />
           </div>
 
           <div className="pt-6 space-y-4">
             {/* Category */}
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Issue Category</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Issue Category")}</h2>
               <div className="grid grid-cols-2 gap-2">
                 {SUPPORT_CATEGORIES.map(cat => (
                   <button
@@ -1260,13 +1264,13 @@ export default function ProfileSettings({
 
             {/* Subject */}
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Subject</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Subject")}</h2>
               <div className="bg-white rounded-xl border border-outline-variant/25 overflow-hidden">
                 <input
                   type="text"
                   value={newSubject}
                   onChange={e => setNewSubject(e.target.value)}
-                  placeholder="Brief description of the issue"
+                  placeholder={tr("Brief description of the issue")}
                   maxLength={120}
                   className="w-full px-4 py-3 text-[13px] text-on-surface bg-transparent focus:outline-none"
                 />
@@ -1275,12 +1279,12 @@ export default function ProfileSettings({
 
             {/* Description */}
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Detailed Description</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Detailed Description")}</h2>
               <div className="bg-white rounded-xl border border-outline-variant/25 overflow-hidden">
                 <textarea
                   value={newDesc}
                   onChange={e => setNewDesc(e.target.value)}
-                  placeholder="Describe the issue in detail so we can help you faster..."
+                  placeholder={tr("Describe the issue in detail so we can help you faster...")}
                   rows={5}
                   className="w-full px-4 py-3 text-[13px] text-on-surface bg-transparent focus:outline-none resize-none"
                 />
@@ -1289,20 +1293,20 @@ export default function ProfileSettings({
 
             {/* Attachments */}
             <section className="space-y-2">
-              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">Screenshots / Attachments (optional)</h2>
+              <h2 className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Screenshots / Attachments (optional)")}</h2>
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-outline-variant/40 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer active:bg-surface-container/10 transition-colors bg-white"
               >
                 <ImagePlus className="text-[32px] text-outline" />
-                <p className="text-[12px] text-outline font-medium">Tap to add screenshots (max 5)</p>
+                <p className="text-[12px] text-outline font-medium">{tr("Tap to add screenshots (max 5)")}</p>
                 <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleAttachFiles} />
               </div>
               {attachPreviews.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-1">
                   {attachPreviews.map((src, i) => (
                     <div key={i} className="relative w-16 h-16">
-                      <img src={src} className="w-16 h-16 rounded-xl object-cover border border-outline-variant/20" alt="attach" />
+                      <img src={src} className="w-16 h-16 rounded-xl object-cover border border-outline-variant/20" alt={tr("attach")} />
                       <button
                         onClick={() => removeAttachment(i)}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center shadow"
@@ -1322,9 +1326,9 @@ export default function ProfileSettings({
               className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {creating ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
+                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> {tr("Submitting...")}</>
               ) : (
-                <><Send /> Submit Ticket</>
+                <><Send /> {tr("Submit Ticket")}</>
               )}
             </button>
           </div>
@@ -1339,7 +1343,7 @@ export default function ProfileSettings({
             <button onClick={() => { setSelectedTicket(null); loadSupportTickets(); setSubView('support'); }} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Ticket Detail</h2>
+            <h2 className="text-[16px] font-semibold">{tr("Ticket Detail")}</h2>
             <div className="w-8" />
           </div>
 
@@ -1351,7 +1355,7 @@ export default function ProfileSettings({
             ) : !selectedTicket ? (
               <div className="flex flex-col items-center py-16 text-center">
                 <AlertCircle className="text-[40px] text-outline/40 mb-3" />
-                <p className="font-bold text-on-surface-variant">Ticket not found</p>
+                <p className="font-bold text-on-surface-variant">{tr("Ticket not found")}</p>
               </div>
             ) : (() => {
               const t = selectedTicket;
@@ -1381,11 +1385,11 @@ export default function ProfileSettings({
 
                   {/* Your message */}
                   <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4 space-y-2">
-                    <p className="text-[11px] font-bold text-outline uppercase tracking-wider">Your Message</p>
+                    <p className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Your Message")}</p>
                     <p className="text-[13px] text-on-surface leading-relaxed">{t.message}</p>
                     {t.proofPhotos?.length > 0 && (
                       <div className="pt-2">
-                        <p className="text-[10px] font-bold text-outline mb-2">Attachments ({t.proofPhotos.length})</p>
+                        <p className="text-[10px] font-bold text-outline mb-2">{tr("Attachments ({{length}})", { length: t.proofPhotos.length })}</p>
                         <div className="flex gap-2 flex-wrap">
                           {t.proofPhotos.map((url, i) => (
                             <a key={i} href={url} target="_blank" rel="noreferrer"
@@ -1402,13 +1406,13 @@ export default function ProfileSettings({
                   {/* Admin response history */}
                   {(t.responses?.length > 0 || t.customerResponseSent || t.customerResponseMessage) ? (
                     <div className="space-y-2">
-                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Admin Responses</p>
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{tr("Admin Responses")}</p>
                       {/* Legacy single response */}
                       {t.customerResponseSent && t.customerResponseMessage && (
                         <div className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
                           <div className="flex items-center gap-2">
                             <Headset className="text-primary text-[16px]" />
-                            <span className="text-[11px] font-bold text-primary">Support Team</span>
+                            <span className="text-[11px] font-bold text-primary">{tr("Support Team")}</span>
                             <span className="text-[10px] text-outline ml-auto">{t.customerResponseAt ? new Date(t.customerResponseAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
                           <p className="text-[13px] text-on-surface leading-relaxed">{t.customerResponseMessage}</p>
@@ -1419,7 +1423,7 @@ export default function ProfileSettings({
                         <div key={i} className="bg-primary/8 border border-primary/20 rounded-2xl p-4 space-y-1">
                           <div className="flex items-center gap-2">
                             <Headset className="text-primary text-[16px]" />
-                            <span className="text-[11px] font-bold text-primary">{r.responderName || 'Support Team'}</span>
+                            <span className="text-[11px] font-bold text-primary">{r.responderName || tr("Support Team")}</span>
                             <span className="text-[10px] text-outline ml-auto">{r.at ? new Date(r.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
                           <p className="text-[13px] text-on-surface leading-relaxed">{r.message}</p>
@@ -1430,8 +1434,8 @@ export default function ProfileSettings({
                     <div className="bg-surface-container/50 rounded-2xl border border-outline-variant/15 p-4 flex items-center gap-3">
                       <Clock className="text-outline text-[22px]" />
                       <div>
-                        <p className="font-bold text-[13px] text-on-surface-variant">Awaiting Response</p>
-                        <p className="text-[11px] text-outline mt-0.5">Our team will respond within 24 hours</p>
+                        <p className="font-bold text-[13px] text-on-surface-variant">{tr("Awaiting Response")}</p>
+                        <p className="text-[11px] text-outline mt-0.5">{tr("Our team will respond within 24 hours")}</p>
                       </div>
                     </div>
                   )}
@@ -1439,7 +1443,7 @@ export default function ProfileSettings({
                   {/* Status trail */}
                   {t.statusTrail?.length > 0 && (
                     <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-xs p-4 space-y-3">
-                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider">Activity Trail</p>
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider">{tr("Activity Trail")}</p>
                       {t.statusTrail.map((trail, i) => {
                         const tcfg = STATUS_CFG[trail.status] || STATUS_CFG.open;
                         return (
@@ -1472,92 +1476,92 @@ export default function ProfileSettings({
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Bank Details</h2>
+            <h2 className="text-[16px] font-semibold">{tr("Bank Details")}</h2>
             <div className="w-6"></div>
           </div>
 
           <div className="space-y-4 mt-4">
             <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Holder Name</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("Account Holder Name")}</label>
               <input
                 type="text"
                 value={bankForm.accountHolderName}
                 onChange={(e) => setBankForm(p => ({ ...p, accountHolderName: e.target.value }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                placeholder="Enter account holder name"
+                placeholder={tr("Enter account holder name")}
               />
               {bankErrors.accountHolderName && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.accountHolderName}</p>}
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Number</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("Account Number")}</label>
               <input
                 type="text"
                 value={bankForm.accountNumber}
                 onChange={(e) => setBankForm(p => ({ ...p, accountNumber: e.target.value.replace(/[^\d]/g, '') }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                placeholder="Enter bank account number"
+                placeholder={tr("Enter bank account number")}
               />
               {bankErrors.accountNumber && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.accountNumber}</p>}
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Confirm Account Number</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("Confirm Account Number")}</label>
               <input
                 type="text"
                 value={bankForm.confirmAccountNumber}
                 onChange={(e) => setBankForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/[^\d]/g, '') }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                placeholder="Confirm bank account number"
+                placeholder={tr("Confirm bank account number")}
               />
               {bankErrors.confirmAccountNumber && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.confirmAccountNumber}</p>}
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">IFSC Code</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("IFSC Code")}</label>
               <input
                 type="text"
                 value={bankForm.ifscCode}
                 onChange={(e) => setBankForm(p => ({ ...p, ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                placeholder="e.g. SBIN0018764"
+                placeholder={tr("e.g. SBIN0018764")}
                 maxLength={11}
               />
               {bankErrors.ifscCode && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.ifscCode}</p>}
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Account Type</label>
+              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("Account Type")}</label>
               <select
                 value={bankForm.accountType}
                 onChange={(e) => setBankForm(p => ({ ...p, accountType: e.target.value }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
               >
-                <option value="Savings">Savings</option>
-                <option value="Current">Current</option>
+                <option value="Savings">{tr("Savings")}</option>
+                <option value="Current">{tr("Current")}</option>
               </select>
             </div>
 
             <div className="pt-2 border-t border-outline-variant/20">
-              <h4 className="text-[12px] font-extrabold text-primary uppercase tracking-widest mb-3">UPI Details</h4>
+              <h4 className="text-[12px] font-extrabold text-primary uppercase tracking-widest mb-3">{tr("UPI Details")}</h4>
 
               <div>
-                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">UPI ID</label>
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("UPI ID")}</label>
                 <input
                   type="text"
                   value={bankForm.upiId}
                   onChange={(e) => setBankForm(p => ({ ...p, upiId: e.target.value.trim() }))}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                  placeholder="e.g. merchant@okaxis"
+                  placeholder={tr("e.g. merchant@okaxis")}
                 />
                 {bankErrors.upiId && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.upiId}</p>}
               </div>
 
               <div className="mt-4">
-                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-2">UPI QR Image</label>
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-2">{tr("UPI QR Image")}</label>
                 {bankForm.upiQrImage ? (
                   <div className="relative w-40 h-40 border border-outline-variant/30 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center">
-                    <img src={bankForm.upiQrImage} alt="UPI QR" className="max-w-full max-h-full object-contain" />
+                    <img src={bankForm.upiQrImage} alt={tr("UPI QR")} className="max-w-full max-h-full object-contain" />
                     <button
                       type="button"
                       onClick={() => setBankForm(p => ({ ...p, upiQrImage: '' }))}
@@ -1568,7 +1572,7 @@ export default function ProfileSettings({
                   </div>
                 ) : (
                   <div className="w-40 h-40 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center text-xs text-outline bg-white">
-                    No QR uploaded
+                    {tr("No QR uploaded")}
                   </div>
                 )}
 
@@ -1582,12 +1586,12 @@ export default function ProfileSettings({
                     {uploadingQr ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        Uploading...
+                        {tr("Uploading...")}
                       </>
                     ) : (
                       <>
                         <Upload className="w-3.5 h-3.5" />
-                        Upload QR Image
+                        {tr("Upload QR Image")}
                       </>
                     )}
                   </button>
@@ -1608,7 +1612,7 @@ export default function ProfileSettings({
               className="w-full h-14 bg-primary text-on-primary rounded-xl font-bold text-[15px] shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 mt-6 disabled:opacity-60"
             >
               {savingBank ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Save Bank Details
+              {tr("Save Bank Details")}
             </button>
           </div>
         </div>
@@ -1622,13 +1626,13 @@ export default function ProfileSettings({
             <button onClick={() => setSubView('profile')} className="flex items-center active:scale-95 transition-transform">
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Withdrawal Requests</h2>
+            <h2 className="text-[16px] font-semibold">{tr("Withdrawal Requests")}</h2>
             <div className="w-6"></div>
           </div>
 
           {/* Wallet Available Balance Card */}
           <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-5 text-on-primary shadow-md relative overflow-hidden mt-4">
-            <p className="text-[11px] uppercase tracking-wider opacity-85 font-bold">Available Balance</p>
+            <p className="text-[11px] uppercase tracking-wider opacity-85 font-bold">{tr("Available Balance")}</p>
             <h3 className="text-3xl font-extrabold mt-1">
               ₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </h3>
@@ -1636,16 +1640,16 @@ export default function ProfileSettings({
 
           {/* Create Withdraw Request Form */}
           <div className="bg-white rounded-2xl p-4 border border-outline-variant/15 shadow-xs space-y-4">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline">Request Payout</h4>
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline">{tr("Request Payout")}</h4>
             <form onSubmit={handleCreateWithdrawRequest} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold block mb-1">Amount to Withdraw (₹)</label>
+                <label className="text-[11px] font-bold block mb-1">{tr("Amount to Withdraw (₹)")}</label>
                 <input
                   type="number"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="w-full bg-slate-50 border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="e.g. 500"
+                  placeholder={tr("e.g. 500")}
                   min="1"
                   max={availableBalance}
                   disabled={submittingWithdrawal}
@@ -1660,10 +1664,10 @@ export default function ProfileSettings({
                 {submittingWithdrawal ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Submitting...
+                    {tr("Submitting...")}
                   </>
                 ) : (
-                  'Request Withdrawal'
+                  tr("Request Withdrawal")
                 )}
               </button>
             </form>
@@ -1671,7 +1675,7 @@ export default function ProfileSettings({
 
           {/* Withdraw Requests List */}
           <div className="space-y-3">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1">Request History</h4>
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline px-1">{tr("Request History")}</h4>
             {withdrawHistoryLoading ? (
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -1679,7 +1683,7 @@ export default function ProfileSettings({
             ) : withdrawals.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 text-center border border-outline-variant/15 shadow-xs flex flex-col items-center justify-center space-y-2">
                 <Inbox className="w-10 h-10 text-outline/40" />
-                <p className="text-[12px] text-outline font-semibold">No withdrawals requested yet.</p>
+                <p className="text-[12px] text-outline font-semibold">{tr("No withdrawals requested yet.")}</p>
               </div>
             ) : (
               <div className="space-y-2.5">

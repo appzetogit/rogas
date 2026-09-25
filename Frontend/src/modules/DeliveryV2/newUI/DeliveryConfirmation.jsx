@@ -3,6 +3,7 @@ import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from 
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { dmbDeliveryAPI, deliveryAPI, uploadAPI } from "../../../services/api";
 import { ActionSlider } from "../components/ui/ActionSlider";
+import { Trans, useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: "100%",
@@ -19,6 +20,7 @@ const DeliveryConfirmation = ({
   onOpenChat,
   onReportIssue
 }) => {
+  const { t } = useTranslation("driver");
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [errorText, setErrorText] = useState("");
@@ -101,7 +103,7 @@ const DeliveryConfirmation = ({
       }, 100);
     } catch (err) {
       console.error("Camera access failed:", err);
-      setErrorText("Camera access denied or unavailable. Please check permissions.");
+      setErrorText(t("Camera access denied or unavailable. Please check permissions."));
     }
   };
 
@@ -182,7 +184,7 @@ const DeliveryConfirmation = ({
       }, 1000);
     } catch (err) {
       console.error(err);
-      setErrorText("Error confirming payment on server.");
+      setErrorText(t("Error confirming payment on server."));
       setSuccess(false);
     }
   };
@@ -193,7 +195,7 @@ const DeliveryConfirmation = ({
       onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
     } catch (err) {
       console.error(err);
-      setErrorText(err.response?.data?.message || "Error confirming payment on server.");
+      setErrorText(err.response?.data?.message || t("Error confirming payment on server."));
       throw err;
     }
   };
@@ -246,13 +248,13 @@ const DeliveryConfirmation = ({
 
     if (isLiveOrder) {
       if (!photoCaptured && pinStr.length < 4) {
-        setErrorText("Please enter the 4-digit customer PIN or capture a delivery photo first.");
+        setErrorText(t("Please enter the 4-digit customer PIN or capture a delivery photo first."));
         return;
       }
 
       if (photoCaptured) {
         if (!photoBlob) {
-          setErrorText("Captured photo data is missing. Please capture again.");
+          setErrorText(t("Captured photo data is missing. Please capture again."));
           return;
         }
 
@@ -276,11 +278,11 @@ const DeliveryConfirmation = ({
           if (res.data?.success) {
             setPaymentScreenOpen(true);
           } else {
-            setErrorText(res.data?.message || "Failed to verify photo proof");
+            setErrorText(res.data?.message || t("Failed to verify photo proof"));
           }
         } catch (err) {
           console.error("Failed to verify photo:", err);
-          setErrorText(err.response?.data?.message || err.message || "Server error confirming photo delivery.");
+          setErrorText(err.response?.data?.message || err.message || t("Server error confirming photo delivery."));
         } finally {
           setUploadingPhoto(false);
         }
@@ -292,17 +294,17 @@ const DeliveryConfirmation = ({
           if (res.data?.success) {
             setPaymentScreenOpen(true);
           } else {
-            setErrorText(res.data?.message || "Invalid customer PIN");
+            setErrorText(res.data?.message || t("Invalid customer PIN"));
           }
         } catch (err) {
           console.error("Failed to verify delivery PIN:", err);
-          setErrorText(err.response?.data?.message || "Incorrect PIN or server error.");
+          setErrorText(err.response?.data?.message || t("Incorrect PIN or server error."));
         }
       }
     } else {
       const expectedPin = order?.deliveryPin || order?.pin || "1234";
       if (!photoCaptured && pinStr !== expectedPin) {
-        setErrorText(`Please enter correct customer PIN (${expectedPin}) or capture a delivery photo first.`);
+        setErrorText(t("Please enter correct customer PIN ({{expectedPin}}) or capture a delivery photo first.", { expectedPin }));
         return;
       }
       setPaymentScreenOpen(true);
@@ -310,9 +312,9 @@ const DeliveryConfirmation = ({
   };
 
   const getButtonText = () => {
-    if (uploadingPhoto) return "UPLOADING PHOTO...";
-    if (success) return "VERIFIED!";
-    return "Confirm Delivery";
+    if (uploadingPhoto) return t("UPLOADING PHOTO...");
+    if (success) return t("VERIFIED!");
+    return t("Confirm Delivery");
   };
 
   if (paymentScreenOpen) {
@@ -324,22 +326,22 @@ const DeliveryConfirmation = ({
             onClick={() => setPaymentScreenOpen(false)}
             className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
           >
-            <span className="text-[#00604c] font-black text-sm">&larr; Back</span>
+            <span className="text-[#00604c] font-black text-sm">{t("← Back")}</span>
           </button>
           <div className="text-center">
-            <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Payment Collection</p>
-            <h2 className="text-sm font-bold text-gray-900">Order #{order?.id?.slice(-6) || "Payment"}</h2>
+            <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">{t("Payment Collection")}</p>
+            <h2 className="text-sm font-bold text-gray-900">{t("Order #")}{order?.id?.slice(-6) || t("Payment")}</h2>
           </div>
           <div className="w-8 h-8" />
         </div>
 
         {/* Amount Card */}
         <div className="bg-white border border-[#e0e3e0] rounded-xl p-6 shadow-sm text-center space-y-2">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Amount to Collect</p>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{t("Amount to Collect")}</p>
           <p className="text-3xl font-black text-[#00604c]">
-            {order?.riderEarning || 0} PLN
+            {t("{{riderEarning}} PLN", { riderEarning: order?.riderEarning || 0 })}
           </p>
-          <p className="text-xs text-gray-400">Please choose a payment method below to verify collection.</p>
+          <p className="text-xs text-gray-400">{t("Please choose a payment method below to verify collection.")}</p>
         </div>
 
         {/* Payment Methods Selection */}
@@ -352,8 +354,8 @@ const DeliveryConfirmation = ({
               }`}
           >
             <span className="text-2xl mb-1">📱</span>
-            <span className="font-bold text-sm text-gray-900">QR Payment</span>
-            <span className="text-[10px] text-gray-500 mt-1">Scan Razorpay QR</span>
+            <span className="font-bold text-sm text-gray-900">{t("QR Payment")}</span>
+            <span className="text-[10px] text-gray-500 mt-1">{t("Scan Razorpay QR")}</span>
           </button>
 
           <button
@@ -364,15 +366,15 @@ const DeliveryConfirmation = ({
               }`}
           >
             <span className="text-2xl mb-1">💰</span>
-            <span className="font-bold text-sm text-gray-900">Collect Cash</span>
-            <span className="text-[10px] text-gray-500 mt-1">Physical Cash</span>
+            <span className="font-bold text-sm text-gray-900">{t("Collect Cash")}</span>
+            <span className="text-[10px] text-gray-500 mt-1">{t("Physical Cash")}</span>
           </button>
         </div>
 
         {/* QR Payment View */}
         {selectedPaymentMethod === "QR" && (
           <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm flex flex-col items-center space-y-4 animate-slideUp">
-            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">Razorpay QR Code</h3>
+            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">{t("Razorpay QR Code")}</h3>
 
             {loadingQr ? (
               <div className="w-48 h-48 bg-gray-50 border border-dashed rounded-xl flex items-center justify-center">
@@ -384,19 +386,19 @@ const DeliveryConfirmation = ({
               </div>
             ) : qrCodeUrl ? (
               <div className="p-2 border border-gray-100 rounded-xl bg-white shadow-inner">
-                <img src={qrCodeUrl} alt="Razorpay QR" className="w-48 h-48 object-contain" />
+                <img src={qrCodeUrl} alt={t("Razorpay QR")} className="w-48 h-48 object-contain" />
               </div>
             ) : null}
 
             <p className="text-[10px] font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-100 text-center">
-              Let the customer scan the QR to complete online transfer.
+              {t("Let the customer scan the QR to complete online transfer.")}
             </p>
 
             <button
               onClick={handleConfirmQrPayment}
               className="w-full h-12 bg-[#00604c] hover:bg-[#1f7a63] text-white font-bold rounded-xl flex items-center justify-center transition-all shadow-md cursor-pointer"
             >
-              Confirm Paid & Complete
+              {t("Confirm Paid & Complete")}
             </button>
           </div>
         )}
@@ -404,14 +406,14 @@ const DeliveryConfirmation = ({
         {/* Cash Payment Slider View */}
         {selectedPaymentMethod === "CASH" && (
           <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm space-y-4 animate-slideUp">
-            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">Confirm Cash Collection</h3>
+            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">{t("Confirm Cash Collection")}</h3>
             <p className="text-xs text-gray-500">
-              Please count and verify that you have collected exactly <span className="font-extrabold text-gray-900">{order.riderEarning || 0} PLN</span> in cash.
+              <Trans t={t} i18nKey={"Please count and verify that you have collected exactly <0>{{riderEarning}} PLN</0> in cash."} defaults={"Please count and verify that you have collected exactly <0>{{riderEarning}} PLN</0> in cash."} values={{ riderEarning: order.riderEarning || 0 }} components={[<span className="font-extrabold text-gray-900" />]} />
             </p>
 
             <div className="pt-2">
               <ActionSlider
-                label="Slide to Confirm Collection"
+                label={t("Slide to Confirm Collection")}
                 successLabel="Cash Collected ✓"
                 onConfirm={handleConfirmCashPayment}
                 color="bg-[#00604c]"
@@ -432,15 +434,15 @@ const DeliveryConfirmation = ({
         onClick={onGoBack}
         className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
       >
-        <span className="text-[#00604c] font-black text-sm">&larr; Back</span>
+        <span className="text-[#00604c] font-black text-sm">{t("← Back")}</span>
       </button>
       <div className="text-center">
-        <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Delivery Dropoff</p>
-        <h2 className="text-sm font-bold text-gray-900">Delivery - Order #{order?.id?.slice(-6) || "Payment"}</h2>
+        <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">{t("Delivery Dropoff")}</p>
+        <h2 className="text-sm font-bold text-gray-900">{t("Delivery - Order #")}{order?.id?.slice(-6) || t("Payment")}</h2>
       </div>
       <div className="w-8 h-8 rounded-full overflow-hidden border border-[#e0e3e0]">
         <img
-          alt="Jan Wisniewski Profile"
+          alt={t("Jan Wisniewski Profile")}
           className="w-full h-full object-cover"
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsfrq_0ZjpgdHuNrT-iHoHJIUmjDGQw9kLQ8CWwL5t08A99XVq3Qml0_dqJCnug2otKGKy_FzVDNiFLRDupl6Bx81pLpQhMWXbJWg1eaLT2tMExu5FoJVqAamFTuaQewI2pJmtY3e-Db8KJKMoKZQ6w3QrYfgmjXrHjgCtB6lUxuSqI2qbuMXswZAD1Bbfkn0cY9odKH7b7zcMghtsqjyeZOmIrsWU4OJOry9HN_GRn95yAyq_7C3YpNM5UpV94AZdmoDHcFVcL2Kf text-xs"
           referrerPolicy="no-referrer"
@@ -491,7 +493,7 @@ const DeliveryConfirmation = ({
       ) : (
         <>
           <img
-            alt="Map tracking Warsaw, Ochota district"
+            alt={t("Map tracking Warsaw, Ochota district")}
             className="absolute inset-0 w-full h-full object-cover opacity-75"
             src="https://lh3.googleusercontent.com/placeholder-map-warsaw"
             onError={(e) => {
@@ -505,7 +507,7 @@ const DeliveryConfirmation = ({
 
       <div className="absolute top-3 left-3 bg-[#00604c] text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md z-10">
         <Clock className="w-3.5 h-3.5" />
-        <span className="text-[10px] font-bold uppercase tracking-wider">ETA: 4 min</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider">{t("ETA: 4 min")}</span>
       </div>
     </div>
 
@@ -518,12 +520,12 @@ const DeliveryConfirmation = ({
           <h3 className="font-extrabold text-[#181d1b] text-lg">{order?.customerName || ""}</h3>
           <p className="text-xs text-[#3e4945] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
-            {order?.deliveryAddress || "Customer Address"}
+            {order?.deliveryAddress || t("Customer Address")}
           </p>
           {centerLat && centerLng && (
             <p className="text-[10px] text-gray-500 font-semibold mt-0.5 ml-4.5 flex items-center gap-1">
               <span>📍</span>
-              <span>Coordinates: {parseFloat(centerLat).toFixed(6)}, {parseFloat(centerLng).toFixed(6)}</span>
+              <span>{t("Coordinates:")} {parseFloat(centerLat).toFixed(6)}, {parseFloat(centerLng).toFixed(6)}</span>
             </p>
           )}
         </div>
@@ -548,9 +550,9 @@ const DeliveryConfirmation = ({
         /* Note block */
       }
       <div className="bg-[#e5e9e5]/40 p-3.5 rounded-lg border-l-4 border-[#00604c] shadow-xs">
-        <p className="text-[10px] font-extrabold text-[#00604c] tracking-wider uppercase mb-1">CUSTOMER NOTE</p>
+        <p className="text-[10px] font-extrabold text-[#00604c] tracking-wider uppercase mb-1">{t("CUSTOMER NOTE")}</p>
         <blockquote className="text-xs font-semibold italic text-[#181d1b] leading-relaxed">
-          "{order?.customerNote || "No instructions provided."}"
+          "{order?.customerNote || t("No instructions provided.")}"
         </blockquote>
       </div>
     </div>
@@ -562,12 +564,12 @@ const DeliveryConfirmation = ({
       <div className="flex items-center gap-3">
         <span className="text-xl">💰</span>
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#93000a]">Payment Method</p>
-          <p className="text-base font-extrabold">Collect {order?.riderEarning || 0} PLN Cash</p>
+          <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#93000a]">{t("Payment Method")}</p>
+          <p className="text-base font-extrabold">{t("Collect {{riderEarning}} PLN Cash", { riderEarning: order?.riderEarning || 0 })}</p>
         </div>
       </div>
       <div className="bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
-        CASH
+        {t("CASH")}
       </div>
     </div>}
 
@@ -578,12 +580,12 @@ const DeliveryConfirmation = ({
       <div className="flex items-center gap-3">
         <span className="text-xl">💸</span>
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#1b5e20]">Delivery Earning</p>
+          <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#1b5e20]">{t("Delivery Earning")}</p>
           <p className="text-base font-extrabold">₹{order?.riderEarning || 0}</p>
         </div>
       </div>
       <div className="bg-[#4caf50] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
-        EARN
+        {t("EARN")}
       </div>
     </div>
 
@@ -591,13 +593,13 @@ const DeliveryConfirmation = ({
       /* Delivery Proof Container */
     }
     <div className="bg-white border border-[#e0e3e0] rounded-xl p-4 space-y-4 shadow-sm">
-      <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">DELIVERY PROOF</h3>
+      <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">{t("DELIVERY PROOF")}</h3>
 
       {
         /* PIN verification input */
       }
       <div className="space-y-2 bg-[#f1f4f1]/50 p-3.5 rounded-xl border border-[#e0e3e0]">
-        <p className="text-xs font-bold text-[#3e4945]">Enter customer PIN</p>
+        <p className="text-xs font-bold text-[#3e4945]">{t("Enter customer PIN")}</p>
         <div className="flex justify-between gap-1.5">
           {pinDigits.map((digit, idx) => <input
             key={idx}
@@ -611,14 +613,14 @@ const DeliveryConfirmation = ({
           />)}
         </div>
         <p className="text-[10px] text-[#5d5f5b] font-medium italic">
-          Tip: Share PIN <span className="font-bold underline text-[#00604c] text-xs">{order?.deliveryPin || order?.pin || "1234"}</span> with customer.
+          <Trans t={t} i18nKey={"Tip: Share PIN <0>{{deliveryPin}}</0> with customer."} defaults={"Tip: Share PIN <0>{{deliveryPin}}</0> with customer."} values={{ deliveryPin: order?.deliveryPin || order?.pin || "1234" }} components={[<span className="font-bold underline text-[#00604c] text-xs" />]} />
         </p>
       </div>
 
       <div className="relative py-1">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
         <div className="relative flex justify-center text-[10px] uppercase tracking-widest text-[#3e4945] bg-white px-3 w-fit mx-auto font-extrabold">
-          Or take delivery photo
+          {t("Or take delivery photo")}
         </div>
       </div>
 
@@ -640,33 +642,33 @@ const DeliveryConfirmation = ({
                 onClick={stopCamera}
                 className="bg-gray-800/80 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 onClick={capturePhoto}
                 className="bg-[#00604c] hover:bg-[#1f7a63] text-white px-6 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
               >
-                Capture Photo
+                {t("Capture Photo")}
               </button>
             </div>
           </div>
         ) : photoCaptured && photoPreviewUrl ? (
           <div className="relative w-full h-44 rounded-xl overflow-hidden border-2 border-[#00604c] shadow-sm group">
             <img
-              alt="Confirmation Live Photo"
+              alt={t("Confirmation Live Photo")}
               className="w-full h-full object-cover"
               src={photoPreviewUrl}
             />
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
               <span className="bg-[#00604c] text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                <Check className="w-4 h-4 stroke-[3]" /> Live Photo Captured
+                <Check className="w-4 h-4 stroke-[3]" /> {t("Live Photo Captured")}
               </span>
             </div>
             <button
               onClick={retakePhoto}
               className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2.5 py-1 rounded cursor-pointer animate-fadeIn"
             >
-              Retake
+              {t("Retake")}
             </button>
           </div>
         ) : (
@@ -675,7 +677,7 @@ const DeliveryConfirmation = ({
             className="w-full h-14 border-2 border-dashed border-[#bec9c3] hover:border-[#00604c] text-[#5d5f5b] rounded-xl flex items-center justify-center gap-2.5 transition-colors active:bg-[#f1f4f1] font-bold text-xs cursor-pointer"
           >
             <Camera className="w-5 h-5 text-[#5d5f5b]" />
-            Open Camera Proof
+            {t("Open Camera Proof")}
           </button>
         )}
       </div>
@@ -691,7 +693,7 @@ const DeliveryConfirmation = ({
 
     {success && <div className="bg-[#e5e9e5] text-[#005140] text-xs font-bold p-3 rounded-lg border border-[#bec9c3] flex items-center gap-2">
       <CheckCircle className="w-5 h-5 flex-shrink-0" />
-      <span>Delivery match success! Registering payout update...</span>
+      <span>{t("Delivery match success! Registering payout update...")}</span>
     </div>}
 
     {
@@ -712,7 +714,7 @@ const DeliveryConfirmation = ({
           onClick={onReportIssue}
           className="text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
         >
-          Cannot complete delivery? Report failed dropoff
+          {t("Cannot complete delivery? Report failed dropoff")}
         </button>
       </div>
     </div>

@@ -5,8 +5,10 @@ import { Plus, Minus, ShoppingBag, Package, ChevronRight, Search, X } from 'luci
 import { usePantryCart } from './PantryCartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from "react-i18next";
 
 export function PantryItemsList() {
+  const { t } = useTranslation("customer");
   const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export function PantryItemsList() {
 
   const handleAddItem = (item) => {
     if (cart.vendorId && cart.vendorId !== (item.vendorId?._id || item.vendorId)) {
-      toast.error('You can only order from one vendor at a time. Clear cart to switch.');
+      toast.error(t("You can only order from one vendor at a time. Clear cart to switch."));
       return;
     }
     addItem(item, item.vendorId?._id || item.vendorId);
@@ -75,7 +77,7 @@ export function PantryItemsList() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search pantry items, snacks, sweets, vendors..."
+          placeholder={t("Search pantry items, snacks, sweets, vendors...")}
           className="w-full h-12 pl-12 pr-10 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1F7A63] focus:ring-2 focus:ring-[#1F7A63]/20 shadow-xs transition-all"
         />
         {searchQuery && (
@@ -91,16 +93,16 @@ export function PantryItemsList() {
       {filteredItems.length === 0 ? (
         <div className="text-center p-10 bg-white rounded-2xl border border-slate-100 shadow-xs my-4">
           <Package className="text-[40px] text-[#bec9c3] mx-auto mb-2" />
-          <p className="text-[16px] font-bold text-slate-900">No Pantry Items Found</p>
+          <p className="text-[16px] font-bold text-slate-900">{t("No Pantry Items Found")}</p>
           <p className="text-[13px] text-slate-500 mt-1">
-            {searchQuery ? `No results for "${searchQuery}". Try a different keyword.` : "Vendors haven't added any items yet."}
+            {searchQuery ? t("No results for \"{{searchQuery}}\". Try a different keyword.", { searchQuery }) : t("Vendors haven't added any items yet.")}
           </p>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
               className="mt-3 text-xs font-bold text-[#1F7A63] hover:underline"
             >
-              Clear Search Filter
+              {t("Clear Search Filter")}
             </button>
           )}
         </div>
@@ -120,10 +122,10 @@ export function PantryItemsList() {
               <div className="flex flex-col flex-1 px-1">
                 <h3 className="font-medium text-[13px] text-[#1b1c1c] leading-tight mb-1 flex-1">{item.title}</h3>
                 {item.vendorId && (
-                  <p className="text-[11px] text-[#6e7a74] mb-2 truncate">by {item.vendorId.restaurantName}</p>
+                  <p className="text-[11px] text-[#6e7a74] mb-2 truncate">{t("by {{restaurantName}}", { restaurantName: item.vendorId.restaurantName })}</p>
                 )}
                 <div className="flex items-center justify-between mt-auto h-[32px]">
-                  <span className="font-extrabold text-[15px] text-[#1F7A63]">{item.price.toFixed(2)} PLN</span>
+                  <span className="font-extrabold text-[15px] text-[#1F7A63]">{t("{{price}} PLN", { price: item.price.toFixed(2) })}</span>
                   
                   {qty === 0 ? (
                     <button 
@@ -169,12 +171,12 @@ export function PantryItemsList() {
                 <ShoppingBag className="text-[18px]" />
               </div>
               <div className="text-left">
-                <p className="text-[12px] font-medium text-white/80">{totalItems} items</p>
-                <p className="text-[15px] font-extrabold">{cartTotal.toFixed(2)} PLN</p>
+                <p className="text-[12px] font-medium text-white/80">{t("{{totalItems}} items", { totalItems })}</p>
+                <p className="text-[15px] font-extrabold">{t("{{cartTotal}} PLN", { cartTotal: cartTotal.toFixed(2) })}</p>
               </div>
             </div>
             <span className="text-[15px] font-extrabold flex items-center gap-1">
-              Checkout <ChevronRight className="text-[18px]" />
+              {t("Checkout")} <ChevronRight className="text-[18px]" />
             </span>
           </button>
         </div>

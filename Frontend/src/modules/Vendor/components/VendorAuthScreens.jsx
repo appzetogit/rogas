@@ -5,6 +5,7 @@ import { SUPPORTED_COUNTRIES } from '../../../config/countries';
 import CountrySelector from '../../../shared/components/CountrySelector';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { ArrowLeft, ShieldCheck, MoreVertical, Store, Phone, MapPin, Locate, Check, CheckCircle, Upload, Image, IdCard, Clock, ArrowRight, XCircle, FilePenLine, Hourglass, RefreshCcw } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: '100%',
@@ -14,6 +15,7 @@ const mapContainerStyle = {
 
 
 export function PhoneScreen({ mode, onBack, onSendOtp }) {
+  const { t: tr } = useTranslation("vendor");
   const location = useLocation();
   const [selectedCountry, setSelectedCountry] = useState(() => {
     return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
@@ -27,7 +29,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
       const fullPhone = `${selectedCountry.code}${cleanDigits}`;
       onSendOtp(fullPhone);
     } else {
-      alert(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`);
+      alert(tr("Please enter a valid {{phoneLength}}-digit phone number", { phoneLength: selectedCountry.phoneLength }));
     }
   };
 
@@ -43,22 +45,22 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
         <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
           <img
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ"
-            alt="Vendor Banner"
+            alt={tr("Vendor Banner")}
             className="w-full h-full object-cover" />
 
         </div>
 
         <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight">
-          {mode === 'login' ? 'Welcome back!' : 'Create an account'}
+          {mode === 'login' ? tr("Welcome back!") : tr("Create an account")}
         </h1>
         <p className="text-[13px] text-outline mt-1 mb-6">
-          {mode === 'login' ? 'Log in with your phone number' : 'Sign up with your phone number'}
+          {mode === 'login' ? tr("Log in with your phone number") : tr("Sign up with your phone number")}
         </p>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
           <div className="mb-8">
             <label className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2 block">
-              Mobile Number
+              {tr("Mobile Number")}
             </label>
             <div className="flex h-14 bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
               <CountrySelector
@@ -91,10 +93,10 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
               disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
               className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
 
-              Send OTP
+              {tr("Send OTP")}
             </button>
             <p className="text-[10px] text-center text-outline px-4 mt-2">
-              By continuing, you agree to our <Link to="/vendor/termsandcondition" state={{ backTo: location.pathname }} className="underline">Terms of Service</Link> and <Link to="/vendor/privacy" state={{ backTo: location.pathname }} className="underline">Privacy Policy</Link>.
+              <Trans t={tr} i18nKey={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} defaults={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} components={[<Link to="/vendor/termsandcondition" state={{ backTo: location.pathname }} className="underline" />, <Link to="/vendor/privacy" state={{ backTo: location.pathname }} className="underline" />]} />
             </p>
           </div>
         </form>
@@ -110,6 +112,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
 
 
 export function OtpScreen({ phone, onVerify, onBack }) {
+  const { t: tr } = useTranslation("vendor");
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = [
     useRef(null),
@@ -155,10 +158,10 @@ export function OtpScreen({ phone, onVerify, onBack }) {
         </div>
 
         <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight mb-2">
-          Verify OTP
+          {tr("Verify OTP")}
         </h1>
         <p className="text-[13px] text-outline text-center px-4 mb-8 leading-relaxed">
-          Enter the 6-digit code sent to <span className="text-primary font-semibold">{phone || '000 000 000'}</span>
+          <Trans t={tr} i18nKey={"Enter the 6-digit code sent to <0>{{phone}}</0>"} defaults={"Enter the 6-digit code sent to <0>{{phone}}</0>"} values={{ phone: phone || '000 000 000' }} components={[<span className="text-primary font-semibold" />]} />
         </p>
 
         <div className="flex gap-2 mb-6">
@@ -177,7 +180,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
         </div>
 
         <p className="text-[12px] text-outline mb-10">
-          Hint: Try <span className="font-bold text-primary">123456</span>
+          {tr("Hint: Try")} <span className="font-bold text-primary">123456</span>
         </p>
 
         <div className="w-full mt-auto mb-8 flex flex-col gap-5">
@@ -186,10 +189,10 @@ export function OtpScreen({ phone, onVerify, onBack }) {
             disabled={otp.join('').length < 6}
             className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
 
-            Verify OTP
+            {tr("Verify OTP")}
           </button>
           <button className="text-primary text-[13px] font-semibold hover:underline text-center">
-            Resend code
+            {tr("Resend code")}
           </button>
         </div>
       </main>
@@ -203,6 +206,7 @@ export function OtpScreen({ phone, onVerify, onBack }) {
 
 
 export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) {
+  const { t: tr } = useTranslation("vendor");
   const [kitchenName, setKitchenName] = useState('');
   const [phone, setPhone] = useState(initialPhone || '');
   const [type, setType] = useState('Home Cook');
@@ -367,10 +371,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
         fetchAddressFromCoordinates(latitude, longitude);
         setShowMap(true);
       }, (error) => {
-        alert('Failed to get live location. Please allow location permissions.');
+        alert(tr("Failed to get live location. Please allow location permissions."));
       });
     } else {
-      alert('Geolocation is not supported by your browser');
+      alert(tr("Geolocation is not supported by your browser"));
     }
   };
 
@@ -400,43 +404,43 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
   const handleSubmit = () => {
     if (!kitchenName.trim()) {
-      alert("Please enter your business / kitchen name!");
+      alert(tr("Please enter your business / kitchen name!"));
       return;
     }
     if (!selectedZoneId) {
-      alert("Please select a service zone!");
+      alert(tr("Please select a service zone!"));
       return;
     }
     if (type === 'Home Cook' && !selectedKitchenPartnerId) {
-      alert("Please select a Kitchen Partner!");
+      alert(tr("Please select a Kitchen Partner!"));
       return;
     }
     if (!address) {
-      alert("Please specify your business location/address!");
+      alert(tr("Please specify your business location/address!"));
       return;
     }
     if (!licenceFileName) {
-      alert("Please upload your EU food licence photo or PDF!");
+      alert(tr("Please upload your EU food licence photo or PDF!"));
       return;
     }
     if (!bannerFileName) {
-      alert("Please upload your banner/cover photo!");
+      alert(tr("Please upload your banner/cover photo!"));
       return;
     }
     if (!vatNumber.trim()) {
-      alert("Please enter VAT Number!");
+      alert(tr("Please enter VAT Number!"));
       return;
     }
     if (!accountNumber.trim()) {
-      alert("Please enter Bank Account Number!");
+      alert(tr("Please enter Bank Account Number!"));
       return;
     }
     if (!ownerIdFileName) {
-      alert("Please upload Owner ID (Aadhaar/Passport)!");
+      alert(tr("Please upload Owner ID (Aadhaar/Passport)!"));
       return;
     }
     if (mealSlots.length === 0) {
-      alert("Please select at least one meal slot!");
+      alert(tr("Please select at least one meal slot!"));
       return;
     }
     onContinue({
@@ -476,8 +480,8 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               <ArrowLeft />
             </button>
             <div className="flex flex-col">
-              <h1 className="text-[16px] font-semibold">Register</h1>
-              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Step 2 of 3</p>
+              <h1 className="text-[16px] font-semibold">{tr("Register")}</h1>
+              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">{tr("Step 2 of 3")}</p>
             </div>
           </div>
           <button className="active:scale-95 transition-transform hover:opacity-90">
@@ -489,7 +493,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       <div className="mt-[56px] px-4 py-6">
         <div className="w-full h-32 rounded-xl overflow-hidden mb-6 relative">
           <img
-            alt="Professional Kitchen"
+            alt={tr("Professional Kitchen")}
             className="w-full h-full object-cover"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXsX9d8XMpwF5Tw4kddacTToegaCMSYMVoC8ZXLcqCVvjiBBTp6pXW9dSWMkQey2DTX1Nf679p-8IaTY83GqfChcw__RPS8QBKYBfGZifRi2XniFtkEv6TWZH5dXWAYKlexLFH4DVd7rLGKmUxeITtOvItA4_QLQYRh77BQsYRcyQo8OKIVDDIojTzjHgqdDmZVo61yx6mgYUZSrY9psO04CvnWdhw2a5KK8ydCKwzEK4TaaKaer3tr8yoGCSN__Qjli1C_MRAXg" />
 
@@ -497,10 +501,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
         </div>
 
         <div className="bg-surface-container-lowest rounded-[10px] p-5 shadow-[0_2px_6px_rgba(0,0,0,0.07)]">
-          <h2 className="text-[11px] font-semibold text-on-surface-variant mb-4 uppercase tracking-wider">TELL US ABOUT YOUR KITCHEN</h2>
+          <h2 className="text-[11px] font-semibold text-on-surface-variant mb-4 uppercase tracking-wider">{tr("TELL US ABOUT YOUR KITCHEN")}</h2>
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BUSINESS / KITCHEN NAME</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("BUSINESS / KITCHEN NAME")}</label>
               <div className="relative">
                 <input
                   className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
@@ -515,7 +519,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">CONTACT PHONE</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("CONTACT PHONE")}</label>
               <div className="relative">
                 <input
                   className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-surface-container/30 border-outline-variant/30 text-outline/80 cursor-not-allowed outline-none"
@@ -533,12 +537,12 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             {/* Searchable Zone Dropdown */}
             <div className="space-y-1.5 relative" ref={zoneDropdownRef}>
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">SERVICE ZONE</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("SERVICE ZONE")}</label>
               <div className="relative">
                 <input
                   className="w-full h-12 px-4 pr-10 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
                   type="text"
-                  placeholder="Search and select service zone..."
+                  placeholder={tr("Search and select service zone...")}
                   value={zoneSearch}
                   onChange={(e) => {
                     setZoneSearch(e.target.value);
@@ -574,7 +578,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                       </button>
                     ))
                   ) : (
-                    <div className="px-4 py-3 text-[12px] text-outline">No active zones found</div>
+                    <div className="px-4 py-3 text-[12px] text-outline">{tr("No active zones found")}</div>
                   )}
                 </div>
               )}
@@ -583,13 +587,13 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             {/* Location Section */}
             <div className="space-y-2 pt-1">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BUSINESS LOCATION & ADDRESS</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("BUSINESS LOCATION & ADDRESS")}</label>
               <div className="bg-surface-container-lowest rounded-lg border border-outline-variant/50 p-3.5 space-y-3 shadow-xs">
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:border-primary focus:border-2 transition-all font-medium text-on-surface"
-                  placeholder="Enter or select full business address..."
+                  placeholder={tr("Enter or select full business address...")}
                   rows={2}
                 />
                 <div className="flex gap-2">
@@ -599,7 +603,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     className="flex-1 h-9 rounded-lg text-[11px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                   >
                     <MapPin className="text-[16px]" />
-                    {showMap ? 'Hide Map' : 'Set Pin on Map'}
+                    {showMap ? tr("Hide Map") : tr("Set Pin on Map")}
                   </button>
                   <button 
                     type="button"
@@ -607,7 +611,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     className="flex-1 h-9 rounded-lg text-[11px] font-bold bg-primary text-on-primary flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                   >
                     <Locate className="text-[16px]" />
-                    Live Location
+                    {tr("Live Location")}
                   </button>
                 </div>
                 
@@ -634,7 +638,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                         />
                       </GoogleMap>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-outline text-[12px]">Loading Map...</div>
+                      <div className="flex items-center justify-center h-full text-outline text-[12px]">{tr("Loading Map...")}</div>
                     )}
                   </div>
                 )}
@@ -643,7 +647,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
 
             <div className="space-y-3 pt-2">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VENDOR TYPE</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("VENDOR TYPE")}</label>
               <div className="grid grid-cols-2 gap-3">
                 {['Home Cook', 'Cloud Kitchen', 'Restaurant', 'Catering', 'Pantry Shop'].map((t) =>
                   <button
@@ -661,12 +665,12 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             {/* Kitchen Partner Dropdown (Home Cook Only) */}
             {type === 'Home Cook' && (
               <div className="space-y-1.5 relative pt-2" ref={kpDropdownRef}>
-                <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">KITCHEN PARTNER (HOME COOK ONLY)</label>
+                <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("KITCHEN PARTNER (HOME COOK ONLY)")}</label>
                 <div className="relative">
                   <input
                     className="w-full h-12 px-4 pr-10 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
                     type="text"
-                    placeholder="Search and select kitchen partner..."
+                    placeholder={tr("Search and select kitchen partner...")}
                     value={kitchenPartnerSearch}
                     onChange={(e) => {
                       setKitchenPartnerSearch(e.target.value);
@@ -686,7 +690,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                 {isKitchenPartnerDropdownOpen && (
                   <div className="absolute z-[60] w-full mt-1 bg-white border border-outline-variant rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {!selectedZoneName ? (
-                       <div className="px-4 py-3 text-[12px] text-outline">Please select a service zone first</div>
+                       <div className="px-4 py-3 text-[12px] text-outline">{tr("Please select a service zone first")}</div>
                     ) : kitchenPartners.filter(kp => {
                          const currentSelectedName = kitchenPartners.find(k => k._id === selectedKitchenPartnerId)?.companyName || '';
                          return kitchenPartnerSearch === currentSelectedName || kp.companyName?.toLowerCase().includes(kitchenPartnerSearch.toLowerCase());
@@ -709,7 +713,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                         </button>
                       ))
                     ) : (
-                      <div className="px-4 py-3 text-[12px] text-outline">No Kitchen Partner available for the selected service zone.</div>
+                      <div className="px-4 py-3 text-[12px] text-outline">{tr("No Kitchen Partner available for the selected service zone.")}</div>
                     )}
                   </div>
                 )}
@@ -718,7 +722,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             <div className="space-y-1.5 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
-                EU FOOD LICENCE (REQUIRED PHOTO/PDF)
+                {tr("EU FOOD LICENCE (REQUIRED PHOTO/PDF)")}
               </label>
               <input
                 type="file"
@@ -742,7 +746,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-primary">
-                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="text-[11px] font-bold">{tr("Uploaded")}</span>
                       <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
@@ -751,11 +755,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     <div className="flex items-center gap-3">
                       <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
-                        Choose photo or PDF
+                        {tr("Choose photo or PDF")}
                       </span>
                     </div>
                     <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
-                      Browse
+                      {tr("Browse")}
                     </span>
                   </>
                 )}
@@ -764,7 +768,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             <div className="space-y-1.5 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
-                BANNER / COVER PHOTO (REQUIRED IMAGE)
+                {tr("BANNER / COVER PHOTO (REQUIRED IMAGE)")}
               </label>
               <input
                 type="file"
@@ -792,7 +796,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-primary">
-                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="text-[11px] font-bold">{tr("Uploaded")}</span>
                       <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
@@ -801,11 +805,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     <div className="flex items-center gap-3">
                       <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
-                        Choose banner photo
+                        {tr("Choose banner photo")}
                       </span>
                     </div>
                     <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
-                      Browse
+                      {tr("Browse")}
                     </span>
                   </>
                 )}
@@ -814,28 +818,28 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
             {/* Financial Details */}
             <div className="space-y-1.5 pt-2">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">VAT NUMBER</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("VAT NUMBER")}</label>
               <input
                 className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
                 type="text"
-                placeholder="e.g. PL1234567890"
+                placeholder={tr("e.g. PL1234567890")}
                 value={vatNumber}
                 onChange={(e) => setVatNumber(e.target.value.toUpperCase())} />
             </div>
 
             <div className="space-y-1.5 pt-2">
-              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">BANK ACCOUNT NUMBER</label>
+              <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">{tr("BANK ACCOUNT NUMBER")}</label>
               <input
                 className="w-full h-12 px-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-0 text-[13px] transition-colors bg-white outline-none focus:border-2"
                 type="text"
-                placeholder="Bank Account IBAN/Account Number"
+                placeholder={tr("Bank Account IBAN/Account Number")}
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)} />
             </div>
 
             <div className="space-y-1.5 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider">
-                OWNER ID UPLOAD (AADHAAR/PASSPORT/DRIVING LICENSE)
+                {tr("OWNER ID UPLOAD (AADHAAR/PASSPORT/DRIVING LICENSE)")}
               </label>
               <input
                 type="file"
@@ -863,7 +867,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-primary">
-                      <span className="text-[11px] font-bold">Uploaded</span>
+                      <span className="text-[11px] font-bold">{tr("Uploaded")}</span>
                       <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                     </div>
                   </>
@@ -872,11 +876,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     <div className="flex items-center gap-3">
                       <Upload className="text-outline" />
                       <span className="text-[13px] text-outline font-semibold">
-                        Choose photo
+                        {tr("Choose photo")}
                       </span>
                     </div>
                     <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
-                      Browse
+                      {tr("Browse")}
                     </span>
                   </>
                 )}
@@ -886,10 +890,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
             <div className="space-y-2 pt-2">
               <label className="text-[10px] text-outline uppercase font-semibold tracking-wider flex items-center gap-1.5">
                 <Clock className="text-[14px]" />
-                WHICH MEAL SLOTS WILL YOU OFFER?
+                {tr("WHICH MEAL SLOTS WILL YOU OFFER?")}
               </label>
               <p className="text-[11px] text-outline">
-                Select one or more meal slots. (Timings are set by admin)
+                {tr("Select one or more meal slots. (Timings are set by admin)")}
               </p>
               <div className="mt-2 flex flex-col gap-3">
                 {(vendorTimings?.slots || []).filter((sl) => sl.isEnabled).map((slotDef) => {
@@ -936,11 +940,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               onClick={handleSubmit}
               className="w-full h-14 bg-primary text-on-primary rounded-xl text-[16px] font-bold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
 
-              Continue
+              {tr("Continue")}
               <ArrowRight />
             </button>
             <p className="text-center text-[11px] text-outline mt-4 leading-relaxed">
-              By continuing, you agree to our <span className="text-primary font-semibold">Vendor Terms of Service</span> and acknowledge your responsibilities as a licensed food provider.
+              <Trans t={tr} i18nKey={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} defaults={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} components={[<span className="text-primary font-semibold" />]} />
             </p>
           </div>
         </div>
@@ -954,6 +958,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
 
 
 export function UnderReviewScreen({ onApproved }) {
+  const { t: tr } = useTranslation("vendor");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -967,7 +972,7 @@ export function UnderReviewScreen({ onApproved }) {
 
   const checkStatus = async () => {
     if (!phone) {
-      setErrorMsg('No phone number found to check status. Please register/log in.');
+      setErrorMsg(tr("No phone number found to check status. Please register/log in."));
       return;
     }
 
@@ -982,12 +987,12 @@ export function UnderReviewScreen({ onApproved }) {
       setRestaurantName(data.restaurantName || '');
 
       if (data.status === 'approved') {
-        alert('Your application has been approved! Redirecting you to welcome login.');
+        alert(tr("Your application has been approved! Redirecting you to welcome login."));
         navigate('/vendor/welcome');
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg(err.response?.data?.message || err.message || 'Failed to check status. Try again.');
+      setErrorMsg(err.response?.data?.message || err.message || tr("Failed to check status. Try again."));
     } finally {
       setChecking(false);
     }
@@ -1013,9 +1018,9 @@ export function UnderReviewScreen({ onApproved }) {
             </button>
             <div className="flex flex-col">
               <h1 className="text-[16px] font-semibold">
-                {status === 'rejected' ? 'Application Rejected' : 'Under Review'}
+                {status === 'rejected' ? tr("Application Rejected") : tr("Under Review")}
               </h1>
-              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Step 3 of 3</p>
+              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">{tr("Step 3 of 3")}</p>
             </div>
           </div>
         </div>
@@ -1027,18 +1032,18 @@ export function UnderReviewScreen({ onApproved }) {
             <div className="w-20 h-20 rounded-full bg-red-100 border-2 border-red-500 border-dashed flex items-center justify-center mb-6">
               <XCircle className="text-4xl text-red-600" />
             </div>
-            <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Rejected</h2>
+            <h2 className="text-[22px] font-bold text-on-surface mb-2">{tr("Application Rejected")}</h2>
             {restaurantName && (
               <p className="text-[14px] font-bold text-on-surface mb-2">{restaurantName}</p>
             )}
             <p className="text-[13px] text-outline leading-relaxed max-w-[280px] mb-6">
-              Unfortunately, your partner application was not approved by our compliance team.
+              {tr("Unfortunately, your partner application was not approved by our compliance team.")}
             </p>
 
             <div className="w-full p-4 bg-red-50 border border-red-100 rounded-xl text-left mb-8">
-              <h4 className="text-[11px] font-bold text-red-900 mb-1.5 uppercase tracking-wider">Rejection Reason:</h4>
+              <h4 className="text-[11px] font-bold text-red-900 mb-1.5 uppercase tracking-wider">{tr("Rejection Reason:")}</h4>
               <p className="text-[13px] text-red-800 italic leading-relaxed">
-                "{rejectionReason || 'Documents uploaded are unclear or invalid. Please upload a valid EU Food Licence.'}"
+                "{rejectionReason || tr("Documents uploaded are unclear or invalid. Please upload a valid EU Food Licence.")}"
               </p>
             </div>
 
@@ -1047,7 +1052,7 @@ export function UnderReviewScreen({ onApproved }) {
               className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl active:scale-95 transition-all text-[14px] shadow-md flex items-center justify-center gap-2"
             >
               <FilePenLine className="text-[18px]" />
-              Re-apply & Fill Form Again
+              {tr("Re-apply & Fill Form Again")}
             </button>
           </>
         ) : (
@@ -1055,26 +1060,26 @@ export function UnderReviewScreen({ onApproved }) {
             <div className="w-20 h-20 rounded-full bg-secondary-container/10 border-2 border-secondary border-dashed flex items-center justify-center mb-6">
               <Clock className="text-4xl text-secondary" />
             </div>
-            <h2 className="text-[22px] font-bold text-on-surface mb-2">Application Received</h2>
+            <h2 className="text-[22px] font-bold text-on-surface mb-2">{tr("Application Received")}</h2>
             {restaurantName && (
               <p className="text-[14px] font-bold text-on-surface mb-2">{restaurantName}</p>
             )}
             <p className="text-[13px] text-outline leading-relaxed max-w-[280px] mb-6">
-              Our team is currently verifying your EU food licence and details. This usually takes 1-2 business days. We will notify you once approved.
+              {tr("Our team is currently verifying your EU food licence and details. This usually takes 1-2 business days. We will notify you once approved.")}
             </p>
 
             <div className="w-full p-4 bg-surface-container rounded-xl border border-outline-variant/30 text-left space-y-3 mb-8">
               <div className="flex items-center gap-3">
                 <CheckCircle className="text-primary" style={{ fontVariationSettings: "'FILL' 1" }} />
-                <span className="text-[13px] font-semibold text-on-surface">Details Submitted</span>
+                <span className="text-[13px] font-semibold text-on-surface">{tr("Details Submitted")}</span>
               </div>
               <div className="flex items-center gap-3">
                 <CheckCircle className="text-primary" style={{ fontVariationSettings: "'FILL' 1" }} />
-                <span className="text-[13px] font-semibold text-on-surface">Documents Uploaded</span>
+                <span className="text-[13px] font-semibold text-on-surface">{tr("Documents Uploaded")}</span>
               </div>
               <div className="flex items-center gap-3 opacity-50">
                 <Hourglass className="text-outline" />
-                <span className="text-[13px] font-semibold text-on-surface">Final Verification</span>
+                <span className="text-[13px] font-semibold text-on-surface">{tr("Final Verification")}</span>
               </div>
             </div>
 
@@ -1090,12 +1095,12 @@ export function UnderReviewScreen({ onApproved }) {
               {checking ? (
                 <>
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                  Checking Status...
+                  {tr("Checking Status...")}
                 </>
               ) : (
                 <>
                   <RefreshCcw className="text-[18px]" />
-                  Check Approval Status
+                  {tr("Check Approval Status")}
                 </>
               )}
             </button>

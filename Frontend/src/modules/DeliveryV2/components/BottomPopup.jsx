@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, ChevronDown } from "lucide-react"
+import { useTranslation } from "react-i18next";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -37,6 +38,7 @@ export default function BottomPopup({
   backdropBlocksInteraction = true, // Whether backdrop blocks pointer events
   closeOnHandleClick = false // Close instead of collapse when handle is clicked
 }) {
+  const { t } = useTranslation("driver");
   const popupRef = useRef(null)
   const handleRef = useRef(null)
   const swipeStartY = useRef(0)
@@ -360,7 +362,7 @@ export default function BottomPopup({
                   <button
                     onClick={handleClose}
                     className="ml-auto p-2 rounded-full hover:bg-gray-100 transition-colors"
-                    aria-label="Close"
+                    aria-label={t("Close")}
                   >
                     <ChevronDown className="w-6 h-6 text-gray-600" />
                   </button>

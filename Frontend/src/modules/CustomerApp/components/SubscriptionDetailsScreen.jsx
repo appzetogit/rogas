@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { dmbCustomerAPI } from "@food/api";
 import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
+import { Trans, useTranslation } from "react-i18next";
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
+  const { t } = useTranslation("customer");
   const { label: slotName } = useDeliverySlots();
   const [subscriptions, setSubscriptions] = useState([]);
   const [pantryOrders, setPantryOrders] = useState([]);
@@ -34,14 +36,14 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
       if (subsRes.data?.success) {
         setSubscriptions(subsRes.data.subscriptions || []);
       } else {
-        setError("Failed to load subscription details.");
+        setError(t("Failed to load subscription details."));
       }
 
       if (pantryRes?.data?.success) {
         setPantryOrders(pantryRes.data.orders || []);
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to load subscriptions.");
+      setError(err.response?.data?.message || err.message || t("Failed to load subscriptions."));
     } finally {
       setLoading(false);
     }
@@ -61,13 +63,13 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         pauseDays,
         pauseReason
       );
-      onShowNotificationToast("⏸️ Subscription paused successfully!");
+      onShowNotificationToast(t("⏸️ Subscription paused successfully!"));
       setShowPauseModal(null);
       setPauseReason("");
       setPauseDays(1);
       fetchSubscriptions();
     } catch (err) {
-      onShowNotificationToast(err.response?.data?.message || err.message || "Failed to pause subscription.");
+      onShowNotificationToast(err.response?.data?.message || err.message || t("Failed to pause subscription."));
     } finally {
       setActionLoading(false);
     }
@@ -82,12 +84,12 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         showCancelModal.subscriptionId,
         cancelReason
       );
-      onShowNotificationToast(" Subscription cancelled successfully.");
+      onShowNotificationToast(" " + t("Subscription cancelled successfully."));
       setShowCancelModal(null);
       setCancelReason("");
       fetchSubscriptions();
     } catch (err) {
-      onShowNotificationToast(err.response?.data?.message || err.message || "Failed to cancel subscription.");
+      onShowNotificationToast(err.response?.data?.message || err.message || t("Failed to cancel subscription."));
     } finally {
       setActionLoading(false);
     }
@@ -97,10 +99,10 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
     setActionLoading(true);
     try {
       await dmbCustomerAPI.resumeSubscription(sub.subscriptionId);
-      onShowNotificationToast("▶️ Subscription resumed successfully!");
+      onShowNotificationToast(t("▶️ Subscription resumed successfully!"));
       fetchSubscriptions();
     } catch (err) {
-      onShowNotificationToast(err.response?.data?.message || err.message || "Failed to resume subscription.");
+      onShowNotificationToast(err.response?.data?.message || err.message || t("Failed to resume subscription."));
     } finally {
       setActionLoading(false);
     }
@@ -195,7 +197,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
       link.click();
       link.remove();
       window.URL.revokeObjectURL(objUrl);
-      onShowNotificationToast("🧾 Invoice downloaded successfully!");
+      onShowNotificationToast(t("🧾 Invoice downloaded successfully!"));
     } catch (error) {
       onShowNotificationToast(error.message);
     } finally {
@@ -206,15 +208,15 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
   const getStatusLabel = (status) => {
     switch (status) {
       case "active":
-        return "Active";
+        return t("Active");
       case "paused":
-        return "Paused";
+        return t("Paused");
       case "cancelled":
-        return "Cancelled";
+        return t("Cancelled");
       case "expired":
-        return "Expired";
+        return t("Expired");
       case "pending_payment":
-        return "Pending Payment";
+        return t("Pending Payment");
       default:
         return status;
     }
@@ -225,7 +227,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
       {/* Header */}
       <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><ArrowLeft size={24} /></button>
-        <h1 className="text-xl font-extrabold text-primary text-center">My Subscriptions</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{t("My Subscriptions")}</h1>
         <div className="w-8" />
       </header>
 
@@ -236,13 +238,13 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
             onClick={() => setActiveTab('meals')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'meals' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
           >
-            Meal Box
+            {t("Meal Box")}
           </button>
           <button 
             onClick={() => setActiveTab('pantry')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all ${activeTab === 'pantry' ? 'bg-primary text-white shadow-md' : 'text-on-surface hover:bg-[#f6f3f2]'}`}
           >
-            Pantry
+            {t("Pantry")}
           </button>
         </section>
 
@@ -255,7 +257,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         {loading ? (
           <div className="flex flex-col items-center justify-center pt-20 gap-3 text-on-surface-variant">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-bold uppercase tracking-wider">Loading subscriptions...</p>
+            <p className="text-xs font-bold uppercase tracking-wider">{t("Loading subscriptions...")}</p>
           </div>
         ) : activeTab === "meals" ? (
           subscriptions.length === 0 ? (
@@ -264,16 +266,16 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               <ClipboardList className="text-[32px]" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-extrabold text-on-surface">No Active Subscriptions</h2>
+              <h2 className="text-lg font-extrabold text-on-surface">{t("No Active Subscriptions")}</h2>
               <p className="text-xs text-[#6e7a74] leading-relaxed">
-                Subscribe to a meal plan to enjoy fresh, vendor-prepared meals delivered daily to your door.
+                {t("Subscribe to a meal plan to enjoy fresh, vendor-prepared meals delivered daily to your door.")}
               </p>
             </div>
             <button
               onClick={onGoToPlans}
               className="w-full bg-primary hover:bg-[#155a49] text-white py-3.5 rounded-2xl font-bold text-sm shadow-md active:scale-95 transition-transform"
             >
-              Browse Meal Plans
+              {t("Browse Meal Plans")}
             </button>
           </section>
         ) : (
@@ -290,10 +292,10 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                   <div className="flex justify-between items-start gap-2 border-b border-[#f2eff0] pb-3">
                     <div>
                       <h2 className="text-base font-extrabold text-on-surface">
-                        {sub.vendorId?.restaurantName || "DailyMealBox Vendor"}
+                        {sub.vendorId?.restaurantName || t("DailyMealBox Vendor")}
                       </h2>
                       <span className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider">
-                        ID: {sub.subscriptionId || "N/A"}
+                        {t("ID:")} {sub.subscriptionId || t("N/A")}
                       </span>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeClass(sub.status)}`}>
@@ -304,36 +306,36 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                   {/* Info Grid */}
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-medium">
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Plan Details</span>
-                      <span className="text-[#1b1c1c] font-bold block">{durationLabel} Plan</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Plan Details")}</span>
+                      <span className="text-[#1b1c1c] font-bold block">{t("{{durationLabel}} Plan", { durationLabel })}</span>
                       <span className="text-[11px] text-on-surface-variant block">{mealList}</span>
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Delivery Preferences</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Delivery Preferences")}</span>
                       <span className="text-[#1b1c1c] font-bold block">
                         {sub.deliverySlots && sub.deliverySlots.length > 0
                           ? sub.deliverySlots.map(s => slotName(s)).join(", ")
                           : (sub.deliverySlot ? slotName(sub.deliverySlot) : "")}
                       </span>
                       <span className="text-[11px] text-on-surface-variant block">
-                        {sub.deliveryDays === "mon_fri" ? "Monday - Friday" : "Full Week"}
+                        {sub.deliveryDays === "mon_fri" ? t("Monday - Friday") : t("Full Week")}
                       </span>
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Dates</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Dates")}</span>
                       <div className="text-[11px] text-on-surface-variant space-y-0.5">
-                        <div>Purchase: <span className="text-[#1b1c1c] font-bold">{formatDate(sub.createdAt)}</span></div>
-                        <div>Start: <span className="text-[#1b1c1c] font-bold">{formatDate(sub.startDate)}</span></div>
-                        <div>Expiry: <span className="text-[#1b1c1c] font-bold">{getExpiryDate(sub)}</span></div>
+                        <div>{t("Purchase:")} <span className="text-[#1b1c1c] font-bold">{formatDate(sub.createdAt)}</span></div>
+                        <div>{t("Start:")} <span className="text-[#1b1c1c] font-bold">{formatDate(sub.startDate)}</span></div>
+                        <div>{t("Expiry:")} <span className="text-[#1b1c1c] font-bold">{getExpiryDate(sub)}</span></div>
                       </div>
                     </div>
 
                     <div className="space-y-0.5 text-right">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Amount Paid</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Amount Paid")}</span>
                       <span className="text-lg font-extrabold text-primary block mt-1">
-                        {sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice).toFixed(2) : "0.00"} {sub.pricing?.currency || "PLN"}
+                        {sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice).toFixed(2) : "0.00"} {sub.pricing?.currency || t("PLN")}
                       </span>
                     </div>
                   </div>
@@ -350,7 +352,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                                 setPauseReason("");
                                 setShowPauseModal(sub);
                               }}
-                              title={getRemainingDays(sub) <= 1 ? "Cannot pause: only 1 day remaining" : undefined}
+                              title={getRemainingDays(sub) <= 1 ? t("Cannot pause: only 1 day remaining") : undefined}
                               className={`flex-1 py-2.5 rounded-xl border text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm ${
                                 getRemainingDays(sub) <= 1
                                   ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
@@ -359,7 +361,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               disabled={actionLoading || getRemainingDays(sub) <= 1}
                             >
                               <PauseCircle className="text-[16px]" />
-                              Pause
+                              {t("Pause")}
                             </button>
                             <button
                               onClick={() => {
@@ -370,7 +372,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               disabled={actionLoading}
                             >
                               <XCircle className="text-[16px]" />
-                              Cancel
+                              {t("Cancel")}
                             </button>
                           </>
                         ) : (
@@ -381,7 +383,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               disabled={actionLoading}
                             >
                               <PlayCircle className="text-[16px]" />
-                              Resume Plan
+                              {t("Resume Plan")}
                             </button>
                             <button
                               onClick={() => {
@@ -392,7 +394,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               disabled={actionLoading}
                             >
                               <XCircle className="text-[16px]" />
-                              Cancel
+                              {t("Cancel")}
                             </button>
                           </>
                         )}
@@ -406,7 +408,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       <span className={`material-symbols-outlined text-[16px] ${downloadingId === sub._id ? "animate-spin" : ""}`}>
                         {downloadingId === sub._id ? "autorenew" : "receipt_long"}
                       </span>
-                      {downloadingId === sub._id ? "Generating..." : "Download Invoice"}
+                      {downloadingId === sub._id ? t("Generating...") : t("Download Invoice")}
                     </button>
                   </div>
                 </div>
@@ -421,9 +423,9 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 <ClipboardList className="text-[32px]" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-lg font-extrabold text-on-surface">No Pantry Subscriptions</h2>
+                <h2 className="text-lg font-extrabold text-on-surface">{t("No Pantry Subscriptions")}</h2>
                 <p className="text-xs text-[#6e7a74] leading-relaxed">
-                  You haven't subscribed to any pantry items yet.
+                  {t("You haven't subscribed to any pantry items yet.")}
                 </p>
               </div>
             </section>
@@ -435,21 +437,21 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                   <div className="flex justify-between items-start gap-2 border-b border-[#f2eff0] pb-3">
                     <div>
                       <h2 className="text-base font-extrabold text-on-surface">
-                        {po.vendorId?.restaurantName || "Pantry Vendor"}
+                        {po.vendorId?.restaurantName || t("Pantry Vendor")}
                       </h2>
                       <span className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider">
-                        ORDER ID: {po.orderId || "N/A"}
+                        {t("ORDER ID:")} {po.orderId || t("N/A")}
                       </span>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-slate-100 text-slate-600 border-slate-200 capitalize">
-                      {po.status || 'Active'}
+                      {po.status || t("Active")}
                     </span>
                   </div>
 
                   {/* Info Grid */}
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-medium">
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Items</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Items")}</span>
                       {po.items?.map((item, i) => (
                         <div key={i} className="text-[#1b1c1c] block">
                           {item.quantity}x {item.title}
@@ -458,17 +460,17 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Dates</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Dates")}</span>
                       <div className="text-[11px] text-on-surface-variant space-y-0.5">
-                        <div>Delivery: <span className="text-[#1b1c1c] font-bold">{po.deliveryDates?.join(", ")}</span></div>
-                        <div>Slots: <span className="text-[#1b1c1c] font-bold capitalize">{po.deliverySlots?.join(", ")}</span></div>
+                        <div><Trans t={t} i18nKey={"Delivery: <0>{{deliveryDates}}</0>"} defaults={"Delivery: <0>{{deliveryDates}}</0>"} values={{ deliveryDates: po.deliveryDates?.join(", ") }} components={[<span className="text-[#1b1c1c] font-bold" />]} /></div>
+                        <div><Trans t={t} i18nKey={"Slots: <0>{{deliverySlots}}</0>"} defaults={"Slots: <0>{{deliverySlots}}</0>"} values={{ deliverySlots: po.deliverySlots?.join(", ") }} components={[<span className="text-[#1b1c1c] font-bold capitalize" />]} /></div>
                       </div>
                     </div>
 
                     <div className="space-y-0.5 mt-2">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Total Amount</span>
+                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Total Amount")}</span>
                       <span className="text-lg font-extrabold text-primary block mt-1">
-                        {po.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)} PLN
+                        {po.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)} {t("PLN")}
                       </span>
                     </div>
                   </div>
@@ -485,12 +487,11 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
           <form onSubmit={handlePause} className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
               <AlertTriangle />
-              Confirm Subscription Pause
+              {t("Confirm Subscription Pause")}
             </h3>
 
             <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              Are you sure you want to pause subscription <strong>{showPauseModal.subscriptionId}</strong>?
-              You can pause for up to 2 days, and billing will be adjusted accordingly.
+              <Trans t={t} i18nKey={"Are you sure you want to pause subscription <0>{{subscriptionId}}</0>? You can pause for up to 2 days, and billing will be adjusted accordingly."} defaults={"Are you sure you want to pause subscription <0>{{subscriptionId}}</0>? You can pause for up to 2 days, and billing will be adjusted accordingly."} values={{ subscriptionId: showPauseModal.subscriptionId }} components={[<strong />]} />
             </p>
 
             {/* Remaining days info */}
@@ -499,8 +500,8 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
               if (rem !== null && rem <= 3) {
                 return (
                   <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-[11px] text-amber-700 font-semibold">
-                    ⚠️ Your subscription has <strong>{rem} day{rem !== 1 ? "s" : ""}</strong> remaining.
-                    {rem <= 2 ? " You can pause for up to 1 day only." : " Max 2-day pause applies."}
+                    <Trans t={t} i18nKey={"⚠️ Your subscription has <0>{{count}} day</0> remaining."} defaults={"⚠️ Your subscription has <0>{{count}} day</0> remaining."} count={rem} components={[<strong />]} />
+                    {rem <= 2 ? " " + t("You can pause for up to 1 day only.") : " " + t("Max 2-day pause applies.")}
                   </div>
                 );
               }
@@ -509,7 +510,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
 
             <div className="space-y-3 pt-2">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Pause Duration</label>
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">{t("Pause Duration")}</label>
                 <div className="flex gap-2">
                   {[1, 2]
                     .filter((days) => {
@@ -525,19 +526,19 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       onClick={() => setPauseDays(days)}
                       className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors ${pauseDays === days ? "border-primary bg-[#E8F3F0] text-primary" : "border-[#bec9c3] bg-white text-on-surface-variant"}`}
                     >
-                      {days} Day{days > 1 ? "s" : ""}
+                      {t("{{count}} Day", { count: days })}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Reason for Pause (Optional)</label>
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">{t("Reason for Pause (Optional)")}</label>
                 <input
                   type="text"
                   value={pauseReason}
                   onChange={(e) => setPauseReason(e.target.value)}
-                  placeholder="e.g. Out of town, sick..."
+                  placeholder={t("e.g. Out of town, sick...")}
                   className="w-full text-xs p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
                 />
               </div>
@@ -550,7 +551,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 className="flex-1 border border-[#bec9c3] text-[#3e4945] py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform"
                 disabled={actionLoading}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="submit"
@@ -558,7 +559,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 disabled={actionLoading}
               >
                 {actionLoading && <Loader2 className="text-xs animate-spin" />}
-                Confirm Pause
+                {t("Confirm Pause")}
               </button>
             </div>
           </form>
@@ -571,24 +572,24 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
           <form onSubmit={handleCancel} className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-brand-red flex items-center gap-2">
               <AlertTriangle />
-              Cancel Subscription?
+              {t("Cancel Subscription?")}
             </h3>
 
             <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              Are you sure you want to cancel subscription <strong>{showCancelModal.subscriptionId}</strong>?
+              <Trans t={t} i18nKey={"Are you sure you want to cancel subscription <0>{{subscriptionId}}</0>?"} defaults={"Are you sure you want to cancel subscription <0>{{subscriptionId}}</0>?"} values={{ subscriptionId: showCancelModal.subscriptionId }} components={[<strong />]} />
             </p>
 
             <div className="p-3 bg-red-50 border border-red-100 rounded-2xl text-[11px] text-brand-red font-semibold leading-relaxed">
-              ⚠️ Warning: This is an immediate action. Auto-renewal will be turned off and upcoming deliveries for this cycle will stop.
+              {t("⚠️ Warning: This is an immediate action. Auto-renewal will be turned off and upcoming deliveries for this cycle will stop.")}
             </div>
 
             <div className="space-y-1 pt-2">
-              <label className="text-[10px] font-bold text-on-surface-variant uppercase">Reason for Cancelling (Optional)</label>
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase">{t("Reason for Cancelling (Optional)")}</label>
               <input
                 type="text"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g. Too expensive, changing plans..."
+                placeholder={t("e.g. Too expensive, changing plans...")}
                 className="w-full text-xs p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
               />
             </div>
@@ -600,7 +601,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 className="flex-1 border border-[#bec9c3] text-[#3e4945] py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform"
                 disabled={actionLoading}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="submit"
@@ -608,7 +609,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                 disabled={actionLoading}
               >
                 {actionLoading && <Loader2 className="text-xs animate-spin" />}
-                Confirm Cancellation
+                {t("Confirm Cancellation")}
               </button>
             </div>
           </form>

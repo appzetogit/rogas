@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { deliveryAPI } from "@food/api";
 import { setAuthData as storeAuthData } from "@food/utils/auth";
+import { Trans, useTranslation } from "react-i18next";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -32,6 +33,7 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
 );
 
 export default function DeliveryOTP() {
+  const { t: tr } = useTranslation("driver");
   const navigate = useNavigate();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -184,7 +186,7 @@ export default function DeliveryOTP() {
       const purpose = authData?.purpose || "login";
       const providedName = authData?.isSignUp ? authData?.name || null : null;
       if (!phone) {
-        setError("Phone number not found. Please try again.");
+        setError(tr("Phone number not found. Please try again."));
         setIsLoading(false);
         return;
       }
@@ -223,7 +225,7 @@ export default function DeliveryOTP() {
         sessionStorage.removeItem("deliveryAuthData");
         setIsLoading(false);
         setError("");
-        setPendingMessage(data.message || "Your account is pending admin verification. You will be notified once approved.");
+        setPendingMessage(data.message || tr("Your account is pending admin verification. You will be notified once approved."));
         setIsRejected(data.isRejected || false);
         setRejectionReason(data.rejectionReason || "");
         return;
@@ -259,7 +261,7 @@ export default function DeliveryOTP() {
       try {
         storeAuthData("delivery", accessToken, user, refreshToken);
       } catch (storageError) {
-        setError("Failed to save authentication. Please try again or clear your browser storage.");
+        setError(tr("Failed to save authentication. Please try again or clear your browser storage."));
         setIsLoading(false);
         return;
       }
@@ -280,7 +282,7 @@ export default function DeliveryOTP() {
           retryCount++;
           setTimeout(verifyAndNavigate, 100);
         } else {
-          setError("Failed to save authentication. Please try again.");
+          setError(tr("Failed to save authentication. Please try again."));
           setIsLoading(false);
         }
       };
@@ -290,7 +292,7 @@ export default function DeliveryOTP() {
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
-        "Failed to verify OTP. Please try again.";
+        tr("Failed to verify OTP. Please try again.");
       setError(message);
       setIsLoading(false);
     }
@@ -299,12 +301,12 @@ export default function DeliveryOTP() {
   const handleSubmitName = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setNameError("Name is required");
+      setNameError(tr("Name is required"));
       return;
     }
 
     if (!verifiedOtp) {
-      setError("OTP verification step missing. Please request a new OTP.");
+      setError(tr("OTP verification step missing. Please request a new OTP."));
       return;
     }
 
@@ -316,7 +318,7 @@ export default function DeliveryOTP() {
       const phone = authData?.phone;
       const purpose = authData?.purpose || "login";
       if (!phone) {
-        setError("Phone number not found. Please try again.");
+        setError(tr("Phone number not found. Please try again."));
         return;
       }
 
@@ -336,7 +338,7 @@ export default function DeliveryOTP() {
       try {
         storeAuthData("delivery", accessToken, user, refreshToken);
       } catch (storageError) {
-        setError("Failed to save authentication. Please try again or clear your browser storage.");
+        setError(tr("Failed to save authentication. Please try again or clear your browser storage."));
         setIsLoading(false);
         return;
       }
@@ -357,7 +359,7 @@ export default function DeliveryOTP() {
           retryCount++;
           setTimeout(verifyAndNavigate, 100);
         } else {
-          setError("Failed to save authentication. Please try again.");
+          setError(tr("Failed to save authentication. Please try again."));
           setIsLoading(false);
         }
       };
@@ -367,7 +369,7 @@ export default function DeliveryOTP() {
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
-        "Failed to complete registration. Please try again.";
+        tr("Failed to complete registration. Please try again.");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -384,7 +386,7 @@ export default function DeliveryOTP() {
       const phone = authData?.phone;
       const purpose = authData?.purpose || "login";
       if (!phone) {
-        setError("Phone number not found. Please go back and try again.");
+        setError(tr("Phone number not found. Please go back and try again."));
         return;
       }
 
@@ -394,7 +396,7 @@ export default function DeliveryOTP() {
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
-        "Failed to resend OTP. Please try again.";
+        tr("Failed to resend OTP. Please try again.");
       setError(message);
     } finally {
       setIsLoading(false);
@@ -488,7 +490,7 @@ export default function DeliveryOTP() {
               color: COLORS.primary,
             }}
           >
-            Verify Phone
+            {tr("Verify Phone")}
           </h1>
         </header>
 
@@ -521,7 +523,7 @@ export default function DeliveryOTP() {
             {pendingMessage ? (
               <div style={{ textAlign: "center" }}>
                 <h2 style={{ fontSize: "22px", lineHeight: "28px", fontWeight: 700, marginBottom: "16px" }}>
-                  {isRejected ? "Application Status" : "Pending Verification"}
+                  {isRejected ? tr("Application Status") : tr("Pending Verification")}
                 </h2>
                 <div
                   style={{
@@ -537,12 +539,12 @@ export default function DeliveryOTP() {
                   }}
                 >
                   <p style={{ margin: 0, fontWeight: 700, textTransform: "uppercase", fontSize: "12px", marginBottom: "8px" }}>
-                    {isRejected ? "Application Rejected" : "Pending Verification"}
+                    {isRejected ? tr("Application Rejected") : tr("Pending Verification")}
                   </p>
                   <p style={{ margin: 0 }}>{pendingMessage}</p>
                   {isRejected && rejectionReason && (
                     <p style={{ marginTop: "12px", fontStyle: "italic", fontSize: "13px" }}>
-                      Reason: "{rejectionReason}"
+                      {tr("Reason: \"{{rejectionReason}}\"", { rejectionReason })}
                     </p>
                   )}
                 </div>
@@ -573,7 +575,7 @@ export default function DeliveryOTP() {
                         cursor: "pointer",
                       }}
                     >
-                      Re-apply Now
+                      {tr("Re-apply Now")}
                     </button>
                   )}
                   <button
@@ -589,7 +591,7 @@ export default function DeliveryOTP() {
                       cursor: "pointer",
                     }}
                   >
-                    Back to login
+                    {tr("Back to login")}
                   </button>
                 </div>
               </div>
@@ -598,10 +600,10 @@ export default function DeliveryOTP() {
               <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
                 <div style={{ textAlign: "center" }}>
                   <h2 style={{ fontSize: "22px", lineHeight: "28px", fontWeight: 700, marginBottom: "8px" }}>
-                    Almost there!
+                    {tr("Almost there!")}
                   </h2>
                   <p style={{ fontSize: "14px", lineHeight: "20px", color: COLORS.onSurfaceVariant, margin: 0 }}>
-                    Please enter your full name to complete registration.
+                    {tr("Please enter your full name to complete registration.")}
                   </p>
                 </div>
 
@@ -618,7 +620,7 @@ export default function DeliveryOTP() {
                       marginBottom: "8px",
                     }}
                   >
-                    Full Name
+                    {tr("Full Name")}
                   </label>
                   <input
                     id="fullname"
@@ -628,7 +630,7 @@ export default function DeliveryOTP() {
                       setName(e.target.value);
                       if (nameError) setNameError("");
                     }}
-                    placeholder="Enter your name"
+                    placeholder={tr("Enter your name")}
                     style={{
                       width: "100%",
                       height: "48px",
@@ -684,7 +686,7 @@ export default function DeliveryOTP() {
                     opacity: isLoading ? 0.7 : 1,
                   }}
                 >
-                  {isLoading ? "Continuing..." : "Continue"}
+                  {isLoading ? tr("Continuing...") : tr("Continue")}
                 </button>
               </div>
             ) : (
@@ -693,11 +695,10 @@ export default function DeliveryOTP() {
                 {/* Title */}
                 <div style={{ textAlign: "center" }}>
                   <h2 style={{ fontSize: "22px", lineHeight: "28px", fontWeight: 700, marginBottom: "8px", margin: 0 }}>
-                    Security Verification
+                    {tr("Security Verification")}
                   </h2>
                   <p style={{ fontSize: "14px", lineHeight: "20px", fontWeight: 400, color: COLORS.onSurfaceVariant, margin: 0 }}>
-                    We've sent a 6-digit code to{" "}
-                    <strong style={{ color: COLORS.onSurface }}>{getPhoneNumber()}</strong>
+                    <Trans t={tr} i18nKey={"We've sent a 6-digit code to <0>{{phone}}</0>"} defaults={"We've sent a 6-digit code to <0>{{phone}}</0>"} values={{ phone: getPhoneNumber() }} components={[<strong style={{ color: COLORS.onSurface }} />]} />
                   </p>
                 </div>
 
@@ -755,7 +756,7 @@ export default function DeliveryOTP() {
                 {/* Resend */}
                 <div style={{ textAlign: "center" }}>
                   <p style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, marginBottom: "4px", margin: 0 }}>
-                    Didn't receive the code?
+                    {tr("Didn't receive the code?")}
                   </p>
                   <button
                     onClick={handleResend}
@@ -776,7 +777,7 @@ export default function DeliveryOTP() {
                       borderRadius: "9999px",
                     }}
                   >
-                    Resend Code {timerLabel}
+                    {tr("Resend Code {{timerLabel}}", { timerLabel })}
                   </button>
                 </div>
 
@@ -808,7 +809,7 @@ export default function DeliveryOTP() {
                     onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   >
-                    <span>{isLoading ? "Verifying..." : "Verify & Continue"}</span>
+                    <span>{isLoading ? tr("Verifying...") : tr("Verify & Continue")}</span>
                     <MaterialIcon
                       name="arrow_forward"
                       filled
@@ -828,7 +829,7 @@ export default function DeliveryOTP() {
                       margin: "16px 0 0",
                     }}
                   >
-                    By continuing, you agree to our security protocols and delivery partner terms.
+                    {tr("By continuing, you agree to our security protocols and delivery partner terms.")}
                   </p>
                 </div>
               </div>

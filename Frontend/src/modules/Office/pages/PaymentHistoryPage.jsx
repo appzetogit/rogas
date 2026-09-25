@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getPaymentsApi } from '../services/officeApi';
 import { Search, Receipt, CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight, RefreshCw, X, Download } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 export default function PaymentHistoryPage() {
+  const { t } = useTranslation("office");
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,7 +82,7 @@ export default function PaymentHistoryPage() {
     } catch (error) {
       console.error('Error exporting CSV:', error);
       setExportSuccess(false);
-      alert('Failed to export CSV file.');
+      alert(t("Failed to export CSV file."));
     }
   };
 
@@ -142,14 +144,14 @@ export default function PaymentHistoryPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            PAID
+            {t("PAID")}
           </span>
         );
       case 'pending':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-[11px] font-bold">
             <Clock className="w-3.5 h-3.5" />
-            PENDING
+            {t("PENDING")}
           </span>
         );
       case 'failed':
@@ -176,10 +178,10 @@ export default function PaymentHistoryPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-primary flex items-center gap-2">
             <Receipt className="w-6 h-6" />
-            Payment History
+            {t("Payment History")}
           </h1>
           <p className="text-sm text-brand-muted mt-1">
-            Track and manage your meal subscription orders and payments.
+            {t("Track and manage your meal subscription orders and payments.")}
           </p>
         </div>
         <button
@@ -187,7 +189,7 @@ export default function PaymentHistoryPage() {
           className="px-4 py-2.5 text-sm font-semibold border border-brand-primary text-brand-primary rounded-lg hover:bg-brand-primary/5 transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
         >
           <Download className="w-4 h-4" />
-          {exportSuccess ? 'Exporting...' : 'Export List'}
+          {exportSuccess ? t("Exporting...") : t("Export List")}
         </button>
       </div>
 
@@ -197,7 +199,7 @@ export default function PaymentHistoryPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
           <input
             type="text"
-            placeholder="Search by Order ID, Vendor, or Plan..."
+            placeholder={t("Search by Order ID, Vendor, or Plan...")}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -208,7 +210,7 @@ export default function PaymentHistoryPage() {
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-brand-muted font-medium">From:</span>
+            <span className="text-xs text-brand-muted font-medium">{t("From:")}</span>
             <input
               type="date"
               value={startDate}
@@ -220,7 +222,7 @@ export default function PaymentHistoryPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-brand-muted font-medium">To:</span>
+            <span className="text-xs text-brand-muted font-medium">{t("To:")}</span>
             <input
               type="date"
               value={endDate}
@@ -240,7 +242,7 @@ export default function PaymentHistoryPage() {
                 setEndDate('');
                 setCurrentPage(1);
               }}
-              title="Clear Date Filter"
+              title={t("Clear Date Filter")}
               className="p-1.5 text-brand-error-text bg-brand-error-bg hover:bg-brand-error-bg/80 rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -252,7 +254,7 @@ export default function PaymentHistoryPage() {
             className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-brand-divider text-brand-primary rounded-lg text-sm font-semibold hover:bg-brand-primary/5 transition-colors whitespace-nowrap cursor-pointer ml-2"
           >
             <RefreshCw className="w-4 h-4" />
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
       </div>
@@ -263,11 +265,11 @@ export default function PaymentHistoryPage() {
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-brand-bg border-b border-brand-divider text-xs uppercase tracking-wider text-brand-muted">
-                <th className="px-6 py-4 font-semibold">Date & Order ID</th>
-                <th className="px-6 py-4 font-semibold">Vendor & Plan</th>
-                <th className="px-6 py-4 font-semibold">Employees</th>
-                <th className="px-6 py-4 font-semibold">Amount</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
+                <th className="px-6 py-4 font-semibold">{t("Date & Order ID")}</th>
+                <th className="px-6 py-4 font-semibold">{t("Vendor & Plan")}</th>
+                <th className="px-6 py-4 font-semibold">{t("Employees")}</th>
+                <th className="px-6 py-4 font-semibold">{t("Amount")}</th>
+                <th className="px-6 py-4 font-semibold">{t("Status")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-divider">
@@ -275,7 +277,7 @@ export default function PaymentHistoryPage() {
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center text-brand-muted">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-primary/40 mb-3" />
-                    Loading payment history...
+                    {t("Loading payment history...")}
                   </td>
                 </tr>
               ) : currentPayments.length === 0 ? (
@@ -284,9 +286,9 @@ export default function PaymentHistoryPage() {
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand-bg text-brand-muted mb-3">
                       <Receipt className="w-6 h-6" />
                     </div>
-                    <p className="text-brand-primary font-semibold">No payments found</p>
+                    <p className="text-brand-primary font-semibold">{t("No payments found")}</p>
                     <p className="text-sm text-brand-muted mt-1">
-                      {searchQuery ? "Try adjusting your search criteria." : "You haven't made any payments yet."}
+                      {searchQuery ? t("Try adjusting your search criteria.") : t("You haven't made any payments yet.")}
                     </p>
                   </td>
                 </tr>
@@ -308,23 +310,23 @@ export default function PaymentHistoryPage() {
                         {payment.vendorId?.profileImage && (
                           <img src={payment.vendorId.profileImage} alt="" className="w-5 h-5 rounded-full object-cover" />
                         )}
-                        {payment.vendorId?.restaurantName || 'Unknown Vendor'}
+                        {payment.vendorId?.restaurantName || t("Unknown Vendor")}
                       </div>
                       <div className="text-xs text-brand-muted mt-0.5 flex items-center">
-                        {payment.subscriptionPlanId?.name || 'Custom Plan'}
+                        {payment.subscriptionPlanId?.name || t("Custom Plan")}
                         {payment.isMock && (
-                          <span className="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">MOCK</span>
+                          <span className="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">{t("MOCK")}</span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-brand-primary">
-                        {payment.employeeIds?.length || 0} Employees
+                        {t("{{length}} Employees", { length: payment.employeeIds?.length || 0 })}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-extrabold text-brand-primary">
-                        {payment.amount?.toFixed(2) || '0.00'} {payment.currency || 'INR'}
+                        {payment.amount?.toFixed(2) || '0.00'} {payment.currency || t("INR")}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -341,11 +343,7 @@ export default function PaymentHistoryPage() {
         {!loading && filteredPayments.length > 0 && (
           <div className="px-6 py-4 border-t border-brand-divider bg-brand-bg flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-brand-muted">
-              Showing <span className="font-semibold text-brand-primary">{startIndex + 1}</span> to{' '}
-              <span className="font-semibold text-brand-primary">
-                {Math.min(startIndex + itemsPerPage, filteredPayments.length)}
-              </span>{' '}
-              of <span className="font-semibold text-brand-primary">{filteredPayments.length}</span> payments
+              <Trans t={t} i18nKey={"Showing <0>{{startIndex}}</0> to <1>{{value}}</1> of <2>{{length}}</2> payments"} defaults={"Showing <0>{{startIndex}}</0> to <1>{{value}}</1> of <2>{{length}}</2> payments"} values={{ startIndex: startIndex + 1, value: Math.min(startIndex + itemsPerPage, filteredPayments.length), length: filteredPayments.length }} components={[<span className="font-semibold text-brand-primary" />, <span className="font-semibold text-brand-primary" />, <span className="font-semibold text-brand-primary" />]} />
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -356,7 +354,7 @@ export default function PaymentHistoryPage() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <div className="text-xs font-semibold px-2">
-                Page {currentPage} of {totalPages}
+                {t("Page {{currentPage}} of {{totalPages}}", { currentPage, totalPages })}
               </div>
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}

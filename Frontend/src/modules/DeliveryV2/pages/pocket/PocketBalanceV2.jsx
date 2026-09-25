@@ -8,6 +8,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { formatCurrency } from '@food/utils/currency';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * PocketBalanceV2 - 1:1 Match with Old PocketBalance Page.
@@ -16,6 +17,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const PocketBalanceV2 = () => {
+  const { t } = useTranslation("driver");
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
@@ -72,10 +74,10 @@ export const PocketBalanceV2 = () => {
             if (withdrawalTx) {
                const rawStatus = String(withdrawalTx.status || 'Pending').toLowerCase();
                const statusLabel = rawStatus === 'approved' || rawStatus === 'completed'
-                  ? 'Approved'
+                  ? t("Approved")
                   : rawStatus === 'rejected' || rawStatus === 'denied'
-                     ? 'Rejected'
-                     : 'Pending';
+                     ? t("Rejected")
+                     : t("Pending");
                const updatedAt = withdrawalTx.processedAt || withdrawalTx.updatedAt || withdrawalTx.createdAt || null;
                setWithdrawalStatus({
                   status: statusLabel,
@@ -91,7 +93,7 @@ export const PocketBalanceV2 = () => {
                setWithdrawalStatus({ status: 'No request', updatedAt: null });
             }
       } catch (err) {
-        toast.error('Failed to load pocket details');
+        toast.error(t("Failed to load pocket details"));
       } finally {
         setLoading(false);
       }
@@ -106,7 +108,7 @@ export const PocketBalanceV2 = () => {
      const bank = profile?.documents?.bankDetails;
      
      if (!bank?.accountNumber) {
-        toast.error("Please add bank details first");
+        toast.error(t("Please add bank details first"));
         navigate("/food/delivery/profile/details");
         return;
      }
@@ -118,11 +120,11 @@ export const PocketBalanceV2 = () => {
            paymentMethod: 'bank_transfer'
         });
         if (res?.data?.success) {
-           toast.success("Withdrawal request submitted");
+           toast.success(t("Withdrawal request submitted"));
            goBack();
         }
      } catch (err) {
-        toast.error("Withdrawal failed");
+        toast.error(t("Withdrawal failed"));
      } finally {
         setWithdrawSubmitting(false);
      }
@@ -145,13 +147,13 @@ export const PocketBalanceV2 = () => {
           <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-lg">
              <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-lg font-bold text-[#2B2B2B] leading-none">Pocket balance</h1>
+          <h1 className="text-lg font-bold text-[#2B2B2B] leading-none">{t("Pocket balance")}</h1>
        </div>
 
        {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading Balance...</p>
+             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t("Loading Balance...")}</p>
           </div>
        ) : (
           <>
@@ -160,9 +162,9 @@ export const PocketBalanceV2 = () => {
                <div className="bg-yellow-400 p-4 flex items-start gap-3 border-b border-yellow-500/10">
                   <AlertTriangle className="w-5 h-5 shrink-0" />
                   <div>
-                     <p className="text-xs font-bold">Withdraw currently disabled</p>
+                     <p className="text-xs font-bold">{t("Withdraw currently disabled")}</p>
                      <p className="text-[10px] font-medium opacity-80 leading-tight mt-1">
-                        {walletState.withdrawableAmount <= 0 ? 'Withdrawable amount is ₹0' : `Minimum withdrawal requirement is ₹${walletState.withdrawalLimit}`}
+                        {walletState.withdrawableAmount <= 0 ? t("Withdrawable amount is ₹0") : t("Minimum withdrawal requirement is ₹{{withdrawalLimit}}", { withdrawalLimit: walletState.withdrawalLimit })}
                      </p>
                   </div>
                </div>
@@ -170,7 +172,7 @@ export const PocketBalanceV2 = () => {
 
              {/* Top Withdraw Section */}
              <div className="bg-white p-8 mb-4 text-center border-b border-gray-100 shadow-sm">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Withdrawable Amount</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t("Withdrawable Amount")}</p>
                 <h2 className="text-5xl font-black text-black mb-6 tracking-tighter">₹{walletState.withdrawableAmount.toFixed(0)}</h2>
                 
                 <button 
@@ -183,33 +185,33 @@ export const PocketBalanceV2 = () => {
                   } flex items-center justify-center gap-2`}
                 >
                    {withdrawSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                   {withdrawSubmitting ? 'Processing...' : 'Withdraw'}
+                   {withdrawSubmitting ? t("Processing...") : t("Withdraw")}
                 </button>
              </div>
 
              {/* Details Section */}
              <div className="bg-gray-100/50 py-2 px-4">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Pocket Details</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t("Pocket Details")}</p>
              </div>
 
              <div className="bg-white px-4">
-                <DetailRow label="Earnings" value={formatCurrency(walletState.weeklyEarnings)} />
-                <DetailRow label="Bonus" value={formatCurrency(walletState.totalBonus)} />
-                <DetailRow label="Amount withdrawn" value={formatCurrency(walletState.totalWithdrawn)} />
-                <DetailRow label="Cash collected" value={formatCurrency(walletState.cashCollected)} />
-                <DetailRow label="Deductions" value={formatCurrency(walletState.deductions)} />
-                <DetailRow label="Pocket balance" value={formatCurrency(walletState.pocketBalance)} />
+                <DetailRow label={t("Earnings")} value={formatCurrency(walletState.weeklyEarnings)} />
+                <DetailRow label={t("Bonus")} value={formatCurrency(walletState.totalBonus)} />
+                <DetailRow label={t("Amount withdrawn")} value={formatCurrency(walletState.totalWithdrawn)} />
+                <DetailRow label={t("Cash collected")} value={formatCurrency(walletState.cashCollected)} />
+                <DetailRow label={t("Deductions")} value={formatCurrency(walletState.deductions)} />
+                <DetailRow label={t("Pocket balance")} value={formatCurrency(walletState.pocketBalance)} />
                 <DetailRow
-                   label="Withdrawal status"
+                   label={t("Withdrawal status")}
                    value={withdrawalStatus.status}
                    subLabel={withdrawalStatus.updatedAt ? `Updated: ${withdrawalStatus.updatedAt}` : 'Admin approval status'}
                 />
                 <DetailRow 
-                   label="Min. withdrawal amount" 
+                   label={t("Min. withdrawal amount")} 
                    value={formatCurrency(walletState.withdrawalLimit)} 
                    subLabel="Withdrawal allowed only when withdrawable amount reaches this limit."
                 />
-                <DetailRow label="Withdrawable amount" value={formatCurrency(walletState.withdrawableAmount)} />
+                <DetailRow label={t("Withdrawable amount")} value={formatCurrency(walletState.withdrawableAmount)} />
              </div>
           </>
        )}

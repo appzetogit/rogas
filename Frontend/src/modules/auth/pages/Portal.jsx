@@ -2,12 +2,14 @@ import React from "react"
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { UtensilsCrossed, ShoppingBasket, Car, Bed, ArrowRight, ShieldCheck, Star } from "lucide-react"
+import { Trans, useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 const SERVICES = [
   {
     id: "food",
     name: "Foods",
-    description: "Delicious local favorites",
+    description: tKey("Delicious local favorites"),
     image: "/super-app/food.png",
     path: "/food/user",
     icon: UtensilsCrossed,
@@ -18,7 +20,7 @@ const SERVICES = [
   {
     id: "grocery",
     name: "Quick Commerce",
-    description: "20-Min Essentials",
+    description: tKey("20-Min Essentials"),
     image: "/super-app/grocery.png",
     path: "/food/user",
     icon: ShoppingBasket,
@@ -29,7 +31,7 @@ const SERVICES = [
   {
     id: "taxi",
     name: "Taxi",
-    description: "Safe city rides",
+    description: tKey("Safe city rides"),
     image: "/super-app/taxi.png",
     path: "/food/user",
     icon: Car,
@@ -40,7 +42,7 @@ const SERVICES = [
   {
     id: "hotel",
     name: "Hotel",
-    description: "Luxury book stays",
+    description: tKey("Luxury book stays"),
     image: "/super-app/hotel.png",
     path: "/food/user",
     icon: Bed,
@@ -51,6 +53,7 @@ const SERVICES = [
 ]
 
 export default function SuperAppPortal() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate()
 
   return (
@@ -107,7 +110,7 @@ export default function SuperAppPortal() {
           >
             <span className="text-white text-[10px] font-black italic">F</span>
           </motion.div>
-          <span className="text-[10px] font-black tracking-[0.2em] text-[#BABCBD] uppercase">Everything you need, delivered</span>
+          <span className="text-[10px] font-black tracking-[0.2em] text-[#BABCBD] uppercase">{t("Everything you need, delivered")}</span>
         </motion.div>
 
         <motion.h1
@@ -116,8 +119,7 @@ export default function SuperAppPortal() {
           transition={{ type: "spring", damping: 12 }}
           className="text-5xl md:text-7xl font-black text-[#1A202C] tracking-tight leading-none"
         >
-          Welcome to <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#a64a85] to-primary bg-[length:200%_auto] animate-gradient block mt-2">Rogas</span>
+          <Trans t={t} i18nKey={"Welcome to <0></0><1>Rogas</1>"} defaults={"Welcome to <0></0><1>Rogas</1>"} components={[<br />, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#a64a85] to-primary bg-[length:200%_auto] animate-gradient block mt-2" />]} />
         </motion.h1>
 
         <motion.p
@@ -126,7 +128,7 @@ export default function SuperAppPortal() {
           transition={{ delay: 0.3 }}
           className="text-[#718096] text-sm md:text-lg font-bold max-w-[320px] mx-auto leading-relaxed"
         >
-          Choose a service to continue
+          {t("Choose a service to continue")}
         </motion.p>
       </div>
 
@@ -187,7 +189,7 @@ export default function SuperAppPortal() {
                   {service.name}
                 </h2>
                 <p className="text-white/80 text-[10px] md:text-xs font-bold uppercase tracking-[0.1em] opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                  {service.description}
+                  {t(service.description)}
                 </p>
               </div>
 
@@ -244,7 +246,7 @@ export default function SuperAppPortal() {
       <div className="mt-16 flex flex-col items-center gap-3 opacity-50">
         <div className="flex items-center gap-1.5 grayscale">
           <ShieldCheck className="w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Secure by Rogas</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">{t("Secure by Rogas")}</span>
         </div>
       </div>
     </div>

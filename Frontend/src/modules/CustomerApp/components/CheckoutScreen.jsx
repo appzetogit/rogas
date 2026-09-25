@@ -3,6 +3,7 @@ import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ArrowLeft, CheckCircle, Banknote, Lock } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
 
@@ -26,6 +27,7 @@ export function CheckoutScreen({
   setInvoicePrefs,
   selectedPlanDetails,
 }) {
+  const { t } = useTranslation("customer");
   const [paying, setPaying] = useState(false);
   const { getSlot, window: slotWindow, label: slotName, icon: slotIcon } = useDeliverySlots();
   const plan = selectedPlanDetails || {};
@@ -49,7 +51,7 @@ export function CheckoutScreen({
     if (paying) return;
     const token = localStorage.getItem("user_accessToken");
     if (!token) {
-      onShowNotificationToast("⚠️ Please log in to subscribe");
+      onShowNotificationToast(t("⚠️ Please log in to subscribe"));
       return;
     }
 
@@ -58,7 +60,7 @@ export function CheckoutScreen({
       // Step 1: Load Razorpay script
       const loaded = await loadRazorpayScript();
       if (!loaded) {
-        onShowNotificationToast(" Razorpay failed to load. Check network.");
+        onShowNotificationToast(" " + t("Razorpay failed to load. Check network."));
         setPaying(false);
         return;
       }
@@ -86,7 +88,7 @@ export function CheckoutScreen({
         amount,
         currency: "INR",
         name: "DailyMealBox",
-        description: `Subscription: ${durationLabel} (${deliveryDays})`,
+        description: t("Subscription: {{durationLabel}} ({{deliveryDays}})", { durationLabel, deliveryDays }),
         image: plan.vendorImage || undefined,
         order_id: razorpayOrderId,
         handler: async (response) => {
@@ -111,7 +113,7 @@ export function CheckoutScreen({
         modal: {
           ondismiss: () => {
             setPaying(false);
-            onShowNotificationToast("Payment cancelled");
+            onShowNotificationToast(t("Payment cancelled"));
           },
         },
       };
@@ -123,7 +125,7 @@ export function CheckoutScreen({
       });
       rzp.open();
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || "Failed to initiate payment";
+      const msg = err?.response?.data?.message || err.message || t("Failed to initiate payment");
       onShowNotificationToast(" " + msg);
       setPaying(false);
     }
@@ -133,10 +135,10 @@ export function CheckoutScreen({
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32">
       {/* Top App Bar */}
       <header className="flex justify-between items-center w-full px-5 h-14 bg-white sticky top-0 z-40 border-b border-[#bec9c3]/20 shadow-sm">
-        <button onClick={onGoBack} aria-label="Go back" className="flex items-center active:scale-95 transition-all text-primary">
+        <button onClick={onGoBack} aria-label={t("Go back")} className="flex items-center active:scale-95 transition-all text-primary">
           <ArrowLeft className="text-[24px]" />
         </button>
-        <h1 className="text-[17px] font-extrabold text-[#1b1c1c]">Checkout</h1>
+        <h1 className="text-[17px] font-extrabold text-[#1b1c1c]">{t("Checkout")}</h1>
         <div className="w-9 h-9 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[14px]">
           U
         </div>
@@ -153,91 +155,91 @@ export function CheckoutScreen({
             )}
             <div>
               <p className="font-extrabold text-[15px] text-[#1b1c1c]">{plan.vendorName}</p>
-              <p className="text-[13px] text-[#6e7a74] mt-0.5">{durationLabel} Plan</p>
+              <p className="text-[13px] text-[#6e7a74] mt-0.5">{t("{{durationLabel}} Plan", { durationLabel })}</p>
             </div>
           </div>
         )}
 
         {/* Order Summary */}
         <section>
-          <h2 className="text-[17px] font-extrabold mb-3 text-[#1b1c1c]">Order Summary</h2>
+          <h2 className="text-[17px] font-extrabold mb-3 text-[#1b1c1c]">{t("Order Summary")}</h2>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4e2e1]/30 space-y-3">
 
             {/* Selected Meals List */}
             <div className="space-y-2">
-              <p className="text-[12px] font-bold text-[#6e7a74] uppercase tracking-wider mb-1">Selected Meals</p>
+              <p className="text-[12px] font-bold text-[#6e7a74] uppercase tracking-wider mb-1">{t("Selected Meals")}</p>
               {meals.map((item, idx) => (
                 <div key={item.mealPlanId || idx} className="flex justify-between text-[14px]">
                   <span className="text-[#1b1c1c] font-medium">{item.name}</span>
-                  <span className="font-semibold text-[#6e7a74]">₹{item.pricePerDay}/day</span>
+                  <span className="font-semibold text-[#6e7a74]">{t("₹{{pricePerDay}}/day", { pricePerDay: item.pricePerDay })}</span>
                 </div>
               ))}
             </div>
 
             <div className="border-t border-[#f0eded] pt-3 space-y-2">
               <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">Daily Base Rate</span>
-                <span className="font-bold">₹{basePricePerDay}/day</span>
+                <span className="text-[#6e7a74] font-medium">{t("Daily Base Rate")}</span>
+                <span className="font-bold">{t("₹{{basePricePerDay}}/day", { basePricePerDay })}</span>
               </div>
               <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">Duration</span>
+                <span className="text-[#6e7a74] font-medium">{t("Duration")}</span>
                 <span className="font-bold">{durationLabel}</span>
               </div>
               <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">Schedule</span>
+                <span className="text-[#6e7a74] font-medium">{t("Schedule")}</span>
                 <span className="font-bold">{deliveryDays}</span>
               </div>
               <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">Time Slot</span>
+                <span className="text-[#6e7a74] font-medium">{t("Time Slot")}</span>
                 <span className="font-bold">{slotLabel}</span>
               </div>
               {plan.startDate && (
                 <div className="flex justify-between text-[14px]">
-                  <span className="text-[#6e7a74] font-medium">🗓️ Start Date</span>
+                  <span className="text-[#6e7a74] font-medium">{t("🗓️ Start Date")}</span>
                   <span className="font-bold text-primary">
                     {new Date(plan.startDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">Delivery Address</span>
+                <span className="text-[#6e7a74] font-medium">{t("Delivery Address")}</span>
                 <span className="font-bold text-right max-w-[180px] text-[12px] leading-snug">
                   {typeof plan.deliveryAddress === 'object' ? (plan.deliveryAddress.street || plan.deliveryAddress.address) : (plan.deliveryAddress || "—")}
                 </span>
               </div>
 
               <div className="border-t border-[#f0eded] pt-2 flex justify-between text-[14px] text-[#6e7a74]">
-                <span>Food Total</span>
+                <span>{t("Food Total")}</span>
                 <span className="font-semibold">₹{(pricing.subtotal !== undefined ? pricing.subtotal : totalPrice).toFixed(2)}</span>
               </div>
               {pricing.foodVatAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>Food VAT ({pricing.foodVat || 0}%{pricing.applyFoodVatOnMenu ? ` on ₹${(pricing.foodVatBaseAmount || 0).toFixed(2)} Menu` : ""})</span>
+                  <span>{pricing.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on ₹{{amount}} Menu)", { foodVat: pricing.foodVat || 0, amount: (pricing.foodVatBaseAmount || 0).toFixed(2) }) : t("Food VAT ({{foodVat}}%)", { foodVat: pricing.foodVat || 0 })}</span>
                   <span className="font-semibold">₹{pricing.foodVatAmount.toFixed(2)}</span>
                 </div>
               )}
               {pricing.deliveryCharge > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>Delivery Charge</span>
+                  <span>{t("Delivery Charge")}</span>
                   <span className="font-semibold">₹{pricing.deliveryCharge.toFixed(2)}</span>
                 </div>
               )}
               {pricing.deliveryVatAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>Delivery VAT ({pricing.deliveryVat || 0}%)</span>
+                  <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat: pricing.deliveryVat || 0 })}</span>
                   <span className="font-semibold">₹{pricing.deliveryVatAmount.toFixed(2)}</span>
                 </div>
               )}
               {pricing.platformFeeAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>Platform Fee</span>
+                  <span>{t("Platform Fee")}</span>
                   <span className="font-semibold">₹{pricing.platformFeeAmount.toFixed(2)}</span>
                 </div>
               )}
             </div>
 
             <div className="border-t border-[#f0eded] pt-3 flex justify-between items-center">
-              <span className="text-[15px] font-extrabold text-[#1b1c1c]">Total Amount</span>
+              <span className="text-[15px] font-extrabold text-[#1b1c1c]">{t("Total Amount")}</span>
               <span className="text-[20px] font-extrabold text-primary">₹{totalPrice.toFixed(2)}</span>
             </div>
           </div>
@@ -245,7 +247,7 @@ export function CheckoutScreen({
 
         {/* Invoice Preference */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">Invoice Preference</h2>
+          <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Invoice Preference")}</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setInvoicePrefs({ ...invoicePrefs, receiptType: "simple" })}
@@ -257,12 +259,12 @@ export function CheckoutScreen({
               {(invoicePrefs?.receiptType || "simple") === "simple" && (
                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               )}
-              <span>Simple Receipt</span>
+              <span>{t("Simple Receipt")}</span>
             </button>
             <button
               onClick={() => {
                 setInvoicePrefs({ ...invoicePrefs, receiptType: "vat" });
-                onShowNotificationToast("💼 Switched to B2B Full Invoice mode.");
+                onShowNotificationToast(t("💼 Switched to B2B Full Invoice mode."));
                 setTimeout(() => onGoToInvoiceSettings(), 700);
               }}
               className={`py-3 px-4 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm ${invoicePrefs?.receiptType === "vat"
@@ -273,24 +275,24 @@ export function CheckoutScreen({
               {invoicePrefs?.receiptType === "vat" && (
                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               )}
-              <span>GST Invoice (B2B)</span>
+              <span>{t("GST Invoice (B2B)")}</span>
             </button>
           </div>
         </section>
 
         {/* Payment Method */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">Payment</h2>
+          <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Payment")}</h2>
           <div className="bg-white border border-[#e4e2e1]/30 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
             <div className="w-10 h-10 bg-primary/10 flex items-center justify-center rounded-xl">
               <Banknote className="text-primary" />
             </div>
             <div>
-              <p className="text-[14px] font-bold text-[#1b1c1c]">Razorpay</p>
-              <p className="text-[12px] text-[#6e7a74]">UPI · Cards · Net Banking · Wallets</p>
+              <p className="text-[14px] font-bold text-[#1b1c1c]">{t("Razorpay")}</p>
+              <p className="text-[12px] text-[#6e7a74]">{t("UPI · Cards · Net Banking · Wallets")}</p>
             </div>
             <div className="ml-auto">
-              <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt="Razorpay" className="h-6" onError={(e) => e.target.style.display = "none"} />
+              <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt={t("Razorpay")} className="h-6" onError={(e) => e.target.style.display = "none"} />
             </div>
           </div>
         </section>
@@ -305,17 +307,17 @@ export function CheckoutScreen({
             {paying ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Processing...
+                {t("Processing...")}
               </>
             ) : (
               <>
                 <Lock className="text-[20px]" />
-                Pay ₹{totalPrice} & Subscribe
+                {t("Pay ₹{{totalPrice}} & Subscribe", { totalPrice })}
               </>
             )}
           </button>
           <p className="text-center text-[11px] text-[#6e7a74] leading-relaxed px-4">
-            🔒 Secure payment via Razorpay · By subscribing, you agree to our Terms of Service and auto-renewal policy.
+            {t("🔒 Secure payment via Razorpay · By subscribing, you agree to our Terms of Service and auto-renewal policy.")}
           </p>
         </div>
       </main>

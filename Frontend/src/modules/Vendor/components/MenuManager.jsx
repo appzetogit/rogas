@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
 import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle } from 'lucide-react';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
+import { Trans, useTranslation } from "react-i18next";
 
 const toLocalDateStr = (d) => {
   if (!d) return "";
@@ -39,6 +40,7 @@ export default function MenuManager({
   onEndSurpriseBox,
   onToggleMealStatus
 }) {
+  const { t } = useTranslation("vendor");
   const { enabledSlots: slotList } = useDeliverySlots();
   const currentWeekDates = React.useMemo(() => {
     const days = [];
@@ -166,32 +168,32 @@ export default function MenuManager({
 
       const res = await dmbVendorAPI.saveDailyMenu(payload);
       if (res.data?.success) {
-        triggerToast(`Scheduled "${selectedMeal.name}" for ${targetDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} [${slot}]! ✓`);
+        triggerToast(t("Scheduled \"{{name}}\" for {{targetDate}} [{{slot}}]! ✓", { name: selectedMeal.name, targetDate: targetDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), slot }));
         await fetchDailyMenus();
         setMealSelectorOpenPlan(null);
       } else {
-        triggerToast(res.data?.message || 'Failed to schedule meal');
+        triggerToast(res.data?.message || t("Failed to schedule meal"));
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || 'Error scheduling meal');
+      triggerToast(err.response?.data?.message || err.message || t("Error scheduling meal"));
     }
   };
 
   const handleDeleteScheduledMeal = async (mealPlanId, date, slot) => {
-    if (!window.confirm("Are you sure you want to remove this meal from today's weekly schedule?")) {
+    if (!window.confirm(t("Are you sure you want to remove this meal from today's weekly schedule?"))) {
       return;
     }
     try {
       const dateStr = toLocalDateStr(date);
       const res = await dmbVendorAPI.deleteDailyMenu({ mealPlanId, date: dateStr, slot });
       if (res.data?.success) {
-        triggerToast('Meal removed from schedule! ✓');
+        triggerToast(t("Meal removed from schedule! ✓"));
         await fetchDailyMenus();
       } else {
-        triggerToast(res.data?.message || 'Failed to remove meal');
+        triggerToast(res.data?.message || t("Failed to remove meal"));
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || 'Error removing meal');
+      triggerToast(err.response?.data?.message || err.message || t("Error removing meal"));
     }
   };
 
@@ -227,7 +229,7 @@ export default function MenuManager({
   const handleSaveDailyMenu = async (e) => {
     e.preventDefault();
     if (!selectedMealForSchedule || !dishNameSchedule) {
-      triggerToast('Dish name is required');
+      triggerToast(t("Dish name is required"));
       return;
     }
     
@@ -250,14 +252,14 @@ export default function MenuManager({
       
       const res = await dmbVendorAPI.saveDailyMenu(payload);
       if (res.data?.success) {
-        triggerToast('Daily menu scheduled successfully! ✓');
+        triggerToast(t("Daily menu scheduled successfully! ✓"));
         await fetchDailyMenus();
         setScheduleModalOpen(false);
       } else {
-        triggerToast(res.data?.message || 'Failed to save daily menu');
+        triggerToast(res.data?.message || t("Failed to save daily menu"));
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || 'Error saving daily menu');
+      triggerToast(err.response?.data?.message || err.message || t("Error saving daily menu"));
     } finally {
       setIsSavingSchedule(false);
     }
@@ -287,12 +289,12 @@ export default function MenuManager({
         const url = res.data?.data?.url || res.data?.url || res.data;
         if (url) {
           setMealImageUrl(url);
-          triggerToast('Photo uploaded successfully ✓');
+          triggerToast(t("Photo uploaded successfully ✓"));
         } else {
-          triggerToast('Failed to parse uploaded photo URL');
+          triggerToast(t("Failed to parse uploaded photo URL"));
         }
       } catch (err) {
-        triggerToast(err.message || 'Failed to upload photo');
+        triggerToast(err.message || t("Failed to upload photo"));
       } finally {
         setIsUploadingPhoto(false);
       }
@@ -308,12 +310,12 @@ export default function MenuManager({
         const url = res.data?.data?.url || res.data?.url || res.data;
         if (url) {
           setPhotoSchedule(url);
-          triggerToast('Schedule photo uploaded successfully ✓');
+          triggerToast(t("Schedule photo uploaded successfully ✓"));
         } else {
-          triggerToast('Failed to parse uploaded photo URL');
+          triggerToast(t("Failed to parse uploaded photo URL"));
         }
       } catch (err) {
-        triggerToast(err.message || 'Failed to upload photo');
+        triggerToast(err.message || t("Failed to upload photo"));
       } finally {
         setIsUploadingPhoto(false);
       }
@@ -398,10 +400,10 @@ export default function MenuManager({
 
     if (editingMeal) {
       onEditMeal(editingMeal.id, payload);
-      triggerToast('Meal updated successfully');
+      triggerToast(t("Meal updated successfully"));
     } else {
       onAddMeal(payload);
-      triggerToast('Meal added successfully');
+      triggerToast(t("Meal added successfully"));
     }
     setSubView('list');
   };
@@ -409,7 +411,7 @@ export default function MenuManager({
   const handleDeleteClick = () => {
     if (editingMeal) {
       onDeleteMeal(editingMeal.id);
-      triggerToast('Meal removed from menu');
+      triggerToast(t("Meal removed from menu"));
     }
     setSubView('list');
   };
@@ -418,7 +420,7 @@ export default function MenuManager({
     e.preventDefault();
     const selectedMeal = meals.find((m) => m.id === selectedMealId);
     if (!selectedMeal) {
-      triggerToast('Please select a valid meal');
+      triggerToast(t("Please select a valid meal"));
       return;
     }
 
@@ -436,7 +438,7 @@ export default function MenuManager({
       status: 'Active'
     });
 
-    triggerToast('Surprise Box Deal Posted! 🌟');
+    triggerToast(t("Surprise Box Deal Posted! 🌟"));
     setSubView('list');
   };
 
@@ -458,7 +460,7 @@ export default function MenuManager({
                   : 'text-on-surface-variant hover:bg-outline-variant/5'
               }`}
             >
-              Menu
+              {t("Menu")}
             </button>
             <button
               type="button"
@@ -469,7 +471,7 @@ export default function MenuManager({
                   : 'text-on-surface-variant hover:bg-outline-variant/5'
               }`}
             >
-              Week Menu
+              {t("Week Menu")}
             </button>
           </div>
           )}
@@ -478,7 +480,7 @@ export default function MenuManager({
             <>
               {/* Subheader page actions */}
               <div className="flex justify-between items-center pt-2">
-                <h2 className="text-[16px] font-bold text-on-surface">Subscription Meals</h2>
+                <h2 className="text-[16px] font-bold text-on-surface">{t("Subscription Meals")}</h2>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -486,7 +488,7 @@ export default function MenuManager({
                     className="text-secondary font-bold text-[13px] flex items-center gap-0.5 hover:underline"
                   >
                     <Sparkles className="text-[18px]" />
-                    Boxes ({surpriseBoxes.filter((s) => s.status === 'Active').length})
+                    {t("Boxes ({{num}})", { num: surpriseBoxes.filter((s) => s.status === 'Active').length })}
                   </button>
                   <button
                     type="button"
@@ -494,7 +496,7 @@ export default function MenuManager({
                     className="text-primary font-bold text-[13px] flex items-center gap-0.5 hover:underline"
                   >
                     <Plus className="text-[18px]" />
-                    Add meal
+                    {t("Add meal")}
                   </button>
                 </div>
               </div>
@@ -504,9 +506,9 @@ export default function MenuManager({
                 {meals.filter((m) => m.status !== 'Removed').length === 0 ? (
                   <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/15 text-center flex flex-col items-center justify-center min-h-[220px] animate-fadeIn">
                     <UtensilsCrossed className="text-[48px] text-primary/40 mb-3" />
-                    <p className="text-[14px] font-bold text-on-surface">No meals added yet</p>
+                    <p className="text-[14px] font-bold text-on-surface">{t("No meals added yet")}</p>
                     <p className="text-[12px] text-outline mt-1 leading-relaxed max-w-[220px]">
-                      Click the "Add meal" button above to publish your first subscription meal plan.
+                      {t("Click the \"Add meal\" button above to publish your first subscription meal plan.")}
                     </p>
                   </div>
                 ) : (
@@ -534,11 +536,10 @@ export default function MenuManager({
                                 </span>
                               </div>
                               <p className="text-[14px] font-extrabold text-on-surface mt-0.5">
-                                {meal.price.toFixed(2)} PLN{' '}
-                                <span className="text-outline font-normal text-[11px]">· 8% VAT</span>
+                                <Trans t={t} i18nKey={"{{price}} PLN <0>· 8% VAT</0>"} defaults={"{{price}} PLN <0>· 8% VAT</0>"} values={{ price: meal.price.toFixed(2) }} components={[<span className="text-outline font-normal text-[11px]" />]} />
                               </p>
                               <p className="text-[12px] text-outline font-medium">
-                                {meal.calories} · {meal.portions} portions
+                                {t("{{calories}} · {{portions}} portions", { calories: meal.calories, portions: meal.portions })}
                               </p>
                             </div>
                           </div>
@@ -550,14 +551,14 @@ export default function MenuManager({
                               onClick={() => handleEditClick(meal)}
                               className="flex-1 py-1.5 rounded-lg bg-primary text-on-primary font-bold text-[12px] hover:brightness-105 active:scale-95 transition-all text-center cursor-pointer"
                             >
-                              Edit Plan
+                              {t("Edit Plan")}
                             </button>
                             <button
                               type="button"
-                              onClick={() => triggerToast(`Nutrition facts: ${meal.calories} | Prot: ${meal.prot} | Carb: ${meal.carb} | Fat: ${meal.fat}`)}
+                              onClick={() => triggerToast(t("Nutrition facts: {{calories}} | Prot: {{prot}} | Carb: {{carb}} | Fat: {{fat}}", { calories: meal.calories, prot: meal.prot, carb: meal.carb, fat: meal.fat }))}
                               className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[12px] hover:bg-primary/5 active:scale-95 transition-all text-center cursor-pointer"
                             >
-                              Nutrition
+                              {t("Nutrition")}
                             </button>
                             <button
                               type="button"
@@ -566,7 +567,7 @@ export default function MenuManager({
                                   onToggleMealStatus(meal.id);
                                 } else {
                                   onEditMeal(meal.id, { status: meal.status === 'Active' ? 'Draft' : 'Active' });
-                                  triggerToast(`Status switched to ${meal.status === 'Active' ? 'Draft' : 'Active'}`);
+                                  triggerToast(t("Status switched to {{value}}", { value: meal.status === 'Active' ? 'Draft' : 'Active' }));
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-lg border font-semibold text-[12px] active:scale-95 transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
@@ -576,7 +577,7 @@ export default function MenuManager({
                               }`}
                             >
                               {meal.status === 'Active' ? <PauseCircle className="text-[15px]" /> : <PlayCircle className="text-[15px]" />}
-                              {meal.status === 'Active' ? 'Pause' : 'Play'}
+                              {meal.status === 'Active' ? t("Pause") : t("Play")}
                             </button>
                           </div>
                         </div>
@@ -663,7 +664,7 @@ export default function MenuManager({
                             <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-base">{slotIcon}</span>
-                                <span className="font-extrabold text-[13px] text-on-surface">{slotLabel} Slot</span>
+                                <span className="font-extrabold text-[13px] text-on-surface">{t("{{slotLabel}} Slot", { slotLabel })}</span>
                               </div>
                               {!isPast && (
                                 existingDish ? (
@@ -686,7 +687,7 @@ export default function MenuManager({
                                     className="text-amber-600 hover:text-amber-700 font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
                                   >
                                     <ArrowRightLeft className="text-[16px]" />
-                                    Change
+                                    {t("Change")}
                                   </button>
                                 ) : (
                                   <button
@@ -699,7 +700,7 @@ export default function MenuManager({
                                     className="text-primary hover:text-primary-dark font-bold text-[12px] flex items-center gap-0.5 active:scale-95 transition-transform cursor-pointer"
                                   >
                                     <PlusCircle className="text-[16px]" />
-                                    Add Meal
+                                    {t("Add Meal")}
                                   </button>
                                 )
                               )}
@@ -708,7 +709,7 @@ export default function MenuManager({
                             {isLoadingDailyMenus ? (
                               <div className="bg-surface-container-lowest rounded-xl p-4 text-center flex flex-col items-center justify-center min-h-[100px]">
                                 <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-                                <p className="text-[11px] font-bold text-on-surface">Loading...</p>
+                                <p className="text-[11px] font-bold text-on-surface">{t("Loading...")}</p>
                               </div>
                             ) : existingDish ? (
                               /* Scheduled meal card details */
@@ -726,7 +727,7 @@ export default function MenuManager({
                                   <div className="flex-grow min-w-0">
                                     <h3 className="text-[14px] font-extrabold text-on-surface truncate">{existingDish.dishName}</h3>
                                     {existingMeal && (
-                                      <p className="text-[11px] text-outline font-semibold">Plan: {existingMeal.name}</p>
+                                      <p className="text-[11px] text-outline font-semibold">{t("Plan: {{name}}", { name: existingMeal.name })}</p>
                                     )}
                                     {existingDish.description && (
                                       <p className="text-[11px] text-on-surface-variant italic mt-0.5 line-clamp-1">"{existingDish.description}"</p>
@@ -764,7 +765,7 @@ export default function MenuManager({
                                       className="px-3 py-1.5 rounded-lg border border-primary text-primary font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                                     >
                                       <Edit2 className="text-[14px]" />
-                                      Edit
+                                      {t("Edit")}
                                     </button>
                                     <button
                                       type="button"
@@ -776,7 +777,7 @@ export default function MenuManager({
                                       className="px-3 py-1.5 rounded-lg border border-error text-error hover:bg-error/5 active:scale-95 transition-all font-bold text-[11px] cursor-pointer flex items-center justify-center gap-0.5"
                                     >
                                       <Trash2 className="text-[14px]" />
-                                      Remove
+                                      {t("Remove")}
                                     </button>
                                   </div>
                                 )}
@@ -784,7 +785,7 @@ export default function MenuManager({
                             ) : (
                               <div className="text-center py-4 bg-slate-50 border border-dashed border-outline-variant/40 rounded-xl flex items-center justify-center gap-2">
                                 <UtensilsCrossed className="text-[18px] text-outline" />
-                                <span className="text-[12px] font-semibold text-outline">No meal scheduled</span>
+                                <span className="text-[12px] font-semibold text-outline">{t("No meal scheduled")}</span>
                               </div>
                             )}
                           </div>
@@ -811,20 +812,20 @@ export default function MenuManager({
             
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">{editingMeal ? 'Edit Meal' : 'Add Meal'}</h2>
+            <h2 className="text-[16px] font-semibold">{editingMeal ? t("Edit Meal") : t("Add Meal")}</h2>
             <div className="w-6"></div>
           </div>
 
           <div className="pt-6 space-y-5">
             {/* Meal Name Input */}
             <div className="space-y-1">
-              <label className="text-[10px] text-outline uppercase font-semibold">Meal Name</label>
+              <label className="text-[10px] text-outline uppercase font-semibold">{t("Meal Name")}</label>
               <input
               type="text"
               required
               value={mealName}
               onChange={(e) => setMealName(e.target.value)}
-              placeholder="e.g. Tomato Basil Gnocchi"
+              placeholder={t("e.g. Tomato Basil Gnocchi")}
               className="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] outline-none focus:ring-1 focus:ring-primary bg-white transition-all" />
             
             </div>
@@ -832,7 +833,7 @@ export default function MenuManager({
             {/* Price & VAT Row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] text-outline uppercase font-semibold">Price per Meal (PLN)</label>
+                <label className="text-[10px] text-outline uppercase font-semibold">{t("Price per Meal (PLN)")}</label>
                 <input
                 type="number"
                 step="0.01"
@@ -844,43 +845,43 @@ export default function MenuManager({
               
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-outline uppercase font-semibold">VAT Category</label>
+                <label className="text-[10px] text-outline uppercase font-semibold">{t("VAT Category")}</label>
                 <div className="flex items-center gap-1.5 bg-primary-container/10 border border-primary-container/20 rounded-lg px-3 py-2.5">
                   <Info className="text-[18px] text-primary" />
-                  <span className="text-[11px] leading-tight text-primary font-semibold truncate">8% — Restaurant</span>
+                  <span className="text-[11px] leading-tight text-primary font-semibold truncate">{t("8% — Restaurant")}</span>
                 </div>
               </div>
             </div>
 
             {/* Description Textarea */}
             <div className="space-y-1">
-              <label className="text-[10px] text-outline uppercase font-semibold">Description</label>
+              <label className="text-[10px] text-outline uppercase font-semibold">{t("Description")}</label>
               <textarea
               required
               rows={3}
               value={mealDesc}
               onChange={(e) => setMealDesc(e.target.value)}
-              placeholder="Describe the wonderful ingredients, seasoning style, and textures..."
+              placeholder={t("Describe the wonderful ingredients, seasoning style, and textures...")}
               className="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] outline-none focus:ring-1 focus:ring-primary bg-white transition-all resize-none" />
             
             </div>
 
             {/* Nutritional Info grid */}
             <div className="space-y-2">
-              <label className="text-[10px] text-outline uppercase font-semibold">Nutritional Info (Optional)</label>
+              <label className="text-[10px] text-outline uppercase font-semibold">{t("Nutritional Info (Optional)")}</label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Cal:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Cal:")}</span>
                   <input
                   type="text"
                   value={mealCal}
                   onChange={(e) => setMealCal(e.target.value)}
-                  placeholder="345 kcal"
+                  placeholder={t("345 kcal")}
                   className="w-full pl-10 pr-3 py-2 border border-outline-variant rounded-lg text-[13px] outline-none focus:ring-1 focus:ring-primary bg-white" />
                 
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Prot:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Prot:")}</span>
                   <input
                   type="text"
                   value={mealProt}
@@ -890,7 +891,7 @@ export default function MenuManager({
                 
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Carb:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Carb:")}</span>
                   <input
                   type="text"
                   value={mealCarb}
@@ -900,7 +901,7 @@ export default function MenuManager({
                 
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Fat:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Fat:")}</span>
                   <input
                   type="text"
                   value={mealFat}
@@ -914,7 +915,7 @@ export default function MenuManager({
 
             {/* Diet Type selection */}
             <div className="space-y-2">
-              <label className="text-[10px] text-outline uppercase font-semibold">Diet Type</label>
+              <label className="text-[10px] text-outline uppercase font-semibold">{t("Diet Type")}</label>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { id: 'Keto', label: 'Keto', desc: 'High fat, low carb', icon: 'bolt' },
@@ -948,8 +949,8 @@ export default function MenuManager({
             {/* Allergens selectable pills grid list */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] text-outline uppercase font-semibold">Allergens (EU 14)</label>
-                <span className="text-[10px] text-error font-semibold italic">Select all that apply</span>
+                <label className="text-[10px] text-outline uppercase font-semibold">{t("Allergens (EU 14)")}</label>
+                <span className="text-[10px] text-error font-semibold italic">{t("Select all that apply")}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {['Gluten', 'Dairy', 'Eggs', 'Nuts', 'Peanuts', 'Soy', 'Fish', 'Shellfish', 'Sesame', 'Mustard', 'Celery', 'Lupin', 'Molluscs', 'Sulphites'].map((allergen) => {
@@ -977,7 +978,7 @@ export default function MenuManager({
 
             {/* Meal image upload slot representation */}
             <div className="space-y-1 pt-2">
-              <label className="text-[10px] text-outline uppercase font-semibold block">Meal Photo</label>
+              <label className="text-[10px] text-outline uppercase font-semibold block">{t("Meal Photo")}</label>
               <input
                 type="file"
                 id="meal-photo-upload"
@@ -991,7 +992,7 @@ export default function MenuManager({
                 className={`relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-all duration-300 block ${isUploadingPhoto ? 'opacity-80 pointer-events-none' : ''}`}
               >
                 <img
-                  alt="Meal preview"
+                  alt={t("Meal preview")}
                   className="w-full h-full object-cover"
                   src={mealImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'}
                 />
@@ -999,12 +1000,12 @@ export default function MenuManager({
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
                     <Loader2 className="text-[32px] animate-spin" />
-                    <span className="font-bold text-[13px] mt-2 tracking-wider">Uploading Photo...</span>
+                    <span className="font-bold text-[13px] mt-2 tracking-wider">{t("Uploading Photo...")}</span>
                   </div>
                 ) : (
                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera className="text-[32px]" />
-                    <span className="font-bold text-[13px] mt-1">Change Photo</span>
+                    <span className="font-bold text-[13px] mt-1">{t("Change Photo")}</span>
                   </div>
                 )}
               </label>
@@ -1017,7 +1018,7 @@ export default function MenuManager({
               className="w-full py-4 bg-primary text-on-primary font-bold text-[15px] rounded-xl shadow-lg active:scale-98 transition-transform flex items-center justify-center gap-2 cursor-pointer">
               
                 <Save className="leading-none text-[20px]" />
-                Save Meal
+                {t("Save Meal")}
               </button>
 
               {editingMeal &&
@@ -1026,7 +1027,7 @@ export default function MenuManager({
               onClick={handleDeleteClick}
               className="w-full py-2.5 text-center text-[12px] font-bold text-error uppercase tracking-wider hover:underline active:scale-95 transition-transform">
               
-                  Delete Meal
+                  {t("Delete Meal")}
                 </button>
             }
             </div>
@@ -1045,7 +1046,7 @@ export default function MenuManager({
             
               <ArrowLeft />
             </button>
-            <h2 className="text-[16px] font-semibold">Surprise Boxes</h2>
+            <h2 className="text-[16px] font-semibold">{t("Surprise Boxes")}</h2>
             <div className="w-6"></div>
           </div>
 
@@ -1053,13 +1054,13 @@ export default function MenuManager({
             {/* Active surprise boxes column list */}
             <div>
               <h2 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3">
-                ACTIVE SURPRISE BOXES
+                {t("ACTIVE SURPRISE BOXES")}
               </h2>
               
               {surpriseBoxes.filter((s) => s.status === 'Active').length === 0 ?
             <div className="text-center py-6 bg-white rounded-xl border border-dashed border-outline-variant p-4">
                   <ShoppingBag className="text-[30px] text-outline" />
-                  <p className="text-[13px] text-outline mt-1 font-bold">No active promotional surprise boxes</p>
+                  <p className="text-[13px] text-outline mt-1 font-bold">{t("No active promotional surprise boxes")}</p>
                 </div> :
 
             surpriseBoxes.
@@ -1073,27 +1074,27 @@ export default function MenuManager({
                         <div>
                           <h3 className="font-bold text-[14px] text-on-surface mb-0.5">{box.mealName}</h3>
                           <p className="text-[12px] text-outline">
-                            {box.portions} portions · {box.discount}% off · Closes 2pm
+                            {t("{{portions}} portions · {{discount}}% off · Closes 2pm", { portions: box.portions, discount: box.discount })}
                           </p>
                         </div>
                         <div className="bg-primary/10 border border-primary/20 text-primary px-3 py-1 rounded-full text-[11px] font-bold">
-                          {box.claimedCount} claimed
+                          {t("{{claimedCount}} claimed", { claimedCount: box.claimedCount })}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center gap-1.5 font-bold text-[13px]">
-                          <span className="text-outline line-through">{box.originalPrice.toFixed(2)} PLN</span>
+                          <span className="text-outline line-through">{t("{{originalPrice}} PLN", { originalPrice: box.originalPrice.toFixed(2) })}</span>
                           <ArrowRight className="text-primary text-[14px]" />
-                          <span className="text-primary text-[15px]">{box.discountedPrice.toFixed(2)} PLN</span>
+                          <span className="text-primary text-[15px]">{t("{{discountedPrice}} PLN", { discountedPrice: box.discountedPrice.toFixed(2) })}</span>
                         </div>
                         <button
                   onClick={() => {
                     onEndSurpriseBox(box.id);
-                    triggerToast('Surprise box campaign ended');
+                    triggerToast(t("Surprise box campaign ended"));
                   }}
                   className="bg-secondary-container text-white px-3.5 py-2 rounded-lg font-bold text-[12px] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
                   
-                          End deal
+                          {t("End deal")}
                         </button>
                       </div>
                     </div>
@@ -1104,13 +1105,13 @@ export default function MenuManager({
             {/* CREATE NEW SURPRISE BOX card */}
             <form onSubmit={handleCreateSurpriseBox} className="space-y-4">
               <h2 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
-                CREATE NEW SURPRISE BOX
+                {t("CREATE NEW SURPRISE BOX")}
               </h2>
               
               <div className="bg-white rounded-xl p-4 border border-outline-variant/20 space-y-4 shadow-xs">
                 {/* Select Meal */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant">SELECT MEAL</label>
+                  <label className="text-[11px] font-bold text-on-surface-variant">{t("SELECT MEAL")}</label>
                   <div className="relative">
                     <select
                     value={selectedMealId}
@@ -1118,12 +1119,12 @@ export default function MenuManager({
                     onChange={(e) => setSelectedMealId(e.target.value)}
                     className="w-full bg-surface border border-outline-variant rounded-lg h-11 px-3 pr-10 text-[13px] font-medium text-on-surface focus:outline-none focus:border-primary appearance-none transition-all">
                     
-                      <option value="">Choose from today's menu</option>
+                      <option value="">{t("Choose from today's menu")}</option>
                       {meals.
                     filter((m) => m.status === 'Active').
                     map((m) =>
                     <option key={m.id} value={m.id}>
-                            {m.name} ({m.price.toFixed(2)} PLN)
+                            {t("{{name}} ({{price}} PLN)", { name: m.name, price: m.price.toFixed(2) })}
                           </option>
                     )}
                     </select>
@@ -1133,7 +1134,7 @@ export default function MenuManager({
 
                 {/* Unsold Portions */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">UNSOLD PORTIONS</label>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("UNSOLD PORTIONS")}</label>
                   <div className="flex gap-2.5">
                     {[1, 2, 3, 4, 5].map((val) => {
                     const isActive = val === unsoldPortions;
@@ -1155,7 +1156,7 @@ export default function MenuManager({
 
                 {/* Discount Slider */}
                 <div className="space-y-2 pt-2">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">DISCOUNT %</label>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("DISCOUNT %")}</label>
                   <input
                   type="range"
                   min="10"
@@ -1166,15 +1167,15 @@ export default function MenuManager({
                   className="w-full h-2 bg-surface-container-highest rounded-full appearance-none accent-secondary-container cursor-pointer" />
                 
                   <div className="text-center pt-1">
-                    <p className="font-bold text-on-surface text-[13px]">{discountPercent}% off</p>
+                    <p className="font-bold text-on-surface text-[13px]">{t("{{discountPercent}}% off", { discountPercent })}</p>
                     {selectedMealId && meals.find((m) => m.id === selectedMealId) &&
                   <div className="flex items-center justify-center gap-2 text-[12px] font-bold text-secondary mt-0.5">
                         <span className="text-outline line-through">
-                          {meals.find((m) => m.id === selectedMealId).price.toFixed(2)} PLN
+                          {meals.find((m) => m.id === selectedMealId).price.toFixed(2)} {t("PLN")}
                         </span>
                         <ArrowRight className="text-[14px]" />
                         <span>
-                          {(meals.find((m) => m.id === selectedMealId).price * (1 - discountPercent / 100)).toFixed(2)} PLN
+                          {(meals.find((m) => m.id === selectedMealId).price * (1 - discountPercent / 100)).toFixed(2)} {t("PLN")}
                         </span>
                       </div>
                   }
@@ -1183,10 +1184,10 @@ export default function MenuManager({
 
                 {/* Closing hours */}
                 <div className="flex justify-between items-center py-3 border-t border-outline-variant/20">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">CLOSES AT</label>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("CLOSES AT")}</label>
                   <div className="flex items-center gap-1.5 font-bold text-[13px] text-on-surface">
                     <Clock className="text-[#F59E0B] text-[18px]" />
-                    <span>14:00 today</span>
+                    <span>{t("14:00 today")}</span>
                   </div>
                 </div>
 
@@ -1196,7 +1197,7 @@ export default function MenuManager({
                 className="w-full bg-secondary-container h-12 rounded-xl flex items-center justify-center gap-2 font-bold text-white text-[15px] shadow-md hover:brightness-105 active:scale-95 transition-all cursor-pointer">
                 
                   <Sparkles />
-                  Submit Surprise Box
+                  {t("Submit Surprise Box")}
                 </button>
               </div>
             </form>
@@ -1216,48 +1217,48 @@ export default function MenuManager({
               <ArrowLeft />
             </button>
             <h2 className="text-[15px] font-semibold truncate max-w-[240px]">
-              Schedule: {selectedDateForSchedule?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              {t("Schedule: {{selectedDateForSchedule}}", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) })}
             </h2>
             <div className="w-6"></div>
           </div>
 
           <div className="pt-16 space-y-5">
             <div className="bg-primary/5 rounded-xl p-3.5 border border-primary/10">
-              <h3 className="text-[12px] text-outline uppercase font-bold tracking-wider">Meal Plan</h3>
+              <h3 className="text-[12px] text-outline uppercase font-bold tracking-wider">{t("Meal Plan")}</h3>
               <p className="text-[14px] font-extrabold text-primary mt-0.5">{selectedMealForSchedule.name}</p>
               <p className="text-[11px] text-on-surface-variant font-medium mt-1">
-                Customize what you are cooking for this plan on {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}.
+                {t("Customize what you are cooking for this plan on {{selectedDateForSchedule}}.", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) })}
               </p>
             </div>
 
             {/* Dish Name */}
             <div className="space-y-1">
-              <label className="text-[10px] text-outline uppercase font-semibold block">Dish Name</label>
+              <label className="text-[10px] text-outline uppercase font-semibold block">{t("Dish Name")}</label>
               <input
                 type="text"
                 required
                 value={dishNameSchedule}
                 onChange={(e) => setDishNameSchedule(e.target.value)}
-                placeholder="e.g. Shahi Paneer & Lachha Paratha"
+                placeholder={t("e.g. Shahi Paneer & Lachha Paratha")}
                 className="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] outline-none focus:ring-1 focus:ring-primary bg-white transition-all font-medium text-on-surface"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-1">
-              <label className="text-[10px] text-outline uppercase font-semibold block">Description</label>
+              <label className="text-[10px] text-outline uppercase font-semibold block">{t("Description")}</label>
               <textarea
                 rows={3}
                 value={descriptionSchedule}
                 onChange={(e) => setDescriptionSchedule(e.target.value)}
-                placeholder="Describe tomorrow's meal preparation, ingredients, spices, or special touch..."
+                placeholder={t("Describe tomorrow's meal preparation, ingredients, spices, or special touch...")}
                 className="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] outline-none focus:ring-1 focus:ring-primary bg-white transition-all resize-none font-medium text-on-surface"
               />
             </div>
 
             {/* Dish Photo */}
             <div className="space-y-1">
-              <label className="text-[10px] text-outline uppercase font-semibold block">Dish Photo</label>
+              <label className="text-[10px] text-outline uppercase font-semibold block">{t("Dish Photo")}</label>
               <input
                 type="file"
                 id="schedule-photo-upload"
@@ -1271,19 +1272,19 @@ export default function MenuManager({
                 className={`relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-all duration-300 block ${isUploadingPhoto ? 'opacity-80 pointer-events-none' : ''}`}
               >
                 <img
-                  alt="Schedule preview"
+                  alt={t("Schedule preview")}
                   className="w-full h-full object-cover"
                   src={photoSchedule || selectedMealForSchedule.imageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'}
                 />
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
                     <Loader2 className="text-[32px] animate-spin" />
-                    <span className="font-bold text-[13px] mt-2 tracking-wider">Uploading Photo...</span>
+                    <span className="font-bold text-[13px] mt-2 tracking-wider">{t("Uploading Photo...")}</span>
                   </div>
                 ) : (
                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera className="text-[32px]" />
-                    <span className="font-bold text-[13px] mt-1">Change Photo</span>
+                    <span className="font-bold text-[13px] mt-1">{t("Change Photo")}</span>
                   </div>
                 )}
               </label>
@@ -1291,10 +1292,10 @@ export default function MenuManager({
 
             {/* Nutrition facts */}
             <div className="space-y-2">
-              <label className="text-[10px] text-outline uppercase font-semibold block">Nutritional Info (Optional)</label>
+              <label className="text-[10px] text-outline uppercase font-semibold block">{t("Nutritional Info (Optional)")}</label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Cal:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Cal:")}</span>
                   <input
                     type="text"
                     value={caloriesSchedule}
@@ -1304,7 +1305,7 @@ export default function MenuManager({
                   />
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Prot:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Prot:")}</span>
                   <input
                     type="text"
                     value={proteinSchedule}
@@ -1314,7 +1315,7 @@ export default function MenuManager({
                   />
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Carb:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Carb:")}</span>
                   <input
                     type="text"
                     value={carbsSchedule}
@@ -1324,7 +1325,7 @@ export default function MenuManager({
                   />
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">Fat:</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-outline">{t("Fat:")}</span>
                   <input
                     type="text"
                     value={fatsSchedule}
@@ -1344,14 +1345,14 @@ export default function MenuManager({
                 className="w-full py-4 bg-primary text-on-primary font-bold text-[15px] rounded-xl shadow-lg active:scale-98 transition-transform flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
               >
                 {isSavingSchedule ? <Loader2 className="leading-none text-[20px]" /> : <Save className="leading-none text-[20px]" />}
-                {isSavingSchedule ? 'Saving Schedule...' : 'Save Schedule'}
+                {isSavingSchedule ? t("Saving Schedule...") : t("Save Schedule")}
               </button>
               <button
                 type="button"
                 onClick={() => setScheduleModalOpen(false)}
                 className="w-full py-3 text-center border border-outline-variant/60 rounded-xl text-[13px] font-bold text-on-surface hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                {t("Cancel")}
               </button>
             </div>
           </div>
@@ -1364,9 +1365,9 @@ export default function MenuManager({
           <div className="w-full md:max-w-md bg-white rounded-t-[28px] md:rounded-2xl p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
             <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
               <div>
-                <h3 className="font-extrabold text-[16px] text-on-surface">Select Dish for Schedule</h3>
+                <h3 className="font-extrabold text-[16px] text-on-surface">{t("Select Dish for Schedule")}</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  Plan: {mealSelectorOpenPlan.name} on {(selectedDateForSchedule || selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })} [{selectedSlotForSchedule}]
+                  {t("Plan: {{name}} on {{value}} [{{selectedSlotForSchedule}}]", { name: mealSelectorOpenPlan.name, value: (selectedDateForSchedule || selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }), selectedSlotForSchedule })}
                 </p>
               </div>
               <button
@@ -1382,9 +1383,9 @@ export default function MenuManager({
               {meals.filter(m => m.status === 'Active').length === 0 ? (
                 <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-outline-variant p-4">
                   <UtensilsCrossed className="text-[32px] text-outline" />
-                  <p className="text-[12px] text-outline mt-1 font-bold">No active meals found in your menu</p>
+                  <p className="text-[12px] text-outline mt-1 font-bold">{t("No active meals found in your menu")}</p>
                   <p className="text-[11px] text-outline mt-0.5 px-4 font-medium leading-relaxed">
-                    Create more active meals in your Menu first to select them here.
+                    {t("Create more active meals in your Menu first to select them here.")}
                   </p>
                 </div>
               ) : (
@@ -1404,7 +1405,7 @@ export default function MenuManager({
                         <h4 className="font-extrabold text-[13px] text-on-surface truncate">{meal.name}</h4>
                         <p className="text-[11px] text-outline mt-0.5 truncate font-medium">{meal.description}</p>
                         <p className="text-[11px] font-extrabold text-primary mt-1">
-                          {meal.price.toFixed(2)} PLN <span className="font-medium text-outline">· {meal.calories}</span>
+                          <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
                         </p>
                       </div>
                       <ChevronRight className="text-primary self-center text-[18px]" />
@@ -1422,9 +1423,9 @@ export default function MenuManager({
           <div className="w-full md:max-w-md bg-white rounded-t-[28px] md:rounded-2xl p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl animate-slideUp text-left">
             <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
               <div>
-                <h3 className="font-extrabold text-[16px] text-on-surface">Select Meal</h3>
+                <h3 className="font-extrabold text-[16px] text-on-surface">{t("Select Meal")}</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  For {selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} [{selectedSlotForSchedule}]
+                  {t("For {{selectedDateForSchedule}} [{{selectedSlotForSchedule}}]", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }), selectedSlotForSchedule })}
                 </p>
               </div>
               <button
@@ -1440,7 +1441,7 @@ export default function MenuManager({
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <Info className="text-amber-600 text-[15px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }} />
               <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
-                Whichever meal you select will be scheduled for this slot and will update the customer's orders in real-time.
+                {t("Whichever meal you select will be scheduled for this slot and will update the customer's orders in real-time.")}
               </p>
             </div>
 
@@ -1448,9 +1449,9 @@ export default function MenuManager({
               {meals.filter(m => m.status === 'Active').length === 0 ? (
                 <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-outline-variant p-4">
                   <UtensilsCrossed className="text-[32px] text-outline" />
-                  <p className="text-[12px] text-outline mt-1 font-bold">No active meals in menu</p>
+                  <p className="text-[12px] text-outline mt-1 font-bold">{t("No active meals in menu")}</p>
                   <p className="text-[11px] text-outline mt-0.5 px-4 font-medium leading-relaxed">
-                    Add meals in the Menu tab first.
+                    {t("Add meals in the Menu tab first.")}
                   </p>
                 </div>
               ) : (
@@ -1473,7 +1474,7 @@ export default function MenuManager({
                         <h4 className="font-extrabold text-[14px] text-on-surface truncate">{meal.name}</h4>
                         <p className="text-[11px] text-outline mt-0.5 truncate font-medium">{meal.description}</p>
                         <p className="text-[11px] font-extrabold text-primary mt-1">
-                          {meal.price.toFixed(2)} PLN <span className="font-medium text-outline">· {meal.calories}</span>
+                          <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
                         </p>
                       </div>
                       <PlusCircle className="text-primary self-center text-[18px]" />

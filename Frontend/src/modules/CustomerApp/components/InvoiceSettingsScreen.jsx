@@ -4,7 +4,9 @@ import { ArrowLeft, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dmbCustomerAPI } from "@food/api";
+import { useTranslation } from "react-i18next";
 export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, currentUser, selectedPlanDetails }) {
+  const { t } = useTranslation("customer");
   const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
   const [companyName, setCompanyName] = useState(initialSettings.companyName || currentUser?.companyName || '');
   const [nipVat, setNipVat] = useState(initialSettings.nipVat || currentUser?.companyNip || '');
@@ -140,23 +142,23 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
     {/* Header element bar */}
     <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
       <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><ArrowLeft size={24} /></button>
-      <h1 className="text-xl font-extrabold text-primary text-center">Invoice Preferences</h1>
+      <h1 className="text-xl font-extrabold text-primary text-center">{t("Invoice Preferences")}</h1>
       <div className="w-8" />
     </header>
 
     <main className="pt-20 pb-12 px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto space-y-6">
       {/* Intro */}
       <section className="space-y-1">
-        <h2 className="text-[18px] font-extrabold text-on-surface">Receipt &amp; Invoice Preferences</h2>
+        <h2 className="text-[18px] font-extrabold text-on-surface">{t("Receipt & Invoice Preferences")}</h2>
         <p className="text-xs text-[#6e7a74] leading-relaxed">
-          Manage how you receive your billing documents for your daily subscription meals.
+          {t("Manage how you receive your billing documents for your daily subscription meals.")}
         </p>
       </section>
 
       {/* RECEIPT TYPE SECTION */}
       <section className="space-y-3">
         <h3 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-sans">
-          RECEIPT TYPE
+          {t("RECEIPT TYPE")}
         </h3>
         <div className="space-y-3">
           {/* Simple Card Option */}
@@ -169,8 +171,8 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               </div>
             </div>
             <div className="space-y-0.5">
-              <p className="text-sm font-bold text-on-surface">Simple Receipt</p>
-              <p className="text-xs text-on-surface-variant font-medium">B2C personal use. Shows total price only.</p>
+              <p className="text-sm font-bold text-on-surface">{t("Simple Receipt")}</p>
+              <p className="text-xs text-on-surface-variant font-medium">{t("B2C personal use. Shows total price only.")}</p>
             </div>
           </div>
 
@@ -184,8 +186,8 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               </div>
             </div>
             <div className="space-y-0.5">
-              <p className="text-sm font-bold text-on-surface">Full VAT Invoice</p>
-              <p className="text-xs text-on-surface-variant font-medium">B2B business use. Full VAT breakdown.</p>
+              <p className="text-sm font-bold text-on-surface">{t("Full VAT Invoice")}</p>
+              <p className="text-xs text-on-surface-variant font-medium">{t("B2B business use. Full VAT breakdown.")}</p>
             </div>
           </div>
         </div>
@@ -195,22 +197,22 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
       {receiptType === 'vat' && (
         <section className="space-y-4">
           <h3 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest font-sans">
-            COMPANY DETAILS
+            {t("COMPANY DETAILS")}
           </h3>
 
           <div className="space-y-4">
             {/* Input 1 */}
             <div className="space-y-1.5 focus-within:text-primary">
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Company Name
+                {t("Company Name")}
               </label>
-              <input type="text" readOnly value={companyName} placeholder="Acme Corp Sp. z o.o." className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="text" readOnly value={companyName} placeholder={t("Acme Corp Sp. z o.o.")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
             </div>
 
             {/* Input 2 */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                NIP VAT Number
+                {t("NIP VAT Number")}
               </label>
               <input type="text" readOnly value={nipVat} placeholder="123-456-78-90" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
             </div>
@@ -218,17 +220,17 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
             {/* Input 3 */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Company Address
+                {t("Company Address")}
               </label>
-              <input type="text" readOnly value={companyAddress} placeholder="ul. Wiejska 10, Warsaw" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="text" readOnly value={companyAddress} placeholder={t("ul. Wiejska 10, Warsaw")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
             </div>
 
             {/* Input 4 */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
-                Billing Email
+                {t("Billing Email")}
               </label>
-              <input type="email" readOnly value={billingEmail} placeholder="accounting@acmecorp.pl" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="email" readOnly value={billingEmail} placeholder={t("accounting@acmecorp.pl")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
             </div>
           </div>
         </section>
@@ -238,7 +240,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
       <div className="pt-4">
         <button onClick={handleDownload} className="w-full bg-[#287965] hover:bg-[#1f6050] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm flex items-center justify-center gap-2">
           <Download className="text-[20px]" />
-          {receiptType === 'simple' ? 'Download Subscription Receipt' : 'Download VAT Invoice'}
+          {receiptType === 'simple' ? t("Download Subscription Receipt") : t("Download VAT Invoice")}
         </button>
       </div>
     </main>

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Utensils, Loader2 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
+    const { t } = useTranslation("customer");
     const [selectedDiet, setSelectedDiet] = useState(initialPrefs?.dietType || 'No preference');
     const [selectedAllergies, setSelectedAllergies] = useState(initialPrefs?.allergies || []);
     const [isSaving, setIsSaving] = useState(false);
@@ -24,10 +26,10 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
     };
 
     const diets = [
-        { id: 'Keto', label: 'Keto', desc: 'High fat, low carb', icon: 'bolt' },
-        { id: 'Vegan', label: 'Vegan', desc: 'Plant-based only', icon: 'eco' },
-        { id: 'Vegetarian', label: 'Vegetarian', desc: 'No meat or fish', icon: 'nutrition' },
-        { id: 'Paleo', label: 'Paleo', desc: 'Whole foods only', icon: 'outdoor_grill' }
+        { id: 'Keto', label: t("Keto"), desc: t("High fat, low carb"), icon: 'bolt' },
+        { id: 'Vegan', label: t("Vegan"), desc: t("Plant-based only"), icon: 'eco' },
+        { id: 'Vegetarian', label: t("Vegetarian"), desc: t("No meat or fish"), icon: 'nutrition' },
+        { id: 'Paleo', label: t("Paleo"), desc: t("Whole foods only"), icon: 'outdoor_grill' }
     ];
 
     const allAllergies = [
@@ -45,10 +47,10 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
     return (
         <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-[100dvh] relative">
             <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
-                <button onClick={onBack} aria-label="Go back" className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                <button onClick={onBack} aria-label={t("Go back")} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-xl font-extrabold text-primary text-center">Diet &amp; Allergens</h1>
+                <h1 className="text-xl font-extrabold text-primary text-center">{t("Diet & Allergens")}</h1>
                 <div className="w-8" />
             </header>
 
@@ -56,8 +58,8 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                 {/* Header Visual Accent */}
                 <div className="mb-6 relative overflow-hidden rounded-xl h-24 bg-[#1f7a63] flex items-center px-4 shadow-sm">
                     <div className="z-10">
-                        <h2 className="text-white text-[18px] font-bold leading-tight">Tailor Your Plate</h2>
-                        <p className="text-white/80 text-[13px] mt-0.5 font-medium">We'll filter meals based on your needs.</p>
+                        <h2 className="text-white text-[18px] font-bold leading-tight">{t("Tailor Your Plate")}</h2>
+                        <p className="text-white/80 text-[13px] mt-0.5 font-medium">{t("We'll filter meals based on your needs.")}</p>
                     </div>
                     <div className="absolute right-[-20px] bottom-[-10px] opacity-20">
                         <Utensils className="text-[80px]" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -67,8 +69,8 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                 {/* Current Diet Section */}
                 <section className="mb-6">
                     <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-[16px] font-bold text-[#1b1c1c]">Current Diet</h3>
-                        <span className="text-[13px] text-primary font-bold">{selectedDiet && selectedDiet !== 'No preference' ? '1 Selected' : '0 Selected'}</span>
+                        <h3 className="text-[16px] font-bold text-[#1b1c1c]">{t("Current Diet")}</h3>
+                        <span className="text-[13px] text-primary font-bold">{selectedDiet && selectedDiet !== 'No preference' ? t("1 Selected") : t("0 Selected")}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         {diets.map(diet => {
@@ -97,7 +99,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
 
                 {/* Allergies & Exclusions */}
                 <section className="mb-6">
-                    <h3 className="text-[12px] font-bold text-[#6e7a74] mb-3 uppercase tracking-wider">Allergies</h3>
+                    <h3 className="text-[12px] font-bold text-[#6e7a74] mb-3 uppercase tracking-wider">{t("Allergies")}</h3>
                     <div className="flex flex-wrap gap-2.5">
                         {allAllergies.map((allergy) => {
                             const isChecked = selectedAllergies.includes(allergy);
@@ -127,9 +129,9 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                         {isSaving ? (
                             <>
                                 <Loader2 className="text-[20px] animate-spin mr-2" />
-                                Saving...
+                                {t("Saving...")}
                             </>
-                        ) : 'Save Changes'}
+                        ) : t("Save Changes")}
                     </button>
                 </div>
             </main>

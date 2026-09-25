@@ -8,11 +8,13 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useDeliveryNotificationContext } from '../../../Food/context/DeliveryNotificationContext';
+import { useTranslation } from "react-i18next";
 
 /**
  * SupportTicketsV2 - Restored Old UI for Support Ticket Hub.
  */
 export const SupportTicketsV2 = () => {
+  const { t: tr } = useTranslation("driver");
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
   const [tickets, setTickets] = useState([]);
@@ -28,7 +30,7 @@ export const SupportTicketsV2 = () => {
           setTickets(response.data.data.tickets || []);
         }
       } catch (error) {
-        toast.error("Failed to load tickets");
+        toast.error(tr("Failed to load tickets"));
       } finally {
         setLoading(false);
       }
@@ -67,7 +69,7 @@ export const SupportTicketsV2 = () => {
         <button onClick={goBack} className="p-1 hover:bg-gray-50 rounded-full">
            <ArrowLeft className="w-6 h-6 text-[#2B2B2B]" />
         </button>
-        <h1 className="text-xl font-black text-[#2B2B2B]">Support Tickets</h1>
+        <h1 className="text-xl font-black text-[#2B2B2B]">{tr("Support Tickets")}</h1>
       </div>
 
       <div className="pt-24 px-4 space-y-6">
@@ -77,22 +79,22 @@ export const SupportTicketsV2 = () => {
           className="w-full bg-[#1F7A63] text-[#F5F5F0] p-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
         >
           <Plus className="w-5 h-5" />
-          Raise New Ticket
+          {tr("Raise New Ticket")}
         </button>
 
         {/* List */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
              <Loader2 className="w-8 h-8 animate-spin text-gray-200" />
-             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Syncing Tickets...</p>
+             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr("Syncing Tickets...")}</p>
           </div>
         ) : tickets.length === 0 ? (
           <div className="py-24 text-center">
              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <MessageSquare className="w-10 h-10 text-gray-200" />
              </div>
-             <h3 className="text-sm font-black text-[#2B2B2B] uppercase tracking-widest">No Active Tickets</h3>
-             <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Create a ticket if you need assistance</p>
+             <h3 className="text-sm font-black text-[#2B2B2B] uppercase tracking-widest">{tr("No Active Tickets")}</h3>
+             <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">{tr("Create a ticket if you need assistance")}</p>
           </div>
         ) : (
           <div className="space-y-4">

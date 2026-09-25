@@ -5,11 +5,13 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { openCamera } from "@food/utils/imageUploadUtils";
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * ProfileDocsV2 - Restored Old UI for Registration Documents & Vehicle Info.
  */
 export const ProfileDocsV2 = () => {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export const ProfileDocsV2 = () => {
       try {
         const response = await deliveryAPI.getProfile();
         if (response?.data?.success) setProfile(response.data.data.profile);
-      } catch (e) { toast.error("Failed to load documents"); }
+      } catch (e) { toast.error(t("Failed to load documents")); }
       finally { setLoading(false); }
     };
     fetchProfile();
@@ -37,11 +39,11 @@ export const ProfileDocsV2 = () => {
      try {
         const res = await deliveryAPI.updateProfileMultipart(formData);
         if (res?.data?.success) {
-           toast.success("Document updated successfully");
+           toast.success(t("Document updated successfully"));
            const updated = await deliveryAPI.getProfile();
            setProfile(updated.data.data.profile);
         }
-     } catch (e) { toast.error("Upload failed"); }
+     } catch (e) { toast.error(t("Upload failed")); }
      finally { setIsUpdating(false); }
   };
 
@@ -65,25 +67,25 @@ export const ProfileDocsV2 = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
 
   const docs = [
-    { label: "Aadhar Card", field: "aadharPhoto", data: profile?.documents?.aadhar },
-    { label: "PAN Card", field: "panPhoto", data: profile?.documents?.pan },
-    { label: "Driving License", field: "drivingLicensePhoto", data: profile?.documents?.drivingLicense }
+    { label: t("Aadhar Card"), field: "aadharPhoto", data: profile?.documents?.aadhar },
+    { label: t("PAN Card"), field: "panPhoto", data: profile?.documents?.pan },
+    { label: t("Driving License"), field: "drivingLicensePhoto", data: profile?.documents?.drivingLicense }
   ];
 
   return (
     <div className="min-h-full bg-transparent font-poppins pb-20">
        <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
           <button onClick={goBack}><ArrowLeft className="w-6 h-6 shadow-sm p-1 rounded-full bg-gray-50 bg-opacity-70" /></button>
-          <h1 className="text-xl font-black">Registration Docs</h1>
+          <h1 className="text-xl font-black">{t("Registration Docs")}</h1>
        </div>
 
        <div className="pt-24 px-4 space-y-8">
           {/* 1. Vehicle Card */}
           <div className="bg-primary rounded-2xl p-6 text-white shadow-xl shadow-orange-500/20 flex flex-col gap-2 relative overflow-hidden">
              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full translate-x-20 -translate-y-20" />
-             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 z-10">Vehicle Registered</p>
-             <h3 className="text-2xl font-black z-10">{profile?.vehicle?.number || "NO # REGISTERED"}</h3>
-             <p className="text-[10px] font-bold z-10 opacity-70 uppercase tracking-widest">{profile?.vehicle?.type || "Standard Bike"}</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 z-10">{t("Vehicle Registered")}</p>
+             <h3 className="text-2xl font-black z-10">{profile?.vehicle?.number || t("NO # REGISTERED")}</h3>
+             <p className="text-[10px] font-bold z-10 opacity-70 uppercase tracking-widest">{profile?.vehicle?.type || t("Standard Bike")}</p>
           </div>
 
           {/* 2. Documents List */}
@@ -115,7 +117,7 @@ export const ProfileDocsV2 = () => {
                    </div>
                    {doc.data?.document && (
                       <div className="mt-2 w-24 h-16 rounded-xl border border-gray-100 overflow-hidden shadow-inner bg-gray-50 flex items-center justify-center">
-                         <img src={doc.data.document} className="w-full h-full object-cover opacity-50 grayscale" alt="Preview" />
+                         <img src={doc.data.document} className="w-full h-full object-cover opacity-50 grayscale" alt={t("Preview")} />
                       </div>
                    )}
                 </div>
@@ -124,7 +126,7 @@ export const ProfileDocsV2 = () => {
 
           <div className="p-10 text-center opacity-30 mt-10">
              <FileText className="w-16 h-16 mx-auto mb-4" />
-             <p className="text-[10px] font-black uppercase tracking-[0.4em]">Official Fleet Identity</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.4em]">{t("Official Fleet Identity")}</p>
           </div>
        </div>
 
@@ -139,7 +141,7 @@ export const ProfileDocsV2 = () => {
                       <button onClick={() => setShowViewer(null)} className="p-3 bg-gray-50 rounded-full text-gray-400"><X className="w-6 h-6" /></button>
                    </div>
                    <div className="p-2">
-                      <img src={showViewer.url} className="w-full h-full object-contain rounded-2xl max-h-[70vh]" alt="Identity Doc" />
+                      <img src={showViewer.url} className="w-full h-full object-contain rounded-2xl max-h-[70vh]" alt={t("Identity Doc")} />
                    </div>
                 </motion.div>
              </div>

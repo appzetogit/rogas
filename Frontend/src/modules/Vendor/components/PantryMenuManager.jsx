@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { restaurantAPI, uploadAPI } from '../../../services/api/index';
 import { Plus, Edit2, Trash2, X, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from "react-i18next";
 
 export default function PantryMenuManager({ items, setItems }) {
+  const { t } = useTranslation("vendor");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
@@ -69,16 +71,16 @@ export default function PantryMenuManager({ items, setItems }) {
   };
 
   const handleDelete = async (item) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
+    if (window.confirm(t("Are you sure you want to delete this item?"))) {
       try {
         const res = await restaurantAPI.deleteFood(item._id || item.id);
         if (res.data?.success) {
           setItems(items.filter(i => (i._id || i.id) !== (item._id || item.id)));
-          toast.success("Item deleted successfully");
+          toast.success(t("Item deleted successfully"));
         }
       } catch (err) {
         console.error(err);
-        toast.error('Failed to delete item');
+        toast.error(t("Failed to delete item"));
       }
     }
   };
@@ -86,7 +88,7 @@ export default function PantryMenuManager({ items, setItems }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!name || (!price && variants.length === 0)) {
-        toast.error("Name and either Base Price or Variants are required");
+        toast.error(t("Name and either Base Price or Variants are required"));
         return;
     }
     
@@ -99,7 +101,7 @@ export default function PantryMenuManager({ items, setItems }) {
         imageUrl = uploadRes?.data?.data?.url || uploadRes?.data?.url || imageUrl;
       } catch (err) {
         console.error("Image upload failed:", err);
-        toast.error("Failed to upload image");
+        toast.error(t("Failed to upload image"));
         setIsLoading(false);
         return;
       }
@@ -124,7 +126,7 @@ export default function PantryMenuManager({ items, setItems }) {
       if (editingItem) {
         const res = await restaurantAPI.updateFood(editingItem._id || editingItem.id, payload);
         if (res.data?.success || res.data?.data) {
-          toast.success('Pantry item updated and sent for approval!');
+          toast.success(t("Pantry item updated and sent for approval!"));
           // Refresh list via parent or just update state (though it might be pending now)
           const updatedItem = res.data?.data?.food || res.data?.food || { ...editingItem, ...payload, approvalStatus: 'pending' };
           setItems(items.map(i => (i._id || i.id) === (editingItem._id || editingItem.id) ? updatedItem : i));
@@ -133,7 +135,7 @@ export default function PantryMenuManager({ items, setItems }) {
       } else {
         const res = await restaurantAPI.createFood(payload);
         if (res.data?.success || res.data?.data) {
-          toast.success('Pantry item created and sent for approval!');
+          toast.success(t("Pantry item created and sent for approval!"));
           const newItem = res.data?.data?.food || res.data?.food;
           if (newItem) {
             setItems([newItem, ...items]);
@@ -143,7 +145,7 @@ export default function PantryMenuManager({ items, setItems }) {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || 'Failed to save pantry item');
+      toast.error(err?.response?.data?.message || t("Failed to save pantry item"));
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +181,7 @@ export default function PantryMenuManager({ items, setItems }) {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xl px-5 pt-16 pb-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] font-extrabold text-primary tracking-tight">Pantry Menu</h1>
+          <h1 className="text-[28px] font-extrabold text-primary tracking-tight">{t("Pantry Menu")}</h1>
           <button
             onClick={openAddModal}
             className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center active:scale-95 transition-transform shadow-md hover:bg-[#155a49]"
@@ -187,7 +189,7 @@ export default function PantryMenuManager({ items, setItems }) {
             <Plus />
           </button>
         </div>
-        <p className="text-on-surface-variant text-[14px] mt-1 font-medium">Manage your pantry shop inventory.</p>
+        <p className="text-on-surface-variant text-[14px] mt-1 font-medium">{t("Manage your pantry shop inventory.")}</p>
       </div>
 
       {/* List */}
@@ -197,10 +199,10 @@ export default function PantryMenuManager({ items, setItems }) {
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
               <span className="text-[32px]">📦</span>
             </div>
-            <p className="text-[17px] text-[#1b1c1c] font-extrabold">No pantry items yet</p>
-            <p className="text-[14px] text-[#6e7a74] mt-1 font-medium mb-5">Add some items to start selling.</p>
+            <p className="text-[17px] text-[#1b1c1c] font-extrabold">{t("No pantry items yet")}</p>
+            <p className="text-[14px] text-[#6e7a74] mt-1 font-medium mb-5">{t("Add some items to start selling.")}</p>
             <button onClick={openAddModal} className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-[14px] active:scale-95 transition-transform">
-              Add First Item
+              {t("Add First Item")}
             </button>
           </div>
         ) : (
@@ -224,7 +226,7 @@ export default function PantryMenuManager({ items, setItems }) {
                       <h3 className="font-extrabold text-[15px] text-[#1b1c1c] leading-tight truncate">{itemName}</h3>
                       <p className="text-[16px] font-extrabold text-primary mt-1">
                         {item.variants?.length > 0 
-                            ? `${item.variants.length} Variants` 
+                            ? t("{{length}} Variants", { length: item.variants.length }) 
                             : `₹${Number(item.price).toFixed(2)}`}
                       </p>
                     </div>
@@ -233,7 +235,7 @@ export default function PantryMenuManager({ items, setItems }) {
                         onClick={() => handleToggleAvailability(item)}
                         className={`flex-1 text-[12px] font-extrabold py-2 rounded-xl border ${item.isAvailable !== false ? 'bg-[#eef0ec] text-primary border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}
                       >
-                        {item.isAvailable !== false ? 'In Stock' : 'Out of Stock'}
+                        {item.isAvailable !== false ? t("In Stock") : t("Out of Stock")}
                       </button>
                       <button onClick={() => openEditModal(item)} className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center active:scale-95 transition-transform">
                         <Edit2 className="text-[16px] text-primary" />
@@ -257,7 +259,7 @@ export default function PantryMenuManager({ items, setItems }) {
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
           <div className="bg-[#F5F5F0] w-full sm:w-[450px] rounded-t-[32px] sm:rounded-[32px] p-6 pb-8 sm:pb-6 animate-slide-up shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6 sticky top-0 bg-[#F5F5F0] pt-2 pb-2 z-10">
-              <h2 className="text-[20px] font-extrabold text-primary">{editingItem ? 'Edit Pantry Item' : 'Add Pantry Item'}</h2>
+              <h2 className="text-[20px] font-extrabold text-primary">{editingItem ? t("Edit Pantry Item") : t("Add Pantry Item")}</h2>
               <button type="button" onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center active:scale-95 transition-transform">
                 <X className="text-[20px] text-primary" />
               </button>
@@ -268,11 +270,11 @@ export default function PantryMenuManager({ items, setItems }) {
               <div className="flex flex-col items-center justify-center w-full">
                 <label className={`w-full h-40 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden relative ${imagePreview ? 'border-transparent bg-white shadow-sm' : 'border-[#bec9c3] bg-white hover:bg-surface-container'}`}>
                   {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={imagePreview} alt={t("Preview")} className="w-full h-full object-cover" />
                   ) : (
                     <>
                       <Camera className="text-[#bec9c3] text-[32px] mb-2" />
-                      <span className="text-[14px] font-bold text-on-surface-variant">Upload Photo</span>
+                      <span className="text-[14px] font-bold text-on-surface-variant">{t("Upload Photo")}</span>
                     </>
                   )}
                   <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -280,13 +282,13 @@ export default function PantryMenuManager({ items, setItems }) {
               </div>
 
               <div>
-                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Category</label>
+                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Category")}</label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full h-[52px] bg-white rounded-2xl px-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                 >
-                  <option value="">Select Category</option>
+                  <option value="">{t("Select Category")}</option>
                   {categories.map(c => (
                       <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>
                   ))}
@@ -294,12 +296,12 @@ export default function PantryMenuManager({ items, setItems }) {
               </div>
 
               <div>
-                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Food Name (Title)</label>
+                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Food Name (Title)")}</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Cold Pressed Olive Oil"
+                  placeholder={t("e.g. Cold Pressed Olive Oil")}
                   className="w-full h-[52px] bg-white rounded-2xl px-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                   required
                 />
@@ -307,49 +309,49 @@ export default function PantryMenuManager({ items, setItems }) {
 
               <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Base Price (₹)</label>
+                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Base Price (₹)")}</label>
                     <input
                       type="number"
                       step="0.01"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      placeholder="e.g. 45.00"
+                      placeholder={t("e.g. 45.00")}
                       disabled={variants.length > 0}
                       className="w-full h-[52px] bg-white rounded-2xl px-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
                       required={variants.length === 0}
                     />
                   </div>
                   <div>
-                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Other Platforms Price</label>
+                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Other Platforms Price")}</label>
                     <input
                       type="number"
                       step="0.01"
                       value={priceOnOtherPlatforms}
                       onChange={(e) => setPriceOnOtherPlatforms(e.target.value)}
-                      placeholder="Optional"
+                      placeholder={t("Optional")}
                       className="w-full h-[52px] bg-white rounded-2xl px-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                     />
                   </div>
               </div>
 
               <div>
-                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Food Type</label>
+                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Food Type")}</label>
                 <select
                   value={foodType}
                   onChange={(e) => setFoodType(e.target.value)}
                   className="w-full h-[52px] bg-white rounded-2xl px-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                 >
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
+                  <option value="Veg">{t("Veg")}</option>
+                  <option value="Non-Veg">{t("Non-Veg")}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">Description</label>
+                <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Description")}</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter item description..."
+                  placeholder={t("Enter item description...")}
                   className="w-full bg-white rounded-2xl p-4 text-[15px] font-medium text-[#1b1c1c] outline-none border border-[#e4e2e1] focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-sm resize-none min-h-[100px]"
                 />
               </div>
@@ -357,20 +359,20 @@ export default function PantryMenuManager({ items, setItems }) {
               {/* Variants Section */}
               <div className="bg-white p-4 rounded-2xl border border-[#e4e2e1] shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-[13px] font-bold text-[#1b1c1c]">Variants (Optional)</label>
+                  <label className="block text-[13px] font-bold text-[#1b1c1c]">{t("Variants (Optional)")}</label>
                   <button type="button" onClick={addVariant} className="text-primary text-[12px] font-bold flex items-center gap-1">
-                      <Plus className="w-4 h-4" /> Add
+                      <Plus className="w-4 h-4" /> {t("Add")}
                   </button>
                 </div>
                 {variants.length === 0 ? (
-                    <p className="text-[13px] text-slate-500 italic">No variants added. Base price will be used.</p>
+                    <p className="text-[13px] text-slate-500 italic">{t("No variants added. Base price will be used.")}</p>
                 ) : (
                     <div className="space-y-3">
                         {variants.map((v, idx) => (
                             <div key={idx} className="flex items-center gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Name (e.g. 500g)"
+                                    placeholder={t("Name (e.g. 500g)")}
                                     value={v.name}
                                     onChange={(e) => updateVariant(idx, 'name', e.target.value)}
                                     className="flex-1 h-[40px] bg-slate-50 rounded-xl px-3 text-[14px] border border-slate-200 outline-none focus:border-primary"
@@ -379,7 +381,7 @@ export default function PantryMenuManager({ items, setItems }) {
                                 <input
                                     type="number"
                                     step="0.01"
-                                    placeholder="Price"
+                                    placeholder={t("Price")}
                                     value={v.price}
                                     onChange={(e) => updateVariant(idx, 'price', e.target.value)}
                                     className="w-24 h-[40px] bg-slate-50 rounded-xl px-3 text-[14px] border border-slate-200 outline-none focus:border-primary"
@@ -395,7 +397,7 @@ export default function PantryMenuManager({ items, setItems }) {
               </div>
 
               <div className="flex items-center justify-between mt-2 bg-white p-4 rounded-2xl border border-[#e4e2e1] shadow-sm">
-                <span className="text-[14px] font-bold text-[#1b1c1c]">Item Available</span>
+                <span className="text-[14px] font-bold text-[#1b1c1c]">{t("Item Available")}</span>
                 <button
                   type="button"
                   onClick={() => setIsAvailable(!isAvailable)}
@@ -410,7 +412,7 @@ export default function PantryMenuManager({ items, setItems }) {
                 disabled={isLoading}
                 className="w-full h-[56px] bg-primary hover:bg-[#155a49] text-white rounded-2xl font-extrabold text-[16px] mt-6 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center shadow-lg"
               >
-                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingItem ? 'Update Item' : 'Save Item')}
+                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingItem ? t("Update Item") : t("Save Item"))}
               </button>
             </form>
           </div>

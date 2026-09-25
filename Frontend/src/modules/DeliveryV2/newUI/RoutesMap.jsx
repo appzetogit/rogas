@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { GoogleMap, Marker, Polyline, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useDeliveryStore } from '../store/useDeliveryStore';
+import { useTranslation } from "react-i18next";
 
 const LIBRARIES = ['geometry'];
 
@@ -34,6 +35,7 @@ const mapOptions = {
 };
 
 export const RoutesMap = ({ stops = [] }) => {
+  const { t } = useTranslation("driver");
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
@@ -80,7 +82,7 @@ export const RoutesMap = ({ stops = [] }) => {
       setIsLiveActive(false);
     } else {
       if (!navigator.geolocation) {
-        alert("Location services are not supported by your browser!");
+        alert(t("Location services are not supported by your browser!"));
         return;
       }
       watchIdRef.current = navigator.geolocation.watchPosition(
@@ -92,7 +94,7 @@ export const RoutesMap = ({ stops = [] }) => {
           }
         },
         (err) => {
-          alert("Location services are disabled or access is denied. Please enable location access in your browser settings!");
+          alert(t("Location services are disabled or access is denied. Please enable location access in your browser settings!"));
           setIsLiveActive(false);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -104,7 +106,7 @@ export const RoutesMap = ({ stops = [] }) => {
   const startSimulation = () => {
     if (stopsData.length === 0) return;
     if (currentSimStop >= stopsData.length) {
-      alert("All stops on the route have been completed!");
+      alert(t("All stops on the route have been completed!"));
       return;
     }
 
@@ -226,7 +228,7 @@ export const RoutesMap = ({ stops = [] }) => {
     return (
       <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex flex-col items-center gap-3 text-center min-h-[300px] justify-center">
         <AlertCircle className="w-10 h-10 text-red-400" />
-        <p className="text-sm font-semibold text-red-700">Failed to load Google Map. Please check your config.</p>
+        <p className="text-sm font-semibold text-red-700">{t("Failed to load Google Map. Please check your config.")}</p>
       </div>
     );
   }
@@ -236,7 +238,7 @@ export const RoutesMap = ({ stops = [] }) => {
       <div className="bg-white border rounded-2xl min-h-[450px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-10 h-10 text-[#1F7A63] animate-spin" />
-          <p className="text-xs font-semibold text-gray-500">Loading map canvas...</p>
+          <p className="text-xs font-semibold text-gray-500">{t("Loading map canvas...")}</p>
         </div>
       </div>
     );
@@ -255,7 +257,7 @@ export const RoutesMap = ({ stops = [] }) => {
           }`}
         >
           <span className={`w-2 h-2 rounded-full ${isLiveActive ? 'bg-white' : 'bg-green-500'}`} />
-          {isLiveActive ? 'Live ON' : 'Live'}
+          {isLiveActive ? t("Live ON") : t("Live")}
         </button>
 
         <button
@@ -268,7 +270,7 @@ export const RoutesMap = ({ stops = [] }) => {
           }`}
         >
           <span className={`w-2 h-2 rounded-full ${isSimulating ? 'bg-white animate-pulse' : 'bg-amber-500'}`} />
-          {isSimulating ? 'Streaming…' : 'Stream'}
+          {isSimulating ? t("Streaming…") : t("Stream")}
         </button>
       </div>
 
@@ -338,7 +340,7 @@ export const RoutesMap = ({ stops = [] }) => {
             return (
               <Marker
                 position={{ lat: rLat, lng: rLng }}
-                title="My Current Location"
+                title={t("My Current Location")}
                 icon={{
                   url: "/MapRider.png",
                   anchor: window.google ? new window.google.maps.Point(35, 35) : null,
@@ -361,7 +363,7 @@ export const RoutesMap = ({ stops = [] }) => {
                 ? 'bg-[#1F7A63]/10 text-[#1F7A63]'
                 : 'bg-[#3B82F6]/10 text-[#3B82F6]'
                 }`}>
-                Stop #{activeMarker.stopIndex} — {activeMarker.type === 'pickup' || activeMarker.type === 'P' ? 'Pickup' : 'Delivery'}
+                {t("Stop #{{stopIndex}} —", { stopIndex: activeMarker.stopIndex })} {activeMarker.type === 'pickup' || activeMarker.type === 'P' ? t("Pickup") : t("Delivery")}
               </span>
               <h4 className="text-xs font-bold text-gray-900 leading-tight mb-1">
                 {activeMarker.name}

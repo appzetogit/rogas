@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { userAPI, uploadAPI } from "@food/api";
 import { X, Loader2, Camera, MessageCircle, ArrowLeft } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const ISSUE_TYPES = [
   "Delivery Delay",
@@ -13,6 +14,7 @@ const ISSUE_TYPES = [
 ];
 
 export function SupportScreen({ onGoBack, onShowNotificationToast }) {
+  const { t: tr } = useTranslation("customer");
   const [searchParams] = useSearchParams();
   const queryOrderId = searchParams.get("orderId");
   const queryType = searchParams.get("type");
@@ -71,12 +73,12 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
       const url = res.data?.data?.url || res.data?.url || res.data?.data?.imageUrl;
       if (url) {
         setImage(url);
-        onShowNotificationToast("Attachment uploaded successfully!");
+        onShowNotificationToast(tr("Attachment uploaded successfully!"));
       } else {
         throw new Error("Failed to retrieve upload URL");
       }
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || "Failed to upload image");
+      setFormError(err.response?.data?.message || err.message || tr("Failed to upload image"));
     } finally {
       setUploading(false);
     }
@@ -89,15 +91,15 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!issueType) {
-      setFormError("Please select an issue type.");
+      setFormError(tr("Please select an issue type."));
       return;
     }
     if (!description.trim()) {
-      setFormError("Please describe your issue.");
+      setFormError(tr("Please describe your issue."));
       return;
     }
     if (type === "order" && !orderId.trim()) {
-      setFormError("Please enter the Order ID.");
+      setFormError(tr("Please enter the Order ID."));
       return;
     }
 
@@ -115,7 +117,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
       }
 
       await userAPI.createSupportTicket(payload);
-      onShowNotificationToast("Complaint submitted successfully! We will review it shortly.");
+      onShowNotificationToast(tr("Complaint submitted successfully! We will review it shortly."));
       
       // Reset Form
       setIssueType("");
@@ -129,7 +131,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
       // Go to ticket list
       setActiveTab("history");
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || "Failed to submit ticket");
+      setFormError(err.response?.data?.message || err.message || tr("Failed to submit ticket"));
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +142,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
       {/* Top Header */}
       <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-sm border-b border-[#bec9c3]/20">
         <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><ArrowLeft size={24} /></button>
-        <h1 className="text-xl font-extrabold text-primary text-center">Help & Support</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{tr("Help & Support")}</h1>
         <div className="w-8" />
       </header>
 
@@ -155,7 +157,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                 : "text-on-surface-variant hover:bg-slate-50"
             }`}
           >
-            Submit Complaint
+            {tr("Submit Complaint")}
           </button>
           <button
             onClick={() => setActiveTab("history")}
@@ -165,7 +167,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                 : "text-on-surface-variant hover:bg-slate-50"
             }`}
           >
-            My Complaints ({tickets.length})
+            {tr("My Complaints ({{length}})", { length: tickets.length })}
           </button>
         </div>
 
@@ -181,42 +183,42 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
 
               {/* Type Select */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">What is this about?</label>
+                <label className="text-xs font-bold text-on-surface-variant">{tr("What is this about?")}</label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium disabled:opacity-60"
                   disabled={Boolean(queryOrderId)}
                 >
-                  <option value="other">General / Other Issue</option>
-                  <option value="order">Order Specific Issue</option>
+                  <option value="other">{tr("General / Other Issue")}</option>
+                  <option value="order">{tr("Order Specific Issue")}</option>
                 </select>
               </div>
 
               {/* Order ID field */}
               {type === "order" && (
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface-variant">Order ID</label>
+                  <label className="text-xs font-bold text-on-surface-variant">{tr("Order ID")}</label>
                   <input
                     type="text"
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
                     className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium disabled:opacity-60"
                     disabled={Boolean(queryOrderId)}
-                    placeholder="Enter associated Order ID"
+                    placeholder={tr("Enter associated Order ID")}
                   />
                 </div>
               )}
 
               {/* Issue Type Select */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Complaint Type</label>
+                <label className="text-xs font-bold text-on-surface-variant">{tr("Complaint Type")}</label>
                 <select
                   value={issueType}
                   onChange={(e) => setIssueType(e.target.value)}
                   className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium"
                 >
-                  <option value="">Select Issue Category</option>
+                  <option value="">{tr("Select Issue Category")}</option>
                   {ISSUE_TYPES.map((it) => (
                     <option key={it} value={it}>{it}</option>
                   ))}
@@ -225,26 +227,26 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
 
               {/* Description Input */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Describe the Complaint</label>
+                <label className="text-xs font-bold text-on-surface-variant">{tr("Describe the Complaint")}</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full text-sm p-3 bg-[#F5F5F0] border border-[#bec9c3]/30 rounded-xl focus:outline-none focus:border-primary/50 font-medium min-h-[120px]"
-                  placeholder="Tell us what went wrong. Please provide details so we can resolve this quickly."
+                  placeholder={tr("Tell us what went wrong. Please provide details so we can resolve this quickly.")}
                   disabled={submitting}
                 />
               </div>
 
               {/* Photo Upload Section */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface-variant">Attach Photo (Optional)</label>
+                <label className="text-xs font-bold text-on-surface-variant">{tr("Attach Photo (Optional)")}</label>
                 <div className="flex items-center gap-4 pt-1">
                   {image ? (
                     <div className="relative">
                       <img
                         className="w-20 h-20 rounded-xl object-cover border border-[#bec9c3]/30"
                         src={image}
-                        alt="Complaint Attachment"
+                        alt={tr("Complaint Attachment")}
                       />
                       <button
                         type="button"
@@ -261,7 +263,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                       ) : (
                         <>
                           <Camera className="text-primary text-[24px]" />
-                          <span className="text-[9px] font-bold text-on-surface-variant mt-1">Upload</span>
+                          <span className="text-[9px] font-bold text-on-surface-variant mt-1">{tr("Upload")}</span>
                         </>
                       )}
                       <input
@@ -274,8 +276,8 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                     </label>
                   )}
                   <div className="text-[10px] text-on-surface-variant font-medium">
-                    <p>Format supported: PNG, JPG, JPEG</p>
-                    <p>Max file size: 2 MB</p>
+                    <p>{tr("Format supported: PNG, JPG, JPEG")}</p>
+                    <p>{tr("Max file size: 2 MB")}</p>
                   </div>
                 </div>
               </div>
@@ -290,10 +292,10 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
               {submitting ? (
                 <>
                   <Loader2 className="text-sm animate-spin" />
-                  <span>Submitting Complaint...</span>
+                  <span>{tr("Submitting Complaint...")}</span>
                 </>
               ) : (
-                "Submit Ticket"
+                tr("Submit Ticket")
               )}
             </button>
           </form>
@@ -305,13 +307,13 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
             {loadingTickets ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="text-[36px] text-primary animate-spin" />
-                <p className="text-xs text-on-surface-variant mt-2 font-medium">Loading history...</p>
+                <p className="text-xs text-on-surface-variant mt-2 font-medium">{tr("Loading history...")}</p>
               </div>
             ) : tickets.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 border border-[#bec9c3]/20 text-center">
                 <MessageCircle className="text-[48px] text-on-surface-variant/40" />
-                <h3 className="text-sm font-bold text-[#1a1c1a] mt-2">No complaints logged</h3>
-                <p className="text-xs text-on-surface-variant mt-1 font-medium">You haven't filed any support tickets yet.</p>
+                <h3 className="text-sm font-bold text-[#1a1c1a] mt-2">{tr("No complaints logged")}</h3>
+                <p className="text-xs text-on-surface-variant mt-1 font-medium">{tr("You haven't filed any support tickets yet.")}</p>
               </div>
             ) : (
               tickets.map((t) => {
@@ -331,7 +333,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                      <div className="flex justify-between items-start">
                        <div>
                          <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">
-                           Ticket #{String(t._id).slice(-6)}
+                           {tr("Ticket #")}{String(t._id).slice(-6)}
                          </span>
                          <h4 className="text-sm font-extrabold text-[#1a1c1a] mt-0.5">{t.issueType}</h4>
                        </div>
@@ -346,7 +348,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
 
                     {t.orderId && (
                       <p className="text-[10px] text-on-surface-variant font-bold">
-                        Order Ref: <span className="font-mono text-primary">#{String(t.orderId).slice(-6)}</span>
+                        {tr("Order Ref:")} <span className="font-mono text-primary">#{String(t.orderId).slice(-6)}</span>
                       </p>
                     )}
 
@@ -354,7 +356,7 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                       <a href={t.image} target="_blank" rel="noreferrer" className="inline-block mt-1">
                         <img
                           src={t.image}
-                          alt="Attached proof"
+                          alt={tr("Attached proof")}
                           className="w-16 h-16 rounded-lg object-cover border border-slate-200 hover:opacity-85 transition-opacity"
                         />
                       </a>
@@ -363,14 +365,14 @@ export function SupportScreen({ onGoBack, onShowNotificationToast }) {
                     {/* Admin Response */}
                     {t.adminResponse && (
                       <div className="bg-[#F5F5F0] rounded-xl p-3 border-l-4 border-primary text-xs mt-2 space-y-1">
-                        <p className="font-bold text-primary">Support Response:</p>
+                        <p className="font-bold text-primary">{tr("Support Response:")}</p>
                         <p className="text-[#3e4945] font-medium leading-relaxed">{t.adminResponse}</p>
                       </div>
                     )}
 
                     <div className="text-[9px] text-[#8e9894] pt-2 border-t border-slate-100 flex justify-between">
-                      <span>Logged on {new Date(t.createdAt).toLocaleDateString()}</span>
-                      <span>Last update {new Date(t.updatedAt).toLocaleTimeString()}</span>
+                      <span>{tr("Logged on {{date}}", { date: new Date(t.createdAt).toLocaleDateString() })}</span>
+                      <span>{tr("Last update {{date}}", { date: new Date(t.updatedAt).toLocaleTimeString() })}</span>
                     </div>
                   </div>
                 );

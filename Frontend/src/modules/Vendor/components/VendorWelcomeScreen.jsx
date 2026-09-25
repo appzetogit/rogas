@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, Check } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 export function VendorWelcomeScreen() {
+  const { t } = useTranslation("vendor");
   const navigate = useNavigate();
   const logoUrl = localStorage.getItem('restaurant_app_logo');
 
@@ -18,7 +20,7 @@ export function VendorWelcomeScreen() {
           {logoUrl ? (
             <img
               src={logoUrl}
-              alt="App Logo"
+              alt={t("App Logo")}
               className="w-auto h-24 rounded-2xl object-contain shadow-md"
             />
           ) : (
@@ -27,11 +29,11 @@ export function VendorWelcomeScreen() {
             </div>
           )}
           <div className="space-y-1">
-            <h1 className="font-sans text-[32px] font-bold text-white tracking-tight">DailyMealBox</h1>
-            <p className="font-sans text-[16px] text-white/90 font-normal">Vendor Partner</p>
+            <h1 className="font-sans text-[32px] font-bold text-white tracking-tight">{t("DailyMealBox")}</h1>
+            <p className="font-sans text-[16px] text-white/90 font-normal">{t("Vendor Partner")}</p>
           </div>
           <p className="font-sans text-[20px] leading-tight text-white max-w-[280px] mt-16 font-bold">
-            Reach 100s of subscribers in your neighbourhood.
+            {t("Reach 100s of subscribers in your neighbourhood.")}
           </p>
         </div>
 
@@ -41,13 +43,13 @@ export function VendorWelcomeScreen() {
             onClick={() => navigate('/vendor/auth/register-phone')}
             className="w-full bg-white text-primary-container font-sans font-bold text-[16px] py-4 rounded-xl shadow-xl hover:bg-surface-container-lowest transition-all active:scale-[0.98]">
 
-            Register as Vendor
+            {t("Register as Vendor")}
           </button>
           <button
             onClick={() => navigate('/vendor/auth/login-phone')}
             className="font-sans font-bold text-[13px] text-white underline underline-offset-4 hover:text-white/80 transition-colors">
 
-            I already have an account
+            {t("I already have an account")}
           </button>
         </div>
 
@@ -56,25 +58,25 @@ export function VendorWelcomeScreen() {
 
         {/* Value Propositions Section */}
         <section className="w-full bg-white/10 rounded-2xl p-6 mb-12 backdrop-blur-sm border border-white/10">
-          <h2 className="font-sans text-[11px] font-semibold text-white/70 uppercase tracking-widest mb-6">WHY JOIN US?</h2>
+          <h2 className="font-sans text-[11px] font-semibold text-white/70 uppercase tracking-widest mb-6">{t("WHY JOIN US?")}</h2>
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 w-6 h-6 rounded-md bg-white flex items-center justify-center">
                 <Check className="text-primary-container text-[18px] font-bold" />
               </div>
-              <span className="font-sans text-[13px] font-bold text-white">Earn 80–85% of meal price</span>
+              <span className="font-sans text-[13px] font-bold text-white">{t("Earn 80–85% of meal price")}</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 w-6 h-6 rounded-md bg-white flex items-center justify-center">
                 <Check className="text-primary-container text-[18px] font-bold" />
               </div>
-              <span className="font-sans text-[13px] font-bold text-white">We handle all delivery</span>
+              <span className="font-sans text-[13px] font-bold text-white">{t("We handle all delivery")}</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 w-6 h-6 rounded-md bg-white flex items-center justify-center">
                 <Check className="text-primary-container text-[18px] font-bold" />
               </div>
-              <span className="font-sans text-[13px] font-bold text-white">Full analytics dashboard</span>
+              <span className="font-sans text-[13px] font-bold text-white">{t("Full analytics dashboard")}</span>
             </div>
           </div>
         </section>

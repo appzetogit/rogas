@@ -4,6 +4,7 @@ import StepCompanyProfile from '../components/onboarding/StepCompanyProfile';
 import StepDocuments from '../components/onboarding/StepDocuments';
 import StepContactDetails from '../components/onboarding/StepContactDetails';
 import { startOnboardingApi, updateOnboardingStepApi, completeOnboardingApi } from '../services/officeApi';
+import { useTranslation } from "react-i18next";
 
 const INITIAL_ONBOARDING_DATA = {
   email: 'j.doe@example.com', // Auto-fill standard mock email from mockup
@@ -22,6 +23,7 @@ const INITIAL_ONBOARDING_DATA = {
 };
 
 export default function OnboardingPage() {
+  const { t } = useTranslation("office");
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState('step1_profile');
   const [data, setData] = useState(INITIAL_ONBOARDING_DATA);
@@ -47,7 +49,7 @@ export default function OnboardingPage() {
             setCurrentStep(nextStep);
         }
     } catch (err) {
-        alert(err.response?.data?.message || 'Failed to save data. Please try again.');
+        alert(err.response?.data?.message || t("Failed to save data. Please try again."));
     } finally {
         setIsSubmitting(false);
     }

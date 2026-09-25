@@ -24,8 +24,10 @@ import { PantryCartProvider } from "./components/PantryCartContext";
 import { CustomerLegalPage } from "./components/CustomerLegalPage";
 import CustomerServicePage from "./components/CustomerServicePage";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
+import { useTranslation } from "react-i18next";
 
 export default function CustomerAppMain() {
+  const { t } = useTranslation("customer");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -190,7 +192,7 @@ export default function CustomerAppMain() {
     clearOrdersCache();
 
     navigate("/user/welcome");
-    showToast("👋 Logged out successfully");
+    showToast(t("👋 Logged out successfully"));
   };
 
   const handleUpdateProfile = async (body) => {
@@ -261,7 +263,7 @@ export default function CustomerAppMain() {
     }
     setOnboardingCompleted(true);
     navigate("/user/home");
-    showToast("✅ Preferences saved successfully!");
+    showToast(t("✅ Preferences saved successfully!"));
   };
 
   const handleDietAndAllergensSave = async (prefs) => {
@@ -277,19 +279,19 @@ export default function CustomerAppMain() {
       setDietaryPrefs(prefs); // fallback to state
     }
     navigate("/user/profile");
-    showToast("✅ Diet & Allergens saved successfully!");
+    showToast(t("✅ Diet & Allergens saved successfully!"));
   };
 
   const handleLocationComplete = () => {
     navigate("/user/goals");
-    showToast("📍 Location verified!");
+    showToast(t("📍 Location verified!"));
   };
 
   // Called from PlansScreen when user selects plan + slot + address
   const handlePlanSelectionFlow = (checkoutData) => {
     setSelectedPlanDetails(checkoutData);
     navigate("/user/checkout");
-    showToast(`🛒 Opening checkout for ${checkoutData.vendorName || "vendor"}...`);
+    showToast(t("🛒 Opening checkout for {{vendorName}}...", { vendorName: checkoutData.vendorName || "vendor" }));
   };
 
   const handleInvoiceSettingsSave = async (settings) => {
@@ -311,10 +313,10 @@ export default function CustomerAppMain() {
           localStorage.setItem("user_user", JSON.stringify(u));
         }
         navigate("/user/profile");
-        showToast("🧾 Invoice settings updated.");
+        showToast(t("🧾 Invoice settings updated."));
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || "Failed to save invoice settings";
+      const errMsg = err.response?.data?.message || err.message || t("Failed to save invoice settings");
       toast.error(errMsg, { position: "top-center" });
     }
   };
@@ -327,7 +329,7 @@ export default function CustomerAppMain() {
       status: "Confirmed",
     }));
     navigate("/user/home");
-    showToast("🎉 Subscription confirmed! Your first meal box is on its way.");
+    showToast(t("🎉 Subscription confirmed! Your first meal box is on its way."));
   };
 
   // ─── Bottom Nav Visibility ───────────────────────────────────────────────────
@@ -345,9 +347,9 @@ export default function CustomerAppMain() {
           <aside className="hidden md:flex fixed top-0 left-0 h-full w-64 bg-[#00604c] text-white flex-col z-50 overflow-y-auto shadow-xl">
             <div className="p-6 border-b border-white/10">
               {appConfig?.logoUrl ? (
-                <img src={appConfig.logoUrl} alt="FoodApp" className="h-8 w-auto object-contain rounded" />
+                <img src={appConfig.logoUrl} alt={t("FoodApp")} className="h-8 w-auto object-contain rounded" />
               ) : (
-                <h2 className="text-xl font-bold tracking-tight">FoodApp</h2>
+                <h2 className="text-xl font-bold tracking-tight">{t("FoodApp")}</h2>
               )}
             </div>
             <nav className="flex-1 px-4 py-6 space-y-2">
@@ -379,7 +381,7 @@ export default function CustomerAppMain() {
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] text-white/80 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer"
               >
                 <LogOut className="w-5 h-5 shrink-0" />
-                <span>Sign Out</span>
+                <span>{t("Sign Out")}</span>
               </button>
             </div>
           </aside>
@@ -389,11 +391,11 @@ export default function CustomerAppMain() {
         {showDesktopNav && currentUser && currentPath !== "/user/home" && (
           <div className="hidden md:flex fixed top-0 right-0 h-14 pl-8 pr-6 items-center gap-3 z-[60] bg-transparent">
             <div className="flex flex-col text-right justify-center">
-              <span className="text-[13px] font-bold text-[#1b1c1c] leading-tight truncate max-w-[150px]">{currentUser.name || "Customer"}</span>
+              <span className="text-[13px] font-bold text-[#1b1c1c] leading-tight truncate max-w-[150px]">{currentUser.name || t("Customer")}</span>
             </div>
             <div className="w-9 h-9 rounded-full bg-[#1F7A63] text-white flex items-center justify-center font-bold text-sm border-2 border-white overflow-hidden shadow-sm ring-2 ring-[#1F7A63]/10">
               {currentUser.profileImage ? (
-                <img src={currentUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                <img src={currentUser.profileImage} alt={t("Profile")} className="w-full h-full object-cover" />
               ) : (
                 (currentUser.name || "C")[0].toUpperCase()
               )}
@@ -425,7 +427,7 @@ export default function CustomerAppMain() {
                   navigate("/user/otp");
                   showToast("📱 OTP sent to " + fullPhone);
                 } catch (err) {
-                  showToast((err?.response?.data?.message || err.message || "Failed to send OTP"));
+                  showToast((err?.response?.data?.message || err.message || t("Failed to send OTP")));
                 }
               }}
               onBack={() => navigate("/user/welcome")}
@@ -443,7 +445,7 @@ export default function CustomerAppMain() {
                   // Pre-validate phone existence
                   const checkRes = await authAPI.checkPhoneRegistered(fullPhone, "USER");
                   if (checkRes.data?.exists || checkRes.exists) {
-                    showToast("This phone number is already registered. Please log in using your existing account.");
+                    showToast(t("This phone number is already registered. Please log in using your existing account."));
                     navigate("/user/auth/login");
                     return;
                   }
@@ -454,7 +456,7 @@ export default function CustomerAppMain() {
                   navigate("/user/otp");
                   showToast("📱 OTP sent to " + fullPhone);
                 } catch (err) {
-                  showToast((err?.response?.data?.message || err.message || "Failed to send OTP"));
+                  showToast((err?.response?.data?.message || err.message || t("Failed to send OTP")));
                 }
               }}
               onBack={() => navigate("/user/welcome")}
@@ -486,21 +488,21 @@ export default function CustomerAppMain() {
 
                   if (authMode === "signup" || isNewUser) {
                     navigate("/user/about-you");
-                    showToast(`👋 Welcome! Tell us about yourself.`);
+                    showToast(t("👋 Welcome! Tell us about yourself."));
                   } else {
                     navigate("/user/home");
-                    showToast(`✅ Welcome back, ${user?.name || ""}!`);
+                    showToast(t("✅ Welcome back, {{name}}!", { name: user?.name || "" }));
                   }
                 } catch (err) {
-                  showToast((err?.response?.data?.message || err.message || "OTP verification failed"));
+                  showToast((err?.response?.data?.message || err.message || t("OTP verification failed")));
                 }
               }}
               onResend={async () => {
                 try {
                   await authAPI.sendOTP(phoneNumber);
-                  showToast("OTP resent!");
+                  showToast(t("OTP resent!"));
                 } catch (err) {
-                  showToast(" Failed to resend OTP");
+                  showToast(" " + t("Failed to resend OTP"));
                 }
               }}
               onBack={() => navigate(authMode === "login" ? "/user/auth/login" : "/user/auth/signup")}
@@ -523,9 +525,9 @@ export default function CustomerAppMain() {
                   });
 
                   navigate("/user/location");
-                  showToast(` Welcome, ${details.firstName}!`);
+                  showToast(" " + t("Welcome, {{firstName}}!", { firstName: details.firstName }));
                 } catch (err) {
-                  showToast((err?.response?.data?.message || err.message || "Failed to update profile details"));
+                  showToast((err?.response?.data?.message || err.message || t("Failed to update profile details")));
                 }
               }}
               onBack={() => navigate("/user/otp")}
@@ -560,7 +562,7 @@ export default function CustomerAppMain() {
               onBack={() => navigate("/user/location")}
               onConfirm={(address) => {
                 navigate("/user/goals");
-                showToast(`📍 Location set to ${address}`);
+                showToast(t("📍 Location set to {{address}}", { address }));
               }}
             />
           } />

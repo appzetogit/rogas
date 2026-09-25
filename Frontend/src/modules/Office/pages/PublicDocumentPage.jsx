@@ -1,8 +1,10 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from "react-i18next";
 
 export default function PublicDocumentPage({ children }) {
+  const { t } = useTranslation("office");
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#F8F9F8] flex flex-col font-sans">
@@ -14,11 +16,11 @@ export default function PublicDocumentPage({ children }) {
             className="flex items-center gap-2 text-[#4A4C56] hover:text-[#287965] font-medium transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Login
+            {t("Back to Login")}
           </button>
         </div>
         <div className="font-bold text-xl text-[#287965] tracking-tight">
-          DailyMealBox
+          {t("DailyMealBox")}
         </div>
       </header>
 

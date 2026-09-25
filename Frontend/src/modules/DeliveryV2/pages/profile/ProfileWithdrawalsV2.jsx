@@ -3,8 +3,10 @@ import { ArrowLeft, Loader2, Calendar } from 'lucide-react';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 export const ProfileWithdrawalsV2 = () => {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState(null);
@@ -17,7 +19,7 @@ export const ProfileWithdrawalsV2 = () => {
         const wallet = (resData?.success && resData?.data?.wallet) || resData?.wallet || resData?.data || resData;
         setWalletData(wallet);
       } catch (e) {
-        toast.error("Failed to load details");
+        toast.error(t("Failed to load details"));
       } finally {
         setLoading(false);
       }
@@ -44,7 +46,7 @@ export const ProfileWithdrawalsV2 = () => {
     <div className="min-h-full bg-transparent font-poppins">
        <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
           <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
-          <h1 className="text-xl font-black">Withdrawal Requests</h1>
+          <h1 className="text-xl font-black">{t("Withdrawal Requests")}</h1>
        </div>
 
        <div className="pt-24 px-4 pb-10 space-y-4">
@@ -55,7 +57,7 @@ export const ProfileWithdrawalsV2 = () => {
                 <div className="bg-white rounded-2xl p-8 text-center border border-gray-100 shadow-sm flex flex-col items-center justify-center space-y-3">
                   <Calendar className="w-12 h-12 text-[#bec9c3]" />
                   <p className="text-sm text-gray-500 font-semibold">
-                    No recent withdrawal requests.
+                    {t("No recent withdrawal requests.")}
                   </p>
                 </div>
               );
@@ -63,7 +65,7 @@ export const ProfileWithdrawalsV2 = () => {
             return withdrawals.map((tx) => (
               <div key={tx.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-bold text-[#2B2B2B]">{tx.amount.toFixed(2)} PLN</p>
+                  <p className="text-sm font-bold text-[#2B2B2B]">{t("{{amount}} PLN", { amount: tx.amount.toFixed(2) })}</p>
                   <p className="text-[11px] text-gray-500 font-semibold mt-1">{formatDate(tx.date)}</p>
                 </div>
                 <span className={`text-[10px] font-extrabold px-3 py-1 rounded-lg border uppercase tracking-wider ${
@@ -71,7 +73,7 @@ export const ProfileWithdrawalsV2 = () => {
                   tx.status === "Completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" :
                   "bg-red-50 text-red-700 border-red-200/50"
                 }`}>
-                  {tx.status === "Completed" ? "Approved" : tx.status}
+                  {tx.status === "Completed" ? t("Approved") : tx.status}
                 </span>
               </div>
             ));

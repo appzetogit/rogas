@@ -10,8 +10,10 @@ import {
 } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { adminAPI } from "@food/api"
+import { useTranslation } from "react-i18next";
 
 export default function PublicSupport() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate()
   const [settings, setSettings] = useState({
     supportEmail: "switcheatsofficial@gmail.com",
@@ -57,8 +59,8 @@ export default function PublicSupport() {
           <ArrowLeft className="h-5 w-5 text-gray-800" />
         </button>
         <div>
-          <h1 className="text-[17px] font-bold text-gray-900 leading-tight">Help & Support</h1>
-          <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mt-0.5">Restaurant Partner Information</p>
+          <h1 className="text-[17px] font-bold text-gray-900 leading-tight">{t("Help & Support")}</h1>
+          <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mt-0.5">{t("Restaurant Partner Information")}</p>
         </div>
       </div>
 
@@ -72,12 +74,12 @@ export default function PublicSupport() {
             <div className="w-12 h-12 border-2 border-[#DC2626] rounded-xl flex items-center justify-center mb-4 bg-red-50/50">
               <Mail className="h-5 w-5 text-[#DC2626]" />
             </div>
-            <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-widest mb-2">Merchant Support</h3>
+            <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-widest mb-2">{t("Merchant Support")}</h3>
             <a href={`mailto:${settings.supportEmail}`} className="text-[13px] font-medium text-gray-600 hover:text-[#DC2626] transition-colors mb-3">
               {settings.supportEmail}
             </a>
             <a href={`mailto:${settings.supportEmail}`} className="text-[10px] font-bold text-[#DC2626] uppercase tracking-widest">
-              Email Support
+              {t("Email Support")}
             </a>
           </div>
 
@@ -86,12 +88,12 @@ export default function PublicSupport() {
             <div className="w-12 h-12 border-2 border-[#DC2626] rounded-xl flex items-center justify-center mb-4 bg-red-50/50">
               <Phone className="h-5 w-5 text-[#DC2626]" />
             </div>
-            <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-widest mb-2">Merchant Helpline</h3>
+            <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-widest mb-2">{t("Merchant Helpline")}</h3>
             <a href={`tel:${settings.supportPhone?.replace(/[^0-9+]/g, '')}`} className="text-[13px] font-medium text-gray-600 hover:text-[#DC2626] transition-colors mb-3">
               {settings.supportPhone}
             </a>
             <a href={`tel:${settings.supportPhone.replace(/[^0-9+]/g, '')}`} className="text-[10px] font-bold text-[#DC2626] uppercase tracking-widest">
-              Instant Call
+              {t("Instant Call")}
             </a>
           </div>
 
@@ -101,7 +103,7 @@ export default function PublicSupport() {
 
         {/* FAQs */}
         <div className="mb-8">
-          <h2 className="text-[17px] font-bold text-gray-900 mb-6">Merchant FAQs</h2>
+          <h2 className="text-[17px] font-bold text-gray-900 mb-6">{t("Merchant FAQs")}</h2>
           <div className="space-y-6">
             {faqs.map((faq, index) => (
               <div key={index} className="flex gap-3">
@@ -125,7 +127,7 @@ export default function PublicSupport() {
               <Clock className="h-[18px] w-[18px] text-[#DC2626]" />
             </div>
             <div>
-              <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-1">Business Hours</h4>
+              <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-1">{t("Business Hours")}</h4>
               <p className="text-[11px] text-gray-500 leading-relaxed">{settings.supportHours}</p>
             </div>
           </div>
@@ -135,8 +137,8 @@ export default function PublicSupport() {
               <ShieldCheck className="h-[18px] w-[18px] text-[#DC2626]" />
             </div>
             <div>
-              <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-1">Secure Support</h4>
-              <p className="text-[11px] text-gray-500 leading-relaxed">Our support staff will never ask for your password or financial credentials.</p>
+              <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-widest mb-1">{t("Secure Support")}</h4>
+              <p className="text-[11px] text-gray-500 leading-relaxed">{t("Our support staff will never ask for your password or financial credentials.")}</p>
             </div>
           </div>
 
@@ -144,8 +146,8 @@ export default function PublicSupport() {
 
         {/* Footer */}
         <div className="text-center pb-8">
-          <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">Last Updated: June 2, 2026</p>
-          <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase">&copy; 2026 Switcheats. All Rights Reserved.</p>
+          <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">{t("Last Updated: June 2, 2026")}</p>
+          <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase">{t("© 2026 Switcheats. All Rights Reserved.")}</p>
         </div>
 
       </div>

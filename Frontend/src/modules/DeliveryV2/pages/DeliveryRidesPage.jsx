@@ -3,8 +3,10 @@ import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
 import { ArrowLeft, Calendar, Clock, MapPin, Package, Check, X, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from "react-i18next";
 
 export default function DeliveryRidesPage() {
+  const { t } = useTranslation("driver");
   const navigate = useNavigate();
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function DeliveryRidesPage() {
       const res = await serviceManagementAPI.getMyRideTransfers();
       setTransfers(res.data?.data || []);
     } catch {
-      toast.error('Failed to load ride transfers');
+      toast.error(t("Failed to load ride transfers"));
     } finally {
       setLoading(false);
     }
@@ -28,10 +30,10 @@ export default function DeliveryRidesPage() {
     setActionLoading(id);
     try {
       await serviceManagementAPI.respondToRideTransfer(id, response);
-      toast.success(response === 'accepted' ? 'Ride accepted! Added to your schedule.' : 'Ride rejected.');
+      toast.success(response === 'accepted' ? t("Ride accepted! Added to your schedule.") : t("Ride rejected."));
       fetchTransfers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update response');
+      toast.error(err.response?.data?.message || t("Failed to update response"));
     } finally {
       setActionLoading(null);
     }
@@ -48,7 +50,7 @@ export default function DeliveryRidesPage() {
             <button onClick={() => navigate('/delivery/dashboard')} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <h1 className="text-lg font-bold text-[#2B2B2B]">Ride Requests</h1>
+            <h1 className="text-lg font-bold text-[#2B2B2B]">{t("Ride Requests")}</h1>
           </div>
           <button onClick={fetchTransfers} className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors">
             <RefreshCw className="w-4 h-4" />
@@ -64,7 +66,7 @@ export default function DeliveryRidesPage() {
         ) : transfers.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
             <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-400 font-medium">No ride requests found</p>
+            <p className="text-gray-400 font-medium">{t("No ride requests found")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -76,9 +78,9 @@ export default function DeliveryRidesPage() {
                 
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-bold text-[#2B2B2B] text-sm">Cover Request</h3>
+                    <h3 className="font-bold text-[#2B2B2B] text-sm">{t("Cover Request")}</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      From: {transfer.originalDriverId?.name || '—'}
+                      {t("From: {{name}}", { name: transfer.originalDriverId?.name || '—' })}
                     </p>
                   </div>
                   {transfer.status !== 'pending' && (
@@ -101,7 +103,7 @@ export default function DeliveryRidesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs font-semibold text-gray-700">{transfer.orderCount || 0} Orders</span>
+                    <span className="text-xs font-semibold text-gray-700">{t("{{orderCount}} Orders", { orderCount: transfer.orderCount || 0 })}</span>
                   </div>
                   
                   {/* Zone Display */}
@@ -124,7 +126,7 @@ export default function DeliveryRidesPage() {
                       disabled={actionLoading === transfer._id}
                       className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      <X className="w-4 h-4" /> Reject
+                      <X className="w-4 h-4" /> {t("Reject")}
                     </button>
                     <button
                       onClick={() => handleRespond(transfer._id, 'accepted')}
@@ -132,7 +134,7 @@ export default function DeliveryRidesPage() {
                       className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {actionLoading === transfer._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Accept Ride
+                      {t("Accept Ride")}
                     </button>
                   </div>
                 )}

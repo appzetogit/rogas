@@ -3,6 +3,8 @@ import { ArrowLeft, Edit2, Loader2, Save } from 'lucide-react';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../../shared/i18n";
 
 /**
  * ProfileBankV2 - Restored Old UI for Bank Details.
@@ -54,15 +56,16 @@ const FIELD_CONFIG = {
 };
 
 const FIELDS = [
-   { label: "Account Holder", key: "accountHolderName" },
-   { label: "Account Number", key: "accountNumber" },
-   { label: "IFSC Code", key: "ifscCode" },
-   { label: "Bank Name", key: "bankName" },
-   { label: "PAN Number", key: "panNumber" },
-   { label: "UPI ID", key: "upiId" }
+   { label: tKey("Account Holder"), key: "accountHolderName" },
+   { label: tKey("Account Number"), key: "accountNumber" },
+   { label: tKey("IFSC Code"), key: "ifscCode" },
+   { label: tKey("Bank Name"), key: "bankName" },
+   { label: tKey("PAN Number"), key: "panNumber" },
+   { label: tKey("UPI ID"), key: "upiId" }
 ];
 
 export const ProfileBankV2 = () => {
+   const { t } = useTranslation("driver");
    const goBack = useDeliveryBackNavigation();
    const [loading, setLoading] = useState(true);
    const [isEditing, setIsEditing] = useState(false);
@@ -88,11 +91,11 @@ export const ProfileBankV2 = () => {
       const maxSizeMB = 5;
 
       if (!allowedTypes.includes(file.type)) {
-         setQrError("Only PNG, JPG or WEBP images are allowed");
+         setQrError(t("Only PNG, JPG or WEBP images are allowed"));
          return;
       }
       if (file.size > maxSizeMB * 1024 * 1024) {
-         setQrError(`Image size must be under ${maxSizeMB}MB`);
+         setQrError(t("Image size must be under {{maxSizeMB}}MB", { maxSizeMB }));
          return;
       }
 
@@ -153,7 +156,7 @@ export const ProfileBankV2 = () => {
                });
                setQrPreview(profile?.documents?.bankDetails?.upiQrCode || profile?.upiQrCode || "");
             }
-         } catch (e) { toast.error("Failed to load details"); }
+         } catch (e) { toast.error(t("Failed to load details")); }
          finally { setLoading(false); }
       };
       fetchProfile();
@@ -178,7 +181,7 @@ export const ProfileBankV2 = () => {
    const handleSave = async () => {
       const { isValid, firstErrorKey } = validateAll();
       if (!isValid) {
-         toast.error(FIELD_CONFIG[firstErrorKey]?.errorMsg || "Please fix the errors before saving");
+         toast.error(FIELD_CONFIG[firstErrorKey]?.errorMsg || t("Please fix the errors before saving"));
          return;
       }
       if (qrError) {
@@ -202,12 +205,12 @@ export const ProfileBankV2 = () => {
 
          const response = await deliveryAPI.updateBankDetailsMultipart(formData);
          if (response?.data?.success) {
-            toast.success("Bank details updated successfully");
+            toast.success(t("Bank details updated successfully"));
             setIsEditing(false);
          }
       } catch (e) {
          console.error("Update failed:", e);
-         toast.error("Update failed");
+         toast.error(t("Update failed"));
       }
       finally { setIsSaving(false); }
    };
@@ -218,7 +221,7 @@ export const ProfileBankV2 = () => {
       <div className="min-h-full bg-transparent font-poppins">
          <div className="bg-white px-4 py-5 flex items-center gap-4 sticky top-0 w-full z-50 shadow-sm">
             <button onClick={goBack}><ArrowLeft className="w-6 h-6" /></button>
-            <h1 className="text-xl font-black">Bank Details</h1>
+            <h1 className="text-xl font-black">{t("Bank Details")}</h1>
             {!isEditing && (
                <button onClick={() => setIsEditing(true)} className="ml-auto p-2 bg-[#ebefeb] text-[#1F7A63] rounded-xl"><Edit2 className="w-4 h-4" /></button>
             )}
@@ -233,7 +236,7 @@ export const ProfileBankV2 = () => {
                      <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-2">
                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                              {label}{!config?.optional && <span className="text-red-500"> *</span>}
+                              {t(label)}{!config?.optional && <span className="text-red-500"> *</span>}
                            </label>
                            {isEditing && config?.maxLength && (
                               <span className="text-[10px] font-semibold text-gray-300">
@@ -259,7 +262,7 @@ export const ProfileBankV2 = () => {
                               )}
                            </>
                         ) : (
-                           <p className="text-sm font-bold text-[#2B2B2B]">{form[key] || "Not provided"}</p>
+                           <p className="text-sm font-bold text-[#2B2B2B]">{form[key] || t("Not provided")}</p>
                         )}
                      </div>
                   );
@@ -267,7 +270,7 @@ export const ProfileBankV2 = () => {
 
                {/* QR Code */}
                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">UPI QR Code</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("UPI QR Code")}</label>
                   {isEditing ? (
                      <div className="space-y-3">
                         <input
@@ -276,11 +279,11 @@ export const ProfileBankV2 = () => {
                            onChange={handleFileChange}
                            className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#ebefeb] file:text-[#1F7A63] hover:file:bg-slate-100"
                         />
-                        <p className="text-[10px] font-semibold text-gray-400">PNG, JPG or WEBP, max 5MB</p>
+                        <p className="text-[10px] font-semibold text-gray-400">{t("PNG, JPG or WEBP, max 5MB")}</p>
                         {qrError && <p className="text-xs font-semibold text-red-500">{qrError}</p>}
                         {qrPreview && (
                            <div className="relative w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
-                              <img src={qrPreview} alt="QR Code Preview" className="w-full h-full object-cover" />
+                              <img src={qrPreview} alt={t("QR Code Preview")} className="w-full h-full object-cover" />
                            </div>
                         )}
                      </div>
@@ -288,10 +291,10 @@ export const ProfileBankV2 = () => {
                      <div>
                         {qrPreview ? (
                            <div className="w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
-                              <img src={qrPreview} alt="QR Code" className="w-full h-full object-cover" />
+                              <img src={qrPreview} alt={t("QR Code")} className="w-full h-full object-cover" />
                            </div>
                         ) : (
-                           <p className="text-sm font-bold text-[#2B2B2B]">Not provided</p>
+                           <p className="text-sm font-bold text-[#2B2B2B]">{t("Not provided")}</p>
                         )}
                      </div>
                   )}
@@ -305,7 +308,7 @@ export const ProfileBankV2 = () => {
                   className="w-full bg-[#1F7A63] text-[#F5F5F0] py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
                >
                   {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                  Save Changes
+                  {t("Save Changes")}
                </button>
             )}
          </div>

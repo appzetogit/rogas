@@ -5,6 +5,7 @@ import { Button } from "@food/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover";
 import { Calendar } from "@food/components/ui/calendar";
 import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /**
  * WeekSelector (JSX version)
@@ -13,6 +14,7 @@ import { ChevronDown } from "lucide-react";
  * - shadcn/ui + Tailwind
  */
 export default function WeekSelector({ weekStartsOn = 0, onChange, className }) {
+  const { t } = useTranslation("driver");
   const [open, setOpen] = React.useState(false);
   const [anchorDate, setAnchorDate] = React.useState(new Date());
 
@@ -69,7 +71,7 @@ export default function WeekSelector({ weekStartsOn = 0, onChange, className }) 
             "bg-emerald-50 text-emerald-900 border-emerald-200"
           )}
         >
-          This week
+          {t("This week")}
         </Button>
 
         <Button
@@ -77,7 +79,7 @@ export default function WeekSelector({ weekStartsOn = 0, onChange, className }) 
           onClick={setLastWeek}
           className="rounded-md px-2 h-10 text-xs whitespace-nowrap"
         >
-          Last week
+          {t("Last week")}
         </Button>
 
         <Popover open={open} onOpenChange={setOpen}>
@@ -86,7 +88,7 @@ export default function WeekSelector({ weekStartsOn = 0, onChange, className }) 
               variant="outline"
               className="rounded-md px-2 h-10 text-xs inline-flex items-center justify-center whitespace-nowrap"
             >
-              Select day <ChevronDown className="ml-2 h-4 w-4" />
+              {t("Select day")} <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0" align="start">

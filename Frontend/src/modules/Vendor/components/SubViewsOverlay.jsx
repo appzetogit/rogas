@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, Utensils, Flower2, ShoppingCart, Download, FileText, Plus, UtensilsCrossed, CheckCircle, CheckCircle2, Circle } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 
 
@@ -15,6 +16,7 @@ export default function SubViewsOverlay({
   viewType,
   onClose
 }) {
+  const { t } = useTranslation("vendor");
   // Ingredient Plan state
   const [chickenQty, setChickenQty] = useState(14);
   const [carrotsQty, setCarrotsQty] = useState(28);
@@ -49,7 +51,7 @@ export default function SubViewsOverlay({
     setForecastCustoms((prev) => [...prev, newIngredient.trim()]);
     setNewIngredient('');
     setIsAddingIngredient(false);
-    triggerToast('Custom preparation count posted! 🥣');
+    triggerToast(t("Custom preparation count posted! 🥣"));
   };
 
   return (
@@ -64,7 +66,7 @@ export default function SubViewsOverlay({
           <ArrowLeft />
         </button>
         <h1 className="flex-grow text-center font-semibold text-[16px] pr-8">
-          {viewType === 'ingredientPlan' ? 'Ingredient Planner' : 'Food Forecast'}
+          {viewType === 'ingredientPlan' ? t("Ingredient Planner") : t("Food Forecast")}
         </h1>
       </header>
 
@@ -77,7 +79,7 @@ export default function SubViewsOverlay({
             {/* Title subheading banner details */}
             <section className="space-y-1 text-left">
               <p className="font-bold text-primary text-[13px]">
-                Plan your shopping list for Tuesday 13 May · 19 orders
+                {t("Plan your shopping list for Tuesday 13 May · 19 orders")}
               </p>
               <div className="h-1 w-12 bg-secondary-container rounded-full"></div>
             </section>
@@ -85,21 +87,21 @@ export default function SubViewsOverlay({
             {/* Recipe Card 1: Rosol */}
             <div className="bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden border border-outline-variant/30">
               <div className="p-4 bg-surface-container-low border-b border-outline-variant/15 flex justify-between items-center text-left">
-                <h2 className="font-bold text-[14px] text-on-surface">Rosol z kurczaka — 14 portions</h2>
+                <h2 className="font-bold text-[14px] text-on-surface">{t("Rosol z kurczaka — 14 portions")}</h2>
                 <Utensils className="text-primary text-[18px]" />
               </div>
               <div className="p-4 text-left">
                 <table className="w-full text-left border-separate border-spacing-y-2">
                   <thead>
                     <tr className="text-[10px] font-bold text-outline uppercase tracking-wider">
-                      <th className="pb-1.5">Ingredient</th>
-                      <th className="pb-1.5 w-16 text-center">Qty</th>
-                      <th className="pb-1.5 text-right">Unit</th>
+                      <th className="pb-1.5">{t("Ingredient")}</th>
+                      <th className="pb-1.5 w-16 text-center">{t("Qty")}</th>
+                      <th className="pb-1.5 text-right">{t("Unit")}</th>
                     </tr>
                   </thead>
                   <tbody className="text-[13px] font-semibold text-on-surface">
                     <tr className="align-middle">
-                      <td className="py-1 text-on-surface-variant">Chicken whole</td>
+                      <td className="py-1 text-on-surface-variant">{t("Chicken whole")}</td>
                       <td className="py-1">
                         <input
                         type="number"
@@ -108,10 +110,10 @@ export default function SubViewsOverlay({
                         className="w-full text-center p-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary bg-surface outline-none font-bold" />
                       
                       </td>
-                      <td className="py-1 text-right text-outline">pcs</td>
+                      <td className="py-1 text-right text-outline">{t("pcs")}</td>
                     </tr>
                     <tr className="align-middle">
-                      <td className="py-1 text-on-surface-variant">Carrots</td>
+                      <td className="py-1 text-on-surface-variant">{t("Carrots")}</td>
                       <td className="py-1">
                         <input
                         type="number"
@@ -120,10 +122,10 @@ export default function SubViewsOverlay({
                         className="w-full text-center p-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary bg-surface outline-none font-bold" />
                       
                       </td>
-                      <td className="py-1 text-right text-outline">pcs</td>
+                      <td className="py-1 text-right text-outline">{t("pcs")}</td>
                     </tr>
                     <tr className="align-middle">
-                      <td className="py-1 text-on-surface-variant">Celery stalks</td>
+                      <td className="py-1 text-on-surface-variant">{t("Celery stalks")}</td>
                       <td className="py-1">
                         <input
                         type="number"
@@ -132,7 +134,7 @@ export default function SubViewsOverlay({
                         className="w-full text-center p-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary bg-surface outline-none font-bold" />
                       
                       </td>
-                      <td className="py-1 text-right text-outline">pcs</td>
+                      <td className="py-1 text-right text-outline">{t("pcs")}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -142,21 +144,21 @@ export default function SubViewsOverlay({
             {/* Recipe Card 2: Pierogi */}
             <div className="bg-surface-container-lowest rounded-xl shadow-xs overflow-hidden border border-outline-variant/30">
               <div className="p-4 bg-surface-container-low border-b border-outline-variant/15 flex justify-between items-center text-left">
-                <h2 className="font-bold text-[14px] text-on-surface">Pierogi ruskie — 10 portions</h2>
+                <h2 className="font-bold text-[14px] text-on-surface">{t("Pierogi ruskie — 10 portions")}</h2>
                 <Flower2 className="text-primary text-[18px]" />
               </div>
               <div className="p-4 text-left">
                 <table className="w-full text-left border-separate border-spacing-y-2">
                   <thead>
                     <tr className="text-[10px] font-bold text-outline uppercase tracking-wider">
-                      <th className="pb-1.5">Ingredient</th>
-                      <th className="pb-1.5 w-16 text-center">Qty</th>
-                      <th className="pb-1.5 text-right">Unit</th>
+                      <th className="pb-1.5">{t("Ingredient")}</th>
+                      <th className="pb-1.5 w-16 text-center">{t("Qty")}</th>
+                      <th className="pb-1.5 text-right">{t("Unit")}</th>
                     </tr>
                   </thead>
                   <tbody className="text-[13px] font-semibold text-on-surface">
                     <tr className="align-middle">
-                      <td className="py-1 text-on-surface-variant">Pierogi frozen</td>
+                      <td className="py-1 text-on-surface-variant">{t("Pierogi frozen")}</td>
                       <td className="py-1">
                         <input
                         type="number"
@@ -165,10 +167,10 @@ export default function SubViewsOverlay({
                         className="w-full text-center p-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary bg-surface outline-none font-bold" />
                       
                       </td>
-                      <td className="py-1 text-right text-outline">pcs</td>
+                      <td className="py-1 text-right text-outline">{t("pcs")}</td>
                     </tr>
                     <tr className="align-middle">
-                      <td className="py-1 text-on-surface-variant">Sour cream</td>
+                      <td className="py-1 text-on-surface-variant">{t("Sour cream")}</td>
                       <td className="py-1">
                         <input
                         type="number"
@@ -177,7 +179,7 @@ export default function SubViewsOverlay({
                         className="w-full text-center p-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary bg-surface outline-none font-bold" />
                       
                       </td>
-                      <td className="py-1 text-right text-outline">pcs</td>
+                      <td className="py-1 text-right text-outline">{t("pcs")}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -190,23 +192,23 @@ export default function SubViewsOverlay({
                 <ShoppingCart className="text-[100px] text-primary" />
               </div>
               <div className="relative z-10 space-y-3">
-                <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest">Shopping Summary</h3>
-                <p className="text-[11px] text-on-surface-variant leading-tight">Consolidated shopping index for all active demands.</p>
+                <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest">{t("Shopping Summary")}</h3>
+                <p className="text-[11px] text-on-surface-variant leading-tight">{t("Consolidated shopping index for all active demands.")}</p>
                 
                 <div className="space-y-2 pt-2">
                   <button
-                  onClick={() => triggerToast('Successfully generated and downloaded Excel order layout! 🛒')}
+                  onClick={() => triggerToast(t("Successfully generated and downloaded Excel order layout! 🛒"))}
                   className="w-full h-11 bg-primary text-on-primary rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform cursor-pointer">
                   
                     <Download className="text-[18px]" />
-                    Export consolidated list
+                    {t("Export consolidated list")}
                   </button>
                   <button
-                  onClick={() => triggerToast('Compiled PDF invoice successfully queued to your default printer!')}
+                  onClick={() => triggerToast(t("Compiled PDF invoice successfully queued to your default printer!"))}
                   className="w-full h-11 bg-white text-primary border border-primary-container rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                   
                     <FileText className="text-[18px]" />
-                    Print consolidated PDF
+                    {t("Print consolidated PDF")}
                   </button>
                 </div>
               </div>
@@ -219,30 +221,30 @@ export default function SubViewsOverlay({
             {/* Header section card with green bg */}
             <section className="bg-primary text-on-primary p-4 rounded-xl shadow-xs space-y-4 -mx-4 -mt-5">
               <div>
-                <p className="text-[11px] font-semibold text-white/80 uppercase">Tomorrow's Production Plan</p>
-                <h2 className="text-[17px] font-extrabold text-white mt-1">Tuesday 13 May · 19 orders expected</h2>
+                <p className="text-[11px] font-semibold text-white/80 uppercase">{t("Tomorrow's Production Plan")}</p>
+                <h2 className="text-[17px] font-extrabold text-white mt-1">{t("Tuesday 13 May · 19 orders expected")}</h2>
               </div>
               
               {/* Bento statistics grid */}
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="bg-white/10 rounded-lg p-3 text-center border border-white/15">
                   <p className="text-xl font-bold">19</p>
-                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">Orders</p>
+                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">{t("Orders")}</p>
                 </div>
                 <div className="bg-white/10 rounded-lg p-3 text-center border border-white/15">
                   <p className="text-xl font-bold">15</p>
-                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">Subs</p>
+                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">{t("Subs")}</p>
                 </div>
                 <div className="bg-white/10 rounded-lg p-3 text-center border border-white/15">
                   <p className="text-xl font-bold">4</p>
-                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">One-time</p>
+                  <p className="text-[9px] uppercase tracking-wider text-white/75 mt-0.5">{t("One-time")}</p>
                 </div>
               </div>
             </section>
 
             {/* Portion Checklist items block */}
             <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider mt-2.5 px-0.5">
-              WHAT TO PREPARE (item counts)
+              {t("WHAT TO PREPARE (item counts)")}
             </h3>
             
             <div className="space-y-3">
@@ -253,11 +255,11 @@ export default function SubViewsOverlay({
               
                 <div className="flex-1 min-w-0 pr-2">
                   <span className={`text-[14px] font-bold ${checklist.rosol ? 'line-through opacity-45' : 'text-on-surface'}`}>
-                    Rosol z kurczaka
+                    {t("Rosol z kurczaka")}
                   </span>
                   <div className="mt-1 flex">
                     <span className="bg-primary/10 text-primary text-[11px] font-bold px-2 py-0.5 rounded-full border border-primary/15">
-                      14 portions
+                      {t("14 portions")}
                     </span>
                   </div>
                 </div>
@@ -267,7 +269,7 @@ export default function SubViewsOverlay({
                   ) : (
                     <Circle className={`w-5 h-5 ${checklist.rosol ? 'text-primary' : 'text-outline'}`} />
                   )}
-                  <span className={`text-[12px] font-bold ${checklist.rosol ? 'text-primary' : 'text-outline'}`}>Done</span>
+                  <span className={`text-[12px] font-bold ${checklist.rosol ? 'text-primary' : 'text-outline'}`}>{t("Done")}</span>
                 </button>
               </div>
 
@@ -278,11 +280,11 @@ export default function SubViewsOverlay({
               
                 <div className="flex-1 min-w-0 pr-2">
                   <span className={`text-[14px] font-bold ${checklist.pierogi ? 'line-through opacity-45' : 'text-on-surface'}`}>
-                    Pierogi ruskie
+                    {t("Pierogi ruskie")}
                   </span>
                   <div className="mt-1 flex">
                     <span className="bg-primary/10 text-primary text-[11px] font-bold px-2 py-0.5 rounded-full border border-primary/15">
-                      10 portions
+                      {t("10 portions")}
                     </span>
                   </div>
                 </div>
@@ -292,7 +294,7 @@ export default function SubViewsOverlay({
                   ) : (
                     <Circle className={`w-5 h-5 ${checklist.pierogi ? 'text-primary' : 'text-outline'}`} />
                   )}
-                  <span className={`text-[12px] font-bold ${checklist.pierogi ? 'text-primary' : 'text-outline'}`}>Done</span>
+                  <span className={`text-[12px] font-bold ${checklist.pierogi ? 'text-primary' : 'text-outline'}`}>{t("Done")}</span>
                 </button>
               </div>
 
@@ -303,11 +305,11 @@ export default function SubViewsOverlay({
               
                 <div className="flex-1 min-w-0 pr-2">
                   <span className={`text-[14px] font-bold ${checklist.salad ? 'line-through opacity-45' : 'text-on-surface'}`}>
-                    Salad grecka
+                    {t("Salad grecka")}
                   </span>
                   <div className="mt-1 flex">
                     <span className="bg-primary/10 text-primary text-[11px] font-bold px-2 py-0.5 rounded-full border border-primary/15">
-                      7 portions
+                      {t("7 portions")}
                     </span>
                   </div>
                 </div>
@@ -317,7 +319,7 @@ export default function SubViewsOverlay({
                   ) : (
                     <Circle className={`w-5 h-5 ${checklist.salad ? 'text-primary' : 'text-outline'}`} />
                   )}
-                  <span className={`text-[12px] font-bold ${checklist.salad ? 'text-primary' : 'text-outline'}`}>Done</span>
+                  <span className={`text-[12px] font-bold ${checklist.salad ? 'text-primary' : 'text-outline'}`}>{t("Done")}</span>
                 </button>
               </div>
 
@@ -332,7 +334,7 @@ export default function SubViewsOverlay({
                 onClick={() => setForecastCustoms((prev) => prev.filter((_, i) => i !== idx))}
                 className="text-error font-bold text-[12px]">
                 
-                    Remove
+                    {t("Remove")}
                   </button>
                 </div>
             )}
@@ -347,7 +349,7 @@ export default function SubViewsOverlay({
               className="text-primary font-bold text-[13px] flex items-center gap-1 hover:underline active:scale-95 transition-transform">
               
                   <Plus className="text-[20px]" />
-                  Add custom ingredient
+                  {t("Add custom ingredient")}
                 </button>
               </div> :
 
@@ -355,7 +357,7 @@ export default function SubViewsOverlay({
                 <input
               type="text"
               required
-              placeholder="e.g. 5x Pierogi with spinach, 1x Apple pie"
+              placeholder={t("e.g. 5x Pierogi with spinach, 1x Apple pie")}
               value={newIngredient}
               onChange={(e) => setNewIngredient(e.target.value)}
               className="w-full border border-outline-variant rounded-lg p-2 text-[12px] focus:border-primary outline-none" />
@@ -366,13 +368,13 @@ export default function SubViewsOverlay({
                 onClick={() => setIsAddingIngredient(false)}
                 className="px-2.5 py-1.5 rounded text-outline hover:bg-slate-100">
                 
-                    Cancel
+                    {t("Cancel")}
                   </button>
                   <button
                 type="submit"
                 className="px-3.5 py-1.5 rounded bg-primary text-on-primary hover:brightness-105">
                 
-                    Save
+                    {t("Save")}
                   </button>
                 </div>
               </form>
@@ -381,11 +383,11 @@ export default function SubViewsOverlay({
             {/* Export and action triggers */}
             <div className="mt-8 pt-4">
               <button
-              onClick={() => triggerToast('PDF Production Plan compiled! AirPrint queue initiated. 📄')}
+              onClick={() => triggerToast(t("PDF Production Plan compiled! AirPrint queue initiated. 📄"))}
               className="w-full bg-primary-container text-on-primary font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-95 active:scale-[0.97] transition-all cursor-pointer text-[13px]">
               
                 <Download className="text-[20px]" />
-                Export to PDF / Print Plan
+                {t("Export to PDF / Print Plan")}
               </button>
             </div>
 
@@ -394,9 +396,9 @@ export default function SubViewsOverlay({
               <div className="flex items-center gap-4">
                 <UtensilsCrossed className="text-primary text-[32px]" />
                 <div>
-                  <h4 className="text-[12px] font-extrabold uppercase text-outline">Plan smarter, waste less</h4>
+                  <h4 className="text-[12px] font-extrabold uppercase text-outline">{t("Plan smarter, waste less")}</h4>
                   <p className="text-[11px] text-on-surface-variant leading-normal mt-0.5">
-                    Pre-orders are locked and calculated dynamically based on automatic pickup routes details.
+                    {t("Pre-orders are locked and calculated dynamically based on automatic pickup routes details.")}
                   </p>
                 </div>
               </div>

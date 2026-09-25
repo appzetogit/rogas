@@ -5,7 +5,7 @@ import { deliveryAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { SUPPORTED_COUNTRIES } from "@/config/countries";
 import CountrySelector from "@/shared/components/CountrySelector";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 
 const COLORS = {
@@ -127,7 +127,7 @@ export default function DeliverySignIn() {
     if (e) e.preventDefault();
     const fullPhone = normalizedPhone();
     if (!fullPhone) {
-      toast.error(`Please enter a valid mobile number (${selectedCountry.phoneLength} digits)`);
+      toast.error(t("Please enter a valid mobile number ({{phoneLength}} digits)", { phoneLength: selectedCountry.phoneLength }));
       return;
     }
     if (submitting.current) return;
@@ -146,10 +146,10 @@ export default function DeliverySignIn() {
         module: "delivery",
       };
       sessionStorage.setItem("deliveryAuthData", JSON.stringify(authData));
-      toast.success("Verification code sent to your phone!");
+      toast.success(t("Verification code sent to your phone!"));
       navigate("/food/delivery/otp");
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to send OTP.";
+      const msg = err?.response?.data?.message || err?.message || t("Failed to send OTP.");
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -226,7 +226,7 @@ export default function DeliverySignIn() {
                   color: COLORS.primary,
                 }}
               >
-                DailyMealBox
+                {t("DailyMealBox")}
               </h1>
             </div>
 
@@ -312,7 +312,7 @@ export default function DeliverySignIn() {
             >
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIubMPXLUvG0E0qRemNMJuGQl6YWAZTZgzhB9mHOzEzS0MVDHTcA0KFL5qNvxFMtoTdHP3dpgf1CYqxDTlaKjYINxQ0SHb4GwMHsSTzgSkMtCYvSZTw3QwPC9LVoW9a3Bb3jZG5pTZUQv15KicG1DdRlhJ75BJn7RMpCxa9rUQZlB2AR-9knFhPMibT_Haz8GtJ2QcQtfFMGid-ST5kcfQYKT0C89Ih_Nm6IMhrtIChN32GeRYCA6EZt69MpaewtcVJFJyghRjVJH4"
-                alt="Courier on bike"
+                alt={t("Courier on bike")}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
               <div
@@ -342,7 +342,7 @@ export default function DeliverySignIn() {
                     marginBottom: "8px",
                   }}
                 >
-                  Phone Number
+                  {t("Phone Number")}
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {/* Country Picker */}
@@ -421,7 +421,7 @@ export default function DeliverySignIn() {
                   if (!loading && normalizedPhone()) e.currentTarget.style.transform = "scale(1)";
                 }}
               >
-                {loading ? "Sending..." : t("Send OTP")}
+                {loading ? t("Sending...") : t("Send OTP")}
                 <MaterialIcon name="chevron_right" style={{ color: "#ffffff" }} />
               </button>
             </form>
@@ -450,7 +450,7 @@ export default function DeliverySignIn() {
                     textDecoration: "none",
                   }}
                 >
-                  Terms of Service
+                  {t("Terms of Service")}
                 </Link>
                 <Link
                   to="/food/delivery/profile/privacy"
@@ -465,7 +465,7 @@ export default function DeliverySignIn() {
                     textDecoration: "none",
                   }}
                 >
-                  Privacy Policy
+                  {t("Privacy Policy")}
                 </Link>
               </div>
             </div>
@@ -481,17 +481,13 @@ export default function DeliverySignIn() {
                 color: COLORS.onSurfaceVariant,
               }}
             >
-              Having trouble?{" "}
-              <span
+              <Trans t={t} i18nKey={"Having trouble? <0>Contact Support</0>"} defaults={"Having trouble? <0>Contact Support</0>"} components={[<span
                 onClick={() => navigate("/food/delivery/support", { state: { backTo: "/food/delivery/login" } })}
                 style={{
                   color: COLORS.primary,
                   fontWeight: 600,
                   cursor: "pointer",
-                }}
-              >
-                Contact Support
-              </span>
+                }} />]} />
             </p>
           </div>
         </main>

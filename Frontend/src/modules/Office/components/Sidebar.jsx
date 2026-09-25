@@ -5,16 +5,18 @@
 
 import React from 'react';
 import { Users, Handshake, Utensils, Building2, Receipt, LogOut } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 
 
 export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
+  const { t } = useTranslation("office");
   const menuItems = [
-    { id: 'employees', label: 'Employees', icon: Users },
-    { id: 'vendors', label: 'Vendors & Assign', icon: Handshake },
-    { id: 'meal-plans', label: 'Assigned Meal Plans', icon: Utensils },
-    { id: 'payment-history', label: 'Payment History', icon: Receipt },
-    { id: 'company', label: 'Company Details', icon: Building2 },
+    { id: 'employees', label: t("Employees"), icon: Users },
+    { id: 'vendors', label: t("Vendors & Assign"), icon: Handshake },
+    { id: 'meal-plans', label: t("Assigned Meal Plans"), icon: Utensils },
+    { id: 'payment-history', label: t("Payment History"), icon: Receipt },
+    { id: 'company', label: t("Company Details"), icon: Building2 },
   ];
 
   const adminName = companyDetails?.contactName || 'Admin Portal';
@@ -28,7 +30,7 @@ export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
     <aside className="fixed left-0 top-0 h-screen w-[260px] bg-brand-primary text-white flex flex-col py-6 z-40">
       {/* Brand logo */}
       <div className="px-6 mb-10">
-        <h1 className="text-xl font-bold tracking-tight">DailyMealBox</h1>
+        <h1 className="text-xl font-bold tracking-tight">{t("DailyMealBox")}</h1>
       </div>
 
       {/* Navigation list */}
@@ -75,7 +77,7 @@ export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
           </div>
           <div className="overflow-hidden pr-2">
             <p className="font-bold text-white text-sm truncate">{adminName}</p>
-            <p className="text-xs text-white/60 truncate">{companyDetails?.legalName || 'Admin Portal'}</p>
+            <p className="text-xs text-white/60 truncate">{companyDetails?.legalName || t("Admin Portal")}</p>
           </div>
         </div>
         
@@ -85,7 +87,7 @@ export default function Sidebar({ activeTab, setActiveTab, companyDetails }) {
             window.location.href = '/office/login';
           }}
           className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/70 hover:text-white shrink-0"
-          title="Logout"
+          title={t("Logout")}
         >
           <LogOut className="w-5 h-5" />
         </button>

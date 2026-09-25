@@ -3,6 +3,7 @@ import { useDeliveryStore } from '../store/useDeliveryStore';
 import { writeDeliveryLocation } from '@food/realtimeTracking';
 import { dmbDeliveryAPI } from '@food/api';
 import { toast } from 'sonner';
+import { useTranslation } from "react-i18next";
 
 const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL.replace(/\/v1$/, '')
@@ -39,6 +40,7 @@ const getDriverId = () => {
  *  3. Writes to Firebase Realtime DB delivery_boys/<id> (admin map)
  */
 export const useDMBTracking = () => {
+    const { t } = useTranslation("driver");
     const { isOnline } = useDeliveryStore();
     console.log("🛠️ [DMBTracking Hook] Initialized. isOnline:", isOnline);
     const intervalRef = useRef(null);
@@ -202,11 +204,11 @@ export const useDMBTracking = () => {
                         const now = Date.now();
                         if (now - lastAlertTimeRef.current > 30000) {
                             lastAlertTimeRef.current = now;
-                            alert("Location Access Required: Please enable your device's GPS / Location services and allow location permission to continue tracking your deliveries.");
+                            alert(t("Location Access Required: Please enable your device's GPS / Location services and allow location permission to continue tracking your deliveries."));
                         }
                         
                         toast.error(
-                            "Location Access Required: Please enable your device's GPS / Location services and allow location permission.",
+                            t("Location Access Required: Please enable your device's GPS / Location services and allow location permission."),
                             { id: "gps-location-denied", duration: 8000 }
                         );
 
@@ -223,7 +225,7 @@ export const useDMBTracking = () => {
                 console.log("[DMBTracking] GPS Watch Id", watchId)
             } else {
                 console.warn('[DMBTracking] Geolocation not supported');
-                alert("Geolocation is not supported by your device/browser.");
+                alert(t("Geolocation is not supported by your device/browser."));
                 // Fallback to Indore (for development/testing)
                 const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0, speed: 0 };
                 useDeliveryStore.getState().setRiderLocation(fallbackPos);

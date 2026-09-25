@@ -7,6 +7,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { formatCurrency } from '@food/utils/currency';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * CashLimitInfoV2 - 1:1 Match with Old AvailableCashLimit Component.
@@ -15,6 +16,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const CashLimitInfoV2 = () => {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
    const [walletState, setWalletState] = useState({
@@ -56,7 +58,7 @@ export const CashLimitInfoV2 = () => {
            availableCashLimit: available
         });
       } catch (err) {
-        toast.error('Failed to load cash limit details');
+        toast.error(t("Failed to load cash limit details"));
       } finally {
         setLoading(false);
       }
@@ -81,13 +83,13 @@ export const CashLimitInfoV2 = () => {
           <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-lg">
              <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-lg font-bold text-[#2B2B2B] leading-none">Available cash limit</h1>
+          <h1 className="text-lg font-bold text-[#2B2B2B] leading-none">{t("Available cash limit")}</h1>
        </div>
 
        {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Checking Limits...</p>
+             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t("Checking Limits...")}</p>
           </div>
        ) : (
           <div className="px-4 py-6">
@@ -97,23 +99,23 @@ export const CashLimitInfoV2 = () => {
                       <ShieldCheck className="w-6 h-6" />
                    </div>
                    <div>
-                      <h3 className="text-[17px] font-black tracking-tight leading-none mb-1">Total cash limit</h3>
+                      <h3 className="text-[17px] font-black tracking-tight leading-none mb-1">{t("Total cash limit")}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{formatCurrency(walletState.totalCashLimit)}</p>
                    </div>
                 </div>
 
                 <div className="space-y-1">
                    <DetailRow 
-                      label="Total cash limit" 
+                      label={t("Total cash limit")} 
                       value={formatCurrency(walletState.totalCashLimit)} 
                       subLabel="Resets every Monday and increases with earnings"
                    />
-                   <DetailRow label="Cash in hand" value={formatCurrency(walletState.cashInHand)} />
-                   <DetailRow label="Deductions" value={formatCurrency(walletState.deductions)} />
-                   <DetailRow label="Pocket balance" value={formatCurrency(walletState.pocketBalance)} />
+                   <DetailRow label={t("Cash in hand")} value={formatCurrency(walletState.cashInHand)} />
+                   <DetailRow label={t("Deductions")} value={formatCurrency(walletState.deductions)} />
+                   <DetailRow label={t("Pocket balance")} value={formatCurrency(walletState.pocketBalance)} />
 
                    <div className="py-5 flex justify-between items-center bg-emerald-50/50 -mx-5 px-5 mt-2 transition-all">
-                      <div className="text-sm font-black text-emerald-900 uppercase tracking-tight">Available cash limit</div>
+                      <div className="text-sm font-black text-emerald-900 uppercase tracking-tight">{t("Available cash limit")}</div>
                       <div className="text-lg font-black text-emerald-600">{formatCurrency(walletState.availableCashLimit)}</div>
                    </div>
                 </div>
@@ -121,9 +123,9 @@ export const CashLimitInfoV2 = () => {
 
              <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100 mb-6">
                 <HelpCircle className="w-8 h-8 text-gray-200 mx-auto mb-4" />
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">How it works?</h4>
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t("How it works?")}</h4>
                 <p className="text-[11px] text-gray-500 font-medium leading-relaxed px-4">
-                   Your available limit is the maximum cash you can carry in hand. As you receive cash orders, this limit decreases. Settling your dues or earning more will increase this limit.
+                   {t("Your available limit is the maximum cash you can carry in hand. As you receive cash orders, this limit decreases. Settling your dues or earning more will increase this limit.")}
                 </p>
              </div>
 
@@ -132,7 +134,7 @@ export const CashLimitInfoV2 = () => {
                   onClick={goBack}
                   className="w-full py-4 bg-black text-white rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all"
                 >
-                   Okay
+                   {t("Okay")}
                 </button>
              </div>
           </div>

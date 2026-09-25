@@ -3,15 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { dmbVendorAPI } from '../../../services/api/index';
 import { CheckCheck, Truck, Inbox, Tag, Soup, CheckCircle, Receipt, Microwave, Check, BarChart, Clock, Zap } from 'lucide-react';
 import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
+import { Trans, useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 
 const STATUS_CONFIG = {
-  scheduled: { label: 'Scheduled', color: 'bg-slate-100 text-slate-600', border: 'border-slate-300' },
-  preparing: { label: 'Preparing 🔥', color: 'bg-amber-100 text-amber-700', border: 'border-amber-400' },
-  ready: { label: 'Ready ✓', color: 'bg-green-100 text-green-700', border: 'border-green-500' },
-  out_for_delivery: { label: 'On the Way 🛵', color: 'bg-purple-100 text-purple-700', border: 'border-purple-400' },
-  delivered: { label: 'Delivered ✅', color: 'bg-blue-100 text-blue-700', border: 'border-blue-400' },
-  skipped: { label: 'Skipped', color: 'bg-red-100 text-red-600', border: 'border-red-300' },
+  scheduled: { label: tKey("Scheduled"), color: 'bg-slate-100 text-slate-600', border: 'border-slate-300' },
+  preparing: { label: tKey("Preparing 🔥"), color: 'bg-amber-100 text-amber-700', border: 'border-amber-400' },
+  ready: { label: tKey("Ready ✓"), color: 'bg-green-100 text-green-700', border: 'border-green-500' },
+  out_for_delivery: { label: tKey("On the Way 🛵"), color: 'bg-purple-100 text-purple-700', border: 'border-purple-400' },
+  delivered: { label: tKey("Delivered ✅"), color: 'bg-blue-100 text-blue-700', border: 'border-blue-400' },
+  skipped: { label: tKey("Skipped"), color: 'bg-red-100 text-red-600', border: 'border-red-300' },
 };
 
 /** Convert "HH:MM" string to minutes since midnight */
@@ -32,6 +34,7 @@ const fmtMin = (mins) => {
 };
 
 export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatus, onBatchUpdateStatus }) {
+  const { t } = useTranslation("vendor");
   const navigate = useNavigate();
   const { slots: slotList, label: slotName } = useDeliverySlots();
   const [viewMode, setViewMode] = useState('daily');
@@ -123,7 +126,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
       // If the changed order is for a different date than what's displayed, show a toast
       if (orderDateLabel && orderDateLabel !== activeDate) {
-        showToast(`📋 An order for ${orderDateLabel} was updated`);
+        showToast(t("📋 An order for {{orderDateLabel}} was updated", { orderDateLabel }));
       }
     };
     window.addEventListener('restaurantOrderStatusUpdate', handleStatusUpdate);
@@ -162,7 +165,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       if (!isWithinPrepWindow(deliverySlot)) {
         const label = slotName(deliverySlot);
         const win = getWindowLabel(deliverySlot);
-        showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
+        showToast(t("⏰ {{label}} preparation is only allowed{{value}}. Please try again later.", { label, value: win ? ` between ${win}` : '' }));
         return;
       }
     }
@@ -172,9 +175,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       setDailyOrders(prev =>
         prev.map(o => o._id === orderId ? { ...o, status: newStatus } : o)
       );
-      showToast(`✅ Order ${newStatus === 'preparing' ? 'In Preparation' : 'Marked Ready'}!`);
+      showToast(t("✅ Order {{value}}!", { value: newStatus === 'preparing' ? 'In Preparation' : 'Marked Ready' }));
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to update status');
+      showToast(err.response?.data?.message || t("Failed to update status"));
     }
   };
 
@@ -183,7 +186,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     if (activeDate === 'today' && !isWithinPrepWindow(activeSlot)) {
       const label = slotName(activeSlot);
       const win = getWindowLabel(activeSlot);
-      showToast(`⏰ ${label} preparation is only allowed${win ? ` between ${win}` : ''}. Please try again later.`);
+      showToast(t("⏰ {{label}} preparation is only allowed{{value}}. Please try again later.", { label, value: win ? ` between ${win}` : '' }));
       return;
     }
     try {
@@ -199,9 +202,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
         ) ? { ...o, status: 'ready' } : o)
       );
       const slotLabel = slotName(activeSlot);
-      showToast(`✅ ${slotLabel} orders marked as Ready!`);
+      showToast(t("✅ {{slotLabel}} orders marked as Ready!", { slotLabel }));
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to mark all ready');
+      showToast(err.response?.data?.message || t("Failed to mark all ready"));
     }
   };
 
@@ -214,11 +217,11 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
       const res = await dmbVendorAPI.resendBatch(dateParam, activeSlot);
       if (res.data?.success) {
-        showToast(`✅ Delivery partner requested for ${slotName(activeSlot)}!`);
+        showToast(t("✅ Delivery partner requested for {{slotName}}!", { slotName: slotName(activeSlot) }));
         loadDailyOrders(activeDate);
       }
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to request delivery partner');
+      showToast(err.response?.data?.message || t("Failed to request delivery partner"));
     } finally {
       setIsRequestingDelivery(false);
     }
@@ -246,7 +249,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             viewMode === 'daily' ? 'bg-primary text-white border-primary' : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}
         >
-          <span className="flex items-center justify-center gap-1.5"><Receipt className="w-4 h-4" /> Subscription Orders</span>
+          <span className="flex items-center justify-center gap-1.5"><Receipt className="w-4 h-4" /> {t("Subscription Orders")}</span>
         </button>
         <button
           onClick={() => setViewMode('legacy')}
@@ -254,7 +257,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             viewMode === 'legacy' ? 'bg-primary text-white border-primary' : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}
         >
-          <span className="flex items-center justify-center gap-1.5"><Tag className="w-4 h-4" /> One-Time Orders</span>
+          <span className="flex items-center justify-center gap-1.5"><Tag className="w-4 h-4" /> {t("One-Time Orders")}</span>
         </button>
       </div>
 
@@ -271,7 +274,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                   activeDate === d ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface border-[#e4e2e1] hover:bg-slate-50'
                 }`}
               >
-                {d === 'today' ? "Today's Orders" : "Tomorrow's Orders"}
+                {d === 'today' ? t("Today's Orders") : t("Tomorrow's Orders")}
               </button>
             ))}
           </div>
@@ -307,7 +310,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               return (
                 <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold border bg-purple-50 border-purple-200 text-purple-700 transition-all">
                   <Zap className="w-4 h-4 text-purple-600 shrink-0" />
-                  <span>Testing Mode: Preparation allowed anytime (restrictions bypassed)</span>
+                  <span>{t("Testing Mode: Preparation allowed anytime (restrictions bypassed)")}</span>
                 </div>
               );
             }
@@ -323,8 +326,8 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               }`}>
                 {allowed ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
                 <span>
-                  {slotLabel} window: <strong>{win}</strong>
-                  {!allowed && ' — Outside prep window'}
+                  <Trans t={t} i18nKey={"{{slotLabel}} window: <0>{{win}}</0>"} defaults={"{{slotLabel}} window: <0>{{win}}</0>"} values={{ slotLabel, win }} components={[<strong />]} />
+                  {!allowed && " " + t("— Outside prep window")}
                 </span>
               </div>
             );
@@ -332,12 +335,12 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
           {/* Meal Box Counts Card */}
           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Meal Box Counts</h4>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{t("Meal Box Counts")}</h4>
             <div className="grid grid-cols-3 gap-2 text-center text-[12px] font-bold text-slate-700">
               {slotList.map(sl => (
                 <div key={sl.key} className="bg-white p-2 rounded-lg border border-slate-100 shadow-xs">
                   <p className="text-[9px] text-slate-400 uppercase font-bold truncate">{sl.name}</p>
-                  <p className="text-[14px] text-primary font-black mt-0.5">{countFor(sl.key)} Boxes</p>
+                  <p className="text-[14px] text-primary font-black mt-0.5">{countFor(sl.key)} {t("Boxes")}</p>
                 </div>
               ))}
             </div>
@@ -346,11 +349,11 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           {/* Stats Row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-amber-50 p-3 rounded-xl flex flex-col items-center border border-amber-200">
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Preparing</span>
+              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">{t("Preparing")}</span>
               <span className="text-xl font-bold text-amber-700 mt-1">{preparingCount}</span>
             </div>
             <div className="bg-green-50 p-3 rounded-xl flex flex-col items-center border border-green-200">
-              <span className="text-[10px] font-bold text-green-600 uppercase tracking-wide">Ready ✓</span>
+              <span className="text-[10px] font-bold text-green-600 uppercase tracking-wide">{t("Ready ✓")}</span>
               <span className="text-xl font-bold text-green-700 mt-1">{readyCount}</span>
             </div>
           </div>
@@ -362,7 +365,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
               className="w-full bg-primary text-white py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
             >
               <CheckCheck className="text-[18px]" />
-              Mark All {pendingCount} {slotName(activeSlot)} Orders as Ready
+              {t("Mark All {{pendingCount}}", { pendingCount })} {slotName(activeSlot)} {t("Orders as Ready")}
             </button>
           )}
 
@@ -370,7 +373,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           {pendingCount === 0 && readyCount > 0 && (
             <div className="w-full bg-[#1F7A63]/10 border border-[#1F7A63]/20 text-[#1F7A63] py-3.5 px-4 rounded-2xl font-bold text-[13px] flex items-center justify-center gap-2.5 shadow-sm animate-fadeIn">
               <Truck className="text-[18px] animate-pulse" />
-              <span>Collection PIN Generated — Waiting for Delivery Partner</span>
+              <span>{t("Collection PIN Generated — Waiting for Delivery Partner")}</span>
             </div>
           )}
 
@@ -378,19 +381,19 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           {loading ? (
             <div className="flex items-center justify-center py-12 gap-2 text-on-surface-variant">
               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-[13px] font-medium">Loading orders…</span>
+              <span className="text-[13px] font-medium">{t("Loading orders…")}</span>
             </div>
           ) : dailyOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6">
               <Inbox className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">No subscription orders {activeDate}</p>
-              <p className="text-[12px] text-slate-400 mt-1">Orders appear when customers have active subscriptions</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">{t("No subscription orders {{activeDate}}", { activeDate })}</p>
+              <p className="text-[12px] text-slate-400 mt-1">{t("Orders appear when customers have active subscriptions")}</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6 animate-fadeIn">
               <Inbox className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">No {slotName(activeSlot)} orders {activeDate}</p>
-              <p className="text-[12px] text-slate-400 mt-1">Select another slot or check back later</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">{t("No {{slot}} orders {{activeDate}}", { slot: slotName(activeSlot), activeDate })}</p>
+              <p className="text-[12px] text-slate-400 mt-1">{t("Select another slot or check back later")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 space-y-0">
@@ -415,7 +418,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                           </p>
                           <h3 className="text-[15px] font-bold text-on-surface mt-0.5">
                             {mealName}
-                            {extraMeals > 0 && <span className="text-[12px] text-slate-400 font-medium"> +{extraMeals} more</span>}
+                            {extraMeals > 0 && <span className="text-[12px] text-slate-400 font-medium"> {t("+{{extraMeals}} more", { extraMeals })}</span>}
                           </h3>
                           {order.meals?.[0]?.mealPlanName && order.meals?.[0]?.name && order.meals[0].name !== order.meals[0].mealPlanName && (
                             <p className="text-[11px] text-[#1F7A63] font-medium mt-0.5">🍽️ {order.meals[0].name}</p>
@@ -425,7 +428,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                           </p>
                         </div>
                         <span className={`${sc.color} font-bold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider`}>
-                          {sc.label}
+                          {t(sc.label)}
                         </span>
                       </div>
 
@@ -444,7 +447,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                               className="flex-1 bg-amber-500 text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                             >
                               <Soup className="text-[16px]" />
-                              Start Preparing
+                              {t("Start Preparing")}
                             </button>
                           )}
                           {canReady && (
@@ -453,13 +456,13 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                               className="flex-1 bg-primary text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                             >
                               <CheckCircle className="text-[16px]" />
-                              Mark Ready
+                              {t("Mark Ready")}
                             </button>
                           )}
                           {order.status === 'ready' && (
                             <div className="flex-1 bg-green-100 text-green-700 py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1">
                               <CheckCheck className="text-[16px]" />
-                              Ready for Pickup
+                              {t("Ready for Pickup")}
                             </div>
                           )}
                         </div>
@@ -475,14 +478,14 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
         /* Legacy One-Time Orders */
         <div className="space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">ONE-TIME ORDERS</span>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">{legacyOrders.length} total</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("ONE-TIME ORDERS")}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">{t("{{length}} total", { length: legacyOrders.length })}</span>
           </div>
 
           {legacyOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6">
               <Receipt className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">No one-time orders</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">{t("No one-time orders")}</p>
             </div>
           ) : (
             legacyOrders.map(order => {
@@ -498,7 +501,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ZONE: {order.zone}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t("ZONE: {{zone}}", { zone: order.zone })}</p>
                         <h3 className="text-[15px] font-bold text-on-surface mt-0.5">{order.itemsName}</h3>
                       </div>
                       <span className="bg-slate-100 px-2.5 py-1 rounded text-[11px] font-bold text-slate-600 font-mono">{order.code}</span>
@@ -512,21 +515,21 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                           }`}
                         >
                           <Microwave className="text-[16px]" />
-                          {isPreparing ? 'Preparing…' : 'Start Preparing'}
+                          {isPreparing ? t("Preparing…") : t("Start Preparing")}
                         </button>
                         <button
                           onClick={() => onUpdateOrderStatus(order.id, 'Ready')}
                           className="flex-1 bg-primary text-white py-2 rounded-lg font-bold text-[12px] flex items-center justify-center gap-1 active:scale-95 transition-transform"
                         >
                           <Check className="text-[16px]" />
-                          Mark Ready
+                          {t("Mark Ready")}
                         </button>
                       </div>
                     )}
                     {isReady && (
                       <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                         <CheckCircle className="text-green-600 text-[18px]" />
-                        <span className="text-[13px] font-bold text-green-700">Ready for Pickup</span>
+                        <span className="text-[13px] font-bold text-green-700">{t("Ready for Pickup")}</span>
                       </div>
                     )}
                   </div>
@@ -539,20 +542,20 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
 
       {/* Quick Actions (at the bottom of OrdersManager) */}
       <section className="space-y-2 text-left pt-6 mt-8 border-t border-slate-100">
-        <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">Quick Actions</h3>
+        <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{t("Quick Actions")}</h3>
         <div className="grid grid-cols-2 gap-3 pb-4">
           <button
             onClick={() => onBatchUpdateStatus('any', 'Ready')}
             className="bg-primary text-on-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-md hover:brightness-110 transition-all cursor-pointer">
             <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>Mark All Ready</span>
+            <span>{t("Mark All Ready")}</span>
           </button>
 
           <button
             onClick={() => navigate('/vendor/earnings')}
             className="bg-white border border-primary text-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-xs hover:bg-primary/5 transition-all cursor-pointer">
             <BarChart className="text-[18px]" />
-            <span>View Forecast</span>
+            <span>{t("View Forecast")}</span>
           </button>
         </div>
       </section>

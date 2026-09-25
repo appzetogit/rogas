@@ -3,12 +3,14 @@ import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
 import { ArrowLeft, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCircle, Info, RefreshCw, HandCoins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 const STATUS_CONFIG = {
-  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50/80 border-amber-200/80', label: 'Pending' },
-  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50/80 border-emerald-200/80', label: 'Approved & Refunded' },
-  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50/80 border-red-200/80', label: 'Rejected' },
-  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50/80 border-blue-200/80', label: 'Subscription Extended' },
+  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50/80 border-amber-200/80', label: tKey("Pending") },
+  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50/80 border-emerald-200/80', label: tKey("Approved & Refunded") },
+  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50/80 border-red-200/80', label: tKey("Rejected") },
+  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50/80 border-blue-200/80', label: tKey("Subscription Extended") },
 };
 
 const REASONS = [
@@ -20,6 +22,7 @@ const REASONS = [
 ];
 
 export default function CustomerServicePage() {
+  const { t } = useTranslation("customer");
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +39,7 @@ export default function CustomerServicePage() {
       const res = await serviceManagementAPI.getMyCustomerRequests();
       setRequests(res.data?.data || []);
     } catch {
-      toast.error('Failed to load requests');
+      toast.error(t("Failed to load requests"));
     } finally {
       setLoading(false);
     }
@@ -47,18 +50,18 @@ export default function CustomerServicePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!reason) {
-      toast.error('Please select a reason');
+      toast.error(t("Please select a reason"));
       return;
     }
     setSubmitting(true);
     try {
       await serviceManagementAPI.submitCustomerComplaint({ reason, remarks });
-      toast.success('Complaint submitted successfully. Our team will review it.');
+      toast.success(t("Complaint submitted successfully. Our team will review it."));
       setShowForm(false);
       setReason(''); setRemarks('');
       fetchRequests();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit request');
+      toast.error(err.response?.data?.message || t("Failed to submit request"));
     } finally {
       setSubmitting(false);
     }
@@ -67,20 +70,20 @@ export default function CustomerServicePage() {
   const handleExtend = async (id) => {
     try {
       await serviceManagementAPI.extendSubscription(id);
-      toast.success('Subscription extended successfully');
+      toast.success(t("Subscription extended successfully"));
       fetchRequests();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to extend subscription');
+      toast.error(err.response?.data?.message || t("Failed to extend subscription"));
     }
   };
 
   const handleRefund = async (id) => {
     try {
       await serviceManagementAPI.requestRefund(id);
-      toast.success('Refund request submitted successfully');
+      toast.success(t("Refund request submitted successfully"));
       fetchRequests();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to request refund');
+      toast.error(err.response?.data?.message || t("Failed to request refund"));
     }
   };
 
@@ -96,7 +99,7 @@ export default function CustomerServicePage() {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-extrabold text-primary text-center">Customer Support</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{t("Customer Support")}</h1>
         <div className="w-8" />
       </header>
 
@@ -105,21 +108,21 @@ export default function CustomerServicePage() {
         <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
           <Info className="w-5 h-5 text-[#1F7A63] shrink-0 mt-0.5" />
           <p className="text-xs text-slate-700 leading-relaxed font-medium">
-            Submit a complaint or request a refund for recent orders. If approved, the amount will be credited to your DailyMealBox Wallet instantly.
+            {t("Submit a complaint or request a refund for recent orders. If approved, the amount will be credited to your DailyMealBox Wallet instantly.")}
           </p>
         </div>
 
         {/* Requests Header & New Complaint Action Row */}
         <div className="flex items-center justify-between pt-2 pb-1">
-          <h2 className="font-extrabold text-[12px] text-slate-400 uppercase tracking-widest">My Support History</h2>
+          <h2 className="font-extrabold text-[12px] text-slate-400 uppercase tracking-widest">{t("My Support History")}</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-[#1F7A63] text-white px-4 py-2 rounded-xl font-extrabold text-[13px] hover:bg-[#155a49] transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
             >
-              <span>{showForm ? 'Cancel' : '+ New Complaint'}</span>
+              <span>{showForm ? t("Cancel") : t("+ New Complaint")}</span>
             </button>
-            <button onClick={fetchRequests} className="p-2 text-[#1F7A63] hover:bg-[#1F7A63]/10 rounded-xl active:rotate-180 transition-all cursor-pointer bg-white border border-slate-200/60 shadow-xs" title="Refresh">
+            <button onClick={fetchRequests} className="p-2 text-[#1F7A63] hover:bg-[#1F7A63]/10 rounded-xl active:rotate-180 transition-all cursor-pointer bg-white border border-slate-200/60 shadow-xs" title={t("Refresh")}>
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
@@ -128,10 +131,10 @@ export default function CustomerServicePage() {
         {/* Submit Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-5 animate-in fade-in duration-200">
-            <h2 className="font-extrabold text-[16px] text-slate-900">Submit Complaint</h2>
+            <h2 className="font-extrabold text-[16px] text-slate-900">{t("Submit Complaint")}</h2>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">Reason *</label>
+              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">{t("Reason *")}</label>
               <div className="flex flex-wrap gap-2.5">
                 {REASONS.map(r => (
                   <button
@@ -151,13 +154,13 @@ export default function CustomerServicePage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">Additional Details (Optional)</label>
+              <label className="block text-[11px] font-extrabold text-slate-400 uppercase mb-2.5 tracking-wider">{t("Additional Details (Optional)")}</label>
               <div className="relative">
                 <MessageSquare className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Explain the issue in detail..."
+                  placeholder={t("Explain the issue in detail...")}
                   rows={3}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-2xl text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1F7A63] focus:ring-2 focus:ring-[#1F7A63]/20 resize-none transition-all font-medium"
                 />
@@ -170,7 +173,7 @@ export default function CustomerServicePage() {
               className="w-full h-12 bg-[#1F7A63] text-white font-extrabold text-sm rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md hover:bg-[#155a49] cursor-pointer mt-2"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              Submit to Support
+              {t("Submit to Support")}
             </button>
           </form>
         )}
@@ -184,8 +187,8 @@ export default function CustomerServicePage() {
         ) : requests.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
             <HandCoins className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-700 text-[14px] font-bold">No complaints or refund requests found.</p>
-            <p className="text-xs text-slate-400 mt-1">Need help with an order? Click New Complaint above.</p>
+            <p className="text-slate-700 text-[14px] font-bold">{t("No complaints or refund requests found.")}</p>
+            <p className="text-xs text-slate-400 mt-1">{t("Need help with an order? Click New Complaint above.")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,11 +209,11 @@ export default function CustomerServicePage() {
                     <div className="flex items-center justify-between">
                       <div className={`flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide ${cfg.color}`}>
                         <StatusIcon className="w-4 h-4" />
-                        {cfg.label}
+                        {t(cfg.label)}
                       </div>
                       {req.status === 'approved' && req.refundAmount > 0 && (
                         <div className="text-[12px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
-                          +₹{req.refundAmount} Refunded
+                          {t("+₹{{refundAmount}} Refunded", { refundAmount: req.refundAmount })}
                         </div>
                       )}
                     </div>
@@ -222,21 +225,21 @@ export default function CustomerServicePage() {
                             onClick={() => handleExtend(req._id)}
                             className="flex-1 py-2.5 bg-[#1F7A63]/10 text-[#1F7A63] rounded-xl text-xs font-extrabold hover:bg-[#1F7A63]/20 transition-colors cursor-pointer"
                           >
-                            Add Day
+                            {t("Add Day")}
                           </button>
                         )}
                         <button
                           onClick={() => handleRefund(req._id)}
                           className="flex-1 py-2.5 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-extrabold hover:bg-emerald-200 transition-colors cursor-pointer"
                         >
-                          Request Refund
+                          {t("Request Refund")}
                         </button>
                       </div>
                     )}
 
                     {req.adminNotes && (
                       <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                        <p className="text-[12px] text-slate-600 font-medium"><span className="font-bold text-slate-900">Support Team:</span> {req.adminNotes}</p>
+                        <p className="text-[12px] text-slate-600 font-medium"><span className="font-bold text-slate-900">{t("Support Team:")}</span> {req.adminNotes}</p>
                       </div>
                     )}
                   </div>

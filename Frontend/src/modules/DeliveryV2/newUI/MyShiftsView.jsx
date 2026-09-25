@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Clock, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import useDeliverySlots, { to12h } from '../../../shared/hooks/useDeliverySlots';
+import { useTranslation } from "react-i18next";
 
 const MyShiftsView = ({ onGoBack }) => {
+  const { t } = useTranslation("driver");
   const [currentShifts, setCurrentShifts] = useState([]);
   const [activeRequest, setActiveRequest] = useState(null);
   const [selectedShifts, setSelectedShifts] = useState([]);
@@ -31,7 +33,7 @@ const MyShiftsView = ({ onGoBack }) => {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load shift data');
+      toast.error(t("Failed to load shift data"));
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ const MyShiftsView = ({ onGoBack }) => {
 
   const handleSubmit = async () => {
     if (selectedShifts.length === 0) {
-      toast.error('Please select at least one shift');
+      toast.error(t("Please select at least one shift"));
       return;
     }
     try {
@@ -55,14 +57,14 @@ const MyShiftsView = ({ onGoBack }) => {
       });
       const data = await response.json();
       if (data.success) {
-        toast.success('Shift change requested successfully');
+        toast.success(t("Shift change requested successfully"));
         fetchShiftData();
       } else {
-        toast.error(data.message || 'Failed to request shift change');
+        toast.error(data.message || t("Failed to request shift change"));
       }
     } catch (err) {
       console.error(err);
-      toast.error('Something went wrong');
+      toast.error(t("Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -80,7 +82,7 @@ const MyShiftsView = ({ onGoBack }) => {
   const availableShifts = selectableSlots.map((s) => ({ id: s.key, label: `${s.name} (${slotWin(s.key)})` }));
 
   if (loading) {
-    return <div className="p-8 text-center text-[#2b2b2b] bg-[#f5f5f0] min-h-screen">Loading...</div>;
+    return <div className="p-8 text-center text-[#2b2b2b] bg-[#f5f5f0] min-h-screen">{t("Loading...")}</div>;
   }
 
   return (
@@ -89,12 +91,12 @@ const MyShiftsView = ({ onGoBack }) => {
         <button onClick={onGoBack} className="p-2 bg-white rounded-full shadow-sm text-[#1f7a63]">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xl font-bold">Change Shifts</h2>
+        <h2 className="text-xl font-bold">{t("Change Shifts")}</h2>
       </div>
 
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e0e3e0]">
         <h3 className="font-bold text-[#1f7a63] flex items-center gap-2 mb-3">
-          <Clock className="w-5 h-5" /> Current Shifts
+          <Clock className="w-5 h-5" /> {t("Current Shifts")}
         </h3>
         {currentShifts.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -105,7 +107,7 @@ const MyShiftsView = ({ onGoBack }) => {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[#5d5f5b]">No shifts assigned currently.</p>
+          <p className="text-sm text-[#5d5f5b]">{t("No shifts assigned currently.")}</p>
         )}
       </div>
 
@@ -114,8 +116,8 @@ const MyShiftsView = ({ onGoBack }) => {
           <div className="flex gap-3">
             <AlertCircle className="w-6 h-6 text-[#f57c00] shrink-0" />
             <div>
-              <h4 className="font-bold text-[#f57c00]">Pending Request</h4>
-              <p className="text-sm text-[#795548] mt-1">You have requested to change your shifts to:</p>
+              <h4 className="font-bold text-[#f57c00]">{t("Pending Request")}</h4>
+              <p className="text-sm text-[#795548] mt-1">{t("You have requested to change your shifts to:")}</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {activeRequest.requestedShifts.map(s => (
                   <span key={s} className="px-3 py-1 bg-white border border-[#f57c00]/30 text-[#f57c00] rounded-full text-xs font-semibold capitalize">
@@ -123,13 +125,13 @@ const MyShiftsView = ({ onGoBack }) => {
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-[#795548] mt-4 opacity-80">Waiting for admin approval...</p>
+              <p className="text-xs text-[#795548] mt-4 opacity-80">{t("Waiting for admin approval...")}</p>
             </div>
           </div>
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e0e3e0] mt-4">
-          <h3 className="font-bold text-[#2b2b2b] mb-4">Select New Shifts</h3>
+          <h3 className="font-bold text-[#2b2b2b] mb-4">{t("Select New Shifts")}</h3>
           <div className="space-y-3">
             {availableShifts.map(shift => {
               const isSelected = selectedShifts.includes(shift.id);
@@ -155,9 +157,9 @@ const MyShiftsView = ({ onGoBack }) => {
             disabled={submitting}
             className="mt-6 w-full py-3.5 bg-[#1f7a63] text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-all"
           >
-            {submitting ? 'Submitting...' : (
+            {submitting ? t("Submitting...") : (
               <>
-                <Send className="w-4 h-4" /> Request Change
+                <Send className="w-4 h-4" /> {t("Request Change")}
               </>
             )}
           </button>

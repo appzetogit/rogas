@@ -12,6 +12,7 @@ import { openCamera, isFlutterBridgeAvailable } from "@food/utils/imageUploadUti
 import { deliveryAPI } from "@food/api"
 import { motion, AnimatePresence } from "framer-motion"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
+import { useTranslation } from "react-i18next";
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -21,6 +22,7 @@ const debugError = (...args) => {}
  * ProfileDetailsV2 - Betterised Premium UI for Delivery Partner Profile.
  */
 export const ProfileDetailsV2 = () => {
+  const { t: tr } = useTranslation("driver");
   const navigate = useNavigate()
   const goBack = useDeliveryBackNavigation()
   const [profile, setProfile] = useState(null)
@@ -115,12 +117,12 @@ export const ProfileDetailsV2 = () => {
       } catch (error) {
         debugError("Error fetching profile:", error)
         if (error.response?.status === 401) {
-          toast.error("Session expired. Please login again.")
+          toast.error(tr("Session expired. Please login again."))
           setTimeout(() => {
             navigate("/food/delivery/login", { replace: true })
           }, 2000)
         } else {
-          toast.error(error?.response?.data?.message || "Failed to load profile data")
+          toast.error(error?.response?.data?.message || tr("Failed to load profile data"))
         }
       } finally {
         setLoading(false)
@@ -133,9 +135,9 @@ export const ProfileDetailsV2 = () => {
   const isAdminApproved = ["approved", "active"].includes(String(profile?.status || "").toLowerCase())
 
   const getDocumentVerificationLabel = (doc) => {
-    if (!doc?.document) return "Not uploaded"
-    if (doc?.verified || isAdminApproved) return "Verified"
-    return "Pending Verification"
+    if (!doc?.document) return tr("Not uploaded")
+    if (doc?.verified || isAdminApproved) return tr("Verified")
+    return tr("Pending Verification")
   }
 
   const getDocumentNumber = (doc) => {
@@ -262,13 +264,13 @@ export const ProfileDetailsV2 = () => {
       formData.append("profilePhoto", file)
       const response = await deliveryAPI.updateProfileMultipart(formData)
       if (response?.data?.success) {
-        toast.success("Profile photo updated")
+        toast.success(tr("Profile photo updated"))
         await refreshProfile()
       } else {
-        toast.error(response?.data?.message || "Update failed")
+        toast.error(response?.data?.message || tr("Update failed"))
       }
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Update failed")
+      toast.error(error?.response?.data?.message || tr("Update failed"))
     } finally {
       setIsUploadingImage(false)
       setUploadTarget(null)
@@ -299,14 +301,14 @@ export const ProfileDetailsV2 = () => {
       const response = await deliveryAPI.updateProfileDetails({ profilePhoto: "" })
       // Backend might return different structures; check for success
       if (response?.status === 200) {
-        toast.success("Profile photo removed")
+        toast.success(tr("Profile photo removed"))
         await refreshProfile()
         setShowDeletePopup(false)
       } else {
-        toast.error("Failed to remove photo")
+        toast.error(tr("Failed to remove photo"))
       }
     } catch (error) {
-       toast.error(error?.response?.data?.message || "Delete failed")
+       toast.error(error?.response?.data?.message || tr("Delete failed"))
     } finally {
       setIsDeletingImage(false)
     }
@@ -328,18 +330,18 @@ export const ProfileDetailsV2 = () => {
     if (!file) return
 
     if (!String(file.type || "").startsWith("image/")) {
-      toast.error("Please select an image file")
+      toast.error(tr("Please select an image file"))
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB")
+      toast.error(tr("Image size should be less than 5MB"))
       return
     }
 
     setUpiQrFile(file)
     setUpiQrPreview(URL.createObjectURL(file))
-    toast.success("UPI QR selected")
+    toast.success(tr("UPI QR selected"))
   }
 
   const submitBankDetails = async () => {
@@ -349,22 +351,22 @@ export const ProfileDetailsV2 = () => {
       const { accountNumber, ifscCode, panNumber, upiId } = bankDetails
 
       if (accountNumber && !/^\d{9,18}$/.test(accountNumber.trim())) {
-        return toast.error("Invalid Account Number (9-18 digits)")
+        return toast.error(tr("Invalid Account Number (9-18 digits)"))
       }
 
       const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/
       if (ifscCode && !ifscRegex.test(ifscCode.trim().toUpperCase())) {
-        return toast.error("Invalid IFSC Code (e.g. SBIN0001234)")
+        return toast.error(tr("Invalid IFSC Code (e.g. SBIN0001234)"))
       }
 
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
       if (panNumber && !panRegex.test(panNumber.trim().toUpperCase())) {
-        return toast.error("Invalid PAN Card format (e.g. ABCDE1234F)")
+        return toast.error(tr("Invalid PAN Card format (e.g. ABCDE1234F)"))
       }
 
       const upiRegex = /^[\w\.-]+@[\w\.-]+$/
       if (upiId && !upiRegex.test(upiId.trim())) {
-        return toast.error("Invalid UPI ID (e.g. user@bank)")
+        return toast.error(tr("Invalid UPI ID (e.g. user@bank)"))
       }
 
       // Send as FormData to support optional QR upload
@@ -381,13 +383,13 @@ export const ProfileDetailsV2 = () => {
       }
 
       await deliveryAPI.updateBankDetailsMultipart(formData)
-      toast.success("Bank details updated")
+      toast.success(tr("Bank details updated"))
       setShowBankDetailsPopup(false)
       setUpiQrFile(null)
       setUpiQrPreview(null)
       await refreshProfile()
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Update failed")
+      toast.error(error?.response?.data?.message || tr("Update failed"))
     } finally {
       setIsUpdatingBankDetails(false)
     }
@@ -405,7 +407,7 @@ export const ProfileDetailsV2 = () => {
                   <User className="w-6 h-6 text-orange-500" />
                </div>
             </div>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Initializing Profile...</p>
+            <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">{tr("Initializing Profile...")}</p>
          </div>
       </div>
     )
@@ -441,10 +443,10 @@ export const ProfileDetailsV2 = () => {
           <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-xl transition-all active:scale-90">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-lg font-black text-black uppercase tracking-tight leading-none">Profile</h1>
+          <h1 className="text-lg font-black text-black uppercase tracking-tight leading-none">{tr("Profile")}</h1>
         </div>
         <div className="bg-blue-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-          ID: {profile?.deliveryId || "..."}
+          {tr("ID: {{deliveryId}}", { deliveryId: profile?.deliveryId || "..." })}
         </div>
       </div>
 
@@ -453,7 +455,7 @@ export const ProfileDetailsV2 = () => {
         <div className="relative group">
            <div className="w-32 h-32 rounded-[2.5rem] bg-gray-100 border-2 border-white shadow-2xl mx-auto overflow-hidden relative">
               {profileImageUrl ? (
-                <img src={profileImageUrl} alt="Avatar" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                <img src={profileImageUrl} alt={tr("Avatar")} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"><User className="w-12 h-12 text-gray-300" /></div>
               )}
@@ -468,7 +470,7 @@ export const ProfileDetailsV2 = () => {
               <button 
                 onClick={() => handleTakeCameraPhoto('profilePhoto')}
                 className="bg-[#1F7A63] text-[#F5F5F0] p-3 rounded-2xl shadow-xl hover:bg-gray-900 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
-                title="Take Photo"
+                title={tr("Take Photo")}
               >
                 <Camera className="w-5 h-5" />
               </button>
@@ -476,7 +478,7 @@ export const ProfileDetailsV2 = () => {
               <button 
                 onClick={() => handlePickFromGallery('profilePhoto', fileInputRef)}
                 className="bg-blue-600 text-white p-3 rounded-2xl shadow-xl hover:bg-blue-700 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
-                title="Gallery"
+                title={tr("Gallery")}
               >
                 <ImageIcon className="w-5 h-5" />
               </button>
@@ -485,7 +487,7 @@ export const ProfileDetailsV2 = () => {
                 <button 
                   onClick={() => setShowDeletePopup(true)}
                   className="bg-red-500 text-white p-3 rounded-2xl shadow-xl hover:bg-red-600 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
-                  title="Remove"
+                  title={tr("Remove")}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -495,11 +497,11 @@ export const ProfileDetailsV2 = () => {
 
         <div className="text-center pt-6">
            <h2 className="text-2xl font-black text-[#2B2B2B] leading-none">{profile?.name}</h2>
-           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2 mb-4">Delivery Partner • {profile?.location?.city}</p>
+           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2 mb-4">{tr("Delivery Partner • {{city}}", { city: profile?.location?.city })}</p>
            
            <div className="flex items-center justify-center gap-2">
               <div className={`${isAdminApproved ? 'bg-blue-600 text-white' : 'bg-orange-500/10 text-orange-500'} px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border ${isAdminApproved ? 'border-blue-700 shadow-lg' : 'border-orange-500/20'} flex items-center gap-2`}>
-                 <CheckCircle className="w-4 h-4" /> {isAdminApproved ? "Approved" : (profile?.status || "Pending")}
+                 <CheckCircle className="w-4 h-4" /> {isAdminApproved ? tr("Approved") : (profile?.status || tr("Pending"))}
               </div>
               <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-100 flex items-center gap-2">
                  <Smartphone className="w-4 h-4" /> {profile?.phone}
@@ -510,11 +512,11 @@ export const ProfileDetailsV2 = () => {
         {/* ─── RIDER STATS ─── */}
         <div className="grid grid-cols-2 gap-3">
            <div className="bg-white border border-gray-100 p-4 rounded-3xl shadow-sm text-center">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Rider Level</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{tr("Rider Level")}</p>
               <h4 className="text-xl font-black text-[#2B2B2B]">{riderLevel}</h4>
            </div>
            <div className="bg-white border border-gray-100 p-4 rounded-3xl shadow-sm text-center">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Rating</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{tr("Total Rating")}</p>
               <h4 className="text-xl font-black text-[#2B2B2B]">{ratingDisplay}</h4>
            </div>
         </div>
@@ -529,7 +531,7 @@ export const ProfileDetailsV2 = () => {
                   if (type.includes("bike") || type.includes("scooter") || type.includes("motorcycle")) return <Bike className="w-4 h-4 text-gray-400" />;
                   if (type.includes("bicycle")) return <Bike className="w-4 h-4 text-gray-400" />;
                   return <Truck className="w-4 h-4 text-gray-400" />;
-                })()} Vehicle Assets
+                })()} {tr("Vehicle Assets")}
              </h3>
           </div>
           <InfoCard 
@@ -540,10 +542,10 @@ export const ProfileDetailsV2 = () => {
               if (type.includes("bicycle")) return Bike;
               return Truck;
             })()} 
-            label="Vehicle Details" 
+            label={tr("Vehicle Details")} 
             value={[profile?.vehicle?.type, profile?.vehicle?.brand, vehicleNumber].filter(Boolean).map(v => String(v).toUpperCase()).join(" • ") || "N/A"} 
             color="blue"
-            badge={!vehicleNumber && <span className="text-[9px] bg-red-50 text-red-500 px-1.5 rounded uppercase font-bold">Missing</span>}
+            badge={!vehicleNumber && <span className="text-[9px] bg-red-50 text-red-500 px-1.5 rounded uppercase font-bold">{tr("Missing")}</span>}
             onEdit={() => { 
                 setVehicleInput({ number: vehicleNumber, brand: vehicleBrand, type: vehicleType }); 
                 setShowVehiclePopup(true); 
@@ -555,7 +557,7 @@ export const ProfileDetailsV2 = () => {
         <section>
            <div className="flex items-center justify-between mb-4 px-1">
               <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
-                 <Banknote className="w-4 h-4 text-gray-400" /> Bank & Payments
+                 <Banknote className="w-4 h-4 text-gray-400" /> {tr("Bank & Payments")}
               </h3>
               <button 
                 onClick={() => {
@@ -575,7 +577,7 @@ export const ProfileDetailsV2 = () => {
                 }} 
                 className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
               >
-                Edit Details
+                {tr("Edit Details")}
               </button>
            </div>
            
@@ -585,20 +587,20 @@ export const ProfileDetailsV2 = () => {
                  <div className="relative z-10">
                     <div className="flex justify-between items-start mb-10">
                        <div>
-                          <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Bank Account</p>
-                          <h4 className="text-lg font-bold tracking-tight">{bankDetails.bankName || "Link Account"}</h4>
+                          <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mb-1">{tr("Bank Account")}</p>
+                          <h4 className="text-lg font-bold tracking-tight">{bankDetails.bankName || tr("Link Account")}</h4>
                        </div>
                        <Banknote className="w-8 h-8 text-blue-500/50" />
                     </div>
                     <div className="flex justify-between items-end">
                        <div>
                           <p className="text-xs font-mono font-medium text-white/60 tracking-[0.2em]">
-                             {bankDetails.accountNumber ? `•••• •••• •••• ${bankDetails.accountNumber.slice(-4)}` : "XXXX XXXX XXXX XXXX"}
+                             {bankDetails.accountNumber ? `•••• •••• •••• ${bankDetails.accountNumber.slice(-4)}` : tr("XXXX XXXX XXXX XXXX")}
                           </p>
-                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2">{bankDetails.accountHolderName || "Account Holder"}</p>
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2">{bankDetails.accountHolderName || tr("Account Holder")}</p>
                        </div>
                        <div className="text-right">
-                          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">IFSC Code</p>
+                          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{tr("IFSC Code")}</p>
                           <p className="text-sm font-black tracking-widest">{bankDetails.ifscCode || "—"}</p>
                        </div>
                     </div>
@@ -612,8 +614,8 @@ export const ProfileDetailsV2 = () => {
                        <Smartphone className="w-7 h-7" />
                     </div>
                     <div>
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">UPI ID</p>
-                       <h4 className="text-base font-black text-[#2B2B2B]">{bankDetails.upiId || "Not added"}</h4>
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{tr("UPI ID")}</p>
+                       <h4 className="text-base font-black text-[#2B2B2B]">{bankDetails.upiId || tr("Not added")}</h4>
                     </div>
                  </div>
                  {bankDetails.upiQrCode && (
@@ -632,7 +634,7 @@ export const ProfileDetailsV2 = () => {
         <section>
           <div className="flex items-center justify-between mb-4 px-1">
              <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest flex items-center gap-2">
-                <Shield className="w-4 h-4 text-gray-400" /> Verification Docs
+                <Shield className="w-4 h-4 text-gray-400" /> {tr("Verification Docs")}
              </h3>
           </div>
           
@@ -649,7 +651,7 @@ export const ProfileDetailsV2 = () => {
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
                         <p className="text-xs font-bold text-gray-600">{getDocumentVerificationLabel(item.doc)}</p>
                         <p className="text-[11px] font-semibold text-gray-500 mt-0.5">
-                          {item.number || getDocumentNumber(item.doc) || "Number not added"}
+                          {item.number || getDocumentNumber(item.doc) || tr("Number not added")}
                         </p>
                      </div>
                   </div>
@@ -691,36 +693,36 @@ export const ProfileDetailsV2 = () => {
       <BottomPopup 
         isOpen={showDeletePopup} 
         onClose={() => setShowDeletePopup(false)} 
-        title="Remove Photo?"
+        title={tr("Remove Photo?")}
         showCloseButton={false}
       >
          <div className="pb-10 pt-4 text-center">
             <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-10 h-10 text-red-500" />
             </div>
-            <h3 className="text-xl font-black text-[#2B2B2B] mb-2 uppercase tracking-tight">Are you sure?</h3>
-            <p className="text-sm font-medium text-gray-500 mb-8 max-w-[200px] mx-auto">This will remove your current profile picture.</p>
+            <h3 className="text-xl font-black text-[#2B2B2B] mb-2 uppercase tracking-tight">{tr("Are you sure?")}</h3>
+            <p className="text-sm font-medium text-gray-500 mb-8 max-w-[200px] mx-auto">{tr("This will remove your current profile picture.")}</p>
             
             <div className="grid grid-cols-2 gap-3 px-2">
                 <button 
                   onClick={() => setShowDeletePopup(false)}
                   className="bg-gray-100 text-gray-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] active:scale-95"
                 >
-                  Cancel
+                  {tr("Cancel")}
                 </button>
                 <button 
                   onClick={handleDeletePhoto}
                   disabled={isDeletingImage}
                   className="bg-red-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-red-500/20 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  {isDeletingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, Remove"}
+                  {isDeletingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : tr("Yes, Remove")}
                 </button>
             </div>
          </div>
       </BottomPopup>
 
       {/* Vehicle Popup */}
-      <BottomPopup isOpen={showVehiclePopup} onClose={() => setShowVehiclePopup(false)} title="Vehicle Info" closeOnHandleClick={true} showCloseButton={false}>
+      <BottomPopup isOpen={showVehiclePopup} onClose={() => setShowVehiclePopup(false)} title={tr("Vehicle Info")} closeOnHandleClick={true} showCloseButton={false}>
          <div className="space-y-4 pb-10">
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col gap-4">
                 {/* Type Selection */}
@@ -734,16 +736,16 @@ export const ProfileDetailsV2 = () => {
                         })()}
                     </div>
                     <div className="flex-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vehicle Type</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr("Vehicle Type")}</p>
                         <select 
                             value={vehicleInput.type} 
                             onChange={(e) => setVehicleInput({...vehicleInput, type: e.target.value})} 
                             className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-blue-600 cursor-pointer"
                         >
-                            <option value="bike">Bike</option>
-                            <option value="scooter">Scooter</option>
-                            <option value="bicycle">Bicycle</option>
-                            <option value="car">Car</option>
+                            <option value="bike">{tr("Bike")}</option>
+                            <option value="scooter">{tr("Scooter")}</option>
+                            <option value="bicycle">{tr("Bicycle")}</option>
+                            <option value="car">{tr("Car")}</option>
                         </select>
                     </div>
                 </div>
@@ -754,12 +756,12 @@ export const ProfileDetailsV2 = () => {
                 <div className="flex items-center gap-4 w-full">
                     <div className="w-8 h-8 flex items-center justify-center"><Plus className="w-4 h-4 text-blue-600/50" /></div>
                     <div className="flex-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vehicle Name/Brand</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr("Vehicle Name/Brand")}</p>
                         <input 
                             type="text" 
                             value={vehicleInput.brand} 
                             onChange={(e) => setVehicleInput({...vehicleInput, brand: e.target.value})} 
-                            placeholder="E.g. Honda Splendor"
+                            placeholder={tr("E.g. Honda Splendor")}
                             className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-blue-600 placeholder:text-gray-200"
                         />
                     </div>
@@ -771,12 +773,12 @@ export const ProfileDetailsV2 = () => {
                 <div className="flex items-center gap-4 w-full">
                     <div className="w-8 h-8 flex items-center justify-center"><QrCode className="w-4 h-4 text-blue-600/50" /></div>
                     <div className="flex-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vehicle Number</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr("Vehicle Number")}</p>
                         <input 
                             type="text" 
                             value={vehicleInput.number} 
                             onChange={(e) => setVehicleInput({...vehicleInput, number: e.target.value.toUpperCase()})} 
-                            placeholder="E.g. UP 80 AB 1234"
+                            placeholder={tr("E.g. UP 80 AB 1234")}
                             className="w-full bg-transparent text-lg font-black text-black outline-none border-b-2 border-transparent focus:border-blue-600 placeholder:text-gray-200"
                         />
                     </div>
@@ -789,14 +791,14 @@ export const ProfileDetailsV2 = () => {
                  const brand = vehicleInput.brand.trim();
                  const type = vehicleInput.type;
 
-                 if (!num) return toast.error("Vehicle number is required");
-                 if (!brand) return toast.error("Vehicle brand is required");
+                 if (!num) return toast.error(tr("Vehicle number is required"));
+                 if (!brand) return toast.error(tr("Vehicle brand is required"));
 
                  // Improved validation for Indian vehicle numbers
                  // Accept common formats like MH12AB1234 or MH12A1234
                  const numRegex = /^[A-Z]{2}[0-9]{1,2}[A-Z]{0,2}[0-9]{4}$/i;
                  if (!numRegex.test(num.replace(/\s+/g, ""))) {
-                    return toast.error("Please enter a valid vehicle number (e.g. MH12AB1234)");
+                    return toast.error(tr("Please enter a valid vehicle number (e.g. MH12AB1234)"));
                  }
 
                  try {
@@ -811,13 +813,13 @@ export const ProfileDetailsV2 = () => {
                      setVehicleBrand(brand)
                      setVehicleType(type)
                      setShowVehiclePopup(false)
-                     toast.success("Flight details updated!")
+                     toast.success(tr("Flight details updated!"))
                      await refreshProfile()
-                   } catch (e) { toast.error("Cloud storage sync failed") }
+                   } catch (e) { toast.error(tr("Cloud storage sync failed")) }
                }}
                className="w-full bg-[#1F7A63] text-[#F5F5F0] py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-gray-900 transition-all active:scale-95"
             >
-               Save Changes
+               {tr("Save Changes")}
             </button>
          </div>
       </BottomPopup>
@@ -826,7 +828,7 @@ export const ProfileDetailsV2 = () => {
       <BottomPopup 
         isOpen={showBankDetailsPopup} 
         onClose={() => setShowBankDetailsPopup(false)} 
-        title="Bank & Payments"
+        title={tr("Bank & Payments")}
         maxHeight="85vh"
         closeOnHandleClick={true}
         showCloseButton={false}
@@ -856,18 +858,18 @@ export const ProfileDetailsV2 = () => {
                         setBankDetails({...bankDetails, [field.key]: val})
                     }} 
                     className="w-full bg-transparent text-sm font-bold text-[#2B2B2B] outline-none"
-                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    placeholder={tr("Enter {{label}}", { label: field.label.toLowerCase() })}
                   />
                </div>
              ))}
 
              {/* UPI Scanner Upload */}
              <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100 flex flex-col items-center gap-4 text-center">
-                <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest">UPI Payment QR Scanner</p>
+                <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest">{tr("UPI Payment QR Scanner")}</p>
                 
                 {upiQrPreview || bankDetails.upiQrCode ? (
                   <div className="relative">
-                    <img src={upiQrPreview || bankDetails.upiQrCode} alt="QR Preview" className="w-32 h-32 rounded-xl object-cover border-4 border-white shadow-xl" />
+                    <img src={upiQrPreview || bankDetails.upiQrCode} alt={tr("QR Preview")} className="w-32 h-32 rounded-xl object-cover border-4 border-white shadow-xl" />
                     <button 
                       onClick={() => { setUpiQrFile(null); setUpiQrPreview(null); }}
                       className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full shadow-lg"
@@ -882,20 +884,20 @@ export const ProfileDetailsV2 = () => {
                       className="flex-1 aspect-square rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-100 transition-all"
                     >
                        <Camera className="w-6 h-6 text-purple-300" />
-                       <span className="text-[8px] font-black text-purple-400 uppercase">Camera</span>
+                       <span className="text-[8px] font-black text-purple-400 uppercase">{tr("Camera")}</span>
                     </div>
                     <div 
                       onClick={() => handlePickFromGallery("upiQrCode", upiQrInputRef)}
                       className="flex-1 aspect-square rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-100 transition-all"
                     >
                        <ImageIcon className="w-6 h-6 text-purple-300" />
-                       <span className="text-[8px] font-black text-purple-400 uppercase">Gallery</span>
+                       <span className="text-[8px] font-black text-purple-400 uppercase">{tr("Gallery")}</span>
                     </div>
                   </div>
                 )}
                 <input ref={upiQrInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpiQrSelected} />
                 <input ref={upiQrCameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpiQrCameraSelected} />
-                <p className="text-[9px] text-purple-400 font-medium">Upload your UPI QR code from Google Pay, PhonePe, etc. to receive easy payouts.</p>
+                <p className="text-[9px] text-purple-400 font-medium">{tr("Upload your UPI QR code from Google Pay, PhonePe, etc. to receive easy payouts.")}</p>
              </div>
           </div>
 
@@ -904,7 +906,7 @@ export const ProfileDetailsV2 = () => {
             disabled={isUpdatingBankDetails} 
             className="w-full bg-blue-600 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
           >
-            {isUpdatingBankDetails ? <><Loader2 className="w-5 h-5 animate-spin" /> saving...</> : "Update Systems"}
+            {isUpdatingBankDetails ? <><Loader2 className="w-5 h-5 animate-spin" /> {tr("saving...")}</> : tr("Update Systems")}
           </button>
         </div>
       </BottomPopup>
@@ -927,7 +929,7 @@ export const ProfileDetailsV2 = () => {
                 </button>
              </div>
              <div className="flex-1 w-full flex items-center justify-center">
-                <img src={selectedDocument.url} alt="Doc" className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl" />
+                <img src={selectedDocument.url} alt={tr("Doc")} className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl" />
              </div>
           </motion.div>
         )}

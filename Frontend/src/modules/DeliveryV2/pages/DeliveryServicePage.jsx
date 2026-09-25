@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import { ArrowLeft, Calendar, Clock, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCircle, ChevronDown, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 const STATUS_CONFIG = {
-  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Pending' },
-  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Approved' },
-  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Rejected' },
-  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Completed' },
+  pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: tKey("Pending") },
+  approved: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: tKey("Approved") },
+  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: tKey("Rejected") },
+  completed: { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: tKey("Completed") },
 };
 
 const REASONS = [
@@ -21,6 +23,7 @@ const REASONS = [
 ];
 
 export default function DeliveryServicePage() {
+  const { t } = useTranslation("driver");
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ export default function DeliveryServicePage() {
       const res = await serviceManagementAPI.getMyDeliveryRequests();
       setRequests(res.data?.data || []);
     } catch {
-      toast.error('Failed to load requests');
+      toast.error(t("Failed to load requests"));
     } finally {
       setLoading(false);
     }
@@ -52,18 +55,18 @@ export default function DeliveryServicePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date || !slot || !reason) {
-      toast.error('Please fill all required fields');
+      toast.error(t("Please fill all required fields"));
       return;
     }
     setSubmitting(true);
     try {
       await serviceManagementAPI.submitDeliveryUnavailable({ date, slot, reason, remarks });
-      toast.success('Request submitted successfully');
+      toast.success(t("Request submitted successfully"));
       setShowForm(false);
       setDate(''); setSlot(slotList[0]?.key || ''); setReason(''); setRemarks('');
       fetchRequests();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit request');
+      toast.error(err.response?.data?.message || t("Failed to submit request"));
     } finally {
       setSubmitting(false);
     }
@@ -80,13 +83,13 @@ export default function DeliveryServicePage() {
             <button onClick={() => navigate('/delivery/dashboard')} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <h1 className="text-lg font-bold text-[#2B2B2B]">Delivery Service</h1>
+            <h1 className="text-lg font-bold text-[#2B2B2B]">{t("Delivery Service")}</h1>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all"
           >
-            {showForm ? 'Cancel' : '+ New Request'}
+            {showForm ? t("Cancel") : t("+ New Request")}
           </button>
         </div>
       </div>
@@ -97,17 +100,17 @@ export default function DeliveryServicePage() {
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-2.5">
           <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
           <p className="text-sm text-blue-800">
-            Submit a request if you cannot fulfill your delivery schedule. Approved requests will reassign your deliveries to other available partners.
+            {t("Submit a request if you cannot fulfill your delivery schedule. Approved requests will reassign your deliveries to other available partners.")}
           </p>
         </div>
 
         {/* Submit Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-            <h2 className="font-bold text-[#2B2B2B]">Report Unavailability</h2>
+            <h2 className="font-bold text-[#2B2B2B]">{t("Report Unavailability")}</h2>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Date *</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">{t("Date *")}</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -122,7 +125,7 @@ export default function DeliveryServicePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Delivery Slot *</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">{t("Delivery Slot *")}</label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <select
@@ -139,7 +142,7 @@ export default function DeliveryServicePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Reason *</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">{t("Reason *")}</label>
               <div className="flex flex-wrap gap-2">
                 {REASONS.map(r => (
                   <button
@@ -159,13 +162,13 @@ export default function DeliveryServicePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Remarks (Optional)</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">{t("Remarks (Optional)")}</label>
               <div className="relative">
                 <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Additional context..."
+                  placeholder={t("Additional context...")}
                   rows={2}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                 />
@@ -178,13 +181,13 @@ export default function DeliveryServicePage() {
               className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Submit Request
+              {t("Submit Request")}
             </button>
           </form>
         )}
 
         {/* Requests List */}
-        <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wider mt-6">My Requests</h2>
+        <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wider mt-6">{t("My Requests")}</h2>
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -193,7 +196,7 @@ export default function DeliveryServicePage() {
         ) : requests.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
             <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-400 font-medium">No requests yet</p>
+            <p className="text-gray-400 font-medium">{t("No requests yet")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -214,12 +217,12 @@ export default function DeliveryServicePage() {
                     </div>
                     <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${cfg.color}`}>
                       <StatusIcon className="w-3.5 h-3.5" />
-                      {cfg.label}
+                      {t(cfg.label)}
                     </div>
                   </div>
                   {req.adminNotes && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs text-gray-500"><span className="font-semibold">Admin:</span> {req.adminNotes}</p>
+                      <p className="text-xs text-gray-500"><span className="font-semibold">{t("Admin:")}</span> {req.adminNotes}</p>
                     </div>
                   )}
                 </div>

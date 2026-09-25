@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, ChevronDown, Filter, Edit, Trash2, Plus, X, TriangleAlert, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { Trans, useTranslation } from "react-i18next";
 
 
 
@@ -16,6 +17,7 @@ export default function EmployeesTab({
   onUpdateEmployee,
   onDeleteEmployee,
 }) {
+  const { t } = useTranslation("office");
   // Filters and Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
@@ -78,7 +80,7 @@ export default function EmployeesTab({
     } catch (error) {
       console.error('Error exporting CSV:', error);
       setExportSuccess(false);
-      alert('Failed to export CSV file.');
+      alert(t("Failed to export CSV file."));
     }
   };
 
@@ -207,8 +209,8 @@ export default function EmployeesTab({
       {/* Top Header Controls */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">Employees Directory</h3>
-          <p className="text-xs text-brand-muted mt-1">Manage personnel records, budgets, and meal delivery configurations.</p>
+          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">{t("Employees Directory")}</h3>
+          <p className="text-xs text-brand-muted mt-1">{t("Manage personnel records, budgets, and meal delivery configurations.")}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -216,7 +218,7 @@ export default function EmployeesTab({
             className="px-4 py-2.5 text-sm font-semibold border border-brand-primary text-brand-primary rounded-lg hover:bg-brand-primary/5 transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <Download className="w-4 h-4" />
-            {exportSuccess ? 'Exporting...' : 'Export List'}
+            {exportSuccess ? t("Exporting...") : t("Export List")}
           </button>
           <button
             onClick={handleOpenCreate}
@@ -224,7 +226,7 @@ export default function EmployeesTab({
             id="btn-add-employee"
           >
             <Plus className="w-4 h-4" />
-            Add Employee
+            {t("Add Employee")}
           </button>
         </div>
       </div>
@@ -237,7 +239,7 @@ export default function EmployeesTab({
           <input
             type="text"
             className="w-full pl-10 pr-4 py-2.5 border border-brand-divider rounded-lg bg-brand-bg text-sm text-brand-text placeholder-brand-muted/70 focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-            placeholder="Search by name, email or ID..."
+            placeholder={t("Search by name, email or ID...")}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -275,9 +277,9 @@ export default function EmployeesTab({
                 setCurrentPage(1);
               }}
             >
-              <option value="All Statuses">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Paused">Paused</option>
+              <option value="All Statuses">{t("All Statuses")}</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Paused">{t("Paused")}</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted pointer-events-none" />
           </div>
@@ -289,7 +291,7 @@ export default function EmployeesTab({
               setSelectedStatus('All Statuses');
               setCurrentPage(1);
             }}
-            title="Clear Filters"
+            title={t("Clear Filters")}
             className="p-2.5 border border-brand-divider rounded-lg text-brand-muted hover:bg-brand-bg hover:text-brand-text transition-colors cursor-pointer"
           >
             <Filter className="w-4 h-4" />
@@ -303,18 +305,18 @@ export default function EmployeesTab({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-transparent border-b border-brand-divider">
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Department</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Phone Number</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Employee")}</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Department")}</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Phone Number")}</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Status")}</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-divider">
               {paginatedEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-brand-muted">
-                    No employees match your active filters or search terms.
+                    {t("No employees match your active filters or search terms.")}
                   </td>
                 </tr>
               ) : (
@@ -343,7 +345,7 @@ export default function EmployeesTab({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-brand-muted">{emp.department}</td>
-                    <td className="px-6 py-4 text-sm text-brand-text">{emp.phone || <span className="text-brand-muted italic">N/A</span>}</td>
+                    <td className="px-6 py-4 text-sm text-brand-text">{emp.phone || <span className="text-brand-muted italic">{t("N/A")}</span>}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -361,14 +363,14 @@ export default function EmployeesTab({
                         <button
                           onClick={() => handleOpenEdit(emp)}
                           className="p-1.5 text-brand-muted hover:text-brand-primary hover:bg-brand-primary/5 rounded-md transition-colors cursor-pointer"
-                          title="Edit Employee"
+                          title={t("Edit Employee")}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleOpenDelete(emp)}
                           className="p-1.5 text-brand-muted hover:text-brand-error-text hover:bg-brand-error-bg/30 rounded-md transition-colors cursor-pointer"
-                          title="Delete Employee"
+                          title={t("Delete Employee")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -384,8 +386,7 @@ export default function EmployeesTab({
         {/* Pagination bar */}
         <div className="px-6 py-4 flex items-center justify-between border-t border-brand-divider bg-brand-bg/20">
           <p className="text-xs text-brand-muted">
-            Showing <span className="font-bold">{paginatedEmployees.length}</span> of{' '}
-            <span className="font-bold">{filteredEmployees.length}</span> employees
+            <Trans t={t} i18nKey={"Showing <0>{{length}}</0> of <1>{{length2}}</1> employees"} defaults={"Showing <0>{{length}}</0> of <1>{{length2}}</1> employees"} values={{ length: paginatedEmployees.length, length2: filteredEmployees.length }} components={[<span className="font-bold" />, <span className="font-bold" />]} />
           </p>
           <div className="flex items-center gap-1.5">
             <button
@@ -431,7 +432,7 @@ export default function EmployeesTab({
             >
               <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/50">
                 <h3 className="text-lg font-bold text-brand-primary">
-                  {editingEmployee ? 'Edit Employee' : 'Add Employee'}
+                  {editingEmployee ? t("Edit Employee") : t("Add Employee")}
                 </h3>
                 <button
                   onClick={() => setIsFormModalOpen(false)}
@@ -445,13 +446,13 @@ export default function EmployeesTab({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Full Name
+                      {t("Full Name")}
                     </label>
                     <input
                       type="text"
                       required
                       className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
-                      placeholder="e.g. Sarah Jenkins"
+                      placeholder={t("e.g. Sarah Jenkins")}
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                     />
@@ -459,13 +460,13 @@ export default function EmployeesTab({
 
                   <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Work Email
+                      {t("Work Email")}
                     </label>
                     <input
                       type="email"
                       required
                       className="w-full px-4 py-2.5 border border-brand-divider rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
-                      placeholder="sarah.j@company.com"
+                      placeholder={t("sarah.j@company.com")}
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                     />
@@ -473,7 +474,7 @@ export default function EmployeesTab({
 
                   <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Phone Number
+                      {t("Phone Number")}
                     </label>
                     <div className="flex">
                       <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-brand-divider bg-brand-bg text-brand-muted text-sm font-semibold">
@@ -492,19 +493,19 @@ export default function EmployeesTab({
 
                   <div>
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Department
+                      {t("Department")}
                     </label>
                     <select
                       className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       value={formDept}
                       onChange={(e) => setFormDept(e.target.value)}
                     >
-                      <option value="Engineering">Engineering</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Human Resources">Human Resources</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Design">Design</option>
+                      <option value="Engineering">{t("Engineering")}</option>
+                      <option value="Marketing">{t("Marketing")}</option>
+                      <option value="Operations">{t("Operations")}</option>
+                      <option value="Human Resources">{t("Human Resources")}</option>
+                      <option value="Finance">{t("Finance")}</option>
+                      <option value="Design">{t("Design")}</option>
                     </select>
                   </div>
 
@@ -512,15 +513,15 @@ export default function EmployeesTab({
 
                   <div>
                     <label className="block text-xs font-bold text-brand-muted uppercase tracking-wider mb-1.5">
-                      Status
+                      {t("Status")}
                     </label>
                     <select
                       className="w-full px-4 py-2.5 border border-brand-divider rounded-lg bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all text-sm"
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value)}
                     >
-                      <option value="Active">Active</option>
-                      <option value="Paused">Paused</option>
+                      <option value="Active">{t("Active")}</option>
+                      <option value="Paused">{t("Paused")}</option>
                     </select>
                   </div>
                 </div>
@@ -531,13 +532,13 @@ export default function EmployeesTab({
                     onClick={() => setIsFormModalOpen(false)}
                     className="px-5 py-2.5 text-brand-muted text-sm font-semibold hover:bg-brand-bg rounded-lg transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                   >
-                    {editingEmployee ? 'Save Changes' : 'Save Employee'}
+                    {editingEmployee ? t("Save Changes") : t("Save Employee")}
                   </button>
                 </div>
               </form>
@@ -560,22 +561,22 @@ export default function EmployeesTab({
                 <div className="w-16 h-16 bg-brand-error-bg text-brand-error-text rounded-full flex items-center justify-center mx-auto mb-5">
                   <TriangleAlert className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-brand-text mb-3">Delete Employee?</h3>
+                <h3 className="text-xl font-bold text-brand-text mb-3">{t("Delete Employee?")}</h3>
                 <p className="text-sm text-brand-muted leading-relaxed mb-8">
-                  Are you sure you want to remove <span className="font-bold text-brand-text">{employeeToDelete?.name}</span> from the system? This action cannot be undone and will cancel all active meal plans.
+                  <Trans t={t} i18nKey={"Are you sure you want to remove <0>{{name}}</0> from the system? This action cannot be undone and will cancel all active meal plans."} defaults={"Are you sure you want to remove <0>{{name}}</0> from the system? This action cannot be undone and will cancel all active meal plans."} values={{ name: employeeToDelete?.name }} components={[<span className="font-bold text-brand-text" />]} />
                 </p>
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleConfirmDelete}
                     className="w-full py-3 bg-brand-error-text hover:bg-red-600 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                   >
-                    Confirm Delete
+                    {t("Confirm Delete")}
                   </button>
                   <button
                     onClick={() => setIsDeleteModalOpen(false)}
                     className="w-full py-3 text-brand-muted hover:bg-brand-bg border border-transparent hover:border-brand-divider text-sm font-semibold rounded-lg transition-all cursor-pointer"
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                 </div>
               </div>

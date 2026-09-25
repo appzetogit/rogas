@@ -3,8 +3,10 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { publicAPI } from "@food/api"
 import useDeliveryBackNavigation from "../hooks/useDeliveryBackNavigation"
+import { useTranslation } from "react-i18next";
 
 export default function TermsAndConditionsV2() {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation()
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState("")
@@ -53,7 +55,7 @@ export default function TermsAndConditionsV2() {
         >
           <ArrowLeft className="w-5 h-5 text-[#2B2B2B]" />
         </button>
-        <h1 className="text-lg font-bold text-[#2B2B2B]">Terms and Conditions</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B]">{t("Terms and Conditions")}</h1>
       </div>
 
       <div className="w-full px-5 pt-24 pb-6">
@@ -61,7 +63,7 @@ export default function TermsAndConditionsV2() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-8 h-8 text-[#E23744] animate-spin mb-4" />
-              <p className="text-gray-500">Loading terms...</p>
+              <p className="text-gray-500">{t("Loading terms...")}</p>
             </div>
           ) : (
             <div>
@@ -71,11 +73,11 @@ export default function TermsAndConditionsV2() {
                   dangerouslySetInnerHTML={{ __html: content }}
                 />
               ) : (
-                <p className="text-gray-500">No terms content available.</p>
+                <p className="text-gray-500">{t("No terms content available.")}</p>
               )}
               {lastUpdated && (
                 <div className="mt-12 pt-6 border-t border-gray-100">
-                  <p className="text-gray-400 text-xs italic">Last updated: {formatDate(lastUpdated)}</p>
+                  <p className="text-gray-400 text-xs italic">{t("Last updated:")} {formatDate(lastUpdated)}</p>
                 </div>
               )}
             </div>

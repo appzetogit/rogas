@@ -15,8 +15,10 @@ import WeekSelector from "@delivery/components/WeekSelector";
 import { deliveryAPI } from "@food/api";
 import { motion, AnimatePresence } from "framer-motion";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
+import { useTranslation } from "react-i18next";
 
 export const PocketDetailsV2 = () => {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
 
   // Current week range (Sunday–Saturday)
@@ -108,8 +110,8 @@ export const PocketDetailsV2 = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-black text-[#2B2B2B] uppercase tracking-tighter">Pocket Details</h1>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Trips & Earnings History</p>
+            <h1 className="text-xl font-black text-[#2B2B2B] uppercase tracking-tighter">{t("Pocket Details")}</h1>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t("Trips & Earnings History")}</p>
           </div>
         </div>
         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
@@ -132,7 +134,7 @@ export const PocketDetailsV2 = () => {
            <div className="relative z-10">
               <div className="flex justify-between items-center mb-6">
                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Total Payout</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">{t("Total Payout")}</p>
                     <h2 className="text-4xl font-black text-white tracking-tighter">{formatCurrency(summary.grandTotal)}</h2>
                  </div>
                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/5 backdrop-blur-md">
@@ -141,11 +143,11 @@ export const PocketDetailsV2 = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                  <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Trip Earnings</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Trip Earnings")}</p>
                     <p className="text-lg font-black text-white">{formatCurrency(summary.totalEarning)}</p>
                  </div>
                  <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Weekly Bonus</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Weekly Bonus")}</p>
                     <p className="text-lg font-black text-green-500">+{formatCurrency(summary.totalBonus)}</p>
                  </div>
               </div>
@@ -155,14 +157,14 @@ export const PocketDetailsV2 = () => {
         {/* ─── ORDERS LIST ─── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-             <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest">Trips History</h3>
-             <span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-[10px] font-bold">{orders.length} Orders</span>
+             <h3 className="text-xs font-black text-[#2B2B2B] uppercase tracking-widest">{t("Trips History")}</h3>
+             <span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-[10px] font-bold">{t("{{length}} Orders", { length: orders.length })}</span>
           </div>
 
           {loading ? (
             <div className="py-20 flex flex-col items-center">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">Syncing History...</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">{t("Syncing History...")}</p>
             </div>
           ) : orders.length > 0 ? (
             <div className="grid gap-3">
@@ -188,16 +190,16 @@ export const PocketDetailsV2 = () => {
                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">• {new Date(order.deliveredAt || order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
                           </div>
                           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate max-w-[140px]">
-                            {order.restaurantName || order.restaurantId?.name || "Premium Restaurant"}
+                            {order.restaurantName || order.restaurantId?.name || t("Premium Restaurant")}
                           </p>
                        </div>
                     </div>
                     <div className="text-right">
                        <p className="text-base font-black text-[#2B2B2B] leading-none mb-1">{formatCurrency(earning + bonus)}</p>
                        <div className="flex items-center justify-end gap-1.5">
-                          {bonus > 0 && <span className="text-[9px] font-bold text-green-500 uppercase">+{formatCurrency(bonus)} BP</span>}
+                          {bonus > 0 && <span className="text-[9px] font-bold text-green-500 uppercase">+{formatCurrency(bonus)} {t("BP")}</span>}
                           <div className={`px-2 py-0.5 rounded-md ${order.paymentMethod?.toLowerCase() === 'cod' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-green-50 text-green-600 border border-green-100'} text-[8px] font-black uppercase`}>
-                             {order.paymentMethod || 'Online'}
+                             {order.paymentMethod || t("Online")}
                           </div>
                        </div>
                     </div>
@@ -210,8 +212,8 @@ export const PocketDetailsV2 = () => {
                <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-4 text-gray-200">
                   <Package className="w-8 h-8" />
                </div>
-               <h3 className="text-lg font-black text-[#2B2B2B] uppercase tracking-tight">No Trips Found</h3>
-               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Check another week Range</p>
+               <h3 className="text-lg font-black text-[#2B2B2B] uppercase tracking-tight">{t("No Trips Found")}</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{t("Check another week Range")}</p>
             </div>
           )}
         </div>

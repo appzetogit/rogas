@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle, UserCheck, Landmark, Check, ShieldCheck, Sparkles } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 export default function StepContactDetails({ onNext, onBack, data, updateData }) {
+  const { t } = useTranslation("office");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [redirectProgress, setRedirectProgress] = useState(0);
@@ -12,31 +14,31 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
     
     // Simple validation
     if (!data.contactName) {
-      setValidationError('Please enter the contact person name.');
+      setValidationError(t("Please enter the contact person name."));
       return;
     }
     if (!data.designation) {
-      setValidationError('Please enter the contact designation.');
+      setValidationError(t("Please enter the contact designation."));
       return;
     }
     if (!data.contactEmail) {
-      setValidationError('Please enter the contact email address.');
+      setValidationError(t("Please enter the contact email address."));
       return;
     }
     if (!data.phone) {
-      setValidationError('Please enter the contact phone number.');
+      setValidationError(t("Please enter the contact phone number."));
       return;
     }
     if (!data.bankName) {
-      setValidationError('Please enter your company bank name.');
+      setValidationError(t("Please enter your company bank name."));
       return;
     }
     if (!data.accountName) {
-      setValidationError('Please enter your company bank account name.');
+      setValidationError(t("Please enter your company bank account name."));
       return;
     }
     if (!data.iban) {
-      setValidationError('Please enter your bank IBAN or Account Number.');
+      setValidationError(t("Please enter your bank IBAN or Account Number."));
       return;
     }
 
@@ -83,8 +85,8 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full translate-x-10 -translate-y-10 blur-xl pointer-events-none" />
 
         <div>
-          <h1 className="text-xl font-bold tracking-tight">DailyMealBox</h1>
-          <p className="text-xs text-white/70 mt-1">Corporate meal management, simplified.</p>
+          <h1 className="text-xl font-bold tracking-tight">{t("DailyMealBox")}</h1>
+          <p className="text-xs text-white/70 mt-1">{t("Corporate meal management, simplified.")}</p>
         </div>
 
         <div className="space-y-6 my-10">
@@ -93,8 +95,8 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               <Check className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-bold block leading-none">Step 1: Profile</span>
-              <span className="text-[10px] text-white/60">Company details saved</span>
+              <span className="text-xs font-bold block leading-none">{t("Step 1: Profile")}</span>
+              <span className="text-[10px] text-white/60">{t("Company details saved")}</span>
             </div>
           </div>
 
@@ -103,8 +105,8 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               <Check className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-bold block leading-none">Step 2: Verification</span>
-              <span className="text-[10px] text-white/60">Documents uploaded</span>
+              <span className="text-xs font-bold block leading-none">{t("Step 2: Verification")}</span>
+              <span className="text-[10px] text-white/60">{t("Documents uploaded")}</span>
             </div>
           </div>
 
@@ -113,14 +115,14 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               3
             </div>
             <div>
-              <span className="text-xs font-bold block leading-none text-white">Step 3: Billing</span>
-              <span className="text-[10px] text-[#A3E6D8] font-semibold">Active & Finalizing</span>
+              <span className="text-xs font-bold block leading-none text-white">{t("Step 3: Billing")}</span>
+              <span className="text-[10px] text-[#A3E6D8] font-semibold">{t("Active & Finalizing")}</span>
             </div>
           </div>
         </div>
 
         <div className="text-[10px] text-white/50 font-mono">
-          Security standard PCI-DSS compliant.
+          {t("Security standard PCI-DSS compliant.")}
         </div>
       </div>
 
@@ -129,8 +131,8 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
         {/* Progress Header */}
         <div className="mb-6">
           <div className="flex justify-between items-end mb-2">
-            <h2 className="text-xl font-bold text-[#1A1C1E] tracking-tight">Final Step</h2>
-            <span className="text-xs font-bold text-[#287965] uppercase tracking-widest">Step 3 of 3</span>
+            <h2 className="text-xl font-bold text-[#1A1C1E] tracking-tight">{t("Final Step")}</h2>
+            <span className="text-xs font-bold text-[#287965] uppercase tracking-widest">{t("Step 3 of 3")}</span>
           </div>
           <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
             <div className="bg-[#287965] h-full rounded-full w-full transition-all duration-700 ease-out" />
@@ -144,7 +146,7 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#287965]/20 text-xs font-bold text-[#287965] hover:bg-[#287965]/5 transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Auto-Fill Details</span>
+            <span>{t("Auto-Fill Details")}</span>
           </button>
         </div>
 
@@ -159,20 +161,20 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
           <section className="space-y-4">
             <div className="flex items-center gap-2 pb-1.5 border-b border-gray-100">
               <UserCheck className="w-4.5 h-4.5 text-[#287965]" />
-              <h3 className="text-xs font-extrabold uppercase tracking-widest text-[#287965]">Primary Contact</h3>
+              <h3 className="text-xs font-extrabold uppercase tracking-widest text-[#287965]">{t("Primary Contact")}</h3>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500" htmlFor="contact_name">
-                  Contact Person Name
+                  {t("Contact Person Name")}
                 </label>
                 <input
                   id="contact_name"
                   type="text"
                   value={data.contactName}
                   onChange={(e) => updateData({ contactName: e.target.value })}
-                  placeholder="e.g. John Doe"
+                  placeholder={t("e.g. John Doe")}
                   className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                   required
                 />
@@ -180,14 +182,14 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500" htmlFor="designation">
-                  Designation
+                  {t("Designation")}
                 </label>
                 <input
                   id="designation"
                   type="text"
                   value={data.designation}
                   onChange={(e) => updateData({ designation: e.target.value })}
-                  placeholder="e.g. HR Manager"
+                  placeholder={t("e.g. HR Manager")}
                   className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                   required
                 />
@@ -195,14 +197,14 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500" htmlFor="contact_email">
-                  Email Address
+                  {t("Email Address")}
                 </label>
                 <input
                   id="contact_email"
                   type="email"
                   value={data.contactEmail}
                   onChange={(e) => updateData({ contactEmail: e.target.value })}
-                  placeholder="john.doe@company.com"
+                  placeholder={t("john.doe@company.com")}
                   className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                   required
                 />
@@ -210,7 +212,7 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500" htmlFor="phone">
-                  Phone Number
+                  {t("Phone Number")}
                 </label>
                 <input
                   id="phone"
@@ -229,20 +231,20 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
           <section className="space-y-4">
             <div className="flex items-center gap-2 pb-1.5 border-b border-gray-100">
               <Landmark className="w-4.5 h-4.5 text-[#287965]" />
-              <h3 className="text-xs font-extrabold uppercase tracking-widest text-[#287965]">Bank Account Details</h3>
+              <h3 className="text-xs font-extrabold uppercase tracking-widest text-[#287965]">{t("Bank Account Details")}</h3>
             </div>
             
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500" htmlFor="bank_name">
-                  Bank Name
+                  {t("Bank Name")}
                 </label>
                 <input
                   id="bank_name"
                   type="text"
                   value={data.bankName}
                   onChange={(e) => updateData({ bankName: e.target.value })}
-                  placeholder="e.g. International Business Bank"
+                  placeholder={t("e.g. International Business Bank")}
                   className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                   required
                 />
@@ -251,14 +253,14 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500" htmlFor="account_name">
-                    Account Name
+                    {t("Account Name")}
                   </label>
                   <input
                     id="account_name"
                     type="text"
                     value={data.accountName}
                     onChange={(e) => updateData({ accountName: e.target.value })}
-                    placeholder="Daily Services Corp"
+                    placeholder={t("Daily Services Corp")}
                     className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                     required
                   />
@@ -266,14 +268,14 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500" htmlFor="iban">
-                    IBAN / Account Number
+                    {t("IBAN / Account Number")}
                   </label>
                   <input
                     id="iban"
                     type="text"
                     value={data.iban}
                     onChange={(e) => updateData({ iban: e.target.value })}
-                    placeholder="US00 0000 0000 0000 0000"
+                    placeholder={t("US00 0000 0000 0000 0000")}
                     className="bg-gray-50/50 border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-[#1A1C1E] placeholder-gray-400 focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                     required
                   />
@@ -290,7 +292,7 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-all cursor-pointer focus:outline-none"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
+              <span>{t("Back")}</span>
             </button>
 
             <button
@@ -305,11 +307,11 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span>Processing...</span>
+                  <span>{t("Processing...")}</span>
                 </>
               ) : (
                 <>
-                  <span>Complete Setup</span>
+                  <span>{t("Complete Setup")}</span>
                   <CheckCircle className="w-4 h-4" />
                 </>
               )}
@@ -330,15 +332,15 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
               </div>
             </div>
             
-            <h2 className="text-2xl font-extrabold text-[#1A1C1E] tracking-tight mb-3">Setup Complete!</h2>
+            <h2 className="text-2xl font-extrabold text-[#1A1C1E] tracking-tight mb-3">{t("Setup Complete!")}</h2>
             <p className="text-sm text-[#6C7278] leading-relaxed px-2">
-              Your company profile has been successfully verified. Welcome to <span className="font-semibold text-[#287965]">DailyMealBox</span>.
+              <Trans t={t} i18nKey={"Your company profile has been successfully verified. Welcome to <0>DailyMealBox</0>."} defaults={"Your company profile has been successfully verified. Welcome to <0>DailyMealBox</0>."} components={[<span className="font-semibold text-[#287965]" />]} />
             </p>
             
             <div className="w-full mt-10 p-5 bg-[#F8F9F8] rounded-2xl border border-gray-100">
               <div className="flex justify-between items-center mb-3">
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
-                  Redirecting to Dashboard...
+                  {t("Redirecting to Dashboard...")}
                 </p>
                 <span className="text-xs font-bold text-[#287965]">{redirectProgress}%</span>
               </div>

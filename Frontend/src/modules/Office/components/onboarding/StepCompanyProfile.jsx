@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowRight, Info, HelpCircle, ShieldCheck } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 export default function StepCompanyProfile({ onNext, data, updateData }) {
+  const { t } = useTranslation("office");
   const [activeFocus, setActiveFocus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
@@ -9,19 +11,19 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!data.companyName) {
-      setValidationError('Please enter your company name.');
+      setValidationError(t("Please enter your company name."));
       return;
     }
     if (!data.address) {
-      setValidationError('Please enter your registered address.');
+      setValidationError(t("Please enter your registered address."));
       return;
     }
     if (!data.nip || data.nip.length < 10) {
-      setValidationError('Please enter a valid 10-digit NIP number.');
+      setValidationError(t("Please enter a valid 10-digit NIP number."));
       return;
     }
     if (!data.regon) {
-      setValidationError('Please enter your REGON identifier.');
+      setValidationError(t("Please enter your REGON identifier."));
       return;
     }
 
@@ -43,9 +45,9 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
       {/* Brand & Progress Header */}
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-[#287965] tracking-tight">DailyMealBox</span>
+          <span className="text-xl font-bold text-[#287965] tracking-tight">{t("DailyMealBox")}</span>
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-            Onboarding Journey
+            {t("Onboarding Journey")}
           </span>
         </div>
         
@@ -55,7 +57,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
         </div>
         
         <div className="flex justify-between items-center text-xs font-medium text-gray-500">
-          <p>Step 1 of 3: Company Profile</p>
+          <p>{t("Step 1 of 3: Company Profile")}</p>
           <div className="flex gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-[#287965]" />
             <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
@@ -67,9 +69,9 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
       {/* Main Onboarding Card */}
       <div className="bg-white rounded-2xl p-8 md:p-10 shadow-xl border border-gray-100">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#1A1C1E] tracking-tight">Tell us about your company</h1>
+          <h1 className="text-2xl font-bold text-[#1A1C1E] tracking-tight">{t("Tell us about your company")}</h1>
           <p className="text-sm text-gray-500 mt-1.5">
-            Provide your official registration details to set up your corporate account.
+            {t("Provide your official registration details to set up your corporate account.")}
           </p>
         </div>
 
@@ -88,7 +90,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                 activeFocus === 'companyName' ? 'text-[#287965]' : 'text-gray-500'
               }`}
             >
-              Company Name
+              {t("Company Name")}
             </label>
             <input
               id="companyName"
@@ -97,7 +99,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
               onChange={(e) => updateData({ companyName: e.target.value })}
               onFocus={() => handleFocus('companyName')}
               onBlur={handleBlur}
-              placeholder="e.g. Acme Corp Logistics"
+              placeholder={t("e.g. Acme Corp Logistics")}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50/50 text-[#1A1C1E] placeholder-gray-400 text-sm focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
               required
             />
@@ -111,7 +113,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                 activeFocus === 'address' ? 'text-[#287965]' : 'text-gray-500'
               }`}
             >
-              Registered Address
+              {t("Registered Address")}
             </label>
             <textarea
               id="address"
@@ -119,7 +121,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
               onChange={(e) => updateData({ address: e.target.value })}
               onFocus={() => handleFocus('address')}
               onBlur={handleBlur}
-              placeholder="Full street address, building, city and postal code"
+              placeholder={t("Full street address, building, city and postal code")}
               rows={3}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50/50 text-[#1A1C1E] placeholder-gray-400 text-sm focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all resize-none"
               required
@@ -135,7 +137,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                   activeFocus === 'nip' ? 'text-[#287965]' : 'text-gray-500'
                 }`}
               >
-                NIP Number
+                {t("NIP Number")}
               </label>
               <div className="relative">
                 <input
@@ -146,11 +148,11 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                   onChange={(e) => updateData({ nip: e.target.value.replace(/\D/g, '') })}
                   onFocus={() => handleFocus('nip')}
                   onBlur={handleBlur}
-                  placeholder="10-digit tax ID"
+                  placeholder={t("10-digit tax ID")}
                   className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-200 bg-gray-50/50 text-[#1A1C1E] placeholder-gray-400 text-sm focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                   required
                 />
-                <span className="absolute right-3 top-3 text-gray-400" title="10-digit Tax Identification Number">
+                <span className="absolute right-3 top-3 text-gray-400" title={t("10-digit Tax Identification Number")}>
                   <Info className="w-4.5 h-4.5" />
                 </span>
               </div>
@@ -163,7 +165,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                   activeFocus === 'regon' ? 'text-[#287965]' : 'text-gray-500'
                 }`}
               >
-                REGON Number
+                {t("REGON Number")}
               </label>
               <input
                 id="regon"
@@ -172,7 +174,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                 onChange={(e) => updateData({ regon: e.target.value.replace(/\D/g, '') })}
                 onFocus={() => handleFocus('regon')}
                 onBlur={handleBlur}
-                placeholder="Registration ID"
+                placeholder={t("Registration ID")}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50/50 text-[#1A1C1E] placeholder-gray-400 text-sm focus:outline-none focus:border-[#287965] focus:bg-white focus:ring-4 focus:ring-[#287965]/10 transition-all"
                 required
               />
@@ -184,7 +186,7 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
             <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100 bg-white">
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlo_zUasgcGTKL5ZVkHBcrFIkuVLj4XztpfQK9v4aQ0pXmMdmVeo0EK4dE8bBueMH3EX50dF5UwKiHLapMy_ylFcH0zGXMKX04rGLl1z7WlAt7ZePAHSuHVZy6pHscDYSQ5ZzEbT7AFRAvmpZoC4M3TYh60GKAmJeSI9aGPJ03eANHoiazpfQ-jpjmkpcEnLDRk8MixugoPv15xTLKAVQV8ObVK1Xrc0MSUCijiU0yeNuBKECeQ5tZ"
-                alt="Corporate Verification Lobby"
+                alt={t("Corporate Verification Lobby")}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -192,10 +194,10 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#1A1C1E] flex items-center gap-1">
                 <ShieldCheck className="w-4 h-4 text-[#287965] shrink-0" />
-                <span>Legal Verification</span>
+                <span>{t("Legal Verification")}</span>
               </h4>
               <p className="text-[12px] leading-tight text-gray-500 mt-0.5">
-                Your data is verified against the official business register to ensure seamless meal logistics.
+                {t("Your data is verified against the official business register to ensure seamless meal logistics.")}
               </p>
             </div>
           </div>
@@ -214,11 +216,11 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span>Validating Profile...</span>
+                  <span>{t("Validating Profile...")}</span>
                 </>
               ) : (
                 <>
-                  <span>Next</span>
+                  <span>{t("Next")}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -231,12 +233,12 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
       <footer className="flex items-center justify-center gap-4 text-xs font-semibold text-gray-400 pb-4">
         <a href="#help" className="hover:text-[#287965] transition-colors flex items-center gap-1">
           <HelpCircle className="w-4 h-4" />
-          <span>Need help?</span>
+          <span>{t("Need help?")}</span>
         </a>
         <span className="text-gray-300">•</span>
-        <a href="#privacy" className="hover:text-[#287965] transition-colors">Privacy Policy</a>
+        <a href="#privacy" className="hover:text-[#287965] transition-colors">{t("Privacy Policy")}</a>
         <span className="text-gray-300">•</span>
-        <a href="#terms" className="hover:text-[#287965] transition-colors">Terms of Service</a>
+        <a href="#terms" className="hover:text-[#287965] transition-colors">{t("Terms of Service")}</a>
       </footer>
     </div>
   );

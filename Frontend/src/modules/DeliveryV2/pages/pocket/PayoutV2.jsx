@@ -9,6 +9,7 @@ import {
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * PayoutV2 - 1:1 Match with Old Payout UI.
@@ -16,6 +17,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const PayoutV2 = () => {
+  const { t: tr } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -54,7 +56,7 @@ export const PayoutV2 = () => {
           })));
         }
       } catch (err) {
-        toast.error('Failed to load payout history');
+        toast.error(tr("Failed to load payout history"));
       } finally {
         setLoading(false);
       }
@@ -107,7 +109,7 @@ export const PayoutV2 = () => {
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-[#2B2B2B]">Withdrawal History</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B]">{tr("Withdrawal History")}</h1>
       </div>
 
       {/* Main Content */}
@@ -115,7 +117,7 @@ export const PayoutV2 = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400 mb-4" />
-            <p className="text-gray-600 text-base">Loading withdrawal history...</p>
+            <p className="text-gray-600 text-base">{tr("Loading withdrawal history...")}</p>
           </div>
         ) : withdrawals.length > 0 ? (
           <div className="space-y-4">
@@ -140,16 +142,16 @@ export const PayoutV2 = () => {
                         ₹{withdrawal.amount}
                       </p>
                       <p className="text-gray-500 text-[11px] font-medium">
-                        Requested: {withdrawal.date}
+                        {tr("Requested: {{date}}", { date: withdrawal.date })}
                       </p>
                       {withdrawal.processedAt && (
                         <p className="text-gray-500 text-[11px] font-medium mt-1">
-                          Processed: {withdrawal.processedAt}
+                          {tr("Processed: {{processedAt}}", { processedAt: withdrawal.processedAt })}
                         </p>
                       )}
                       {withdrawal.failureReason && (
                         <p className="text-red-600 text-[11px] mt-2 font-bold">
-                          Reason: {withdrawal.failureReason}
+                          {tr("Reason: {{failureReason}}", { failureReason: withdrawal.failureReason })}
                         </p>
                       )}
                     </div>
@@ -163,9 +165,9 @@ export const PayoutV2 = () => {
             <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-6 shadow-sm">
               <Clock className="w-8 h-8 text-gray-200" />
             </div>
-            <p className="text-[#2B2B2B] text-lg font-bold mb-2">No withdrawal history</p>
+            <p className="text-[#2B2B2B] text-lg font-bold mb-2">{tr("No withdrawal history")}</p>
             <p className="text-gray-400 text-sm font-medium">
-              You haven't made any withdrawal requests yet. Your withdrawal history will appear here.
+              {tr("You haven't made any withdrawal requests yet. Your withdrawal history will appear here.")}
             </p>
           </div>
         )}

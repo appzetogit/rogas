@@ -3,8 +3,10 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { publicAPI } from "@food/api"
 import useDeliveryBackNavigation from "../hooks/useDeliveryBackNavigation"
+import { useTranslation } from "react-i18next";
 
 export default function PrivacyPolicyV2() {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation()
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState("")
@@ -51,7 +53,7 @@ export default function PrivacyPolicyV2() {
         >
           <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
-        <h1 className="text-lg font-bold text-[#2B2B2B] dark:text-white">Privacy Policy</h1>
+        <h1 className="text-lg font-bold text-[#2B2B2B] dark:text-white">{t("Privacy Policy")}</h1>
       </div>
 
       <div className="w-full px-5 py-6">
@@ -59,7 +61,7 @@ export default function PrivacyPolicyV2() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-8 h-8 text-[#E23744] animate-spin mb-4" />
-              <p className="text-gray-500">Loading policy...</p>
+              <p className="text-gray-500">{t("Loading policy...")}</p>
             </div>
           ) : (
             <div>
@@ -69,7 +71,7 @@ export default function PrivacyPolicyV2() {
               />
               {lastUpdated && (
                 <div className="mt-12 pt-6 border-t border-gray-100">
-                  <p className="text-gray-400 text-xs italic">Last updated: {formatDate(lastUpdated)}</p>
+                  <p className="text-gray-400 text-xs italic">{t("Last updated:")} {formatDate(lastUpdated)}</p>
                 </div>
               )}
             </div>

@@ -6,6 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Plus, Users, CheckCircle2, Clock, Store, Search, Filter, MoreVertical, X, ChevronLeft, ChevronRight, Ban } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 
 
@@ -16,6 +17,7 @@ export default function MealPlansTab({
   onUnassignEmployee,
   onSetTab,
 }) {
+  const { t } = useTranslation("office");
   // Local states
   const [searchQuery, setSearchQuery] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -70,10 +72,10 @@ export default function MealPlansTab({
 
   // Unassign action with immediate confirmation
   const handleUnassign = (emp) => {
-    const confirmed = window.confirm(`Are you sure you want to unassign the current meal subscription for ${emp.name}?`);
+    const confirmed = window.confirm(t("Are you sure you want to unassign the current meal subscription for {{name}}?", { name: emp.name }));
     if (confirmed) {
       onUnassignEmployee(emp.id);
-      alert(`Successfully unassigned meal plans for ${emp.name}.`);
+      alert(t("Successfully unassigned meal plans for {{name}}.", { name: emp.name }));
     }
   };
 
@@ -142,7 +144,7 @@ export default function MealPlansTab({
     } catch (error) {
       console.error('Error exporting CSV:', error);
       setExportSuccess(false);
-      alert('Failed to export CSV file.');
+      alert(t("Failed to export CSV file."));
     }
   };
 
@@ -151,8 +153,8 @@ export default function MealPlansTab({
       {/* Top Breadcrumb & Actions Section */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">Meal Plan Assignments</h3>
-          <p className="text-xs text-brand-muted mt-1">Manage and track individual meal assignments for the current cycle.</p>
+          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">{t("Meal Plan Assignments")}</h3>
+          <p className="text-xs text-brand-muted mt-1">{t("Manage and track individual meal assignments for the current cycle.")}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -160,14 +162,14 @@ export default function MealPlansTab({
             className="px-4 py-2 border border-brand-primary text-brand-primary font-bold rounded-lg hover:bg-brand-primary/5 text-xs transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            {exportSuccess ? 'Exporting...' : 'Export List'}
+            {exportSuccess ? t("Exporting...") : t("Export List")}
           </button>
           <button
             onClick={() => onSetTab('vendors')}
             className="px-4 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-primary-dark text-xs transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            New Assignment
+            {t("New Assignment")}
           </button>
         </div>
       </div>
@@ -177,7 +179,7 @@ export default function MealPlansTab({
         {/* Total */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
-            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">Total Employees</span>
+            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Total Employees")}</span>
             <div className="p-2 bg-brand-bg rounded-lg">
               <Users className="w-4 h-4 text-brand-primary" />
             </div>
@@ -188,7 +190,7 @@ export default function MealPlansTab({
         {/* Assigned */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
-            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">Assigned</span>
+            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Assigned")}</span>
             <div className="p-2 bg-brand-primary-light/40 rounded-lg">
               <CheckCircle2 className="w-4 h-4 text-brand-primary" />
             </div>
@@ -202,7 +204,7 @@ export default function MealPlansTab({
         {/* Unassigned Warning */}
         <div className="bg-white p-6 rounded-xl card-shadow border-l-4 border-brand-error-text flex flex-col justify-between">
           <div className="flex justify-between items-start mb-3">
-            <span className="text-brand-error-text font-bold text-[10px] uppercase tracking-wider">Unassigned</span>
+            <span className="text-brand-error-text font-bold text-[10px] uppercase tracking-wider">{t("Unassigned")}</span>
             <div className="p-2 bg-brand-error-bg/60 rounded-lg">
               <Clock className="w-4 h-4 text-brand-error-text" />
             </div>
@@ -213,7 +215,7 @@ export default function MealPlansTab({
         {/* Active Vendors */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
-            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">Active Vendors</span>
+            <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Active Vendors")}</span>
             <div className="p-2 bg-brand-bg rounded-lg">
               <Store className="w-4 h-4 text-brand-primary" />
             </div>
@@ -226,7 +228,7 @@ export default function MealPlansTab({
       <div className="bg-white rounded-xl card-shadow overflow-hidden border border-brand-divider">
         {/* Table Header Controls */}
         <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/10">
-          <h4 className="font-bold text-sm text-brand-text">Active Schedule Mapping</h4>
+          <h4 className="font-bold text-sm text-brand-text">{t("Active Schedule Mapping")}</h4>
           <div className="flex items-center gap-3">
             {/* Table Search */}
             <div className="relative w-52 sm:w-64">
@@ -234,7 +236,7 @@ export default function MealPlansTab({
               <input
                 type="text"
                 className="w-full pl-8 pr-3 py-1.5 bg-white border border-brand-divider rounded-lg text-xs text-brand-text focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none"
-                placeholder="Search record details..."
+                placeholder={t("Search record details...")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -256,19 +258,19 @@ export default function MealPlansTab({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-transparent border-b border-brand-divider">
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Employee Name</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Department</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Assigned Partner</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Delivery Window</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Employee Name")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Department")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Assigned Partner")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Delivery Window")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Status")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-divider">
               {paginatedAssignments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-brand-muted">
-                    No employee assignments match your search filter.
+                    {t("No employee assignments match your search filter.")}
                   </td>
                 </tr>
               ) : (
@@ -303,7 +305,7 @@ export default function MealPlansTab({
                           </div>
                           <div>
                             <p className="font-bold text-brand-text text-sm">{emp.name}</p>
-                            <p className="text-xs text-brand-muted">ID: {emp.id}</p>
+                            <p className="text-xs text-brand-muted">{t("ID: {{id}}", { id: emp.id })}</p>
                           </div>
                         </div>
                       </td>
@@ -331,7 +333,7 @@ export default function MealPlansTab({
                               : 'bg-brand-error-bg text-brand-error-text'
                           }`}
                         >
-                          {isAssigned ? 'Assigned' : 'Unassigned'}
+                          {isAssigned ? t("Assigned") : t("Unassigned")}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -339,7 +341,7 @@ export default function MealPlansTab({
                           <button
                             onClick={() => handleUnassign(emp)}
                             className="p-1.5 text-brand-muted hover:text-brand-error-text hover:bg-brand-error-bg/40 rounded-lg transition-all active:scale-95 cursor-pointer"
-                            title="Unassign Meal Plan"
+                            title={t("Unassign Meal Plan")}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -347,7 +349,7 @@ export default function MealPlansTab({
                           <button
                             disabled
                             className="p-1.5 text-brand-muted/30 cursor-not-allowed"
-                            title="Cannot Unassign"
+                            title={t("Cannot Unassign")}
                           >
                             <Ban className="w-4 h-4" />
                           </button>
@@ -364,8 +366,7 @@ export default function MealPlansTab({
         {/* Pagination */}
         <div className="px-6 py-4 border-t border-brand-divider flex items-center justify-between">
           <p className="text-xs text-brand-muted">
-            Showing <span className="font-bold">{paginatedAssignments.length}</span> of{' '}
-            <span className="font-bold">{filteredAssignments.length}</span> schedules
+            <Trans t={t} i18nKey={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} defaults={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} values={{ length: paginatedAssignments.length, length2: filteredAssignments.length }} components={[<span className="font-bold" />, <span className="font-bold" />]} />
           </p>
           <div className="flex gap-1.5">
             <button

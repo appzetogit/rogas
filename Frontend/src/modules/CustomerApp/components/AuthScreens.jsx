@@ -4,8 +4,10 @@ import { SUPPORTED_COUNTRIES } from "../../../config/countries";
 import CountrySelector from "../../../shared/components/CountrySelector";
 import { ArrowLeft, Utensils, ShieldCheck, Lock, Leaf, Mail, ArrowRight } from 'lucide-react';
 import { Link } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
+  const { t } = useTranslation("customer");
   const [selectedCountry, setSelectedCountry] = useState(() => {
     return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
   });
@@ -18,7 +20,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
       const fullPhone = `${selectedCountry.code}${cleanDigits}`;
       onSendOtp(fullPhone);
     } else {
-      alert(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`);
+      alert(t("Please enter a valid {{phoneLength}}-digit phone number", { phoneLength: selectedCountry.phoneLength }));
     }
   };
 
@@ -32,7 +34,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
         {localStorage.getItem('user_app_logo') ? (
           <img 
             src={localStorage.getItem('user_app_logo')} 
-            alt="App Logo" 
+            alt={t("App Logo")} 
             className="w-full h-56 rounded-2xl shadow-sm object-contain bg-white p-4 mb-6" 
           />
         ) : (
@@ -44,17 +46,17 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
         )}
 
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight">
-          {isLogin ? "Welcome back!" : "Create an account"}
+          {isLogin ? t("Welcome back!") : t("Create an account")}
         </h1>
         <p className="text-[13px] text-on-surface-variant mt-1 mb-6">
-          {isLogin ? "Log in with your phone number" : "Sign up with your phone number"}
+          {isLogin ? t("Log in with your phone number") : t("Sign up with your phone number")}
         </p>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
 
           <div className="mb-8">
             <label className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-2 block">
-              Mobile Number
+              {t("Mobile Number")}
             </label>
             <div className="flex h-14 bg-white border border-[#bec9c3] rounded-xl overflow-hidden shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
               <CountrySelector
@@ -87,7 +89,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
               disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
               className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]"
             >
-              Send OTP
+              {t("Send OTP")}
             </button>
 
             <button 
@@ -95,11 +97,11 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
               onClick={onToggleMode}
               className="text-[#1F7A63] text-[13px] font-semibold hover:underline"
             >
-              {isLogin ? "New user? Create an account" : "Already have an account? Log in"}
+              {isLogin ? t("New user? Create an account") : t("Already have an account? Log in")}
             </button>
 
             <p className="text-[10px] text-center text-[#6e7a74] px-4 mt-2">
-              By continuing, you agree to our <Link to="/user/termsandcondition" state={{ backTo: "/user/auth/login" }} className="underline">Terms of Service</Link> and <Link to="/user/privacy" state={{ backTo: "/user/auth/login" }} className="underline">Privacy Policy</Link>.
+              <Trans t={t} i18nKey={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} defaults={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} components={[<Link to="/user/termsandcondition" state={{ backTo: "/user/auth/login" }} className="underline" />, <Link to="/user/privacy" state={{ backTo: "/user/auth/login" }} className="underline" />]} />
             </p>
           </div>
         </form>
@@ -109,6 +111,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
 }
 
 export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
+  const { t } = useTranslation("customer");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = [
     useRef(null),
@@ -154,10 +157,10 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
         </div>
 
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight mb-2">
-          Verify OTP
+          {t("Verify OTP")}
         </h1>
         <p className="text-[13px] text-on-surface-variant text-center px-4 mb-8 leading-relaxed">
-          Enter the 6-digit code sent to <span className="text-[#1F7A63] font-semibold">{phone || "your phone number"}</span>
+          <Trans t={t} i18nKey={"Enter the 6-digit code sent to <0>{{phone}}</0>"} defaults={"Enter the 6-digit code sent to <0>{{phone}}</0>"} values={{ phone: phone || t("your phone number") }} components={[<span className="text-[#1F7A63] font-semibold" />]} />
         </p>
 
         <div className="flex gap-2 mb-6">
@@ -176,7 +179,7 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
         </div>
 
         <p className="text-[12px] text-[#6e7a74] mb-10">
-          Hint: Try <span className="font-bold text-[#1F7A63]">123456</span>
+          {t("Hint: Try")} <span className="font-bold text-[#1F7A63]">123456</span>
         </p>
 
         <div className="w-full mt-auto mb-8 flex flex-col gap-5">
@@ -185,22 +188,22 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
             disabled={otp.join("").length < 6}
             className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]"
           >
-            Verify OTP
+            {t("Verify OTP")}
           </button>
 
           <button 
             onClick={onResend}
             className="text-[#1F7A63] text-[13px] font-semibold hover:underline text-center"
           >
-            Resend code
+            {t("Resend code")}
           </button>
 
           <div className="mt-4 bg-[#F2ECE5]/50 border border-[#e8dfd5] p-4 rounded-xl flex gap-3 text-left">
             <Lock className="text-[#1F7A63] text-[20px] mt-0.5" />
             <div>
-              <p className="text-[12px] font-bold text-[#1b1c1c]">Secure Verification</p>
+              <p className="text-[12px] font-bold text-[#1b1c1c]">{t("Secure Verification")}</p>
               <p className="text-[11px] text-[#6e7a74] leading-tight mt-0.5">
-                We use industry-standard encryption to keep your dietary journey safe and private.
+                {t("We use industry-standard encryption to keep your dietary journey safe and private.")}
               </p>
             </div>
           </div>
@@ -211,6 +214,7 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
 }
 
 export function UserDetailsScreen({ onContinue, onBack }) {
+  const { t } = useTranslation("customer");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -236,10 +240,10 @@ export function UserDetailsScreen({ onContinue, onBack }) {
 
       <main className="px-5 flex-1 flex flex-col pb-6 pt-2">
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight">
-          About You
+          {t("About You")}
         </h1>
         <p className="text-[13px] text-on-surface-variant mt-1 mb-5">
-          Tell us a bit more to personalize your experience
+          {t("Tell us a bit more to personalize your experience")}
         </p>
 
         <div className="w-full h-32 rounded-2xl overflow-hidden mb-6 shadow-sm relative">
@@ -251,13 +255,13 @@ export function UserDetailsScreen({ onContinue, onBack }) {
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
           <div>
             <label className="text-[11px] font-bold text-[#1b1c1c] mb-1.5 block">
-              First Name
+              {t("First Name")}
             </label>
             <input 
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder="e.g. John"
+              placeholder={t("e.g. John")}
               className="w-full h-12 px-4 bg-white border border-[#bec9c3]/70 rounded-xl text-[13px] focus:outline-none focus:border-[#1F7A63] focus:ring-1 focus:ring-[#1F7A63] transition-all shadow-sm"
               required
             />
@@ -265,13 +269,13 @@ export function UserDetailsScreen({ onContinue, onBack }) {
 
           <div>
             <label className="text-[11px] font-bold text-[#1b1c1c] mb-1.5 block">
-              Last Name
+              {t("Last Name")}
             </label>
             <input 
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              placeholder="e.g. Doe"
+              placeholder={t("e.g. Doe")}
               className="w-full h-12 px-4 bg-white border border-[#bec9c3]/70 rounded-xl text-[13px] focus:outline-none focus:border-[#1F7A63] focus:ring-1 focus:ring-[#1F7A63] transition-all shadow-sm"
               required
             />
@@ -279,14 +283,14 @@ export function UserDetailsScreen({ onContinue, onBack }) {
 
           <div>
             <label className="text-[11px] font-bold text-[#1b1c1c] mb-1.5 block">
-              Email Address
+              {t("Email Address")}
             </label>
             <div className="relative">
               <input 
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="john.doe@example.com"
+                placeholder={t("john.doe@example.com")}
                 className="w-full h-12 pl-4 pr-10 bg-white border border-[#bec9c3]/70 rounded-xl text-[13px] focus:outline-none focus:border-[#1F7A63] focus:ring-1 focus:ring-[#1F7A63] transition-all shadow-sm"
                 required
               />
@@ -296,7 +300,7 @@ export function UserDetailsScreen({ onContinue, onBack }) {
 
           <div className="mt-auto pt-6 flex flex-col gap-4">
             <p className="text-[10px] text-center text-[#6e7a74] px-4">
-              By continuing, you agree to our <span className="text-[#1F7A63] font-bold">Terms of Service</span> and <span className="text-[#1F7A63] font-bold">Privacy Policy</span>.
+              <Trans t={t} i18nKey={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} defaults={"By continuing, you agree to our <0>Terms of Service</0> and <1>Privacy Policy</1>."} components={[<span className="text-[#1F7A63] font-bold" />, <span className="text-[#1F7A63] font-bold" />]} />
             </p>
 
             <button 
@@ -304,7 +308,7 @@ export function UserDetailsScreen({ onContinue, onBack }) {
               disabled={!firstName || !lastName || !email}
               className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px] flex items-center justify-center gap-2"
             >
-              Continue
+              {t("Continue")}
               <ArrowRight className="text-[18px]" />
             </button>
           </div>

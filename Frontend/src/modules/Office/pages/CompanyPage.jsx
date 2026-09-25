@@ -9,6 +9,7 @@ import { Pencil, Building2, CreditCard, Mail, Phone, Shield, ShieldCheck, Users,
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { uploadDocumentApi, deactivateCompanyAccountApi } from '../services/officeApi';
+import { useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: '100%',
@@ -23,6 +24,7 @@ export default function CompanyDetailsTab({
   details,
   onUpdateDetails,
 }) {
+  const { t } = useTranslation("office");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -79,7 +81,7 @@ export default function CompanyDetailsTab({
       profileImage
     });
     setIsEditModalOpen(false);
-    alert('Company details have been updated successfully.');
+    alert(t("Company details have been updated successfully."));
   };
 
   const fetchAddress = (lat, lng) => {
@@ -114,7 +116,7 @@ export default function CompanyDetailsTab({
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      alert('Failed to upload image. Please try again.');
+      alert(t("Failed to upload image. Please try again."));
     } finally {
       setIsUploadingImage(false);
     }
@@ -129,10 +131,10 @@ export default function CompanyDetailsTab({
           setLocationCoords({ lat, lng });
           fetchAddress(lat, lng);
         },
-        () => alert('Could not get live location. Please check your browser permissions.')
+        () => alert(t("Could not get live location. Please check your browser permissions."))
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      alert(t("Geolocation is not supported by your browser."));
     }
   };
 
@@ -144,7 +146,7 @@ export default function CompanyDetailsTab({
       window.location.href = '/office/login';
     } catch (error) {
       console.error('Failed to deactivate account:', error);
-      alert('Failed to deactivate account. Please try again later.');
+      alert(t("Failed to deactivate account. Please try again later."));
       setIsDeleting(false);
     }
   };
@@ -171,15 +173,15 @@ export default function CompanyDetailsTab({
       {/* Top Header Bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">Company Logistics Profile</h3>
-          <p className="text-xs text-brand-muted mt-1">Review verified legal registrations, active billing cap, and billing tier contract.</p>
+          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">{t("Company Logistics Profile")}</h3>
+          <p className="text-xs text-brand-muted mt-1">{t("Review verified legal registrations, active billing cap, and billing tier contract.")}</p>
         </div>
         <button
           onClick={handleOpenEdit}
           className="bg-white border border-brand-primary text-brand-primary hover:bg-brand-primary/5 px-5 py-2.5 rounded-lg flex items-center gap-2 font-bold transition-all duration-150 active:scale-[0.98] cursor-pointer text-xs shadow-sm"
         >
           <Pencil className="w-3.5 h-3.5" />
-          Edit details
+          {t("Edit details")}
         </button>
       </div>
 
@@ -191,33 +193,33 @@ export default function CompanyDetailsTab({
             <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
               <Building2 className="w-5 h-5" />
             </div>
-            <h4 className="font-bold text-sm text-brand-text">Company Profile</h4>
+            <h4 className="font-bold text-sm text-brand-text">{t("Company Profile")}</h4>
           </div>
 
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Legal Name</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Legal Name")}</p>
               <p className="text-sm font-semibold text-brand-text mt-0.5">{details.legalName}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">NIP (Tax ID)</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("NIP (Tax ID)")}</p>
                 <p className="text-xs font-semibold text-brand-text mt-0.5">{details.nip}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">REGON</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("REGON")}</p>
                 <p className="text-xs font-semibold text-brand-text mt-0.5">{details.regon}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Registered Office Address</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Registered Office Address")}</p>
               <p className="text-xs text-brand-muted leading-relaxed mt-0.5">{details.registeredAddress}</p>
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Central Delivery Address</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Central Delivery Address")}</p>
               <p className="text-xs text-brand-muted leading-relaxed mt-0.5">{details.deliveryAddress}</p>
             </div>
           </div>
@@ -230,32 +232,32 @@ export default function CompanyDetailsTab({
               <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
                 <CreditCard className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-sm text-brand-text">Billing & Contract</h4>
+              <h4 className="font-bold text-sm text-brand-text">{t("Billing & Contract")}</h4>
             </div>
             <span className="px-2.5 py-0.5 bg-brand-primary-light text-brand-primary rounded-full text-[10px] font-extrabold uppercase">
-              Annual Tier
+              {t("Annual Tier")}
             </span>
           </div>
 
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Plan Type</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Plan Type")}</p>
               <p className="text-sm font-semibold text-brand-primary mt-0.5">{details.planType}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Billing Cycle</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Billing Cycle")}</p>
                 <p className="text-xs font-semibold text-brand-text mt-0.5">{details.billingCycle}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Payment Method</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Payment Method")}</p>
                 <p className="text-xs font-semibold text-brand-text mt-0.5">{details.paymentMethod}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Monthly Budget Cap</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Monthly Budget Cap")}</p>
               <p className="text-base font-bold text-brand-text mt-0.5">{formattedBudgetCap}</p>
               
               {/* Utilization progress bar */}
@@ -268,21 +270,21 @@ export default function CompanyDetailsTab({
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-[9px] text-brand-muted font-semibold">
-                    {utilPercent}% of budget utilized this month
+                    {t("{{utilPercent}}% of budget utilized this month", { utilPercent })}
                   </p>
                   <p className="text-[10px] font-bold text-brand-primary">
                     {new Intl.NumberFormat('en-IN', {
                       style: 'currency',
                       currency: 'INR',
                       minimumFractionDigits: 2,
-                    }).format(details.budgetUtilized || 0)} Paid
+                    }).format(details.budgetUtilized || 0)} {t("Paid")}
                   </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">Contract Start Date</p>
+              <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider">{t("Contract Start Date")}</p>
               <p className="text-xs text-brand-muted mt-0.5">{formattedStartDate}</p>
             </div>
           </div>
@@ -295,7 +297,7 @@ export default function CompanyDetailsTab({
               <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
                 <Shield className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-sm text-brand-text">Primary Contact</h4>
+              <h4 className="font-bold text-sm text-brand-text">{t("Primary Contact")}</h4>
             </div>
 
             {/* Profile circular visual block */}
@@ -316,7 +318,7 @@ export default function CompanyDetailsTab({
             <div className="flex items-center gap-3 p-2.5 bg-brand-bg/50 border border-brand-divider rounded-lg">
               <Mail className="w-4 h-4 text-brand-muted flex-shrink-0" />
               <div className="overflow-hidden">
-                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">Email Address</p>
+                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">{t("Email Address")}</p>
                 <p className="text-xs font-semibold text-brand-text truncate mt-0.5">{details.contactEmail}</p>
               </div>
             </div>
@@ -324,7 +326,7 @@ export default function CompanyDetailsTab({
             <div className="flex items-center gap-3 p-2.5 bg-brand-bg/50 border border-brand-divider rounded-lg">
               <Phone className="w-4 h-4 text-brand-muted flex-shrink-0" />
               <div>
-                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">Phone Number</p>
+                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">{t("Phone Number")}</p>
                 <p className="text-xs font-semibold text-brand-text mt-0.5">{details.contactPhone}</p>
               </div>
             </div>
@@ -332,8 +334,8 @@ export default function CompanyDetailsTab({
             <div className="flex items-center gap-3 p-2.5 bg-brand-bg/50 border border-brand-divider rounded-lg">
               <Shield className="w-4 h-4 text-brand-muted flex-shrink-0" />
               <div>
-                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">Role in System</p>
-                <p className="text-xs font-semibold text-brand-text mt-0.5">Primary Account Administrator</p>
+                <p className="text-[9px] font-bold text-brand-muted uppercase leading-none">{t("Role in System")}</p>
+                <p className="text-xs font-semibold text-brand-text mt-0.5">{t("Primary Account Administrator")}</p>
               </div>
             </div>
           </div>
@@ -345,7 +347,7 @@ export default function CompanyDetailsTab({
             <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-lg">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <h4 className="font-bold text-sm text-brand-text">Account Status</h4>
+            <h4 className="font-bold text-sm text-brand-text">{t("Account Status")}</h4>
           </div>
 
           <div className="space-y-4">
@@ -354,7 +356,7 @@ export default function CompanyDetailsTab({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse"></span>
                 <span className="text-xs font-extrabold text-brand-primary uppercase tracking-wide">
-                  Active & Verified
+                  {t("Active & Verified")}
                 </span>
               </div>
               <ShieldCheck className="w-6 h-6 text-brand-primary" />
@@ -365,17 +367,17 @@ export default function CompanyDetailsTab({
               <div className="p-4 border border-brand-divider rounded-xl bg-brand-bg/20 text-center">
                 <Users className="w-5 h-5 text-brand-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-brand-text">{details.totalEmployees}</p>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mt-1">Employees</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mt-1">{t("Employees")}</p>
               </div>
               <div className="p-4 border border-brand-divider rounded-xl bg-brand-bg/20 text-center">
                 <Store className="w-5 h-5 text-brand-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-brand-text">{details.activeVendorsCount}</p>
-                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mt-1">Vendors</p>
+                <p className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mt-1">{t("Vendors")}</p>
               </div>
             </div>
 
             <p className="text-[11px] text-brand-muted leading-relaxed text-center pt-2">
-              All compliance documentation is up to date. Next verification scheduled for November 2026.
+              {t("All compliance documentation is up to date. Next verification scheduled for November 2026.")}
             </p>
           </div>
         </div>
@@ -392,7 +394,7 @@ export default function CompanyDetailsTab({
           className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
         >
           <LogOut className="w-4 h-4 text-gray-500" />
-          Logout
+          {t("Logout")}
         </button>
 
         <button
@@ -401,7 +403,7 @@ export default function CompanyDetailsTab({
           className="px-5 py-2.5 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100/80 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
         >
           <Trash2 className="w-4 h-4 text-red-500" />
-          Delete Account
+          {t("Delete Account")}
         </button>
       </div>
 
@@ -417,7 +419,7 @@ export default function CompanyDetailsTab({
             >
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 sticky top-0 z-10">
-                <h3 className="text-lg font-bold text-gray-900">Edit Company Details</h3>
+                <h3 className="text-lg font-bold text-gray-900">{t("Edit Company Details")}</h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100 cursor-pointer"
@@ -433,14 +435,14 @@ export default function CompanyDetailsTab({
                     
                     <div className="col-span-1 md:col-span-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        Company Profile Image
+                        {t("Company Profile Image")}
                       </label>
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-300 relative group">
                           {isUploadingImage ? (
                             <Loader2 className="w-6 h-6 text-brand-primary animate-spin" />
                           ) : profileImage ? (
-                            <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                            <img src={profileImage} alt={t("Profile")} className="w-full h-full object-cover" />
                           ) : (
                             <ImageIcon className="w-6 h-6 text-gray-400" />
                           )}
@@ -451,7 +453,7 @@ export default function CompanyDetailsTab({
                         <div className="flex-1">
                           <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                             <Upload className="w-4 h-4" />
-                            Upload New Image
+                            {t("Upload New Image")}
                             <input
                               type="file"
                               accept="image/*"
@@ -460,14 +462,14 @@ export default function CompanyDetailsTab({
                               disabled={isUploadingImage}
                             />
                           </label>
-                          <p className="text-xs text-gray-500 mt-1">Recommended size: 256x256px. Max 2MB.</p>
+                          <p className="text-xs text-gray-500 mt-1">{t("Recommended size: 256x256px. Max 2MB.")}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Company Legal Name
+                        {t("Company Legal Name")}
                       </label>
                       <input
                         type="text"
@@ -480,7 +482,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        NIP (Tax ID)
+                        {t("NIP (Tax ID)")}
                       </label>
                       <input
                         type="text"
@@ -493,7 +495,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        REGON
+                        {t("REGON")}
                       </label>
                       <input
                         type="text"
@@ -506,7 +508,7 @@ export default function CompanyDetailsTab({
 
                     <div className="col-span-1 md:col-span-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Registered Address
+                        {t("Registered Address")}
                       </label>
                       <input
                         type="text"
@@ -519,7 +521,7 @@ export default function CompanyDetailsTab({
 
                     <div className="col-span-1 md:col-span-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Delivery Address
+                        {t("Delivery Address")}
                       </label>
                       <input
                         type="text"
@@ -533,7 +535,7 @@ export default function CompanyDetailsTab({
                     <div className="col-span-1 md:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          Set Location (Map Pin)
+                          {t("Set Location (Map Pin)")}
                         </label>
                         <button
                           type="button"
@@ -541,13 +543,13 @@ export default function CompanyDetailsTab({
                           className="flex items-center gap-1.5 text-[10px] font-bold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 px-2 py-1 rounded transition-colors cursor-pointer"
                         >
                           <Navigation className="w-3 h-3" />
-                          Use Live Location
+                          {t("Use Live Location")}
                         </button>
                       </div>
                       <div className="border border-gray-300 rounded-lg overflow-hidden relative">
                         {!isLoaded ? (
                           <div className="w-full h-[250px] bg-gray-100 flex items-center justify-center">
-                            <span className="text-sm text-gray-400 font-semibold">Loading Map...</span>
+                            <span className="text-sm text-gray-400 font-semibold">{t("Loading Map...")}</span>
                           </div>
                         ) : (
                           <GoogleMap
@@ -565,7 +567,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Monthly Budget Cap (€)
+                        {t("Monthly Budget Cap (€)")}
                       </label>
                       <input
                         type="number"
@@ -578,7 +580,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Primary Contact Name
+                        {t("Primary Contact Name")}
                       </label>
                       <input
                         type="text"
@@ -591,7 +593,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Contact Email
+                        {t("Contact Email")}
                       </label>
                       <input
                         type="email"
@@ -604,7 +606,7 @@ export default function CompanyDetailsTab({
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                        Contact Phone
+                        {t("Contact Phone")}
                       </label>
                       <input
                         type="text"
@@ -624,13 +626,13 @@ export default function CompanyDetailsTab({
                     onClick={() => setIsEditModalOpen(false)}
                     className="px-5 py-2.5 text-gray-600 text-sm font-semibold hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg transition-all active:scale-[0.98] shadow-sm cursor-pointer"
                   >
-                    Save Changes
+                    {t("Save Changes")}
                   </button>
                 </div>
               </form>
@@ -653,9 +655,9 @@ export default function CompanyDetailsTab({
               <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4 mx-auto">
                 <Trash2 className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Company Account?</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{t("Delete Company Account?")}</h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?
+                {t("This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?")}
               </p>
             </div>
 
@@ -669,10 +671,10 @@ export default function CompanyDetailsTab({
                 {isDeleting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Deleting...
+                    {t("Deleting...")}
                   </>
                 ) : (
-                  'Yes, Delete Account'
+                  t("Yes, Delete Account")
                 )}
               </button>
               <button
@@ -681,7 +683,7 @@ export default function CompanyDetailsTab({
                 disabled={isDeleting}
                 className="px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               >
-                Cancel
+                {t("Cancel")}
               </button>
             </div>
           </div>

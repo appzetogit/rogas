@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
 import { ArrowLeft, Star, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder, socket }) {
+  const { t } = useTranslation("customer");
   const [arrivingMin, setArrivingMin] = useState(8);
   const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
 
@@ -55,14 +57,14 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
 
   const handleCall = () => {
     if (driverPhone) {
-      onShowNotificationToast(`📞 Initiating secure telephone call to ${driverName} (${driverPhone})...`);
+      onShowNotificationToast(t("📞 Initiating secure telephone call to {{driverName}} ({{driverPhone}})...", { driverName, driverPhone }));
     } else {
-      onShowNotificationToast(`📞 Initiating secure telephone call to ${driverName}...`);
+      onShowNotificationToast(t("📞 Initiating secure telephone call to {{driverName}}...", { driverName }));
     }
   };
 
   const handleChat = () => {
-    onShowNotificationToast(`💬 Opening secure chat with ${driverName}...`);
+    onShowNotificationToast(t("💬 Opening secure chat with {{driverName}}...", { driverName }));
   };
 
   return (
@@ -75,7 +77,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-extrabold text-primary text-center">Live Order Tracking</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{t("Live Order Tracking")}</h1>
         <div className="w-8" />
       </header>
 
@@ -85,7 +87,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-[#e4e2e1] flex items-center justify-center font-bold text-slate-500 border border-slate-200">
               {driverPhoto ? (
-                <img alt={`Driver ${driverName}`} className="w-full h-full object-cover" src={driverPhoto} />
+                <img alt={t("Driver {{driverName}}", { driverName })} className="w-full h-full object-cover" src={driverPhoto} />
               ) : (
                 driverName ? driverName.charAt(0).toUpperCase() : "D"
               )}
@@ -94,17 +96,17 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
               <h3 className="text-sm font-extrabold text-slate-900 leading-tight">{driverName} · {driverVehicle}</h3>
               <div className="flex items-center gap-1 mt-0.5">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span className="text-xs font-bold text-slate-600">4.9 Rating</span>
+                <span className="text-xs font-bold text-slate-600">{t("4.9 Rating")}</span>
               </div>
             </div>
           </div>
 
           <div className="text-right">
             <span className="inline-block bg-[#1F7A63]/10 text-[#1F7A63] px-3 py-1 rounded-full text-xs font-extrabold mb-0.5">
-              {orderStatus === "delivered" ? "DONE" : "12:47"}
+              {orderStatus === "delivered" ? t("DONE") : "12:47"}
             </span>
             <p className="text-xs font-bold text-slate-500">
-              {orderStatus === "delivered" ? "Delivered" : `~${arrivingMin} min away`}
+              {orderStatus === "delivered" ? t("Delivered") : t("~{{arrivingMin}} min away", { arrivingMin })}
             </p>
           </div>
         </div>
@@ -129,9 +131,9 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-extrabold text-[#1F7A63]">🎉 Order Delivered!</h2>
+                  <h2 className="text-lg font-extrabold text-[#1F7A63]">{t("🎉 Order Delivered!")}</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    Your meal has been successfully delivered. Enjoy your meal!
+                    {t("Your meal has been successfully delivered. Enjoy your meal!")}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-[#1F7A63] shadow-xs">
@@ -141,24 +143,24 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
 
               <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-5 text-center">
                 <span className="text-3xl block mb-1">✅</span>
-                <p className="text-base font-extrabold text-[#1F7A63]">Delivered Successfully</p>
-                <p className="text-xs text-slate-500 font-medium mt-1">Thank you for ordering with DailyMealBox!</p>
+                <p className="text-base font-extrabold text-[#1F7A63]">{t("Delivered Successfully")}</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">{t("Thank you for ordering with DailyMealBox!")}</p>
               </div>
 
               <button 
                 onClick={onGoBack} 
                 className="w-full h-12 bg-[#1F7A63] hover:bg-[#155a49] text-white rounded-xl font-extrabold text-sm transition-all shadow-md cursor-pointer active:scale-[0.98]"
               >
-                Back to Orders
+                {t("Back to Orders")}
               </button>
             </>
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">🚴 Driver on the way!</h2>
+                  <h2 className="text-lg font-extrabold text-slate-900">{t("🚴 Driver on the way!")}</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {tomorrowMeal?.name || "Meal"} by {trackedOrder?.vendor?.restaurantName || "Maria K."}
+                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: trackedOrder?.vendor?.restaurantName || t("Maria K.") })}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-[#1F7A63]/10 rounded-2xl flex items-center justify-center text-[#1F7A63]">
@@ -169,13 +171,13 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
               {/* Delivery PIN Card */}
               <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 text-center space-y-2">
                 <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest block">
-                  Your Delivery PIN
+                  {t("Your Delivery PIN")}
                 </span>
                 <span className="text-3xl sm:text-4xl font-extrabold tracking-[0.3em] pl-3 text-[#1F7A63] font-mono block">
                   {trackedOrder?.deliveryPin || trackedOrder?.pin || "8323"}
                 </span>
                 <span className="text-xs text-slate-500 font-medium block">
-                  Share this PIN with your driver upon arrival
+                  {t("Share this PIN with your driver upon arrival")}
                 </span>
               </div>
 
@@ -186,12 +188,12 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                   className="flex-1 h-12 bg-[#1F7A63] hover:bg-[#155a49] text-white font-extrabold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer active:scale-[0.98]"
                 >
                   <Phone className="w-4 h-4 fill-current" />
-                  <span>Call Driver</span>
+                  <span>{t("Call Driver")}</span>
                 </button>
                 <button 
                   onClick={handleChat} 
                   className="w-12 h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-slate-200/60" 
-                  title="Chat Driver"
+                  title={t("Chat Driver")}
                 >
                   <MessageSquare className="w-5 h-5" />
                 </button>

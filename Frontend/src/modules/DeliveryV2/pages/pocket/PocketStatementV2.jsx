@@ -10,6 +10,7 @@ import WeekSelector from '@delivery/components/WeekSelector';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * PocketStatementV2 - 1:1 Match with Old PocketStatement UI.
@@ -17,6 +18,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const PocketStatementV2 = () => {
+  const { t } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
 
   // Current week range (Sunday - Saturday)
@@ -60,7 +62,7 @@ export const PocketStatementV2 = () => {
         setOrders(tripRes?.data?.data?.trips || []);
         setBonusTransactions(walletRes?.data?.data?.transactions || []);
       } catch (error) {
-        toast.error('Error loading pocket statement');
+        toast.error(t("Error loading pocket statement"));
       } finally {
         setLoading(false);
       }
@@ -130,7 +132,7 @@ export const PocketStatementV2 = () => {
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">Pocket statement</h1>
+          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">{t("Pocket statement")}</h1>
        </div>
 
        {/* Main Content */}
@@ -142,24 +144,24 @@ export const PocketStatementV2 = () => {
              <div className="flex items-center gap-2 mb-4">
                 <CheckCircle className="w-4 h-4 text-emerald-500" />
                 <span className="text-sm font-bold text-gray-800 uppercase tracking-tight">
-                   Pocket summary
+                   {t("Pocket summary")}
                 </span>
              </div>
              <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="text-left">
-                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Orders</p>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Orders")}</p>
                    <p className="text-base font-bold text-black leading-none">
                       ₹{summary.totalEarning.toFixed(0)}
                    </p>
                 </div>
                 <div>
-                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Bonus</p>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Bonus")}</p>
                    <p className="text-base font-bold text-black leading-none">
                       ₹{summary.totalBonus.toFixed(0)}
                    </p>
                 </div>
                 <div className="text-right">
-                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Total</p>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Total")}</p>
                    <p className="text-base font-bold text-primary leading-none">
                       ₹{summary.grandTotal.toFixed(0)}
                    </p>
@@ -171,13 +173,13 @@ export const PocketStatementV2 = () => {
           {loading ? (
              <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading Statement...</p>
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t("Loading Statement...")}</p>
              </div>
           ) : orders.length === 0 ? (
              <div className="bg-white rounded-xl p-10 text-center shadow-sm border border-gray-100">
                 <Clock className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-                <p className="text-[#2B2B2B] text-lg font-bold mb-1">No transactions</p>
-                <p className="text-gray-400 text-sm font-medium">No transactions found for this week.</p>
+                <p className="text-[#2B2B2B] text-lg font-bold mb-1">{t("No transactions")}</p>
+                <p className="text-gray-400 text-sm font-medium">{t("No transactions found for this week.")}</p>
              </div>
           ) : (
              <div className="space-y-4">
@@ -208,7 +210,7 @@ export const PocketStatementV2 = () => {
                                }`}></div>
                                <div>
                                   <p className="text-[#2B2B2B] text-sm font-bold mb-0.5">
-                                     Order #{orderId?.slice(-6) || '...'}
+                                     {t("Order #")}{orderId?.slice(-6) || '...'}
                                   </p>
                                   <p className="text-gray-400 text-[11px] font-bold mb-1 uppercase tracking-tight">{dateText}</p>
                                   {trip.restaurantName && (
@@ -220,21 +222,21 @@ export const PocketStatementV2 = () => {
                             </div>
                             <div className="text-right">
                                <div className="mb-2">
-                                  <p className="text-[10px] text-gray-400 font-bold uppercase">Earning</p>
+                                  <p className="text-[10px] text-gray-400 font-bold uppercase">{t("Earning")}</p>
                                   <p className="text-sm font-bold text-black">
                                      ₹{amounts.earning}
                                   </p>
                                </div>
                                {amounts.bonus > 0 && (
                                   <div className="mb-2">
-                                     <p className="text-[10px] text-emerald-500 font-bold uppercase">Bonus</p>
+                                     <p className="text-[10px] text-emerald-500 font-bold uppercase">{t("Bonus")}</p>
                                      <p className="text-sm font-bold text-emerald-600">
                                         + ₹{amounts.bonus}
                                      </p>
                                   </div>
                                )}
                                <div className="pt-2 border-t border-gray-50">
-                                  <p className="text-[10px] text-gray-800 font-bold uppercase">Total</p>
+                                  <p className="text-[10px] text-gray-800 font-bold uppercase">{t("Total")}</p>
                                   <p className="text-base font-bold text-primary">
                                      ₹{amounts.total}
                                   </p>

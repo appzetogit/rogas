@@ -11,6 +11,7 @@ const mapContainerStyle = {
 import { restaurantAPI, dmbCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import { X, CheckCircle, CheckSquare, Calendar, MapPin, Locate, ShoppingCart, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -35,6 +36,7 @@ const getPrimaryImage = (vendor) => {
 
 // ─── Menu Modal ────────────────────────────────────────────────────────────────
 function MenuModal({ vendorId, vendorName, onClose }) {
+  const { t } = useTranslation("customer");
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +66,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
         {/* Header */}
         <div className="px-5 py-3 flex items-center justify-between border-b border-[#f0eded]">
           <div>
-            <h2 className="text-[17px] font-extrabold text-[#1b1c1c]">🍽️ Menu</h2>
+            <h2 className="text-[17px] font-extrabold text-[#1b1c1c]">{t("🍽️ Menu")}</h2>
             <p className="text-[12px] text-[#6e7a74]">{vendorName}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f5f5f0] flex items-center justify-center active:scale-90 transition-transform">
@@ -77,13 +79,13 @@ function MenuModal({ vendorId, vendorName, onClose }) {
           {loading ? (
             <div className="text-center py-12">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-[13px] text-[#6e7a74]">Loading menu...</p>
+              <p className="text-[13px] text-[#6e7a74]">{t("Loading menu...")}</p>
             </div>
           ) : menu.length === 0 ? (
             <div className="text-center py-12 space-y-2">
               <span className="text-4xl">🍴</span>
-              <p className="font-bold text-[#6e7a74]">No active menu items yet</p>
-              <p className="text-[12px] text-[#6e7a74]">This vendor hasn't added menu items</p>
+              <p className="font-bold text-[#6e7a74]">{t("No active menu items yet")}</p>
+              <p className="text-[12px] text-[#6e7a74]">{t("This vendor hasn't added menu items")}</p>
             </div>
           ) : menu.map((item) => (
             <div key={item._id} className="bg-[#f9f9f7] rounded-2xl p-4 flex gap-4 border border-[#e4e2e1]/50">
@@ -102,10 +104,10 @@ function MenuModal({ vendorId, vendorName, onClose }) {
                   <p className="text-[12px] text-[#6e7a74] mt-0.5 line-clamp-2">{item.description}</p>
                 )}
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[15px] font-extrabold text-primary">₹{item.pricePerDay}/day</span>
+                  <span className="text-[15px] font-extrabold text-primary">{t("₹{{pricePerDay}}/day", { pricePerDay: item.pricePerDay })}</span>
                   {item.nutrition?.calories && (
                     <span className="text-[11px] text-[#6e7a74] bg-white border border-[#e4e2e1] px-2 py-0.5 rounded-full">
-                      {item.nutrition.calories} kcal
+                      {t("{{calories}} kcal", { calories: item.nutrition.calories })}
                     </span>
                   )}
                 </div>
@@ -137,6 +139,7 @@ const getTomorrowDateStr = () => {
 };
 
 function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub, matchDietary, dietaryPrefs }) {
+  const { t } = useTranslation("customer");
   const [mealPlans, setMealPlans] = useState([]);
   const [selectedMealPlan, setSelectedMealPlan] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -193,10 +196,10 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
         fetchAddressFromCoordinates(latitude, longitude);
         setShowMap(true);
       }, (error) => {
-        alert('Failed to get live location. Please allow location permissions.');
+        alert(t("Failed to get live location. Please allow location permissions."));
       });
     } else {
-      alert('Geolocation is not supported by your browser');
+      alert(t("Geolocation is not supported by your browser"));
     }
   };
 
@@ -319,19 +322,19 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
   const handleProceed = () => {
     if (!selectedPlan) {
-      alert("Please select a subscription plan");
+      alert(t("Please select a subscription plan"));
       return;
     }
     if (selectedMealsList.length === 0) {
-      alert("No active meal plans found for this vendor");
+      alert(t("No active meal plans found for this vendor"));
       return;
     }
     if (!selectedZone) {
-      alert("Please select a delivery zone");
+      alert(t("Please select a delivery zone"));
       return;
     }
     if (address.trim() === "") {
-      alert("Please enter a delivery address");
+      alert(t("Please enter a delivery address"));
       return;
     }
     if (hasActiveSub) {
@@ -389,7 +392,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
         {/* Header */}
         <div className="px-5 py-3 flex items-center justify-between border-b border-[#f0eded]">
           <div>
-            <h2 className="text-[17px] font-extrabold text-[#1b1c1c]">📋 Subscription Plans</h2>
+            <h2 className="text-[17px] font-extrabold text-[#1b1c1c]">{t("📋 Subscription Plans")}</h2>
             <p className="text-[12px] text-[#6e7a74]">{vendorName}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f5f5f0] flex items-center justify-center active:scale-90 transition-transform">
@@ -401,7 +404,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
           {loading ? (
             <div className="text-center py-12">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-[13px] text-[#6e7a74]">Loading plans...</p>
+              <p className="text-[13px] text-[#6e7a74]">{t("Loading plans...")}</p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -409,8 +412,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
               {mealPlans.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest">Select Meal Box / Plan</h3>
-                    <span className="text-[11px] text-primary font-bold">{mealPlans.length} options</span>
+                    <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Select Meal Box / Plan")}</h3>
+                    <span className="text-[11px] text-primary font-bold">{t("{{length}} options", { length: mealPlans.length })}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {mealPlans.map((mp) => {
@@ -439,7 +442,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-extrabold text-[14px] text-[#1b1c1c] truncate">{mp.name}</p>
-                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">₹{mp.pricePerDay}/day</p>
+                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">{t("₹{{pricePerDay}}/day", { pricePerDay: mp.pricePerDay })}</p>
                           </div>
                           {isSelected && (
                             <CheckCircle className="text-primary w-5 h-5 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -453,11 +456,11 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
               {/* Select Subscription Plan */}
               <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Select Subscription Plan</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Select Subscription Plan")}</h3>
                 {subscriptionPlans.length === 0 ? (
                   <div className="bg-[#f9f9f7] rounded-xl p-4 text-center">
                     <span className="text-2xl">📋</span>
-                    <p className="text-[13px] text-[#6e7a74] mt-1">No active plans configured by admin</p>
+                    <p className="text-[13px] text-[#6e7a74] mt-1">{t("No active plans configured by admin")}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -477,7 +480,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                           <div className="flex-1 min-w-0">
                             <p className="font-extrabold text-[15px] text-[#1b1c1c]">{plan.name}</p>
                             <p className="text-[12px] font-medium text-[#6e7a74] mt-1">
-                              {displayDuration} plan • {displaySchedule} ({planDays} Delivery Days)
+                              {t("{{displayDuration}} plan • {{displaySchedule}} ({{planDays}} Delivery Days)", { displayDuration, displaySchedule, planDays })}
                             </p>
                             {plan.description && (
                               <p className="text-[12px] text-[#6e7a74] mt-1.5 line-clamp-2">{plan.description}</p>
@@ -497,7 +500,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                             {isSelected && (
                               <div className="mt-2.5 flex items-center justify-end gap-1 text-primary">
                                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                <span className="text-[12px] font-bold">Selected</span>
+                                <span className="text-[12px] font-bold">{t("Selected")}</span>
                               </div>
                             )}
                           </div>
@@ -510,10 +513,10 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
               {/* Step 4: Delivery Slots (admin-configured) */}
               <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Time Slots</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Delivery Time Slots")}</h3>
                 <div className="space-y-2">
                   {DELIVERY_SLOTS.length === 0 && (
-                    <p className="text-[12px] text-[#6e7a74] py-3">No delivery slots are available right now.</p>
+                    <p className="text-[12px] text-[#6e7a74] py-3">{t("No delivery slots are available right now.")}</p>
                   )}
                   {DELIVERY_SLOTS.map((slot) => {
                     const isSlotSelected = selectedSlots.includes(slot.id);
@@ -548,12 +551,12 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
               {/* Start Date Picker */}
               <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Subscription Start Date</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Subscription Start Date")}</h3>
                 <div className="relative">
                   <div className="flex items-center gap-3 bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-3 focus-within:border-primary transition-colors">
                     <Calendar className="text-primary text-[20px]" />
                     <div className="flex-1">
-                      <p className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-0.5">First Delivery Date</p>
+                      <p className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-0.5">{t("First Delivery Date")}</p>
                       <input
                         type="date"
                         value={selectedStartDate}
@@ -564,33 +567,33 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                     </div>
                   </div>
                   <p className="text-[11px] text-[#6e7a74] mt-1.5 ml-1">
-                    📅 Today &amp; past dates cannot be selected. Default is tomorrow.
+                    {t("📅 Today & past dates cannot be selected. Default is tomorrow.")}
                   </p>
                 </div>
               </section>
 
               {/* Step 5: Delivery Address & Zone */}
               <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Service Zone</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Service Zone")}</h3>
                 <div className="bg-white rounded-xl border-2 border-[#e4e2e1] overflow-hidden mb-4">
                   <select
                     value={selectedZone}
                     onChange={(e) => setSelectedZone(e.target.value)}
                     className="w-full bg-transparent px-4 py-3 text-[13px] text-[#1b1c1c] font-medium outline-none"
                   >
-                    <option value="">Select your Zone</option>
+                    <option value="">{t("Select your Zone")}</option>
                     {zones.map(z => (
                       <option key={z._id} value={z._id}>{z.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Delivery Address</h3>
+                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Delivery Address")}</h3>
                 <div className="bg-white rounded-xl p-3 border-2 border-[#e4e2e1] space-y-3">
                   <textarea
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter full address or select on map"
+                    placeholder={t("Enter full address or select on map")}
                     rows={2}
                     className="w-full bg-[#f9f9f7] rounded-lg px-3 py-2 text-[13px] font-medium text-[#1b1c1c] resize-none focus:outline-none"
                   />
@@ -600,14 +603,14 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 transition-colors active:bg-primary/5"
                     >
                       <MapPin className="text-[16px]" />
-                      {showMap ? 'Hide Map' : 'Set on Map'}
+                      {showMap ? t("Hide Map") : t("Set on Map")}
                     </button>
                     <button
                       onClick={handleLiveLocation}
                       className="flex-1 py-2 rounded-lg text-[12px] font-bold bg-[#1F7A63]/10 text-[#1F7A63] flex items-center justify-center gap-1.5 transition-colors active:bg-[#1F7A63]/20"
                     >
                       <Locate className="text-[16px]" />
-                      Live Location
+                      {t("Live Location")}
                     </button>
                   </div>
 
@@ -624,7 +627,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                           <Marker position={{ lat, lng }} />
                         </GoogleMap>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-[#6e7a74] text-[12px] bg-[#f9f9f7]">Loading Map...</div>
+                        <div className="flex items-center justify-center h-full text-[#6e7a74] text-[12px] bg-[#f9f9f7]">{t("Loading Map...")}</div>
                       )}
                     </div>
                   )}
@@ -634,68 +637,68 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
               {/* Price Summary */}
               {selectedPlan && (
                 <section className="bg-[#1F7A63]/5 rounded-2xl p-4 border border-primary/20">
-                  <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">Price Summary</h3>
+                  <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Price Summary")}</h3>
                   <div className="space-y-2 text-[13px]">
                     <div className="space-y-1">
                       {activeMeal ? (
                         <div className="flex justify-between text-[#6e7a74]">
-                          <span>Selected Meal Box: <strong className="text-[#1b1c1c]">{activeMeal.name}</strong></span>
-                          <span className="font-bold text-primary">₹{activeMeal.pricePerDay}/day</span>
+                          <span><Trans t={t} i18nKey={"Selected Meal Box: <0>{{name}}</0>"} defaults={"Selected Meal Box: <0>{{name}}</0>"} values={{ name: activeMeal.name }} components={[<strong className="text-[#1b1c1c]" />]} /></span>
+                          <span className="font-bold text-primary">{t("₹{{pricePerDay}}/day", { pricePerDay: activeMeal.pricePerDay })}</span>
                         </div>
                       ) : (
                         <div className="text-[#ea4335] text-[12px] font-bold">
-                          ⚠️ No active meal plans found for this vendor.
+                          {t("⚠️ No active meal plans found for this vendor.")}
                         </div>
                       )}
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>Plan Base Rate</span>
+                      <span>{t("Plan Base Rate")}</span>
                       <span className="font-bold">₹{selectedPlan.price}</span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
-                      <span>Duration</span>
+                      <span>{t("Duration")}</span>
                       <span className="font-bold">
-                        {selectedPlan.duration === "day" ? "Daily" : selectedPlan.duration === "week" ? "Weekly" : "Monthly"}
+                        {selectedPlan.duration === "day" ? t("Daily") : selectedPlan.duration === "week" ? t("Weekly") : t("Monthly")}
                       </span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
-                      <span>Selected Slots Count</span>
-                      <span className="font-bold">× {selectedSlots.length} slot{selectedSlots.length !== 1 ? "s" : ""}</span>
+                      <span>{t("Selected Slots Count")}</span>
+                      <span className="font-bold">{t("× {{count}} slot", { count: selectedSlots.length })}</span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
-                      <span>Delivery Slots</span>
+                      <span>{t("Delivery Slots")}</span>
                       <span className="font-bold text-right">
                         {selectedSlots.map(id => DELIVERY_SLOTS.find(s => s.id === id)).map(s => s ? `${s.icon} ${s.label}` : "").join(" + ")}
                       </span>
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>Food Total</span>
+                      <span>{t("Food Total")}</span>
                       <span className="font-bold">₹{foodTotal.toFixed(2)}</span>
                     </div>
                     {foodVat > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
-                        <span>Food VAT ({foodVat}%{selectedPlan.applyFoodVatOnMenu ? ` on ₹${foodVatBaseAmount.toFixed(2)} Menu Total` : ""})</span>
+                        <span>{selectedPlan.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on ₹{{foodVatBaseAmount}} Menu Total)", { foodVat, foodVatBaseAmount: foodVatBaseAmount.toFixed(2) }) : t("Food VAT ({{foodVat}}%)", { foodVat })}</span>
                         <span className="font-bold">₹{foodVatAmount.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-[#6e7a74]">
-                      <span>Delivery Charge</span>
+                      <span>{t("Delivery Charge")}</span>
                       <span className="font-bold">₹{deliveryCharge.toFixed(2)}</span>
                     </div>
                     {deliveryVat > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
-                        <span>Delivery VAT ({deliveryVat}%)</span>
+                        <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat })}</span>
                         <span className="font-bold">₹{deliveryVatAmount.toFixed(2)}</span>
                       </div>
                     )}
                     {platformFee > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
-                        <span>Platform Fee (One-time)</span>
+                        <span>{t("Platform Fee (One-time)")}</span>
                         <span className="font-bold">₹{platformFeeAmount.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="border-t border-primary/20 pt-2 mt-2 flex justify-between">
-                      <span className="font-extrabold text-[#1b1c1c]">Total Price</span>
+                      <span className="font-extrabold text-[#1b1c1c]">{t("Total Price")}</span>
                       <span className="font-extrabold text-[17px] text-primary">₹{totalPrice.toFixed(2)}</span>
                     </div>
                   </div>
@@ -709,7 +712,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="text-[20px]" />
-                Proceed to Checkout
+                {t("Proceed to Checkout")}
               </button>
               <div className="h-4" />
             </div>
@@ -722,11 +725,11 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
               <AlertTriangle />
-              Active Subscription Exists
+              {t("Active Subscription Exists")}
             </h3>
 
             <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              You already have an active or paused subscription plan. You cannot purchase another plan until your current subscription expires or is cancelled.
+              {t("You already have an active or paused subscription plan. You cannot purchase another plan until your current subscription expires or is cancelled.")}
             </p>
 
             <div className="pt-2">
@@ -735,7 +738,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 onClick={() => setShowActiveSubWarning(false)}
                 className="w-full bg-primary hover:bg-[#155a49] text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform"
               >
-                Close
+                {t("Close")}
               </button>
             </div>
           </div>
@@ -747,6 +750,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
 
 // ─── Main PlansScreen ──────────────────────────────────────────────────────────
 export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPrefs }) {
+  const { t } = useTranslation("customer");
   const [matchDietary, setMatchDietary] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [vendors, setVendors] = useState([]);
@@ -835,7 +839,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
         {/* Top Header */}
         <header className="fixed top-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] z-40 bg-white flex justify-between items-center px-5 h-14 shadow-xs border-b border-[#bec9c3]/20">
           <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><ArrowLeft size={24} /></button>
-          <h1 className="text-xl font-extrabold text-primary text-center">Meal Plans</h1>
+          <h1 className="text-xl font-extrabold text-primary text-center">{t("Meal Plans")}</h1>
           <div className="w-8" />
         </header>
 
@@ -846,13 +850,13 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
               onClick={() => setActiveTab('vendor_plans')}
               className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all duration-300 z-10 cursor-pointer ${activeTab === 'vendor_plans' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c] hover:text-[#1F7A63]'}`}
             >
-              Meals
+              {t("Meals")}
             </button>
             <button 
               onClick={() => setActiveTab('pantry_items')}
               className={`flex-1 py-2 rounded-full text-[14px] font-bold transition-all duration-300 z-10 cursor-pointer ${activeTab === 'pantry_items' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#1b1c1c] hover:text-[#1F7A63]'}`}
             >
-              Pantry Items
+              {t("Pantry Items")}
             </button>
           </div>
         </div>
@@ -867,7 +871,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#bec9c3] text-[20px]" />
                   <input
                     type="text"
-                    placeholder="Search vendors, cuisines, location..."
+                    placeholder={t("Search vendors, cuisines, location...")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full h-12 pl-11 pr-4 bg-white border border-[#bec9c3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
@@ -882,8 +886,8 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                 {dietaryPrefs && (
                   <label className="flex items-center gap-3 bg-white border border-[#e4e2e1] rounded-xl p-3 shadow-sm cursor-pointer hover:border-primary/50 transition-colors">
                     <div className="flex-1">
-                      <p className="font-extrabold text-[13px] text-[#1b1c1c]">Match My Diet & Allergens</p>
-                      <p className="text-[11px] text-[#6e7a74] mt-0.5">Filter plans based on your profile preferences</p>
+                      <p className="font-extrabold text-[13px] text-[#1b1c1c]">{t("Match My Diet & Allergens")}</p>
+                      <p className="text-[11px] text-[#6e7a74] mt-0.5">{t("Filter plans based on your profile preferences")}</p>
                     </div>
                     <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${matchDietary ? 'bg-primary' : 'bg-[#e4e2e1]'}`}>
                       <input 
@@ -905,17 +909,17 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">🤖</span>
-                <p className="text-white/80 text-[12px] font-bold uppercase tracking-wider">AI Curated for You</p>
+                <p className="text-white/80 text-[12px] font-bold uppercase tracking-wider">{t("AI Curated for You")}</p>
               </div>
-              <p className="text-white text-[19px] font-extrabold leading-tight">Choose Your Daily Meal Partner</p>
-              <p className="text-white/70 text-[12px] mt-1">Fresh • Healthy • Delivered to your door</p>
+              <p className="text-white text-[19px] font-extrabold leading-tight">{t("Choose Your Daily Meal Partner")}</p>
+              <p className="text-white/70 text-[12px] mt-1">{t("Fresh • Healthy • Delivered to your door")}</p>
             </div>
           </div>
 
           {/* Section heading */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">
-              {loading ? "Loading..." : `${filteredPlans.length} vendor${filteredPlans.length !== 1 ? "s" : ""} available`}
+              {loading ? t("Loading...") : t("{{length}} vendor{{value}} available", { length: filteredPlans.length, value: filteredPlans.length !== 1 ? "s" : "" })}
             </h2>
           </div>
 
@@ -937,10 +941,10 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
             ) : filteredPlans.length === 0 ? (
               <div className="col-span-full text-center py-16 space-y-3">
                 <span className="text-5xl">🍽️</span>
-                <p className="font-extrabold text-[#1b1c1c] text-[16px]">No vendors found</p>
-                <p className="text-[13px] text-[#6e7a74]">{searchQuery ? "Try a different search" : "No approved vendors yet"}</p>
+                <p className="font-extrabold text-[#1b1c1c] text-[16px]">{t("No vendors found")}</p>
+                <p className="text-[13px] text-[#6e7a74]">{searchQuery ? t("Try a different search") : t("No approved vendors yet")}</p>
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="text-primary font-bold text-sm underline">Clear search</button>
+                  <button onClick={() => setSearchQuery("")} className="text-primary font-bold text-sm underline">{t("Clear search")}</button>
                 )}
               </div>
             ) : (
@@ -964,11 +968,11 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                     <div className="absolute top-3 left-3 flex gap-1.5">
                       {plan.isBestMatch && (
                         <span className="bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide shadow">
-                          ⭐ Best Match
+                          {t("⭐ Best Match")}
                         </span>
                       )}
                       <span className="bg-white/95 backdrop-blur-sm text-primary text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow">
-                        {plan.matchPct}% match
+                        {t("{{matchPct}}% match", { matchPct: plan.matchPct })}
                       </span>
                     </div>
 
@@ -1006,7 +1010,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#f5f5f0] text-[#1b1c1c] border border-[#e4e2e1] py-3 rounded-xl text-[13px] font-bold active:scale-[0.97] transition-all hover:bg-[#eef0ec]"
                       >
                         <UtensilsCrossed className="text-[18px] text-primary" />
-                        View Menu
+                        {t("View Menu")}
                       </button>
 
                       {/* View Plans Button */}
@@ -1015,7 +1019,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#1F7A63] text-white py-3 rounded-xl text-[13px] font-bold active:scale-[0.97] transition-all hover:bg-[#155a49] shadow-sm"
                       >
                         <Youtube className="text-[18px]" />
-                        View Plans
+                        {t("View Plans")}
                       </button>
                     </div>
                   </div>

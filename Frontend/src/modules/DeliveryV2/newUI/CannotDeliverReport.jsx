@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ArrowLeft, Camera, AlertTriangle, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 const CannotDeliverReport = ({
   order,
   onGoBack,
   onSubmitFailure
 }) => {
+  const { t } = useTranslation("driver");
   const reasons = [
     "No one home",
     "Wrong address",
@@ -12,9 +14,9 @@ const CannotDeliverReport = ({
     "Access issues (Gated/Code)"
   ];
   const disposals = [
-    { id: "HOLDING", label: "Holding", desc: "Keep in carrier van" },
-    { id: "WITH NEIGHBOR", label: "With Neighbor", desc: "Left with Apt 41" },
-    { id: "RETURN", label: "Return", desc: "Send to warehouse" }
+    { id: "HOLDING", label: t("Holding"), desc: t("Keep in carrier van") },
+    { id: "WITH NEIGHBOR", label: t("With Neighbor"), desc: t("Left with Apt 41") },
+    { id: "RETURN", label: t("Return"), desc: t("Send to warehouse") }
   ];
   const [selectedReason, setSelectedReason] = useState(reasons[0]);
   const [selectedDisposal, setSelectedDisposal] = useState(disposals[0].id);
@@ -45,12 +47,12 @@ const CannotDeliverReport = ({
     className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-1.5 text-[#00604c] font-bold"
   >
           <ArrowLeft className="w-5 h-5" />
-          <span>Cancel</span>
+          <span>{t("Cancel")}</span>
         </button>
-        <h2 className="text-sm font-bold text-gray-900 mx-auto">Issue Reporting</h2>
+        <h2 className="text-sm font-bold text-gray-900 mx-auto">{t("Issue Reporting")}</h2>
         <div className="w-8 h-8 rounded-full overflow-hidden border border-[#bec9c3]">
           <img
-    alt="Jan Profile"
+    alt={t("Jan Profile")}
     className="w-full h-full object-cover"
     src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm"
   />
@@ -65,8 +67,8 @@ const CannotDeliverReport = ({
           <AlertTriangle className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-[10px] uppercase font-extrabold text-[#3e4945] tracking-wider">ORDER #{order.orderNumber}</p>
-          <h3 className="text-sm font-bold text-gray-900 leading-snug">Confirming issue for {order.customerName}</h3>
+          <p className="text-[10px] uppercase font-extrabold text-[#3e4945] tracking-wider">{t("ORDER #{{orderNumber}}", { orderNumber: order.orderNumber })}</p>
+          <h3 className="text-sm font-bold text-gray-900 leading-snug">{t("Confirming issue for {{customerName}}", { customerName: order.customerName })}</h3>
           <p className="text-xs text-[#5d5f5b] truncate">{order.deliveryAddress}</p>
         </div>
       </section>
@@ -75,7 +77,7 @@ const CannotDeliverReport = ({
     /* Radio Reason List Selection */
   }
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">SELECT REASON</h3>
+        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">{t("SELECT REASON")}</h3>
         <div className="bg-white border border-[#bec9c3] rounded-xl overflow-hidden divide-y divide-[#bec9c3]/50">
           {reasons.map((reason) => <label
     key={reason}
@@ -98,13 +100,13 @@ const CannotDeliverReport = ({
   }
       <section className="space-y-2">
         <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1 flex items-center gap-1.5">
-          <span>MANDATORY DOOR PHOTO</span>
-          <span className="text-[9px] bg-[#ffdad6] text-[#ba1a1a] px-1.5 py-0.5 rounded uppercase font-extrabold tracking-wider">REQUIRED</span>
+          <span>{t("MANDATORY DOOR PHOTO")}</span>
+          <span className="text-[9px] bg-[#ffdad6] text-[#ba1a1a] px-1.5 py-0.5 rounded uppercase font-extrabold tracking-wider">{t("REQUIRED")}</span>
         </h3>
         
         {photoUrl ? <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed border-[#00604c] shadow-sm">
             <img
-    alt="Verification attachment"
+    alt={t("Verification attachment")}
     className="w-full h-full object-cover"
     src={photoUrl}
   />
@@ -117,16 +119,16 @@ const CannotDeliverReport = ({
     onClick={() => setPhotoUrl("")}
     className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2.5 py-1 rounded hover:bg-black/80"
   >
-              Retake
+              {t("Retake")}
             </button>
           </div> : <button
     onClick={handleCapturePhoto}
     className="w-full aspect-video rounded-xl bg-white border-2 border-dashed border-[#bec9c3] flex flex-col items-center justify-center text-center p-6 hover:border-[#00604c] transition-colors focus:outline-none"
   >
             <Camera className="w-8 h-8 text-[#5d5f5b] mb-2" />
-            <span className="text-xs font-bold text-gray-900 block">Take a photo of delivery spot</span>
+            <span className="text-xs font-bold text-gray-900 block">{t("Take a photo of delivery spot")}</span>
             <span className="text-[10px] text-[#5d5f5b] mt-1 text-center max-w-xs block leading-relaxed">
-              Required for proof to verify failed run to depot manager and customers.
+              {t("Required for proof to verify failed run to depot manager and customers.")}
             </span>
           </button>}
       </section>
@@ -135,7 +137,7 @@ const CannotDeliverReport = ({
     /* Box Disposal Options */
   }
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">WHAT DID YOU DO WITH THE BOX?</h3>
+        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">{t("WHAT DID YOU DO WITH THE BOX?")}</h3>
         <div className="grid grid-cols-3 gap-2">
           {disposals.map((disp) => <button
     key={disp.id}
@@ -156,11 +158,11 @@ const CannotDeliverReport = ({
     /* Optional Note Field */
   }
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">OPTIONAL NOTE</h3>
+        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1">{t("OPTIONAL NOTE")}</h3>
         <textarea
     value={note}
     onChange={(e) => setNote(e.target.value)}
-    placeholder="Specify if gate code didn't work, neighbor's name, or any additional context..."
+    placeholder={t("Specify if gate code didn't work, neighbor's name, or any additional context...")}
     className="w-full h-24 p-4 rounded-xl bg-white border border-[#bec9c3] focus:border-[#00604c] focus:ring-1 focus:ring-[#00604c] outline-none text-xs text-gray-800 transition-all resize-none"
   />
       </section>
@@ -174,10 +176,10 @@ const CannotDeliverReport = ({
     disabled={submitting || !photoUrl}
     className={`w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm transition-transform ${submitting ? "bg-red-400 text-white cursor-not-allowed" : photoUrl ? "bg-[#ba1a1a] hover:bg-red-700 text-white cursor-pointer active:scale-95 font-headline" : "bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed"}`}
   >
-          {submitting ? "MARKING..." : "Mark as Failed Delivery"}
+          {submitting ? t("MARKING...") : t("Mark as Failed Delivery")}
         </button>
         <p className="text-center mt-2.5 text-[10px] font-bold text-[#ba1a1a]">
-          This action will alert the customer and vendor immediately. Photo proof required.
+          {t("This action will alert the customer and vendor immediately. Photo proof required.")}
         </p>
       </div>
     </div>;

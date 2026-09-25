@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Receipt, MapPin, CheckCircle, RefreshCw } from 'lucide-react';
 import { dmbVendorAPI } from '../../../services/api';
 import { toast } from 'sonner';
+import { useTranslation } from "react-i18next";
 
 export default function PantryOrdersManager() {
+  const { t } = useTranslation("vendor");
   const [activeTab, setActiveTab] = useState('pending');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function PantryOrdersManager() {
       }
     } catch (err) {
       console.error('Failed to fetch pantry orders:', err);
-      toast.error('Failed to load orders');
+      toast.error(t("Failed to load orders"));
     } finally {
       setLoading(false);
     }
@@ -50,11 +52,11 @@ export default function PantryOrdersManager() {
     try {
       const res = await dmbVendorAPI.updateDailyPantryStatus(orderId, deliveryId, newStatus);
       if (res.data?.success) {
-        toast.success(`Order marked as ${newStatus}`);
+        toast.success(t("Order marked as {{newStatus}}", { newStatus }));
         fetchOrders(); // refresh
       }
     } catch (err) {
-      toast.error('Failed to update status');
+      toast.error(t("Failed to update status"));
     }
   };
 
@@ -68,8 +70,8 @@ export default function PantryOrdersManager() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xl px-5 pt-16 pb-4 flex justify-between items-end">
         <div>
-          <h1 className="text-[28px] font-extrabold text-primary tracking-tight">Pantry Orders</h1>
-          <p className="text-on-surface-variant text-[14px] mt-1 font-medium">Manage your incoming pantry orders.</p>
+          <h1 className="text-[28px] font-extrabold text-primary tracking-tight">{t("Pantry Orders")}</h1>
+          <p className="text-on-surface-variant text-[14px] mt-1 font-medium">{t("Manage your incoming pantry orders.")}</p>
         </div>
         <button onClick={fetchOrders} className="p-2 bg-white rounded-full shadow-sm text-primary active:scale-95">
           <RefreshCw className={`text-[20px] ${loading ? 'animate-spin' : ''}`} />
@@ -106,7 +108,7 @@ export default function PantryOrdersManager() {
             activeTab === 'pending' ? 'bg-primary text-white' : 'bg-white text-on-surface-variant hover:bg-surface-container'
           }`}
         >
-          Pending ({pendingOrders.length})
+          {t("Pending ({{length}})", { length: pendingOrders.length })}
         </button>
         <button
           onClick={() => setActiveTab('completed')}
@@ -114,7 +116,7 @@ export default function PantryOrdersManager() {
             activeTab === 'completed' ? 'bg-primary text-white' : 'bg-white text-on-surface-variant hover:bg-surface-container'
           }`}
         >
-          Completed ({completedOrders.length})
+          {t("Completed ({{length}})", { length: completedOrders.length })}
         </button>
       </div>
 
@@ -125,8 +127,8 @@ export default function PantryOrdersManager() {
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
               <Receipt className="text-[32px] text-primary" />
             </div>
-            <p className="text-[17px] text-[#1b1c1c] font-extrabold">No {activeTab} orders</p>
-            <p className="text-[14px] text-[#6e7a74] mt-1 font-medium">You're all caught up!</p>
+            <p className="text-[17px] text-[#1b1c1c] font-extrabold">{t("No {{activeTab}} orders", { activeTab })}</p>
+            <p className="text-[14px] text-[#6e7a74] mt-1 font-medium">{t("You're all caught up!")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -134,7 +136,7 @@ export default function PantryOrdersManager() {
             <div key={order.id} className="bg-white rounded-[24px] p-5 shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="font-extrabold text-[16px] text-[#1b1c1c]">Order #{order.orderId || order.id.slice(-4)}</h3>
+                  <h3 className="font-extrabold text-[16px] text-[#1b1c1c]">{t("Order #")}{order.orderId || order.id.slice(-4)}</h3>
                   <p className="text-[13px] font-bold text-primary mt-0.5 capitalize">{order.day} - {order.deliverySlot}</p>
                 </div>
                 <span className={`px-3.5 py-1.5 rounded-full text-[12px] font-extrabold capitalize ${
@@ -154,7 +156,7 @@ export default function PantryOrdersManager() {
                 {order.customer && (
                   <div className="mt-3 pt-3 border-t border-[#e4e2e1]/50 text-on-surface-variant">
                     <p className="text-[13px] font-medium">
-                      <span className="font-bold text-[#1b1c1c]">Customer: </span> 
+                      <span className="font-bold text-[#1b1c1c]">{t("Customer:")} </span> 
                       {order.customer.name || `${order.customer.firstName} ${order.customer.lastName}`} 
                       {order.customer.phone && ` (${order.customer.phone})`}
                     </p>
@@ -167,7 +169,7 @@ export default function PantryOrdersManager() {
                   className="w-full py-3.5 rounded-xl bg-primary hover:bg-[#155a49] text-white font-extrabold text-[14px] active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="text-[18px]" />
-                  Mark as Ready
+                  {t("Mark as Ready")}
                 </button>
               )}
             </div>

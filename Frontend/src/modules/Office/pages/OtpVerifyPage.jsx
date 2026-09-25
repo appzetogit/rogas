@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserCheck, RefreshCw, ArrowRight, HelpCircle } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 export default function OtpVerifyPage() {
+  const { t } = useTranslation("office");
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState(59);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -48,7 +50,7 @@ export default function OtpVerifyPage() {
   };
 
   const handleResend = () => {
-    alert('Code resent to your email!');
+    alert(t("Code resent to your email!"));
     setTimeLeft(59);
   };
 
@@ -62,7 +64,7 @@ export default function OtpVerifyPage() {
         
         {/* Brand Header */}
         <div className="flex justify-center mb-6">
-          <span className="text-[#287965] font-bold text-xl tracking-tight">DailyMealBox</span>
+          <span className="text-[#287965] font-bold text-xl tracking-tight">{t("DailyMealBox")}</span>
         </div>
 
         {/* Verification Card */}
@@ -74,10 +76,9 @@ export default function OtpVerifyPage() {
           </div>
 
           {/* Text */}
-          <h1 className="text-2xl font-bold text-[#1A1C1E] mb-3">Check your email</h1>
+          <h1 className="text-2xl font-bold text-[#1A1C1E] mb-3">{t("Check your email")}</h1>
           <p className="text-[#6C7278] text-sm leading-relaxed mb-8 px-2">
-            We've sent a 6-digit verification code to<br />
-            <span className="font-semibold text-[#1A1C1E]">j.doe@example.com</span>. Please enter it below to continue.
+            <Trans t={t} i18nKey={"We've sent a 6-digit verification code to<0></0><1>j.doe@example.com</1>. Please enter it below to continue."} defaults={"We've sent a 6-digit verification code to<0></0><1>j.doe@example.com</1>. Please enter it below to continue."} components={[<br />, <span className="font-semibold text-[#1A1C1E]" />]} />
           </p>
 
           {/* Form */}
@@ -109,7 +110,7 @@ export default function OtpVerifyPage() {
                 <RefreshCw className="animate-spin text-[20px]" />
               ) : (
                 <>
-                  Verify & Continue
+                  {t("Verify & Continue")}
                   <ArrowRight className="text-[18px]" />
                 </>
               )}
@@ -118,7 +119,7 @@ export default function OtpVerifyPage() {
 
           {/* Resend */}
           <div className="text-sm text-[#6C7278] mb-8">
-            Didn't receive a code?{' '}
+            {t("Didn't receive a code?")}{' '}
             <button
               onClick={handleResend}
               disabled={timeLeft > 0}
@@ -126,7 +127,7 @@ export default function OtpVerifyPage() {
                 timeLeft > 0 ? 'text-[#A0A4AB] cursor-not-allowed' : 'text-[#287965] hover:underline'
               }`}
             >
-              Resend Code {timeLeft > 0 && `(0:${timeLeft.toString().padStart(2, '0')})`}
+              {t("Resend Code")} {timeLeft > 0 && `(0:${timeLeft.toString().padStart(2, '0')})`}
             </button>
           </div>
 
@@ -136,7 +137,7 @@ export default function OtpVerifyPage() {
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#9EA3AE] hover:text-[#6C7278] uppercase tracking-wider transition-colors"
           >
             <HelpCircle className="text-[16px]" />
-            Need help or use another method?
+            {t("Need help or use another method?")}
           </a>
 
         </div>

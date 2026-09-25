@@ -9,6 +9,7 @@ import {
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * LimitSettlementV2 - 1:1 Match with Old LimitSettlement UI.
@@ -16,6 +17,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const LimitSettlementV2 = () => {
+  const { t: tr } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
@@ -47,7 +49,7 @@ export const LimitSettlementV2 = () => {
           })));
         }
       } catch (err) {
-        toast.error('Failed to load settlement history');
+        toast.error(tr("Failed to load settlement history"));
       } finally {
         setLoading(false);
       }
@@ -101,7 +103,7 @@ export const LimitSettlementV2 = () => {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="text-lg md:text-xl font-bold text-[#2B2B2B]">
-             Available limit settlement
+             {tr("Available limit settlement")}
           </h1>
        </div>
 
@@ -110,7 +112,7 @@ export const LimitSettlementV2 = () => {
           {loading ? (
              <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                <p className="text-gray-600 text-sm font-medium">Loading transactions...</p>
+                <p className="text-gray-600 text-sm font-medium">{tr("Loading transactions...")}</p>
              </div>
           ) : transactions.length > 0 ? (
              <div className="space-y-4">
@@ -137,7 +139,7 @@ export const LimitSettlementV2 = () => {
                                <p className="text-gray-600 text-sm mb-1 font-medium">
                                   {tx.description}
                                </p>
-                               <p className="text-gray-400 text-[11px] font-semibold">Date: {tx.date}</p>
+                               <p className="text-gray-400 text-[11px] font-semibold">{tr("Date: {{date}}", { date: tx.date })}</p>
                             </div>
                          </div>
                       </div>
@@ -149,9 +151,9 @@ export const LimitSettlementV2 = () => {
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 border border-gray-100">
                    <Clock className="w-8 h-8 text-gray-200" />
                 </div>
-                <p className="text-[#2B2B2B] text-lg font-bold mb-2">No settlement transactions</p>
+                <p className="text-[#2B2B2B] text-lg font-bold mb-2">{tr("No settlement transactions")}</p>
                 <p className="text-gray-400 text-xs font-semibold leading-relaxed">
-                   Whenever you settle the available limit, the payment transactions will appear here.
+                   {tr("Whenever you settle the available limit, the payment transactions will appear here.")}
                 </p>
              </div>
           )}

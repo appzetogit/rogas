@@ -36,8 +36,10 @@ import { restaurantClient } from '../../services/api/axios';
 import { dmbVendorAPI, authAPI, restaurantAPI } from '../../services/api/index';
 import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle, ChefHat, LogOut, ArrowLeft, Star } from 'lucide-react';
 import useDeliverySlots, { pickCurrentSlot } from '../../shared/hooks/useDeliverySlots';
+import { useTranslation } from "react-i18next";
 
 export default function App() {
+  const { t: tr } = useTranslation("vendor");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -244,7 +246,7 @@ export default function App() {
               date: 'This Week',
               type: 'Delivery',
               amount: parseFloat(earnings.vendorNetPayout) || 0,
-              description: `${ordersRes.data?.orders?.length || 0} deliveries completed`,
+              description: tr("{{length}} deliveries completed", { length: ordersRes.data?.orders?.length || 0 }),
               details: `Gross revenue: ${earnings.grossFoodRevenue} PLN, Commission: ${earnings.platformCommission} PLN`
             }
           ];
@@ -273,7 +275,7 @@ export default function App() {
       isRegistered: true,
       avatarInitials: (userData.restaurantName || userData.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     });
-    triggerGlobalToast('Welcome! Vendor account active 🍳');
+    triggerGlobalToast(tr("Welcome! Vendor account active 🍳"));
     navigate('/vendor/dashboard');
   };
 
@@ -288,7 +290,7 @@ export default function App() {
     localStorage.removeItem('restaurant_authenticated');
     localStorage.removeItem('restaurant_user');
     setProfile((prev) => ({ ...prev, isRegistered: false }));
-    triggerGlobalToast('Signed out of partner session');
+    triggerGlobalToast(tr("Signed out of partner session"));
     navigate('/vendor/welcome');
   };
 
@@ -301,9 +303,9 @@ export default function App() {
       };
       await dmbVendorAPI.updateSettings(payload);
       setVacation((prev) => ({ ...prev, ...v }));
-      triggerGlobalToast(v.isKitchenOpen ? 'Kitchen is now OPEN! 🍳' : 'Vacation mode activated 🌴');
+      triggerGlobalToast(v.isKitchenOpen ? tr("Kitchen is now OPEN! 🍳") : tr("Vacation mode activated 🌴"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to update vacation settings');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update vacation settings"));
     }
   };
 
@@ -311,7 +313,7 @@ export default function App() {
 
   const handleUpdateCutoff = (c) => {
     setCutoff((prev) => ({ ...prev, ...c }));
-    triggerGlobalToast('Cutoff settings updated');
+    triggerGlobalToast(tr("Cutoff settings updated"));
   };
 
   const handleMarkAllReady = async () => {
@@ -319,9 +321,9 @@ export default function App() {
       const todayStr = new Date().toISOString().split('T')[0];
       await dmbVendorAPI.markAllDailyOrdersReady(todayStr, getCurrentSlot());
       setOrders((prev) => prev.map((o) => ({ ...o, status: 'Ready' })));
-      triggerGlobalToast('All kitchen orders marked as READY ✓');
+      triggerGlobalToast(tr("All kitchen orders marked as READY ✓"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to mark orders ready');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"));
     }
   };
 
@@ -332,13 +334,13 @@ export default function App() {
         const dateStr = new Date(orderObj.deliveryDate).toISOString().split('T')[0];
         await dmbVendorAPI.markAllDailyOrdersReady(dateStr, orderObj.deliverySlot || getCurrentSlot());
         setOrders((prev) => prev.map((o) => o.id === id || (o.deliveryDate === orderObj.deliveryDate && o.deliverySlot === orderObj.deliverySlot) ? { ...o, status: 'Ready' } : o));
-        triggerGlobalToast(`Orders for ${orderObj.deliverySlot} marked as Ready`);
+        triggerGlobalToast(tr("Orders for {{deliverySlot}} marked as Ready", { deliverySlot: orderObj.deliverySlot }));
       } catch (err) {
-        triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to update order status');
+        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update order status"));
       }
     } else {
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
-      triggerGlobalToast(`Order status updated to ${status}`);
+      triggerGlobalToast(tr("Order status updated to {{status}}", { status }));
     }
   };
 
@@ -348,13 +350,13 @@ export default function App() {
         const todayStr = new Date().toISOString().split('T')[0];
         await dmbVendorAPI.markAllDailyOrdersReady(todayStr, getCurrentSlot());
         setOrders((prev) => prev.map((o) => from === 'any' || o.status === from ? { ...o, status: to } : o));
-        triggerGlobalToast(`Batch update: marked items as READY ✓`);
+        triggerGlobalToast(tr("Batch update: marked items as READY ✓"));
       } catch (err) {
-        triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to mark orders ready');
+        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"));
       }
     } else {
       setOrders((prev) => prev.map((o) => from === 'any' || o.status === from ? { ...o, status: to } : o));
-      triggerGlobalToast(`Batch update: marked items as ${to}`);
+      triggerGlobalToast(tr("Batch update: marked items as {{to}}", { to }));
     }
   };
 
@@ -400,9 +402,9 @@ export default function App() {
         status: created.status === 'active' ? 'Active' : 'Draft',
         portions: created.capacity || 10
       }]);
-      triggerGlobalToast('Meal added successfully');
+      triggerGlobalToast(tr("Meal added successfully"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to add meal plan');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to add meal plan"));
     }
   };
 
@@ -447,9 +449,9 @@ export default function App() {
         status: updated.status === 'active' ? 'Active' : 'Draft',
         portions: updated.capacity || 10
       } : m));
-      triggerGlobalToast('Meal updated successfully');
+      triggerGlobalToast(tr("Meal updated successfully"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to edit meal plan');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to edit meal plan"));
     }
   };
 
@@ -457,9 +459,9 @@ export default function App() {
     try {
       await dmbVendorAPI.editMealPlan(id, { status: 'archived' });
       setMeals((prev) => prev.map((m) => m.id === id ? { ...m, status: 'Removed' } : m));
-      triggerGlobalToast('Meal removed from menu');
+      triggerGlobalToast(tr("Meal removed from menu"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to delete meal plan');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to delete meal plan"));
     }
   };
 
@@ -476,11 +478,11 @@ export default function App() {
       setMeals((prev) => prev.map((m) => m.id === mealId ? { ...m, status: newStatus === 'active' ? 'Active' : 'Draft' } : m));
       triggerGlobalToast(
         newStatus === 'active'
-          ? ` Meal activated — subscribers notified! `
-          : ` Meal deactivated successfully`
+          ? " " + tr("Meal activated — subscribers notified!") + " "
+          : " " + tr("Meal deactivated successfully")
       );
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to toggle meal status');
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to toggle meal status"));
     }
   };
 
@@ -505,10 +507,10 @@ export default function App() {
                 const fullPhone = p.startsWith('+') ? p : '+48' + p;
                 await requestRestaurantOtp(fullPhone);
                 setAuthPhone(fullPhone);
-                triggerGlobalToast('OTP sent successfully!');
+                triggerGlobalToast(tr("OTP sent successfully!"));
                 navigate('/vendor/auth/login-otp');
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to send OTP');
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"));
               }
             }} />
           } />
@@ -519,16 +521,16 @@ export default function App() {
                 // Pre-validate phone existence
                 const checkRes = await authAPI.checkPhoneRegistered(fullPhone, "RESTAURANT");
                 if (checkRes.data?.exists || checkRes.exists) {
-                  triggerGlobalToast("This phone number is already registered. Please log in using your existing account.");
+                  triggerGlobalToast(tr("This phone number is already registered. Please log in using your existing account."));
                   navigate('/vendor/auth/login-phone');
                   return;
                 }
                 await requestRestaurantOtp(fullPhone);
                 setAuthPhone(fullPhone);
-                triggerGlobalToast('OTP sent successfully!');
+                triggerGlobalToast(tr("OTP sent successfully!"));
                 navigate('/vendor/auth/register-otp');
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to send OTP');
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"));
               }
             }} />
           } />
@@ -539,13 +541,13 @@ export default function App() {
                 const data = res.data?.data || res.data;
 
                 if (data.needsRegistration) {
-                  triggerGlobalToast('Account not found. Please register.');
+                  triggerGlobalToast(tr("Account not found. Please register."));
                   navigate('/vendor/auth/register-phone');
                   return;
                 }
 
                 if (data.pendingApproval) {
-                  triggerGlobalToast(data.status === 'rejected' ? 'Application was rejected.' : 'Your application is under review.');
+                  triggerGlobalToast(data.status === 'rejected' ? tr("Application was rejected.") : tr("Your application is under review."));
                   localStorage.setItem('restaurant_register_phone', authPhone);
                   navigate('/vendor/auth/under-review', {
                     state: {
@@ -566,7 +568,7 @@ export default function App() {
 
                 handleCompleteRegistration(user);
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to verify OTP');
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to verify OTP"));
               }
             }} />
           } />
@@ -576,11 +578,11 @@ export default function App() {
                 const res = await verifyRestaurantOtp(authPhone, otpCode);
                 const data = res.data?.data || res.data;
                 // If it is verified but needs registration, we transition to details form
-                triggerGlobalToast('Phone verified. Please fill in details.');
+                triggerGlobalToast(tr("Phone verified. Please fill in details."));
                 navigate('/vendor/auth/register-details');
               } catch (err) {
                 // If phone is already registered, verify will return the user or an error
-                triggerGlobalToast(err.response?.data?.message || err.message || 'OTP Verification failed');
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("OTP Verification failed"));
               }
             }} />
           } />
@@ -668,10 +670,10 @@ export default function App() {
 
                 setProfile((prev) => ({ ...prev, ...p, phone: authPhone }));
                 localStorage.setItem('restaurant_register_phone', authPhone);
-                triggerGlobalToast('Registration submitted successfully!');
+                triggerGlobalToast(tr("Registration submitted successfully!"));
                 navigate('/vendor/auth/under-review', { state: { phone: authPhone, status: 'pending', restaurantName: p.name } });
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || 'Failed to register vendor');
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to register vendor"));
               }
             }} />
           } />
@@ -682,11 +684,11 @@ export default function App() {
   }
 
   const getPageTitle = () => {
-    if (location.pathname.includes('/orders')) return "Today's Orders";
-    if (location.pathname.includes('/menu')) return 'Meal Plans';
-    if (location.pathname.includes('/earnings')) return 'Earnings Ledger';
-    if (location.pathname.includes('/profile')) return 'My Profile';
-    return 'Vendor Hub';
+    if (location.pathname.includes('/orders')) return tr("Today's Orders");
+    if (location.pathname.includes('/menu')) return tr("Meal Plans");
+    if (location.pathname.includes('/earnings')) return tr("Earnings Ledger");
+    if (location.pathname.includes('/profile')) return tr("My Profile");
+    return tr("Vendor Hub");
   };
 
   const isDashboardPage = location.pathname.includes('/dashboard') || location.pathname === '/vendor' || location.pathname === '/vendor/';
@@ -700,7 +702,7 @@ export default function App() {
           <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/10">
             <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-xs">
               {appLogoUrl ? (
-                <img src={appLogoUrl} alt="App Logo" className="w-full h-full object-contain rounded-lg" />
+                <img src={appLogoUrl} alt={tr("App Logo")} className="w-full h-full object-contain rounded-lg" />
               ) : (
                 <ChefHat className="w-6 h-6 text-[#00604c]" />
               )}
@@ -710,7 +712,7 @@ export default function App() {
                 {profile.name}
               </h2>
               <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider">
-                {profile.vendorType?.replace('_', ' ') || 'Vendor Partner'}
+                {profile.vendorType?.replace('_', ' ') || tr("Vendor Partner")}
               </span>
             </div>
           </div>
@@ -748,7 +750,7 @@ export default function App() {
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[13px] text-white/80 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer"
             >
               <LogOut className="w-5 h-5 shrink-0" />
-              <span>Sign Out</span>
+              <span>{tr("Sign Out")}</span>
             </button>
           </div>
         </aside>
@@ -759,7 +761,7 @@ export default function App() {
             <button
               onClick={() => navigate(-1)}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-[#00604c] transition-colors cursor-pointer shrink-0"
-              aria-label="Go back"
+              aria-label={tr("Go back")}
             >
               <ArrowLeft className="w-5 h-5 text-[#00604c]" />
             </button>
@@ -781,7 +783,7 @@ export default function App() {
               <button
                 onClick={() => navigate(-1)}
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-[#00604c] transition-colors cursor-pointer shrink-0"
-                aria-label="Go back"
+                aria-label={tr("Go back")}
               >
                 <ArrowLeft className="w-5 h-5 text-[#00604c]" />
               </button>
@@ -793,19 +795,19 @@ export default function App() {
               <div
                 onClick={() => navigate('/vendor/profile')}
                 className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-                title="View Profile"
+                title={tr("View Profile")}
               >
                 <div className="flex flex-col text-right">
-                  <span className="text-sm font-bold text-slate-800">{profile.name || 'Vendor Partner'}</span>
+                  <span className="text-sm font-bold text-slate-800">{profile.name || tr("Vendor Partner")}</span>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Rating: ⭐️ {profile.rating || '4.9'}
+                    {tr("Rating: ⭐️ {{rating}}", { rating: profile.rating || '4.9' })}
                   </span>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 overflow-hidden shrink-0 shadow-xs">
                   {profile?.profileImage?.url || (typeof profile?.profileImage === 'string' && profile?.profileImage) ? (
-                    <img src={profile?.profileImage?.url || profile?.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={profile?.profileImage?.url || profile?.profileImage} alt={tr("Profile")} className="w-full h-full object-cover" />
                   ) : (
-                    profile.avatarInitials || 'VP'
+                    profile.avatarInitials || tr("VP")
                   )}
                 </div>
               </div>
@@ -843,35 +845,35 @@ export default function App() {
             onClick={() => navigate('/vendor/dashboard')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/dashboard') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
             <Home style={{ fontVariationSettings: location.pathname.includes('/dashboard') ? "'FILL' 1" : "'FILL' 0" }} />
-            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Home")}</span>
           </button>
 
           <button
             onClick={() => navigate('/vendor/orders')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/orders') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
             <Receipt style={{ fontVariationSettings: location.pathname.includes('/orders') ? "'FILL' 1" : "'FILL' 0" }} />
-            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Orders</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Orders")}</span>
           </button>
 
           <button
             onClick={() => navigate('/vendor/menu')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/menu') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
             <UtensilsCrossed style={{ fontVariationSettings: location.pathname.includes('/menu') ? "'FILL' 1" : "'FILL' 0" }} />
-            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Menu</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Menu")}</span>
           </button>
 
           <button
             onClick={() => navigate('/vendor/earnings')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/earnings') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
             <Banknote style={{ fontVariationSettings: location.pathname.includes('/earnings') ? "'FILL' 1" : "'FILL' 0" }} />
-            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Earn</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Earn")}</span>
           </button>
 
           <button
             onClick={() => navigate('/vendor/profile')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/profile') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
             <MoreHorizontal style={{ fontVariationSettings: location.pathname.includes('/profile') ? "'FILL' 1" : "'FILL' 0" }} />
-            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">More</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("More")}</span>
           </button>
         </nav>
 

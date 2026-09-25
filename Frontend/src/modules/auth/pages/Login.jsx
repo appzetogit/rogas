@@ -8,7 +8,7 @@ import { setAuthData } from "@food/utils/auth"
 import logoNew from "@food/assets/logo.png"
 import { SUPPORTED_COUNTRIES } from "@/config/countries"
 import CountrySelector from "@/shared/components/CountrySelector"
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import {
   Dialog,
@@ -88,7 +88,7 @@ export default function UnifiedOTPFastLogin() {
     e.preventDefault()
     const phone = normalizedPhone()
     if (!phone) {
-      toast.error(`Please enter a valid ${selectedCountry.phoneLength}-digit phone number`)
+      toast.error(t("Please enter a valid {{phoneLength}}-digit phone number", { phoneLength: selectedCountry.phoneLength }))
       return
     }
     if (submitting.current) return
@@ -99,13 +99,13 @@ export default function UnifiedOTPFastLogin() {
       setOtp("")
       setStep(2)
       setResendTimer(RESEND_COOLDOWN_SECONDS)
-      toast.success("OTP sent successfully!")
+      toast.success(t("OTP sent successfully!"))
     } catch (err) {
       const msg =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
         err?.message ||
-        "Failed to send OTP."
+        t("Failed to send OTP.")
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -116,7 +116,7 @@ export default function UnifiedOTPFastLogin() {
   const handleResendOTP = async () => {
     const phone = normalizedPhone()
     if (!phone) {
-      toast.error("Please enter a valid phone number")
+      toast.error(t("Please enter a valid phone number"))
       return
     }
     if (resendTimer > 0 || submitting.current) return
@@ -126,13 +126,13 @@ export default function UnifiedOTPFastLogin() {
       await authAPI.sendOTP(phone, "login", null)
       setOtp("")
       setResendTimer(RESEND_COOLDOWN_SECONDS)
-      toast.success("OTP resent successfully.")
+      toast.success(t("OTP resent successfully."))
     } catch (err) {
       const msg =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
         err?.message ||
-        "Failed to resend OTP."
+        t("Failed to resend OTP.")
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -153,7 +153,7 @@ export default function UnifiedOTPFastLogin() {
     e.preventDefault()
     const otpDigits = String(otp).replace(/\D/g, "").slice(0, 6)
     if (otpDigits.length !== 6) {
-      toast.error("Please enter the 6-digit OTP")
+      toast.error(t("Please enter the 6-digit OTP"))
       return
     }
     if (submitting.current) return
@@ -198,12 +198,12 @@ export default function UnifiedOTPFastLogin() {
         setTempAuth({ accessToken, user, refreshToken })
         setShowNameModal(true)
       } else {
-        toast.success("Welcome back!")
+        toast.success(t("Welcome back!"))
         navigate("/food/user", { replace: true })
       }
     } catch (err) {
       const status = err?.response?.status
-      let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."
+      let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || t("Invalid OTP. Please try again.")
       const nameRequired = /name\s+is\s+required.*first[- ]?time|first[- ]?time.*name\s+is\s+required|first[- ]?time\s*sign\s*up/i.test(String(msg))
       if (nameRequired) {
         setPendingVerify({ phone: normalizedPhone(), otp: otpDigits, fcmToken, platform })
@@ -212,9 +212,9 @@ export default function UnifiedOTPFastLogin() {
       }
       if (status === 401) {
         if (/deactivat(ed|e)/i.test(String(msg))) {
-          msg = "Your account is deactivated. Please contact support."
+          msg = t("Your account is deactivated. Please contact support.")
         } else {
-          msg = "Invalid or expired code, or account not active."
+          msg = t("Invalid or expired code, or account not active.")
         }
       }
       toast.error(msg)
@@ -227,7 +227,7 @@ export default function UnifiedOTPFastLogin() {
   const handleNameSubmit = async (e) => {
     e.preventDefault()
     if (!newName.trim()) {
-      toast.error("Please enter your name")
+      toast.error(t("Please enter your name"))
       return
     }
 
@@ -253,7 +253,7 @@ export default function UnifiedOTPFastLogin() {
 
         setAuthData("user", accessToken, user, refreshToken)
         setPendingVerify(null)
-        toast.success(`Welcome, ${newName.trim()}!`)
+        toast.success(t("Welcome, {{newName}}!", { newName: newName.trim() }))
         setShowNameModal(false)
         navigate("/food/user", { replace: true })
         return
@@ -266,11 +266,11 @@ export default function UnifiedOTPFastLogin() {
       const updatedUser = { ...tempAuth.user, name: newName.trim() }
       setAuthData("user", tempAuth.accessToken, updatedUser, tempAuth.refreshToken)
 
-      toast.success(`Welcome, ${newName.trim()}!`)
+      toast.success(t("Welcome, {{newName}}!", { newName: newName.trim() }))
       setShowNameModal(false)
       navigate("/food/user", { replace: true })
     } catch (err) {
-      toast.error("Failed to update name. You can skip this for now or try again.")
+      toast.error(t("Failed to update name. You can skip this for now or try again."))
       console.error(err)
     } finally {
       setIsUpdatingName(false)
@@ -347,7 +347,7 @@ export default function UnifiedOTPFastLogin() {
             transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
             className="w-32 h-32 md:w-40 md:h-40 rounded-full shadow-[0_15px_35px_rgba(229,57,53,0.35)] border-4 border-white dark:border-gray-800 mb-8 overflow-hidden bg-white"
           >
-            <img src={logoNew} alt="Indian Bite Logo" className="w-full h-full object-cover" />
+            <img src={logoNew} alt={t("Indian Bite Logo")} className="w-full h-full object-cover" />
           </motion.div>
 
           <motion.div
@@ -358,7 +358,7 @@ export default function UnifiedOTPFastLogin() {
           >
             <h1 className="text-[2rem] sm:text-4xl font-bold text-[#4E342E] dark:text-white leading-[1.2] mb-3 drop-shadow-sm">
               {step === 1 ? (
-                <>Delicious food<br />Delivered fast <span className="inline-block hover:scale-110 transition-transform cursor-pointer">🍕</span></>
+                <>{t("Delicious food")}<br />{t("Delivered fast")} <span className="inline-block hover:scale-110 transition-transform cursor-pointer">🍕</span></>
               ) : (
                 t("Verify OTP")
               )}
@@ -366,7 +366,7 @@ export default function UnifiedOTPFastLogin() {
             <p className="text-[#8D6E63] dark:text-gray-400 font-medium text-[15px]">
               {step === 1
                 ? t("Login with your mobile number")
-                : `We've sent a code to ${selectedCountry.code} ${phoneNumber}`}
+                : t("We've sent a code to {{code}} {{phoneNumber}}", { code: selectedCountry.code, phoneNumber })}
             </p>
           </motion.div>
 
@@ -470,7 +470,7 @@ export default function UnifiedOTPFastLogin() {
                 <div className="flex flex-col items-center gap-4">
                   <div className="flex items-center gap-2 text-xs font-semibold">
                     {resendTimer > 0 ? (
-                      <span className="text-gray-400">Resend code in <span className="text-primary">{formatResendTimer(resendTimer)}</span></span>
+                      <span className="text-gray-400"><Trans t={t} i18nKey={"Resend code in <0>{{time}}</0>"} defaults={"Resend code in <0>{{time}}</0>"} values={{ time: formatResendTimer(resendTimer) }} components={[<span className="text-primary" />]} /></span>
                     ) : (
                       <button
                         type="button"
@@ -505,7 +505,7 @@ export default function UnifiedOTPFastLogin() {
           {/* Footer Info */}
           <div className="mt-8 text-center">
             <p className="text-[13px] text-[#A1887F] dark:text-gray-500 font-medium">
-              By continuing, you agree to our <Link to="/profile/terms" className="text-[#6D4C41] dark:text-gray-400 underline decoration-gray-300 underline-offset-2 hover:text-[#3E2723] dark:hover:text-white transition-colors">Terms</Link> & <Link to="/profile/privacy" className="text-[#6D4C41] dark:text-gray-400 underline decoration-gray-300 underline-offset-2 hover:text-[#3E2723] dark:hover:text-white transition-colors">Privacy Policy</Link>
+              <Trans t={t} i18nKey={"By continuing, you agree to our <0>Terms</0> & <1>Privacy Policy</1>"} defaults={"By continuing, you agree to our <0>Terms</0> & <1>Privacy Policy</1>"} components={[<Link to="/profile/terms" className="text-[#6D4C41] dark:text-gray-400 underline decoration-gray-300 underline-offset-2 hover:text-[#3E2723] dark:hover:text-white transition-colors" />, <Link to="/profile/privacy" className="text-[#6D4C41] dark:text-gray-400 underline decoration-gray-300 underline-offset-2 hover:text-[#3E2723] dark:hover:text-white transition-colors" />]} />
             </p>
           </div>
         </motion.div>
@@ -526,23 +526,23 @@ export default function UnifiedOTPFastLogin() {
             >
               <User className="w-10 h-10 text-white" />
             </motion.div>
-            <DialogTitle className="text-2xl font-bold text-white mb-2">Almost there!</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-white mb-2">{t("Almost there!")}</DialogTitle>
             <DialogDescription className="text-white/80">
-              We'd love to know your name to personalize your experience.
+              {t("We'd love to know your name to personalize your experience.")}
             </DialogDescription>
           </div>
 
           <form onSubmit={handleNameSubmit} className="p-8 pt-6 space-y-6">
             <div className="space-y-4">
               <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">
-                Full Name
+                {t("Full Name")}
               </Label>
               <div className="relative group">
                 <Input
                   id="name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Enter your name"
+                  placeholder={t("Enter your name")}
                   className="pl-4 h-14 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 rounded-2xl focus:ring-2 focus:ring-primary transition-all group-hover:border-primary/30"
                   autoFocus
                 />
@@ -558,7 +558,7 @@ export default function UnifiedOTPFastLogin() {
                 {isUpdatingName ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  "Complete Profile"
+                  t("Complete Profile")
                 )}
               </Button>
               {!pendingVerify ? (
@@ -570,10 +570,10 @@ export default function UnifiedOTPFastLogin() {
                   }}
                   className="text-sm text-gray-400 hover:text-gray-600 transition-colors py-2"
                 >
-                  Skip for now
+                  {t("Skip for now")}
                 </button>
               ) : (
-                <p className="text-xs text-gray-400 text-center">Name is required to complete signup.</p>
+                <p className="text-xs text-gray-400 text-center">{t("Name is required to complete signup.")}</p>
               )}
             </div>
           </form>

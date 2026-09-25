@@ -3,6 +3,7 @@ import { MapPin, Phone, CheckSquare, Square, Box, AlertTriangle, ArrowLeft, Navi
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { dmbDeliveryAPI } from "../../../services/api";
+import { Trans, useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: "100%",
@@ -15,6 +16,7 @@ const PickupVerification = ({
   onConfirmPickup,
   onReportIssue
 }) => {
+  const { t } = useTranslation("driver");
   const { riderLocation } = useDeliveryStore();
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const { isLoaded, loadError } = useJsApiLoader({
@@ -101,7 +103,7 @@ const PickupVerification = ({
     const finalPin = pinDigits.join("");
     if (finalPin.length === 4) {
       if (!allChecked) {
-        setShowError("Please check all package manifest items first!");
+        setShowError(t("Please check all package manifest items first!"));
         return;
       }
       try {
@@ -116,15 +118,15 @@ const PickupVerification = ({
             onConfirmPickup();
           }, 1000);
         } else {
-          setShowError(res.data?.message || "Invalid Collection PIN");
+          setShowError(res.data?.message || t("Invalid Collection PIN"));
         }
       } catch (err) {
-        setShowError(err.response?.data?.message || "Invalid Collection PIN");
+        setShowError(err.response?.data?.message || t("Invalid Collection PIN"));
       } finally {
         setIsVerifying(false);
       }
     } else {
-      setShowError("Please enter the 4-digit PIN");
+      setShowError(t("Please enter the 4-digit PIN"));
     }
   };
 
@@ -140,7 +142,7 @@ const PickupVerification = ({
         <ArrowLeft className="w-5 h-5 text-[#00604c]" />
       </button>
       <div className="text-center">
-        <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">Vendor Pickup</p>
+        <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">{t("Vendor Pickup")}</p>
         <h2 className="text-sm font-bold text-gray-900">{order?.vendorName || ""}</h2>
       </div>
       <div className="w-5 h-5" /> {
@@ -177,7 +179,7 @@ const PickupVerification = ({
           {riderLat && riderLng && (
             <Marker
               position={{ lat: Number(riderLat), lng: Number(riderLng) }}
-              title="Your Location"
+              title={t("Your Location")}
               icon={{
                 url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">🏍️</text></svg>')}`
               }}
@@ -186,7 +188,7 @@ const PickupVerification = ({
           {vendorLat && vendorLng && (
             <Marker
               position={{ lat: Number(vendorLat), lng: Number(vendorLng) }}
-              title={order?.vendorName || "Vendor Location"}
+              title={order?.vendorName || t("Vendor Location")}
               onClick={handleNavigate}
               icon={{
                 url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">🏪</text></svg>')}`
@@ -196,7 +198,7 @@ const PickupVerification = ({
         </GoogleMap>
       ) : (
         <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
-          Loading Map...
+          {t("Loading Map...")}
         </div>
       )}
 
@@ -220,11 +222,11 @@ const PickupVerification = ({
           <h3 className="font-extrabold text-gray-900 text-lg">{order?.vendorName || ""}</h3>
           <p className="text-xs text-[#5d5f5b] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
-            {order?.pickupAddress || order?.vendorAddress || "Vendor Address"}
+            {order?.pickupAddress || order?.vendorAddress || t("Vendor Address")}
           </p>
         </div>
         <span className="bg-[#9ef3d7] text-[#005140] px-3 py-1 rounded-full text-[10px] font-bold tracking-wider">
-          READY FOR PICKUP
+          {t("READY FOR PICKUP")}
         </span>
       </div>
 
@@ -234,14 +236,14 @@ const PickupVerification = ({
           className="flex items-center justify-center gap-2 bg-[#00604c] text-white h-11 rounded-lg text-xs font-bold active:scale-95 transition-transform"
         >
           <Navigation className="w-4 h-4 fill-white" />
-          NAVIGATE
+          {t("NAVIGATE")}
         </button>
         <a
           href="tel:+48123456789"
           className="flex items-center justify-center gap-2 border border-[#00604c] text-[#00604c] h-11 rounded-lg text-xs font-bold active:scale-95 transition-transform"
         >
           <Phone className="w-4 h-4" />
-          CALL VENDOR
+          {t("CALL VENDOR")}
         </a>
       </div>
     </div>
@@ -252,7 +254,7 @@ const PickupVerification = ({
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest">
-          LOAD MANIFEST ({items.length} ITEMS)
+          {t("LOAD MANIFEST ({{length}} ITEMS)", { length: items.length })}
         </h3>
         <Box className="w-4 h-4 text-[#3e4945]" />
       </div>
@@ -268,7 +270,7 @@ const PickupVerification = ({
           </div>
           <div className="flex-1">
             <p className="text-xs font-bold text-gray-900 leading-snug">{item.name}</p>
-            <p className="text-[10px] text-[#5d5f5b] mt-0.5">Quantity: {item.quantity}x packs</p>
+            <p className="text-[10px] text-[#5d5f5b] mt-0.5">{t("Quantity: {{quantity}}x packs", { quantity: item.quantity })}</p>
           </div>
         </div>)}
       </div>
@@ -278,7 +280,7 @@ const PickupVerification = ({
       /* PIN Verification Frame */
     }
     <div className="bg-white border-t-4 border-[#00604c] rounded-2xl p-5 shadow-sm border-x border-b border-[#bec9c3] space-y-4">
-      <h3 className="font-extrabold text-gray-900 text-sm tracking-wide">ENTER COLLECTION PIN</h3>
+      <h3 className="font-extrabold text-gray-900 text-sm tracking-wide">{t("ENTER COLLECTION PIN")}</h3>
 
       <div className="flex justify-between gap-2">
         {pinDigits.map((digit, idx) => <input
@@ -300,7 +302,7 @@ const PickupVerification = ({
         /* Informative Help / Tip */
       }
       <p className="text-center text-[10px] font-bold text-amber-600 bg-amber-50 rounded-md py-1 border border-amber-100">
-        Hint: The merchant collection PIN is <span className="font-black underline scale-110 px-1 inline-block">{order?.pin || "4901"}</span>
+        <Trans t={t} i18nKey={"Hint: The merchant collection PIN is <0>{{pin}}</0>"} defaults={"Hint: The merchant collection PIN is <0>{{pin}}</0>"} values={{ pin: order?.pin || "4901" }} components={[<span className="font-black underline scale-110 px-1 inline-block" />]} />
       </p>
 
       {
@@ -309,13 +311,13 @@ const PickupVerification = ({
       {showError && <div className="flex items-center gap-2 bg-[#ffdad6] text-[#93000a] p-3 rounded-xl border border-[#ffdad6] shadow-xs">
         <AlertTriangle className="w-5 h-5 text-[#ba1a1a] flex-shrink-0" />
         <p className="text-xs font-bold leading-tight">
-          {typeof showError === 'string' ? showError : (!allChecked ? "Please check all package manifest items first!" : "Wrong PIN. Please verify with the vendor.")}
+          {typeof showError === 'string' ? showError : (!allChecked ? t("Please check all package manifest items first!") : t("Wrong PIN. Please verify with the vendor."))}
         </p>
       </div>}
 
       {success && <div className="flex items-center gap-2 bg-[#9ef3d7] text-[#005140] p-3 rounded-xl border border-[#bec9c3]">
         <CheckCircle className="w-5 h-5 text-[#00604c] flex-shrink-0" />
-        <p className="text-xs font-bold leading-tight">PIN verified successfully! Confirming pickup...</p>
+        <p className="text-xs font-bold leading-tight">{t("PIN verified successfully! Confirming pickup...")}</p>
       </div>}
 
       <button
@@ -323,7 +325,7 @@ const PickupVerification = ({
         onClick={handleConfirm}
         className={`w-full h-12 rounded-xl text-sm font-bold uppercase transition-all flex items-center justify-center ${allChecked && pinDigits.join("").length === 4 ? "bg-[#00604c] hover:bg-[#1f7a63] text-white cursor-pointer shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"}`}
       >
-        {isVerifying ? "VERIFYING..." : (success ? "PICKED UP!" : "CONFIRM PICKUP")}
+        {isVerifying ? t("VERIFYING...") : (success ? t("PICKED UP!") : t("CONFIRM PICKUP"))}
       </button>
 
       {
@@ -334,7 +336,7 @@ const PickupVerification = ({
           onClick={onReportIssue}
           className="text-xs font-semibold text-[#ba1a1a] hover:underline"
         >
-          Problems at merchant? Cannot pickup orders
+          {t("Problems at merchant? Cannot pickup orders")}
         </button>
       </div>
     </div>

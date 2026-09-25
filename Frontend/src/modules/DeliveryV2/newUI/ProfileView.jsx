@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2, Calendar, Repeat } from "lucide-react";
 import { deliveryAPI } from "@food/api";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 
 const ProfileView = ({
@@ -117,7 +117,7 @@ const ProfileView = ({
       setIsEditing(false);
     } catch (err) {
       console.error("Failed to save profile:", err);
-      alert("Failed to save profile updates.");
+      alert(t("Failed to save profile updates."));
     } finally {
       setIsSaving(false);
     }
@@ -150,7 +150,7 @@ const ProfileView = ({
           <div className="relative">
             <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden border border-[#bec9c3] relative group">
               <img
-                alt={`${name} Profile`}
+                alt={t("{{name}} Profile", { name })}
                 className="w-full h-full object-cover"
                 src={photoPreview || profileImage}
                 referrerPolicy="no-referrer"
@@ -166,7 +166,7 @@ const ProfileView = ({
             </div>
             {!isEditing && (
               <div className="absolute -bottom-2 -right-2 bg-[#00604c] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full border-2 border-white shadow-sm">
-                Active
+                {t("Active")}
               </div>
             )}
             <input 
@@ -182,7 +182,7 @@ const ProfileView = ({
             {isEditing ? (
               <div className="space-y-3 mt-2">
                 <div>
-                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Full Name</label>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">{t("Full Name")}</label>
                   <input 
                     type="text" 
                     value={formData.name}
@@ -191,7 +191,7 @@ const ProfileView = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Email Address</label>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">{t("Email Address")}</label>
                   <input 
                     type="email" 
                     value={formData.email}
@@ -201,7 +201,7 @@ const ProfileView = ({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-[#5d5f5b] uppercase flex items-center justify-between">
-                    Mobile Number <span className="text-red-500 text-[9px] font-normal lowercase">(Read-only)</span>
+                    <Trans t={t} i18nKey={"Mobile Number <0>(Read-only)</0>"} defaults={"Mobile Number <0>(Read-only)</0>"} components={[<span className="text-red-500 text-[9px] font-normal lowercase" />]} />
                   </label>
                   <input 
                     type="text" 
@@ -211,7 +211,7 @@ const ProfileView = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Address</label>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">{t("Address")}</label>
                   <input 
                     type="text" 
                     value={formData.address}
@@ -221,20 +221,20 @@ const ProfileView = ({
                 </div>
                 
                 <div className="pt-2 border-t border-[#e0e3e0]">
-                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">Vehicle Details</label>
+                  <label className="text-[10px] font-bold text-[#5d5f5b] uppercase">{t("Vehicle Details")}</label>
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     <select 
                       value={formData.vehicleType}
                       onChange={(e) => setFormData({...formData, vehicleType: e.target.value})}
                       className="p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
                     >
-                      <option value="bike">Bicycle 🚲</option>
-                      <option value="scooter">Scooter 🛵</option>
-                      <option value="car">Car 🚗</option>
+                      <option value="bike">{t("Bicycle 🚲")}</option>
+                      <option value="scooter">{t("Scooter 🛵")}</option>
+                      <option value="car">{t("Car 🚗")}</option>
                     </select>
                     <input 
                       type="text" 
-                      placeholder="Brand/Model"
+                      placeholder={t("Brand/Model")}
                       value={formData.vehicleName}
                       onChange={(e) => setFormData({...formData, vehicleName: e.target.value})}
                       className="p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
@@ -242,7 +242,7 @@ const ProfileView = ({
                   </div>
                   <input 
                     type="text" 
-                    placeholder="Plate/Reg Number (Optional)"
+                    placeholder={t("Plate/Reg Number (Optional)")}
                     value={formData.vehicleNumber}
                     onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
                     className="w-full mt-2 p-2 bg-[#f1f4f1] border border-[#bec9c3] rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#00604c]"
@@ -255,14 +255,14 @@ const ProfileView = ({
                     disabled={isSaving}
                     className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 disabled:opacity-50"
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                   <button 
                     onClick={handleSave}
                     disabled={isSaving}
                     className="flex-1 py-2.5 bg-[#00604c] text-white rounded-xl font-bold text-sm hover:bg-[#014d3d] flex justify-center items-center gap-2 disabled:opacity-70"
                   >
-                    {isSaving ? "Saving..." : "Save Changes"}
+                    {isSaving ? t("Saving...") : t("Save Changes")}
                     {!isSaving && <Save className="w-4 h-4" />}
                   </button>
                 </div>
@@ -278,11 +278,11 @@ const ProfileView = ({
                 </p>
                 <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1">
                   <Phone className="w-3.5 h-3.5" />
-                  {profile?.phone || "No phone added"}
+                  {profile?.phone || t("No phone added")}
                 </div>
                 <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1 truncate max-w-full">
                   <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">{profile?.email || "No email added"}</span>
+                  <span className="truncate">{profile?.email || t("No email added")}</span>
                 </div>
                 <div className="text-xs text-[#3e4945] flex items-center justify-center md:justify-start gap-2 pt-1 truncate max-w-full">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
@@ -291,15 +291,15 @@ const ProfileView = ({
                 
                 <div className="flex items-center justify-center md:justify-start gap-1.5 pt-3">
                   <Award className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span className="text-xs font-bold text-gray-900">{Number(rating).toFixed(2)} Rating</span>
-                  <span className="text-[10px] text-gray-400 font-medium">({ratingCount} deliveries)</span>
+                  <span className="text-xs font-bold text-gray-900">{Number(rating).toFixed(2)} {t("Rating")}</span>
+                  <span className="text-[10px] text-gray-400 font-medium">{t("({{ratingCount}} deliveries)", { ratingCount })}</span>
                 </div>
                 
                 {profile?.zoneIds?.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1 justify-center md:justify-start">
                     {profile.zoneIds.map((zone, idx) => (
                       <span key={idx} className="bg-[#9ef3d7]/30 text-[#00604c] px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-[#9ef3d7]">
-                        Zone Assigned
+                        {t("Zone Assigned")}
                       </span>
                     ))}
                   </div>
@@ -320,8 +320,8 @@ const ProfileView = ({
         <div className="flex items-center gap-3">
           <span className="text-xl">📅</span>
           <div>
-            <h4 className="font-bold text-sm text-[#00604c]">Change Shifts</h4>
-            <p className="text-[11px] text-[#3e4945] font-medium">Request to add or remove your delivery shifts.</p>
+            <h4 className="font-bold text-sm text-[#00604c]">{t("Change Shifts")}</h4>
+            <p className="text-[11px] text-[#3e4945] font-medium">{t("Request to add or remove your delivery shifts.")}</p>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-[#00604c]" />
@@ -331,7 +331,7 @@ const ProfileView = ({
     /* Vehicle & Docs Status */
   }
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">VEHICLE &amp; DOCUMENTS</h3>
+        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">{t("VEHICLE & DOCUMENTS")}</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           
           {
@@ -346,13 +346,13 @@ const ProfileView = ({
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">Driving License</p>
-                <p className="text-[11px] text-[#5d5f5b]">Expires in 12 days</p>
+                <p className="text-xs font-bold text-gray-900">{t("Driving License")}</p>
+                <p className="text-[11px] text-[#5d5f5b]">{t("Expires in 12 days")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-lg">
-                Expiring
+                {t("Expiring")}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
@@ -370,13 +370,13 @@ const ProfileView = ({
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">National ID</p>
-                <p className="text-[11px] text-[#5d5f5b]">Verified on 12.01.2024</p>
+                <p className="text-xs font-bold text-gray-900">{t("National ID")}</p>
+                <p className="text-[11px] text-[#5d5f5b]">{t("Verified on 12.01.2024")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold bg-[#9ef3d7] text-[#005140] px-2.5 py-0.5 rounded-lg-sm">
-                Valid
+                {t("Valid")}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
@@ -394,13 +394,13 @@ const ProfileView = ({
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">Vehicle Registration</p>
-                <p className="text-[11px] text-red-600 font-semibold">Expired 2 days ago</p>
+                <p className="text-xs font-bold text-gray-900">{t("Vehicle Registration")}</p>
+                <p className="text-[11px] text-red-600 font-semibold">{t("Expired 2 days ago")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded">
-                Action Required
+                {t("Action Required")}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
@@ -418,18 +418,18 @@ const ProfileView = ({
         </div>
         <div className="relative z-10 space-y-3">
           <div>
-            <h3 className="text-[10px] uppercase font-bold tracking-widest opacity-80">FLEET PARTNER</h3>
-            <p className="font-extrabold text-[#9ef3d7] text-base leading-snug">Velo Courier Services Sp. z o.o.</p>
+            <h3 className="text-[10px] uppercase font-bold tracking-widest opacity-80">{t("FLEET PARTNER")}</h3>
+            <p className="font-extrabold text-[#9ef3d7] text-base leading-snug">{t("Velo Courier Services Sp. z o.o.")}</p>
           </div>
           <div className="flex gap-3 pt-1">
             <a
     href="tel:+48500200300"
     className="bg-white text-[#00604c] text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-transform"
   >
-              📞 Contact Manager
+              {t("📞 Contact Manager")}
             </a>
             <button className="bg-[#1f7a63] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-[#005140] active:scale-95 transition-transform">
-              📄 Agreement
+              {t("📄 Agreement")}
             </button>
           </div>
         </div>
@@ -437,7 +437,7 @@ const ProfileView = ({
 
       {/* Ratings & Feedback Section */}
       <section className="space-y-2 animate-fadeIn">
-        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">RATINGS &amp; FEEDBACK</h3>
+        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">{t("RATINGS & FEEDBACK")}</h3>
         <div className="bg-white rounded-2xl p-4 border border-[#bec9c3] shadow-xs space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 min-w-[90px]">
@@ -458,9 +458,9 @@ const ProfileView = ({
               </div>
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900">Performance Rating</p>
+              <p className="text-sm font-bold text-gray-900">{t("Performance Rating")}</p>
               <p className="text-xs text-gray-500 leading-normal">
-                Based on {ratingsData.totalRatings > 0 ? ratingsData.totalRatings : ratingCount} total customer reviews.
+                {t("Based on {{totalRatings}} total customer reviews.", { totalRatings: ratingsData.totalRatings > 0 ? ratingsData.totalRatings : ratingCount })}
               </p>
             </div>
           </div>
@@ -468,17 +468,17 @@ const ProfileView = ({
           <hr className="border-[#bec9c3]/30" />
 
           <div>
-            <h4 className="text-[10px] font-bold text-[#5d5f5b] uppercase tracking-widest mb-3">Recent Reviews</h4>
+            <h4 className="text-[10px] font-bold text-[#5d5f5b] uppercase tracking-widest mb-3">{t("Recent Reviews")}</h4>
             {ratingsLoading ? (
-              <div className="py-4 text-center text-xs text-gray-400">Loading feedback...</div>
+              <div className="py-4 text-center text-xs text-gray-400">{t("Loading feedback...")}</div>
             ) : ratingsData.history.length === 0 ? (
-              <div className="py-4 text-center text-xs text-gray-400 font-medium">No reviews received yet.</div>
+              <div className="py-4 text-center text-xs text-gray-400 font-medium">{t("No reviews received yet.")}</div>
             ) : (
               <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                 {ratingsData.history.map((item, idx) => (
                   <div key={idx} className="bg-slate-50/50 border border-slate-100 p-3 rounded-xl space-y-1">
                     <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold text-gray-700">Order #{item.orderId}</span>
+                      <span className="text-xs font-bold text-gray-700">{t("Order #{{orderId}}", { orderId: item.orderId })}</span>
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star
@@ -507,7 +507,7 @@ const ProfileView = ({
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">BANKING DETAILS</h3>
+        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">{t("BANKING DETAILS")}</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           <div 
             onClick={() => navigate("/food/delivery/profile/withdrawals")}
@@ -516,8 +516,8 @@ const ProfileView = ({
             <div className="flex items-center gap-3">
               <span className="text-sm">🗓️</span>
               <div>
-                <p className="text-xs font-bold text-gray-900">Withdrawal Request</p>
-                <p className="text-[11px] text-[#5d5f5b]">View your withdrawal history & status</p>
+                <p className="text-xs font-bold text-gray-900">{t("Withdrawal Request")}</p>
+                <p className="text-[11px] text-[#5d5f5b]">{t("View your withdrawal history & status")}</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
@@ -530,8 +530,8 @@ const ProfileView = ({
             <div className="flex items-center gap-3">
               <span className="text-sm">🏦</span>
               <div>
-                <p className="text-xs font-bold text-gray-900">Bank Account</p>
-                <p className="text-[11px] text-[#5d5f5b]">Bank •••• {bankAcc}</p>
+                <p className="text-xs font-bold text-gray-900">{t("Bank Account")}</p>
+                <p className="text-[11px] text-[#5d5f5b]">{t("Bank •••• {{bankAcc}}", { bankAcc })}</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
@@ -540,7 +540,7 @@ const ProfileView = ({
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">SETTINGS</h3>
+        <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">{t("SETTINGS")}</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           
           <div className="flex items-center justify-between p-3.5 hover:bg-gray-50 group">
@@ -559,7 +559,7 @@ const ProfileView = ({
           >
             <div className="flex items-center gap-3">
               <BellRing className="w-4.5 h-4.5 text-[#5d5f5b]" />
-              <p className="text-xs font-bold text-gray-900">Notifications</p>
+              <p className="text-xs font-bold text-gray-900">{t("Notifications")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
@@ -570,7 +570,7 @@ const ProfileView = ({
           >
             <div className="flex items-center gap-3">
               <HelpCircle className="w-4.5 h-4.5 text-[#5d5f5b]" />
-              <p className="text-xs font-bold text-gray-900">Help &amp; Support</p>
+              <p className="text-xs font-bold text-gray-900">{t("Help & Support")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
@@ -581,7 +581,7 @@ const ProfileView = ({
           >
             <div className="flex items-center gap-3">
               <Calendar className="w-4.5 h-4.5 text-amber-500" />
-              <p className="text-xs font-bold text-amber-600">Report Unavailability</p>
+              <p className="text-xs font-bold text-amber-600">{t("Report Unavailability")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
@@ -592,7 +592,7 @@ const ProfileView = ({
           >
             <div className="flex items-center gap-3">
               <Repeat className="w-4.5 h-4.5 text-blue-500" />
-              <p className="text-xs font-bold text-blue-600">Ride Transfers</p>
+              <p className="text-xs font-bold text-blue-600">{t("Ride Transfers")}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-[#bec9c3]" />
           </div>
@@ -608,7 +608,7 @@ const ProfileView = ({
     className="w-full py-3.5 text-[#ba1a1a] font-bold border border-red-200 bg-red-50/50 rounded-xl hover:bg-red-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm shadow-xs"
   >
         <LogOut className="w-4 h-4" />
-        Log Out
+        {t("Log Out")}
       </button>
     </div>;
 };

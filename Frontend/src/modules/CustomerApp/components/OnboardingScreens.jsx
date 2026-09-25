@@ -2,15 +2,17 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { IMAGES } from "../types";
 import { MapPin, ShoppingBag, Check, ArrowLeft, CheckCircle, Leaf, UtensilsCrossed, Navigation, Search } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 export function WelcomeScreen({ onSignup, onLogin }) {
+  const { t } = useTranslation("customer");
   return (<div className="relative min-h-screen flex flex-col bg-[#F5F5F0]">
     <main className="relative min-h-screen flex flex-col">
       {/* Top Green Section */}
       <section className="h-[52vh] bg-primary relative px-6 pt-28 pb-8 flex flex-col items-center rounded-b-[40px]">
         {/* Headline */}
         <h1 className="text-white text-[32px] font-extrabold text-center leading-tight mb-4 max-w-[280px] tracking-tight">
-          Your weekly food, automated.
+          {t("Your weekly food, automated.")}
         </h1>
 
 
@@ -19,7 +21,7 @@ export function WelcomeScreen({ onSignup, onLogin }) {
           {localStorage.getItem('user_app_logo') ? (
             <img 
               src={localStorage.getItem('user_app_logo')} 
-              alt="App Logo" 
+              alt={t("App Logo")} 
               className="w-full h-full object-contain bg-white p-4 rounded-[32px] shadow-xl rotate-[-2deg] transition-all hover:rotate-0 duration-300" 
             />
           ) : (
@@ -38,38 +40,38 @@ export function WelcomeScreen({ onSignup, onLogin }) {
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
               <Check className="text-white text-[16px] font-bold" />
             </div>
-            <span className="text-[14px] text-[#3e4945] font-medium font-sans">From local home cooks near you</span>
+            <span className="text-[14px] text-[#3e4945] font-medium font-sans">{t("From local home cooks near you")}</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
               <Check className="text-white text-[16px] font-bold" />
             </div>
-            <span className="text-[14px] text-[#3e4945] font-medium font-sans">Weekly subscription — order once</span>
+            <span className="text-[14px] text-[#3e4945] font-medium font-sans">{t("Weekly subscription — order once")}</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
               <Check className="text-white text-[16px] font-bold" />
             </div>
-            <span className="text-[14px] text-[#3e4945] font-medium font-sans">Delivered fresh to your door</span>
+            <span className="text-[14px] text-[#3e4945] font-medium font-sans">{t("Delivered fresh to your door")}</span>
           </div>
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-lg bg-primary-container flex items-center justify-center transition-transform group-hover:scale-110">
               <Check className="text-white text-[16px] font-bold" />
             </div>
-            <span className="text-[14px] text-[#3e4945] font-medium font-sans">Skip or pause anytime</span>
+            <span className="text-[14px] text-[#3e4945] font-medium font-sans">{t("Skip or pause anytime")}</span>
           </div>
         </div>
 
         {/* Action Area */}
         <div className="flex flex-col items-center gap-4 mt-auto">
           <button onClick={onLogin} className="w-full bg-primary-container hover:bg-[#1b6b55] text-white font-bold h-14 rounded-2xl active:scale-[0.98] transition-all shadow-md text-base">
-            Get Started
+            {t("Get Started")}
           </button>
           
           <div className="flex items-center gap-3 text-[11px] text-[#8e9894] mt-2 mb-2 font-medium">
-            <Link to="/user/termsandcondition" className="hover:text-primary hover:underline transition-colors">Terms & Conditions</Link>
+            <Link to="/user/termsandcondition" className="hover:text-primary hover:underline transition-colors">{t("Terms & Conditions")}</Link>
             <span>&bull;</span>
-            <Link to="/user/privacy" className="hover:text-primary hover:underline transition-colors">Privacy Policy</Link>
+            <Link to="/user/privacy" className="hover:text-primary hover:underline transition-colors">{t("Privacy Policy")}</Link>
           </div>
         </div>
       </section>
@@ -78,12 +80,13 @@ export function WelcomeScreen({ onSignup, onLogin }) {
 }
 
 export function GoalsScreen({ onBack, onNext }) {
+  const { t } = useTranslation("customer");
   const [selectedGoal, setSelectedGoal] = useState("Eat Healthy");
   const goals = [
-    { name: "Eat Healthy", label: "Eat Healthy", icon: "🥗", bg: "bg-[#E8F3F0]" },
-    { name: "Save Time", label: "Save Time", icon: "⏰", bg: "bg-[#FFF4E5]" },
-    { name: "Family Meals", label: "Family Meals", icon: "👨‍👩‍👧", bg: "bg-[#EBF1FF]" },
-    { name: "Fitness & Macros", label: "Fitness & Macros", icon: "💪", bg: "bg-[#FCE8E8]" }
+    { name: "Eat Healthy", label: t("Eat Healthy"), icon: "🥗", bg: "bg-[#E8F3F0]" },
+    { name: "Save Time", label: t("Save Time"), icon: "⏰", bg: "bg-[#FFF4E5]" },
+    { name: "Family Meals", label: t("Family Meals"), icon: "👨‍👩‍👧", bg: "bg-[#EBF1FF]" },
+    { name: "Fitness & Macros", label: t("Fitness & Macros"), icon: "💪", bg: "bg-[#FCE8E8]" }
   ];
   return (<div className="min-h-screen flex flex-col bg-[#F5F5F0]">
     {/* Top Bar Status bar sim */}
@@ -93,7 +96,7 @@ export function GoalsScreen({ onBack, onNext }) {
       <button onClick={onBack} className="w-10 h-10 flex items-center justify-start text-on-surface active:scale-95 transition-all text-primary">
         <ArrowLeft className="text-[24px]" />
       </button>
-      <h1 className="text-lg font-bold text-on-surface">DailyMealBox</h1>
+      <h1 className="text-lg font-bold text-on-surface">{t("DailyMealBox")}</h1>
       <div className="w-10"></div>
     </header>
 
@@ -104,17 +107,17 @@ export function GoalsScreen({ onBack, onNext }) {
           <div className="h-full bg-primary-container w-[60%] transition-all duration-500 ease-out"></div>
         </div>
         <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest mt-1">
-          Step 3 of 5
+          {t("Step 3 of 5")}
         </p>
       </div>
 
       {/* Headline */}
       <div className="mt-6 mb-6">
         <h2 className="text-[24px] font-extrabold text-on-surface leading-tight mb-2 tracking-tight">
-          What brings you here?
+          {t("What brings you here?")}
         </h2>
         <p className="text-[14px] text-on-surface-variant leading-relaxed">
-          We'll personalise your meal recommendations based on your unique lifestyle goals.
+          {t("We'll personalise your meal recommendations based on your unique lifestyle goals.")}
         </p>
       </div>
 
@@ -140,20 +143,21 @@ export function GoalsScreen({ onBack, onNext }) {
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         <div className="absolute bottom-3 left-4 text-white">
-          <p className="text-[11px] font-bold tracking-wider uppercase opacity-85">Pro Tip</p>
-          <p className="text-sm font-semibold">You can change your goals anytime.</p>
+          <p className="text-[11px] font-bold tracking-wider uppercase opacity-85">{t("Pro Tip")}</p>
+          <p className="text-sm font-semibold">{t("You can change your goals anytime.")}</p>
         </div>
       </div>
     </main>
 
     <footer className="p-[20px] pt-4 bg-[#F5F5F0]">
       <button onClick={onNext} className="w-full bg-primary-container hover:bg-[#1b6b55] transition-all py-4 rounded-xl text-white font-bold text-center active:scale-95 shadow-md">
-        Continue
+        {t("Continue")}
       </button>
     </footer>
   </div>);
 }
 export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
+  const { t } = useTranslation("customer");
   const [dietType, setDietType] = useState(initialPrefs.dietType);
   const [allergies, setAllergies] = useState(initialPrefs.allergies);
   const [budget, setBudget] = useState(initialPrefs.weeklyBudget);
@@ -200,14 +204,14 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
 
     <main className="px-[20px] pb-32">
       {/* Headline */}
-      <h1 className="text-[22px] font-extrabold mt-6 text-[#1b1c1c]">Your dietary preferences</h1>
+      <h1 className="text-[22px] font-extrabold mt-6 text-[#1b1c1c]">{t("Your dietary preferences")}</h1>
       <p className="text-on-surface-variant text-[14px] mt-1 text-[#3e4945]">
-        Personalize your DailyMealBox to match your health goals and taste.
+        {t("Personalize your DailyMealBox to match your health goals and taste.")}
       </p>
 
       {/* Diet Type section */}
       <section className="mt-8">
-        <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74] mb-4">Diet type</h2>
+        <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74] mb-4">{t("Diet type")}</h2>
         <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
           {dietOptions.map((opt) => (<button key={opt} onClick={() => setDietType(opt)} className={`flex-none px-6 py-2.5 rounded-full font-semibold text-[14px] transition-all active:scale-95 ${dietType === opt
             ? "bg-primary-container text-white"
@@ -219,7 +223,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
 
       {/* Allergies multi-select mapping screens layout */}
       <section className="mt-8">
-        <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74] mb-4">Allergies</h2>
+        <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74] mb-4">{t("Allergies")}</h2>
         <div className="flex flex-wrap gap-2">
           {allergyList.map((alg) => {
             const isSelected = allergies.includes(alg);
@@ -235,15 +239,15 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
       {/* budget slide card details */}
       <section className="mt-8 bg-white p-5 rounded-2xl shadow-sm">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74]">Weekly budget</h2>
+          <h2 className="text-[12px] font-bold uppercase tracking-wider text-[#6e7a74]">{t("Weekly budget")}</h2>
           <div className="bg-[#82d6bb]/30 px-3 py-1 rounded-lg text-[#002018] font-bold text-[14px]">
-            <span>{budget}</span> PLN
+            <Trans t={t} i18nKey={"<0>{{budget}}</0> PLN"} defaults={"<0>{{budget}}</0> PLN"} values={{ budget }} components={[<span />]} />
           </div>
         </div>
         <input className="w-full h-1.5 bg-[#e4e2e1] rounded-lg appearance-none cursor-pointer accent-primary-container" type="range" min="100" max="1000" step="50" value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
         <div className="flex justify-between mt-2 text-[12px] text-[#6e7a74]">
-          <span>100 PLN</span>
-          <span>1000 PLN</span>
+          <span>{t("100 PLN")}</span>
+          <span>{t("1000 PLN")}</span>
         </div>
       </section>
 
@@ -253,8 +257,8 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
           <UtensilsCrossed className="text-[80px] text-primary/30" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-5">
-          <p className="text-white font-bold text-base">Personalized Nutrition</p>
-          <p className="text-white/80 text-[12px] font-medium font-sans">We exclude ingredients you don't like.</p>
+          <p className="text-white font-bold text-base">{t("Personalized Nutrition")}</p>
+          <p className="text-white/80 text-[12px] font-medium font-sans">{t("We exclude ingredients you don't like.")}</p>
         </div>
       </section>
     </main>
@@ -262,12 +266,13 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
     {/* footer sticky actions */}
     <footer className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
       <button onClick={handleContinue} className="w-full bg-primary-container text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all">
-        Continue
+        {t("Continue")}
       </button>
     </footer>
   </div>);
 }
 export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
+  const { t } = useTranslation("customer");
   const [detecting, setDetecting] = useState(false);
   const handleLocation = () => {
     setDetecting(true);
@@ -315,16 +320,16 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-[22px] font-extrabold text-[#1b1c1c] tracking-tight">Allow Location Access</h1>
+          <h1 className="text-[22px] font-extrabold text-[#1b1c1c] tracking-tight">{t("Allow Location Access")}</h1>
           <p className="text-[14px] text-[#3e4945] font-medium leading-relaxed max-w-[280px] mx-auto">
-            We'll show meal makers near you so you can enjoy fresh, local food delivered today.
+            {t("We'll show meal makers near you so you can enjoy fresh, local food delivered today.")}
           </p>
         </div>
 
         {/* Detected location label badge */}
         <div className="inline-flex items-center gap-2 bg-[#9ef3d7] px-4 py-2 rounded-full border border-primary/10 shadow-sm animate-pulse-subtle">
           <MapPin className="text-[18px] text-[#002018]" style={{ fontVariationSettings: "'FILL' 1" }} />
-          <span className="text-[13px] font-bold text-[#002018]">Mokotów, Warsaw detected</span>
+          <span className="text-[13px] font-bold text-[#002018]">{t("Mokotów, Warsaw detected")}</span>
         </div>
 
         {/* Actions */}
@@ -335,11 +340,11 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span>Detecting...</span>
-            </>) : ("Use my location")}
+              <span>{t("Detecting...")}</span>
+            </>) : (t("Use my location"))}
           </button>
           <button onClick={onChooseManually} className="w-full text-primary font-bold text-[14px] py-2 hover:opacity-80 transition-opacity">
-            Choose manually
+            {t("Choose manually")}
           </button>
         </div>
       </div>
@@ -348,6 +353,7 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
 }
 
 export function ManualLocationScreen({ onBack, onConfirm }) {
+  const { t } = useTranslation("customer");
   const [address, setAddress] = useState("");
 
   return (
@@ -361,9 +367,9 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
       </header>
 
       <main className="px-[20px] flex-1">
-        <h1 className="text-[24px] font-extrabold mt-6 text-[#1b1c1c]">Enter your address</h1>
+        <h1 className="text-[24px] font-extrabold mt-6 text-[#1b1c1c]">{t("Enter your address")}</h1>
         <p className="text-on-surface-variant text-[14px] mt-2 text-[#3e4945]">
-          We need your address to find the best meal makers near you.
+          {t("We need your address to find the best meal makers near you.")}
         </p>
 
         <div className="mt-8 relative">
@@ -372,7 +378,7 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Search your street or building..."
+            placeholder={t("Search your street or building...")}
             className="w-full bg-white h-14 rounded-2xl pl-12 pr-4 text-[15px] shadow-sm border border-[#bec9c3]/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             autoFocus
           />
@@ -385,7 +391,7 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
           disabled={!address.trim()}
           className="w-full bg-primary-container disabled:opacity-50 disabled:active:scale-100 text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all"
         >
-          Confirm Location
+          {t("Confirm Location")}
         </button>
       </footer>
     </div>

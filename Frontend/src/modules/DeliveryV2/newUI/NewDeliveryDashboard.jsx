@@ -24,6 +24,7 @@ import { useDMBTracking } from "../hooks/useDMBTracking";
 import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
 import { fetchDeliverySlots, getCachedSlots } from "../../../shared/hooks/useDeliverySlots";
+import { useTranslation } from "react-i18next";
 
 const dropBeforeFor = (slotKey) => {
   const def = getCachedSlots().find((x) => x.key === slotKey);
@@ -32,6 +33,7 @@ const dropBeforeFor = (slotKey) => {
 };
 
 function NewDeliveryDashboard({ children }) {
+  const { t: tr } = useTranslation("driver");
   useDMBTracking();
   const [stats, setStats] = useState(INITIAL_DRIVER_STATS);
   const [orders, setOrders] = useState([]);
@@ -454,7 +456,7 @@ function NewDeliveryDashboard({ children }) {
       }
 
       // 5. Toast and Redirect
-      toast.success("Logged out successfully");
+      toast.success(tr("Logged out successfully"));
       navigate("/food/delivery/login", { replace: true });
     }
   };
@@ -468,7 +470,7 @@ function NewDeliveryDashboard({ children }) {
     if (stop) {
       const stopStatus = String(stop.status || '').toLowerCase();
       if (stopStatus === 'completed' || stopStatus === 'delivered' || stopStatus === 'done') {
-        toast.info('This stop has already been completed.');
+        toast.info(tr("This stop has already been completed."));
         return;
       }
     }
@@ -567,7 +569,7 @@ function NewDeliveryDashboard({ children }) {
       case "demand":
         return <DemandHeatmapView
           onNavigateToUrsynow={() => {
-            alert("Routing GPS navigation to Ursynów demand hub...");
+            alert(tr("Routing GPS navigation to Ursynów demand hub..."));
             setCurrentScreen("route");
           }}
         />;
@@ -588,32 +590,32 @@ function NewDeliveryDashboard({ children }) {
         <div className="px-6 py-6 flex justify-start pl-8">
           <img 
             src={appLogo || "https://res.cloudinary.com/hmuqqx79/image/upload/v1784878828/app-logos/jptpxhxz6nfk9f5hry1p.jpg"} 
-            alt="App Logo" 
+            alt={tr("App Logo")} 
             className="w-[100px] h-auto object-contain rounded-lg bg-white shadow-sm p-1" 
           />
         </div>
 
         <div className="flex-1 px-4 space-y-2 mt-4">
           <button onClick={() => { navigate('/food/delivery/feed'); setCurrentScreen("home"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "home" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
-            <Home className="w-5 h-5" /> Home
+            <Home className="w-5 h-5" /> {tr("Home")}
           </button>
           <button onClick={() => { navigate('/food/delivery/routes'); setCurrentScreen("routes"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "routes" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
-            <History className="w-5 h-5" /> Routes
+            <History className="w-5 h-5" /> {tr("Routes")}
           </button>
           <button onClick={() => { navigate('/food/delivery/route'); setCurrentScreen("route"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${["route", "pickup", "delivery"].includes(currentScreen) ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
-            <RouteIcon className="w-5 h-5" /> Active Route
+            <RouteIcon className="w-5 h-5" /> {tr("Active Route")}
           </button>
           <button onClick={() => { navigate('/food/delivery/earn'); setCurrentScreen("earnings"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${currentScreen === "earnings" ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
-            <Banknote className="w-5 h-5" /> Earnings
+            <Banknote className="w-5 h-5" /> {tr("Earnings")}
           </button>
           <button onClick={() => { navigate('/food/delivery/profile'); setCurrentScreen("profile"); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${["profile", "shifts"].includes(currentScreen) ? "bg-white text-[#006a5c]" : "text-white/80 hover:bg-white/10 hover:text-white"}`}> 
-            <User className="w-5 h-5" /> Profile
+            <User className="w-5 h-5" /> {tr("Profile")}
           </button>
         </div>
 
         <div className="p-4 border-t border-white/20 mt-auto">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-all">
-            <LogOut className="w-5 h-5" /> Sign Out
+            <LogOut className="w-5 h-5" /> {tr("Sign Out")}
           </button>
         </div>
       </aside>
@@ -634,8 +636,8 @@ function NewDeliveryDashboard({ children }) {
                     <Package className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-white/70 text-xs font-medium uppercase tracking-wider">New Pickup Request</p>
-                    <h3 className="text-white text-lg font-bold leading-tight">Orders Ready!</h3>
+                    <p className="text-white/70 text-xs font-medium uppercase tracking-wider">{tr("New Pickup Request")}</p>
+                    <h3 className="text-white text-lg font-bold leading-tight">{tr("Orders Ready!")}</h3>
                   </div>
                 </div>
               </div>
@@ -649,7 +651,7 @@ function NewDeliveryDashboard({ children }) {
                     <div className="flex items-start gap-2">
                       <MapPin className="w-4 h-4 text-[#00604c] mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs text-gray-500 font-medium">Pickup from</p>
+                        <p className="text-xs text-gray-500 font-medium">{tr("Pickup from")}</p>
                         <p className="text-sm font-semibold text-gray-800">
                           {newBatchRequest.vendorInfo?.vendorName || newBatchRequest.vendorName || ''}
                         </p>
@@ -677,20 +679,20 @@ function NewDeliveryDashboard({ children }) {
                     <p className="text-2xl font-bold text-[#00604c]">
                       {newBatchRequest.totalMealBoxCount || newBatchRequest.boxCount || newBatchRequest.totalOrders || '—'}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">Meal boxes</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{tr("Meal boxes")}</p>
                   </div>
                   <div className="bg-[#f0fdf7] rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-[#00604c] capitalize">
                       {newBatchRequest.slotType || newBatchRequest.slot || '—'}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">Slot</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{tr("Slot")}</p>
                   </div>
                 </div>
 
                 {/* Total Delivery Earnings */}
                 {newBatchRequest.totalEarnings !== undefined && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center">
-                    <span className="text-xs font-bold text-emerald-800">Est. Delivery Earnings</span>
+                    <span className="text-xs font-bold text-emerald-800">{tr("Est. Delivery Earnings")}</span>
                     <span className="text-base font-black text-emerald-700">₹{Number(newBatchRequest.totalEarnings).toFixed(2)}</span>
                   </div>
                 )}
@@ -698,12 +700,12 @@ function NewDeliveryDashboard({ children }) {
                 {/* Stops Details & Sequence */}
                 {newBatchRequest.orders && newBatchRequest.orders.length > 0 && (
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2 text-left">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Delivery Stops Sequence ({newBatchRequest.orders.length})</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{tr("Delivery Stops Sequence ({{length}})", { length: newBatchRequest.orders.length })}</p>
                     <div className="max-h-28 overflow-y-auto space-y-2 pr-1 font-sans">
                       {newBatchRequest.orders.map((order, idx) => (
                         <div key={order._id || idx} className="text-xs border-b border-gray-200/60 pb-2 last:border-0 last:pb-0">
-                          <p className="font-extrabold text-gray-800">Stop #{idx + 1}: {order.customer?.name || ''}</p>
-                          <p className="text-gray-500 mt-0.5">📍 {order.deliveryAddress?.street || 'No Street'}, {order.deliveryAddress?.city || 'No City'}</p>
+                          <p className="font-extrabold text-gray-800">{tr("Stop #{{idx}}: {{name}}", { idx: idx + 1, name: order.customer?.name || '' })}</p>
+                          <p className="text-gray-500 mt-0.5">📍 {order.deliveryAddress?.street || tr("No Street")}, {order.deliveryAddress?.city || tr("No City")}</p>
                           {order.customer?.phone && (
                             <p className="text-gray-400 text-[10px] mt-0.5">📞 {order.customer.phone}</p>
                           )}
@@ -717,7 +719,7 @@ function NewDeliveryDashboard({ children }) {
                 {!isOnline && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                     <p className="text-amber-700 text-xs font-medium text-center">
-                      ⚠️ You are offline — go online to accept deliveries
+                      {tr("⚠️ You are offline — go online to accept deliveries")}
                     </p>
                   </div>
                 )}
@@ -730,7 +732,7 @@ function NewDeliveryDashboard({ children }) {
                   onClick={clearNewBatchRequest}
                   className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm active:scale-95 transition-transform"
                 >
-                  Ignore
+                  {tr("Ignore")}
                 </button>
                 <button
                   disabled={isAccepting || !isOnline}
@@ -740,9 +742,9 @@ function NewDeliveryDashboard({ children }) {
                   {isAccepting ? (
                     <span className="flex items-center justify-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Accepting...
+                      {tr("Accepting...")}
                     </span>
-                  ) : "Accept Route"}
+                  ) : tr("Accept Route")}
                 </button>
               </div>
             </div>
@@ -761,17 +763,17 @@ function NewDeliveryDashboard({ children }) {
               <AlertTriangle className="w-8 h-8" />
             </div>
             
-            <h3 className="text-lg font-black text-gray-900">Pickup Required</h3>
+            <h3 className="text-lg font-black text-gray-900">{tr("Pickup Required")}</h3>
             
             <p className="text-sm text-gray-600 font-medium leading-relaxed">
-              Please pick up the meal box from the vendor first.
+              {tr("Please pick up the meal box from the vendor first.")}
             </p>
             
             <button
               onClick={() => setPickupFirstModalOpen(false)}
               className="w-full py-3 bg-[#1F7A63] text-white rounded-2xl font-bold shadow-md hover:bg-[#1f7a63]/90 active:scale-98 transition-all"
             >
-              Got it
+              {tr("Got it")}
             </button>
           </div>
         </div>
@@ -791,7 +793,7 @@ function NewDeliveryDashboard({ children }) {
           className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "home" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
         >
           <Home className="w-4.5 h-4.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Home</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Home")}</span>
         </button>
 
         <button
@@ -799,7 +801,7 @@ function NewDeliveryDashboard({ children }) {
           className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "routes" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
         >
           <History className="w-4.5 h-4.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Routes</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Routes")}</span>
         </button>
 
         <button
@@ -807,7 +809,7 @@ function NewDeliveryDashboard({ children }) {
           className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${["route", "pickup", "delivery"].includes(currentScreen) ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
         >
           <RouteIcon className="w-4.5 h-4.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Route</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Route")}</span>
         </button>
 
         <button
@@ -815,7 +817,7 @@ function NewDeliveryDashboard({ children }) {
           className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${currentScreen === "earnings" ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
         >
           <Banknote className="w-4.5 h-4.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Earn</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Earn")}</span>
         </button>
 
         <button
@@ -823,7 +825,7 @@ function NewDeliveryDashboard({ children }) {
           className={`flex flex-col items-center justify-center text-xs py-1 px-4 rounded-xl transition-all duration-150 ${["profile", "shifts"].includes(currentScreen) ? "bg-[#9ef3d7] text-[#005140] font-extrabold shadow-xs" : "text-[#3e4945] hover:text-[#00604c]"}`}
         >
           <User className="w-4.5 h-4.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">Profile</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("Profile")}</span>
         </button>
       </nav>
     </div>

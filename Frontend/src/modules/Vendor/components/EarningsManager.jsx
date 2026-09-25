@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
 import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle, ShoppingBag, Coins, Landmark } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 function fmt(n) {
   const num = Number(n) || 0;
@@ -19,6 +20,7 @@ function formatDate(d) {
 }
 
 export default function EarningsManager({ transactions, onAddTransaction }) {
+  const { t } = useTranslation("vendor");
   const [subView, setSubView] = useState('summary');
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState(null);
@@ -55,11 +57,11 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           ...(data.pagination && { pagination: data.pagination }),
         }));
       } else {
-        setError('No earnings data available yet.');
+        setError(t("No earnings data available yet."));
       }
     } catch (err) {
       console.error('Earnings fetch failed:', err);
-      setError('Could not load earnings. Please try again.');
+      setError(t("Could not load earnings. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -98,7 +100,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
               ? 'bg-primary text-white border-primary shadow-xs'
               : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}>
-          Earnings Summary
+          {t("Earnings Summary")}
         </button>
         <button
           onClick={() => setSubView('transactions')}
@@ -107,7 +109,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
               ? 'bg-primary text-white border-primary shadow-xs'
               : 'bg-white text-primary border-primary hover:bg-primary/5'
           }`}>
-          Recent Orders
+          {t("Recent Orders")}
         </button>
       </div>
 
@@ -115,7 +117,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
       {loading && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-[13px] text-outline font-medium">Loading earnings...</p>
+          <p className="text-[13px] text-outline font-medium">{t("Loading earnings...")}</p>
         </div>
       )}
 
@@ -127,7 +129,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
           <button
             onClick={fetchEarnings}
             className="px-4 py-2 bg-primary text-white text-[12px] font-bold rounded-lg active:scale-95 transition-transform">
-            Retry
+            {t("Retry")}
           </button>
         </div>
       )}
@@ -142,11 +144,11 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                 <Wallet className="!text-[100px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               </div>
               <div className="relative z-10 text-left">
-                <p className="text-[11px] uppercase tracking-wider text-white/80 font-bold">Available Balance</p>
+                <p className="text-[11px] uppercase tracking-wider text-white/80 font-bold">{t("Available Balance")}</p>
                 <div className="mt-2 text-3xl font-extrabold text-white">{fmt(availableBalance)}</div>
                 <div className="mt-1 flex items-center text-[12px] text-white/85">
                   <Receipt className="text-[14px] mr-1" />
-                  {totalOrders} total delivered orders
+                  {t("{{totalOrders}} total delivered orders", { totalOrders })}
                 </div>
               </div>
             </div>
@@ -176,14 +178,14 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
             {/* VAT Breakdown Card */}
             <div className="bg-surface-container-lowest rounded-xl p-4 shadow-xs border border-outline-variant/25 text-left">
               <div className="flex justify-between items-center mb-3 border-b border-outline-variant/15 pb-2">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">Earnings Breakdown</h2>
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">{t("Earnings Breakdown")}</h2>
                 <Info className="text-[16px] text-outline" />
               </div>
 
               <div className="space-y-2.5 text-[13px] font-medium">
                 {/* Gross */}
                 <div className="flex justify-between items-center">
-                  <span className="text-on-surface-variant">Gross Meal Revenue</span>
+                  <span className="text-on-surface-variant">{t("Gross Meal Revenue")}</span>
                   <span className="font-bold text-on-surface">{fmt(grossEarnings)}</span>
                 </div>
 
@@ -191,8 +193,8 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                 {(commissionVatRate > 0 || commVatDed > 0) && (
                   <div className="flex justify-between items-center">
                     <div className="flex flex-col">
-                      <span className="text-on-surface-variant">Commission VAT {commissionVatRate > 0 ? `${commissionVatRate}%` : ''}</span>
-                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">(platform fee)</span>
+                      <span className="text-on-surface-variant">{t("Commission VAT {{value}}", { value: commissionVatRate > 0 ? `${commissionVatRate}%` : '' })}</span>
+                      <span className="text-[10px] text-outline italic font-medium leading-none mt-0.5">{t("(platform fee)")}</span>
                     </div>
                     <span className="bg-error/5 text-error px-2.5 py-0.5 rounded-full font-bold text-[12px]">
                       -{fmt(commVatDed)}
@@ -203,19 +205,19 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                 {/* No deductions configured */}
                 {commissionVatRate === 0 && totalDeductions === 0 && (
                   <div className="text-[12px] text-outline italic py-1">
-                    No commission rates configured by admin yet.
+                    {t("No commission rates configured by admin yet.")}
                   </div>
                 )}
 
                 <hr className="border-outline-variant/20 my-2" />
 
                 <div className="flex justify-between items-center py-0.5">
-                  <span className="font-bold text-on-surface">NET PAYOUT TO YOU</span>
+                  <span className="font-bold text-on-surface">{t("NET PAYOUT TO YOU")}</span>
                   <span className="text-xl font-extrabold text-primary">{fmt(netEarnings)}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-outline">Available (after withdrawals)</span>
+                  <span className="text-[11px] text-outline">{t("Available (after withdrawals)")}</span>
                   <span className="text-[12px] font-bold text-on-surface">{fmt(availableBalance)}</span>
                 </div>
               </div>
@@ -225,8 +227,8 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
             {totalOrders === 0 && (
               <div className="bg-white rounded-xl p-6 shadow-xs border border-outline-variant/15 text-center">
                 <Receipt className="text-[40px] text-outline/60" />
-                <p className="text-[13px] text-on-surface-variant font-medium mt-2">No completed orders yet.</p>
-                <p className="text-[11px] text-outline mt-1">Earnings will appear here once orders are delivered.</p>
+                <p className="text-[13px] text-on-surface-variant font-medium mt-2">{t("No completed orders yet.")}</p>
+                <p className="text-[11px] text-outline mt-1">{t("Earnings will appear here once orders are delivered.")}</p>
               </div>
             )}
           </div>
@@ -238,21 +240,21 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
         <div className="space-y-4 animate-fadeIn">
 
           <div className="flex justify-between items-center px-1">
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">Recent Orders</h2>
-            <span className="text-[11px] text-outline font-medium">{recentTx.length} records</span>
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-outline">{t("Recent Orders")}</h2>
+            <span className="text-[11px] text-outline font-medium">{t("{{length}} records", { length: recentTx.length })}</span>
           </div>
 
           {recentTx.length === 0 ? (
             <div className="bg-white rounded-xl p-6 text-center shadow-xs border border-outline-variant/15">
               <Inbox className="text-[40px] text-outline/60" />
-              <p className="text-[13px] text-on-surface-variant font-medium mt-2">No transactions yet.</p>
+              <p className="text-[13px] text-on-surface-variant font-medium mt-2">{t("No transactions yet.")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0 bg-transparent rounded-xl overflow-hidden">
               {recentTx.map((tx, idx) => (
                 <div
                   key={tx.transactionId || idx}
-                  onClick={() => triggerToast(`Order ${tx.orderId} — Net: ${fmt(tx.netAmount)} (Gross: ${fmt(tx.grossAmount)})`)}
+                  onClick={() => triggerToast(t("Order {{orderId}} — Net: {{fmt}} (Gross: {{fmt2}})", { orderId: tx.orderId, fmt: fmt(tx.netAmount), fmt2: fmt(tx.grossAmount) }))}
                   className="p-4 flex justify-between items-center bg-white rounded-xl border border-outline-variant/15 active:bg-surface-container/10 hover:bg-surface-container/5 transition-all cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary">
@@ -260,7 +262,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                     </div>
                     <div className="flex flex-col text-left">
                       <span className="font-bold text-[13px] text-on-surface">
-                        {tx.orderId ? `#${tx.orderId}` : 'Order'}
+                        {tx.orderId ? `#${tx.orderId}` : t("Order")}
                       </span>
                       <span className="text-[11px] text-outline font-medium">{formatDate(tx.createdAt)}</span>
                       {tx.foodNames && (
@@ -270,7 +272,7 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="font-extrabold text-[14px] text-primary">+{fmt(tx.netAmount)}</span>
-                    <span className="text-[10px] text-outline font-medium">Gross: {fmt(tx.grossAmount)}</span>
+                    <span className="text-[10px] text-outline font-medium">{t("Gross:")} {fmt(tx.grossAmount)}</span>
                     {(tx.commissionVatAmount) > 0 && (
                       <span className="text-[10px] text-error font-medium">
                         -{fmt(tx.commissionVatAmount)}
@@ -289,16 +291,16 @@ export default function EarningsManager({ transactions, onAddTransaction }) {
                 disabled={page === 1}
                 onClick={() => handlePageChange(page - 1)}
                 className="px-4 py-2 text-[12px] font-bold rounded-lg border bg-white text-primary border-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                Previous
+                {t("Previous")}
               </button>
               <span className="text-[12px] font-bold text-outline">
-                Page {page} of {earningsData.pagination.totalPages}
+                {t("Page {{page}} of {{totalPages}}", { page, totalPages: earningsData.pagination.totalPages })}
               </span>
               <button
                 disabled={page === earningsData.pagination.totalPages}
                 onClick={() => handlePageChange(page + 1)}
                 className="px-4 py-2 text-[12px] font-bold rounded-lg border bg-white text-primary border-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                Next
+                {t("Next")}
               </button>
             </div>
           )}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 /**
  * ActionSlider - Professional "Swipe to Confirm" UI Component.
@@ -13,6 +14,7 @@ export const ActionSlider = ({
   color = "bg-green-600",
   successLabel = "Confirmed ✓"
 }) => {
+  const { t } = useTranslation("driver");
   const [progress, setProgress] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
   const containerRef = useRef(null);
@@ -77,7 +79,7 @@ export const ActionSlider = ({
       <div className={`absolute inset-y-0 left-[76px] right-5 flex items-center justify-center text-center font-bold text-[11px] uppercase tracking-[0.14em] leading-none whitespace-nowrap transition-opacity duration-300 ${
         isSuccess ? 'opacity-0' : disabled ? 'text-white/70' : 'text-white/88'
       }`}>
-        {disabled ? 'Action Locked' : label}
+        {disabled ? t("Action Locked") : label}
       </div>
 
       {/* Dynamic Progress Fill */}

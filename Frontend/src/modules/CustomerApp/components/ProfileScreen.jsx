@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
@@ -99,10 +99,10 @@ export function ProfileScreen({
       const url = res.data?.data?.profileImage || res.data?.profileImage || res.data?.data?.user?.profileImage;
       if (url) {
         setFormData(prev => ({ ...prev, profileImage: url }));
-        onShowNotificationToast("Profile photo uploaded successfully!");
+        onShowNotificationToast(t("Profile photo uploaded successfully!"));
       }
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || "Failed to upload image");
+      setFormError(err.response?.data?.message || err.message || t("Failed to upload image"));
     } finally {
       setImageUploading(false);
       setFormLoading(false);
@@ -129,10 +129,10 @@ export function ProfileScreen({
       if (onUpdateProfile) {
         await onUpdateProfile(payload);
       }
-      onShowNotificationToast("Profile updated successfully!");
+      onShowNotificationToast(t("Profile updated successfully!"));
       setIsEditing(false);
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || "Failed to update profile");
+      setFormError(err.response?.data?.message || err.message || t("Failed to update profile"));
     } finally {
       setFormLoading(false);
     }
@@ -140,11 +140,11 @@ export function ProfileScreen({
 
   const handleShareReferral = () => {
     navigator.clipboard.writeText("https://dailymealbox.pl/referral?code=ANNAK");
-    onShowNotificationToast("Referral link copied to clipboard! Share with friends to earn PLN 15.");
+    onShowNotificationToast(t("Referral link copied to clipboard! Share with friends to earn PLN 15."));
   };
 
   const handleDangerActionConfirm = (action) => {
-    onShowNotificationToast(`Action '${action}' requested and sent to support division.`);
+    onShowNotificationToast(t("Action '{{action}}' requested and sent to support division.", { action }));
     setShowDangerDialog(null);
   };
 
@@ -158,11 +158,11 @@ export function ProfileScreen({
             type="button"
             onClick={() => setIsEditing(false)} 
             className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
-            title="Go back"
+            title={t("Go back")}
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-xl font-extrabold text-primary text-center">Customer Details</h1>
+          <h1 className="text-xl font-extrabold text-primary text-center">{t("Customer Details")}</h1>
           <div className="w-8" />
         </header>
 
@@ -187,7 +187,7 @@ export function ProfileScreen({
                       <span className="z-0 select-none">{formData.name ? formData.name.charAt(0).toUpperCase() : "U"}</span>
                       {formData.profileImage && formData.profileImage.trim() !== "" && (
                         <img
-                          alt="Profile Avatar"
+                          alt={t("Profile Avatar")}
                           className="absolute inset-0 w-full h-full object-cover z-10"
                           src={formData.profileImage}
                           onError={(e) => e.target.style.display = 'none'}
@@ -201,7 +201,7 @@ export function ProfileScreen({
                     )}
                     <label 
                       className="absolute bottom-1 right-1 bg-[#1f7a63] hover:bg-[#155a49] text-white w-10 h-10 rounded-full border-3 border-white flex items-center justify-center cursor-pointer shadow-md transition-all active:scale-90 z-20 group-hover:scale-105"
-                      title="Upload Profile Picture"
+                      title={t("Upload Profile Picture")}
                     >
                       <Camera size={18} />
                       <input
@@ -215,10 +215,10 @@ export function ProfileScreen({
                   </div>
 
                   <div className="mb-1">
-                    <h2 className="text-2xl font-extrabold text-slate-900">{formData.name || "Customer Account"}</h2>
+                    <h2 className="text-2xl font-extrabold text-slate-900">{formData.name || t("Customer Account")}</h2>
                     <p className="text-xs text-slate-500 font-medium flex items-center justify-center sm:justify-start gap-1.5 mt-1">
                       <Camera size={14} className="text-[#1f7a63]" />
-                      Click camera icon to upload a new profile photo
+                      {t("Click camera icon to upload a new profile photo")}
                     </p>
                   </div>
                 </div>
@@ -237,14 +237,14 @@ export function ProfileScreen({
                 <div className="space-y-4">
                   <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                     <User size={14} className="text-[#1f7a63]" />
-                    Personal Details
+                    {t("Personal Details")}
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Full Name */}
                     <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                        Full Name <span className="text-red-500">*</span>
+                        {t("Full Name")} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -253,7 +253,7 @@ export function ProfileScreen({
                           required
                           value={formData.name}
                           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter your full name"
+                          placeholder={t("Enter your full name")}
                           className="w-full text-sm pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
                           disabled={formLoading}
                         />
@@ -262,24 +262,24 @@ export function ProfileScreen({
 
                     {/* Gender */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Gender</label>
+                      <label className="text-xs font-bold text-slate-700">{t("Gender")}</label>
                       <select
                         value={formData.gender}
                         onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
                         className="w-full text-sm px-3.5 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 cursor-pointer"
                         disabled={formLoading}
                       >
-                        <option value="">Select Gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                        <option value="prefer-not-to-say">Prefer not to say</option>
+                        <option value="">{t("Select Gender")}</option>
+                        <option value="male">{t("Male")}</option>
+                        <option value="female">{t("Female")}</option>
+                        <option value="other">{t("Other")}</option>
+                        <option value="prefer-not-to-say">{t("Prefer not to say")}</option>
                       </select>
                     </div>
 
                     {/* Date of Birth */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Date of Birth</label>
+                      <label className="text-xs font-bold text-slate-700">{t("Date of Birth")}</label>
                       <div className="relative">
                         <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
@@ -300,20 +300,20 @@ export function ProfileScreen({
                 <div className="space-y-4">
                   <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                     <Mail size={14} className="text-[#1f7a63]" />
-                    Contact Information
+                    {t("Contact Information")}
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Email Address */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Email Address</label>
+                      <label className="text-xs font-bold text-slate-700">{t("Email Address")}</label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="name@example.com"
+                          placeholder={t("name@example.com")}
                           className="w-full text-sm pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-[#1f7a63] focus:ring-2 focus:ring-[#1f7a63]/20 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
                           disabled={formLoading}
                         />
@@ -323,9 +323,9 @@ export function ProfileScreen({
                     {/* Phone Number (Read-Only) */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-700">Phone Number (Read-Only)</label>
+                        <label className="text-xs font-bold text-slate-700">{t("Phone Number (Read-Only)")}</label>
                         <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1">
-                          <Lock size={10} /> Read-Only
+                          <Lock size={10} /> {t("Read-Only")}
                         </span>
                       </div>
                       <div className="relative">
@@ -339,7 +339,7 @@ export function ProfileScreen({
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-1">
                         <Info size={12} className="text-slate-400 flex-shrink-0" />
-                        Phone number is linked to auth and cannot be changed.
+                        {t("Phone number is linked to auth and cannot be changed.")}
                       </p>
                     </div>
                   </div>
@@ -353,7 +353,7 @@ export function ProfileScreen({
                     className="w-full sm:w-auto px-8 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
                     disabled={formLoading}
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                   <button
                     type="submit"
@@ -363,12 +363,12 @@ export function ProfileScreen({
                     {formLoading ? (
                       <>
                         <Loader2 className="animate-spin" size={18} />
-                        <span>Saving...</span>
+                        <span>{t("Saving...")}</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 size={18} />
-                        <span>Save Changes</span>
+                        <span>{t("Save Changes")}</span>
                       </>
                     )}
                   </button>
@@ -389,7 +389,7 @@ export function ProfileScreen({
         <button onClick={onGoBack} className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-extrabold text-primary text-center">Profile</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{t("Profile")}</h1>
         <div className="w-8" />
       </header>
 
@@ -406,7 +406,7 @@ export function ProfileScreen({
                 <span className="z-0">{currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "U"}</span>
                 {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
                   <img
-                    alt="Profile"
+                    alt={t("Profile")}
                     className="absolute inset-0 w-full h-full object-cover z-10"
                     src={currentUser.profileImage}
                     onError={(e) => e.target.style.display = 'none'}
@@ -416,9 +416,9 @@ export function ProfileScreen({
             </div>
 
             <div className="flex flex-col">
-              <h2 className="text-[20px] font-extrabold text-white leading-tight">{currentUser?.name || "Anna Kowalska"}</h2>
+              <h2 className="text-[20px] font-extrabold text-white leading-tight">{currentUser?.name || t("Anna Kowalska")}</h2>
               <p className="text-sm text-white/90">
-                {currentUser?.city || "Warsaw"} · Subscriber since {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Jan 2026"}
+                {currentUser?.city || t("Warsaw")} {t("· Subscriber since")} {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : t("Jan 2026")}
               </p>
             </div>
           </div>
@@ -433,9 +433,9 @@ export function ProfileScreen({
                 <User className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Customer Details</h3>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Customer Details")}</h3>
                 <p className="text-xs text-on-surface-variant font-medium">
-                  {currentUser?.name || "Anna Kowalska"} · {currentUser?.email || "No email set"}
+                  {currentUser?.name || t("Anna Kowalska")} · {currentUser?.email || t("No email set")}
                 </p>
               </div>
             </div>
@@ -452,8 +452,8 @@ export function ProfileScreen({
                 <Wallet className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Wallet balance</h3>
-                <p className="text-xs text-on-surface-variant font-medium">PLN {walletCredits.toFixed(2)} active credits</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Wallet balance")}</h3>
+                <p className="text-xs text-on-surface-variant font-medium">{t("PLN {{walletCredits}} active credits", { walletCredits: walletCredits.toFixed(2) })}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">
@@ -471,7 +471,7 @@ export function ProfileScreen({
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Change Language")}</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">Select your preferred language</p>
+                  <p className="text-xs text-on-surface-variant font-medium">{t("Select your preferred language")}</p>
                 </div>
               </div>
               <LanguageSwitcher selectClassName="bg-transparent border border-[#bec9c3]/40 rounded-xl px-2 py-1.5 text-xs font-bold focus:outline-none cursor-pointer text-[#1b1c1c] dark:bg-[#1a1a1a] dark:text-white" />
@@ -485,8 +485,8 @@ export function ProfileScreen({
                 <ClipboardList className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">My Subscription</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Standard Box · Next billing Feb 14</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("My Subscription")}</h3>
+                <p className="text-xs text-on-surface-variant font-medium">{t("Standard Box · Next billing Feb 14")}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
@@ -503,7 +503,7 @@ export function ProfileScreen({
                   <Building2 className="text-[22px]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-white">Office Meal Plan</h3>
+                  <h3 className="text-sm font-extrabold text-white">{t("Office Meal Plan")}</h3>
                   <p className="text-xs text-white/90 font-medium mt-0.5">
                     {currentUser.officeMealPlan.vendor?.restaurantName} · {currentUser.officeMealPlan.mealPlan?.name}
                   </p>
@@ -522,9 +522,9 @@ export function ProfileScreen({
                 <Utensils className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Diet &amp; Allergens</h3>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Diet & Allergens")}</h3>
                 <p className="text-xs text-on-surface-variant font-medium">
-                  {dietaryPrefs.dietType} · {dietaryPrefs.allergies.length > 0 ? dietaryPrefs.allergies.slice(0, 2).join(", ") + (dietaryPrefs.allergies.length > 2 ? "..." : "") : "No allergies"}
+                  {dietaryPrefs.dietType} · {dietaryPrefs.allergies.length > 0 ? dietaryPrefs.allergies.slice(0, 2).join(", ") + (dietaryPrefs.allergies.length > 2 ? "..." : "") : t("No allergies")}
                 </p>
               </div>
             </div>
@@ -541,9 +541,9 @@ export function ProfileScreen({
                 <Receipt className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Invoice Preferences</h3>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Invoice Preferences")}</h3>
                 <p className="text-xs text-on-surface-variant font-medium">
-                  {invoicePrefs.receiptType === "simple" ? "Simple receipt Only" : `VAT: ${invoicePrefs.companyName}`}
+                  {invoicePrefs.receiptType === "simple" ? t("Simple receipt Only") : t("VAT: {{companyName}}", { companyName: invoicePrefs.companyName })}
                 </p>
               </div>
             </div>
@@ -560,8 +560,8 @@ export function ProfileScreen({
                 <HelpCircle className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Help &amp; Support</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Raise complaints or view tickets</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Help & Support")}</h3>
+                <p className="text-xs text-on-surface-variant font-medium">{t("Raise complaints or view tickets")}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
@@ -576,8 +576,8 @@ export function ProfileScreen({
                 <Receipt className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">Refunds & Complaints</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Request order refunds or report issues</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Refunds & Complaints")}</h3>
+                <p className="text-xs text-on-surface-variant font-medium">{t("Request order refunds or report issues")}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
@@ -592,8 +592,8 @@ export function ProfileScreen({
                 <Info className="text-[22px]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#1a1c1a]">About Us</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Learn more about our mission</p>
+                <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("About Us")}</h3>
+                <p className="text-xs text-on-surface-variant font-medium">{t("Learn more about our mission")}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
@@ -609,11 +609,11 @@ export function ProfileScreen({
                   <CreditCard className="text-[22px]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">Payment Methods</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">Przelewy24 / BLIK</p>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Payment Methods")}</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">{t("Przelewy24 / BLIK")}</p>
                 </div>
               </div>
-              <button onClick={() => onShowNotificationToast("Payment method settings are securely managed by Przelewy24.")} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+              <button onClick={() => onShowNotificationToast(t("Payment method settings are securely managed by Przelewy24."))} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
                 {/* <span>Manage</span> */}
                 <ArrowRight className="text-sm" />
               </button>
@@ -630,11 +630,11 @@ export function ProfileScreen({
                   <Star className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">Loyalty points</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">{points} reward pts accumulation</p>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Loyalty points")}</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">{t("{{points}} reward pts accumulation", { points })}</p>
                 </div>
               </div>
-              <button onClick={() => onShowNotificationToast(`Total available rewards points: ${points} points.`)} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+              <button onClick={() => onShowNotificationToast(t("Total available rewards points: {{points}} points.", { points }))} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
                 {/* <span>View</span> */}
                 <ArrowRight className="text-sm" />
               </button>
@@ -648,12 +648,12 @@ export function ProfileScreen({
                 <Gift className="text-white text-[24px]" />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-base font-bold text-white">Referral Programme</h3>
-                <p className="text-xs text-white/80 font-medium">Invite friends, earn PLN 15 voucher</p>
+                <h3 className="text-base font-bold text-white">{t("Referral Programme")}</h3>
+                <p className="text-xs text-white/80 font-medium">{t("Invite friends, earn PLN 15 voucher")}</p>
               </div>
             </div>
             <button onClick={handleShareReferral} className="bg-white hover:bg-slate-50 text-primary px-5 py-2 rounded-full font-bold text-xs z-10 transition-transform active:scale-95 shadow">
-              Share
+              {t("Share")}
             </button>
             <div className="absolute right-[-20px] top-[-10px] opacity-10 pointer-events-none">
               <Gift className="text-[120px]" />
@@ -664,16 +664,16 @@ export function ProfileScreen({
           {/* Danger zone actions */}
           <div className="mt-6 mb-4 flex flex-col gap-3">
             <h4 className="text-[11px] font-bold text-[#6e7a74] px-1 uppercase tracking-widest">
-              Account Actions
+              {t("Account Actions")}
             </h4>
             <div className="bg-white rounded-2xl overflow-hidden border border-[#bec9c3]/20 shadow-sm divide-y divide-[#bec9c3]/20">
               <button onClick={onLogout} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left">
                 <LogOut className="text-primary" />
-                <span className="font-bold text-[13px] text-primary"> Logout</span>
+                <span className="font-bold text-[13px] text-primary"> {t("Logout")}</span>
               </button>
               <button onClick={() => setShowDangerDialog("Delete My Account")} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors active:bg-slate-100 text-left shadow-inner">
                 <Trash2 className="text-brand-red" />
-                <span className="font-bold text-[13px] text-brand-red"> Delete My Account</span>
+                <span className="font-bold text-[13px] text-brand-red"> {t("Delete My Account")}</span>
               </button>
             </div>
           </div>
@@ -684,16 +684,16 @@ export function ProfileScreen({
       {showDangerDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <h4 className="text-[18px] font-extrabold text-on-surface">Confirm Action</h4>
+            <h4 className="text-[18px] font-extrabold text-on-surface">{t("Confirm Action")}</h4>
             <p className="text-[13px] text-on-surface-variant font-medium leading-relaxed">
-              Are you sure you want to proceed with <strong>"{showDangerDialog}"</strong>? This may affect your automated weekly billing cycle.
+              <Trans t={t} i18nKey={"Are you sure you want to proceed with <0>\"{{showDangerDialog}}\"</0>? This may affect your automated weekly billing cycle."} defaults={"Are you sure you want to proceed with <0>\"{{showDangerDialog}}\"</0>? This may affect your automated weekly billing cycle."} values={{ showDangerDialog }} components={[<strong />]} />
             </p>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowDangerDialog(null)} className="flex-1 border border-[#bec9c3] text-[#3e4945] py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform">
-                Cancel
+                {t("Cancel")}
               </button>
               <button onClick={() => handleDangerActionConfirm(showDangerDialog)} className="flex-1 bg-brand-red text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform shadow-md">
-                Confirm
+                {t("Confirm")}
               </button>
             </div>
           </div>

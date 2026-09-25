@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
 import { EMAIL_REGEX } from "@/shared/utils/emailValidation";
 import { deliveryAPI } from "@/services/api";
+import { useTranslation } from "react-i18next";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -33,6 +34,7 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
 );
 
 export default function SignupStep1() {
+  const { t } = useTranslation("driver");
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
   const [focusedField, setFocusedField] = useState(null);
@@ -147,45 +149,45 @@ export default function SignupStep1() {
     const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t("Name is required");
     } else if (!isValidNameValue(formData.name)) {
-      newErrors.name = "Name can contain letters only";
+      newErrors.name = t("Name can contain letters only");
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("Email is required");
     } else if (!isValidEmailValue(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t("Please enter a valid email address");
     }
 
     if (!formData.address.trim()) {
-      newErrors.address = "Address is required";
+      newErrors.address = t("Address is required");
     }
 
 
 
     if (!formData.city.trim()) {
-      newErrors.city = "City is required";
+      newErrors.city = t("City is required");
     } else if (!isValidLocationValue(formData.city)) {
-      newErrors.city = "City can contain letters only";
+      newErrors.city = t("City can contain letters only");
     }
 
     if (!formData.state.trim()) {
-      newErrors.state = "State is required";
+      newErrors.state = t("State is required");
     } else if (!isValidLocationValue(formData.state)) {
-      newErrors.state = "State can contain letters only";
+      newErrors.state = t("State can contain letters only");
     }
 
     if (!formData.vehicleNumber.trim()) {
-      newErrors.vehicleNumber = "Vehicle number is required";
+      newErrors.vehicleNumber = t("Vehicle number is required");
     } else if (!/^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/.test(formData.vehicleNumber)) {
-      newErrors.vehicleNumber = "Invalid format (e.g., MH12AB1234)";
+      newErrors.vehicleNumber = t("Invalid format (e.g., MH12AB1234)");
     }
 
     if (!formData.drivingLicenseNumber.trim()) {
-      newErrors.drivingLicenseNumber = "Driving license is required";
+      newErrors.drivingLicenseNumber = t("Driving license is required");
     } else if (!/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(formData.drivingLicenseNumber)) {
-      newErrors.drivingLicenseNumber = "Invalid DL format (e.g., MH1220110012345)";
+      newErrors.drivingLicenseNumber = t("Invalid DL format (e.g., MH1220110012345)");
     }
 
     setErrors(newErrors);
@@ -196,7 +198,7 @@ export default function SignupStep1() {
     e.preventDefault();
 
     if (!validate()) {
-      toast.error("Please fill all required fields correctly");
+      toast.error(t("Please fill all required fields correctly"));
       return;
     }
 
@@ -218,10 +220,10 @@ export default function SignupStep1() {
         drivingLicenseNumber: formData.drivingLicenseNumber.trim().toUpperCase(),
       };
       sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
-      toast.success("Details saved");
+      toast.success(t("Details saved"));
       navigate("/food/delivery/signup/documents");
     } catch (error) {
-      toast.error("Failed to save. Please try again.");
+      toast.error(t("Failed to save. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -302,7 +304,7 @@ export default function SignupStep1() {
                 color: COLORS.primary,
               }}
             >
-              Complete Profile
+              {t("Complete Profile")}
             </h1>
           </div>
         </header>
@@ -336,10 +338,10 @@ export default function SignupStep1() {
             <section style={{ marginBottom: "8px" }}>
               <div style={{ textAlign: "center", marginBottom: "24px" }}>
                 <h2 style={{ fontSize: "18px", lineHeight: "24px", fontWeight: 600, margin: 0 }}>
-                  3-step registration
+                  {t("3-step registration")}
                 </h2>
                 <p style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, marginTop: "4px", marginBottom: 0 }}>
-                  Step 1: Basic Details
+                  {t("Step 1: Basic Details")}
                 </p>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
@@ -370,10 +372,10 @@ export default function SignupStep1() {
             {/* Title section */}
             <div>
               <h2 style={{ fontSize: "22px", lineHeight: "28px", fontWeight: 700, color: COLORS.onSurface, margin: "0 0 4px" }}>
-                Basic Details
+                {t("Basic Details")}
               </h2>
               <p style={{ fontSize: "14px", lineHeight: "20px", color: COLORS.onSurfaceVariant, margin: 0 }}>
-                Please provide your information to continue
+                {t("Please provide your information to continue")}
               </p>
             </div>
 
@@ -382,7 +384,7 @@ export default function SignupStep1() {
               {/* Name */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Full Name <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Full Name")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -392,7 +394,7 @@ export default function SignupStep1() {
                   onFocus={() => setFocusedField("name")}
                   onBlur={() => setFocusedField(null)}
                   style={getInputStyle("name")}
-                  placeholder="Enter your full name"
+                  placeholder={t("Enter your full name")}
                 />
                 {errors.name && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.name}</p>}
               </div>
@@ -400,7 +402,7 @@ export default function SignupStep1() {
               {/* Email */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Email <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Email")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <input
                   type="email"
@@ -410,7 +412,7 @@ export default function SignupStep1() {
                   onFocus={() => setFocusedField("email")}
                   onBlur={() => setFocusedField(null)}
                   style={getInputStyle("email")}
-                  placeholder="Enter your email"
+                  placeholder={t("Enter your email")}
                 />
                 {errors.email && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.email}</p>}
               </div>
@@ -418,7 +420,7 @@ export default function SignupStep1() {
               {/* Address */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Address <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Address")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <textarea
                   name="address"
@@ -432,7 +434,7 @@ export default function SignupStep1() {
                     height: "auto",
                     padding: "12px 16px",
                   }}
-                  placeholder="Enter your address"
+                  placeholder={t("Enter your address")}
                 />
                 {errors.address && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.address}</p>}
               </div>
@@ -443,7 +445,7 @@ export default function SignupStep1() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                    City <span style={{ color: "#C5221F" }}>*</span>
+                    {t("City")} <span style={{ color: "#C5221F" }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -453,13 +455,13 @@ export default function SignupStep1() {
                     onFocus={() => setFocusedField("city")}
                     onBlur={() => setFocusedField(null)}
                     style={getInputStyle("city")}
-                    placeholder="City"
+                    placeholder={t("City")}
                   />
                   {errors.city && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.city}</p>}
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                    State <span style={{ color: "#C5221F" }}>*</span>
+                    {t("State")} <span style={{ color: "#C5221F" }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -469,7 +471,7 @@ export default function SignupStep1() {
                     onFocus={() => setFocusedField("state")}
                     onBlur={() => setFocusedField(null)}
                     style={getInputStyle("state")}
-                    placeholder="State"
+                    placeholder={t("State")}
                   />
                   {errors.state && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.state}</p>}
                 </div>
@@ -478,7 +480,7 @@ export default function SignupStep1() {
               {/* Vehicle Type */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Vehicle Type <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Vehicle Type")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <select
                   name="vehicleType"
@@ -491,17 +493,17 @@ export default function SignupStep1() {
                     cursor: "pointer",
                   }}
                 >
-                  <option value="bike">Bike</option>
-                  <option value="scooter">Scooter</option>
-                  <option value="bicycle">Bicycle</option>
-                  <option value="car">Car</option>
+                  <option value="bike">{t("Bike")}</option>
+                  <option value="scooter">{t("Scooter")}</option>
+                  <option value="bicycle">{t("Bicycle")}</option>
+                  <option value="car">{t("Car")}</option>
                 </select>
               </div>
 
               {/* Vehicle Name */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Vehicle Name/Model (Optional)
+                  {t("Vehicle Name/Model (Optional)")}
                 </label>
                 <input
                   type="text"
@@ -511,14 +513,14 @@ export default function SignupStep1() {
                   onFocus={() => setFocusedField("vehicleName")}
                   onBlur={() => setFocusedField(null)}
                   style={getInputStyle("vehicleName")}
-                  placeholder="e.g., Honda Activa"
+                  placeholder={t("e.g., Honda Activa")}
                 />
               </div>
 
               {/* Vehicle Number */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Vehicle Number <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Vehicle Number")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -529,7 +531,7 @@ export default function SignupStep1() {
                   onBlur={() => setFocusedField(null)}
                   maxLength={10}
                   style={getInputStyle("vehicleNumber")}
-                  placeholder="e.g., MH12AB1234"
+                  placeholder={t("e.g., MH12AB1234")}
                 />
                 {errors.vehicleNumber && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.vehicleNumber}</p>}
               </div>
@@ -537,7 +539,7 @@ export default function SignupStep1() {
               {/* Driving License Number */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  Driving License Number <span style={{ color: "#C5221F" }}>*</span>
+                  {t("Driving License Number")} <span style={{ color: "#C5221F" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -548,7 +550,7 @@ export default function SignupStep1() {
                   onBlur={() => setFocusedField(null)}
                   maxLength={15}
                   style={getInputStyle("drivingLicenseNumber")}
-                  placeholder="e.g., MH1220110012345"
+                  placeholder={t("e.g., MH1220110012345")}
                 />
                 {errors.drivingLicenseNumber && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.drivingLicenseNumber}</p>}
               </div>
@@ -582,7 +584,7 @@ export default function SignupStep1() {
                 onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
               >
-                {isSubmitting ? "Saving..." : "Continue"}
+                {isSubmitting ? t("Saving...") : t("Continue")}
               </button>
             </form>
           </div>

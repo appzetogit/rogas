@@ -3,6 +3,7 @@ import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 
 const STATUS_COLORS = {
@@ -61,6 +62,7 @@ export function HomeScreen({
   onLogout,
   socket,
 }) {
+  const { t } = useTranslation("customer");
   const { label: slotLabel } = useDeliverySlots();
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
@@ -225,7 +227,7 @@ export function HomeScreen({
       );
       loadTodayMeals({ bustCache: true });
       onShowNotificationToast?.(
-        `⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`
+        t("⏸️ Subscription paused for {{count}} day", { count: pauseDays })
       );
       closeManage();
     } catch (err) {
@@ -233,7 +235,7 @@ export function HomeScreen({
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, pauseDays, loadTodayMeals, onShowNotificationToast, closeManage]);
+  }, [manageOrder, pauseDays, loadTodayMeals, onShowNotificationToast, closeManage, t]);
 
   const openChangeMeal = useCallback(async (order) => {
     setManageOrder(order);
@@ -271,7 +273,7 @@ export function HomeScreen({
   const userName = currentUser?.name?.split(" ")[0] || "there";
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    hour < 12 ? t("Good morning") : hour < 17 ? t("Good afternoon") : t("Good evening");
   const pointsPercent = Math.min((points / 300) * 100, 100);
 
   const filteredTodayMeal = todayMeal?.meals?.[0]?.name === "No meal set" ? null : todayMeal;
@@ -288,7 +290,7 @@ export function HomeScreen({
       <section className="bg-white rounded-2xl p-5 shadow-md border border-[#e4e2e1] transition-all duration-300 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-[17px] font-extrabold text-on-surface">
-            Tomorrow's Menu Preview 🍽️
+            {t("Tomorrow's Menu Preview 🍽️")}
           </h2>
           <button
             onClick={onGoToOrders}
@@ -318,11 +320,11 @@ export function HomeScreen({
         <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
           <div className="flex items-center gap-1.5">
             <Flame className="text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>{calories} kcal</span>
+            <span>{t("{{calories}} kcal", { calories })}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Timer className="text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>5 min prep</span>
+            <span>{t("5 min prep")}</span>
           </div>
         </div>
       </section>
@@ -360,7 +362,7 @@ export function HomeScreen({
           <div>
             <h3 className="text-base font-bold text-on-surface leading-snug">{mealName}</h3>
             {vendorName && (
-              <p className="text-[13px] text-on-surface-variant font-medium mt-0.5">by {vendorName}</p>
+              <p className="text-[13px] text-on-surface-variant font-medium mt-0.5">{t("by {{vendorName}}", { vendorName })}</p>
             )}
           </div>
           <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${statusColor}`}>
@@ -373,15 +375,15 @@ export function HomeScreen({
             <button
               onClick={() => { setManageOrder(meal); setManageMode("confirm_skip"); }}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >Skip</button>
+            >{t("Skip")}</button>
             <button
               onClick={() => { setManageOrder(meal); setManageMode("pause"); }}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >Pause</button>
+            >{t("Pause")}</button>
             <button
               onClick={() => openChangeMeal(meal)}
               className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
-            >Change</button>
+            >{t("Change")}</button>
           </div>
         )}
 
@@ -393,7 +395,7 @@ export function HomeScreen({
               className="flex-grow py-2 rounded-full border border-primary text-primary hover:bg-[#e8f3f0] text-[13px] font-semibold text-center cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               {loadingAction && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
-              Undo Skip
+              {t("Undo Skip")}
             </button>
           </div>
         )}
@@ -412,8 +414,8 @@ export function HomeScreen({
             </h1>
             <p className="text-[14px] opacity-90 font-medium">
               {filteredTomorrowMealData
-                ? `Next delivery: ${slotLabel(filteredTomorrowMealData.deliverySlot)} · ${new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" })}`
-                : "No upcoming deliveries"}
+                ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" }) })
+                : t("No upcoming deliveries")}
             </p>
           </div>
           <button
@@ -423,7 +425,7 @@ export function HomeScreen({
             <span className="z-0">{userName ? userName.charAt(0).toUpperCase() : "U"}</span>
             {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
               <img
-                alt="User profile"
+                alt={t("User profile")}
                 className="absolute inset-0 w-full h-full object-cover z-10"
                 src={currentUser.profileImage}
                 loading="eager"
@@ -440,7 +442,7 @@ export function HomeScreen({
           <div className="bg-[#F59E0B] text-white p-4 rounded-xl flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-3">
               <Sparkles className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-              <p className="text-[13px] font-bold">Multi-meal subscriptions now available!</p>
+              <p className="text-[13px] font-bold">{t("Multi-meal subscriptions now available!")}</p>
             </div>
             <button
               onClick={() => setShowBanner(false)}
@@ -469,13 +471,13 @@ export function HomeScreen({
               >
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-2xl">🍱</span>
-                  <h2 className="text-[17px] font-extrabold text-on-surface">Start Your Meal Plan</h2>
+                  <h2 className="text-[17px] font-extrabold text-on-surface">{t("Start Your Meal Plan")}</h2>
                 </div>
                 <p className="text-[14px] text-on-surface-variant font-medium mb-4">
-                  Subscribe to a daily meal plan from local vendors. Fresh, healthy, delivered daily.
+                  {t("Subscribe to a daily meal plan from local vendors. Fresh, healthy, delivered daily.")}
                 </p>
                 <div className="flex items-center gap-2 text-primary font-bold text-[14px]">
-                  <span>Browse Plans</span>
+                  <span>{t("Browse Plans")}</span>
                   <ArrowRight className="text-[18px]" />
                 </div>
               </section>
@@ -488,21 +490,21 @@ export function HomeScreen({
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="text-xl">⭐</span>
-              <span className="text-[18px] font-extrabold text-on-surface">{points} points</span>
+              <span className="text-[18px] font-extrabold text-on-surface">{t("{{points}} points", { points })}</span>
             </div>
             <button
               onClick={() => setShowPointsHist((v) => !v)}
               className="text-primary-container hover:text-primary font-bold text-[13px]"
             >
-              {showPointsHist ? "Close" : "History"}
+              {showPointsHist ? t("Close") : t("History")}
             </button>
           </div>
 
           {showPointsHist ? (
             <div className="bg-[#f6f3f2] p-3 rounded-lg space-y-2 text-[12px] font-medium border border-[#e4e2e1]">
-              <div className="flex justify-between"><span>Welcome Bonus</span><span className="text-primary font-bold">+200 pts</span></div>
-              <div className="flex justify-between"><span>First Subscription</span><span className="text-primary font-bold">+50 pts</span></div>
-              <div className="flex justify-between"><span>Profile setup complete</span><span className="text-primary font-bold">+30 pts</span></div>
+              <div className="flex justify-between"><span>{t("Welcome Bonus")}</span><span className="text-primary font-bold">{t("+200 pts")}</span></div>
+              <div className="flex justify-between"><span>{t("First Subscription")}</span><span className="text-primary font-bold">{t("+50 pts")}</span></div>
+              <div className="flex justify-between"><span>{t("Profile setup complete")}</span><span className="text-primary font-bold">{t("+30 pts")}</span></div>
             </div>
           ) : (
             <>
@@ -513,7 +515,7 @@ export function HomeScreen({
                 />
               </div>
               <p className="text-[12px] text-on-surface-variant font-medium">
-                10 pts per delivery · Redeem for discounts
+                {t("10 pts per delivery · Redeem for discounts")}
               </p>
             </>
           )}
@@ -537,21 +539,19 @@ export function HomeScreen({
 
             {manageMode === "confirm_skip" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Skip This Delivery?</h2>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Skip This Delivery?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  Your delivery for{" "}
-                  {new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}{" "}
-                  will be skipped and the day's amount will be credited to your wallet.
+                  {t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) })}
                 </p>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">{t("Cancel")}</button>
                   <button
                     onClick={handleSkip}
                     disabled={loadingAction}
                     className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Confirm Skip
+                    {t("Confirm Skip")}
                   </button>
                 </div>
               </>
@@ -559,8 +559,8 @@ export function HomeScreen({
 
             {manageMode === "pause" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
-                <p className="text-[13px] text-on-surface-variant mb-5">Select how many days to pause your subscription.</p>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Pause Subscription")}</h2>
+                <p className="text-[13px] text-on-surface-variant mb-5">{t("Select how many days to pause your subscription.")}</p>
                 <div className="flex gap-3 mb-6">
                   {[1, 2].map((d) => (
                     <button
@@ -569,19 +569,19 @@ export function HomeScreen({
                       className={`flex-1 py-4 rounded-2xl font-bold text-[15px] border-2 transition-all active:scale-95 ${pauseDays === d ? "border-primary bg-[#e8f3f0] text-primary" : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
                         }`}
                     >
-                      {d} Day{d > 1 ? "s" : ""}
+                      {t("{{count}} Day", { count: d })}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
                   <button
                     onClick={handlePause}
                     disabled={loadingAction}
                     className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
+                    {t("Pause {{count}} Day", { count: pauseDays })}
                   </button>
                 </div>
               </>
@@ -589,14 +589,14 @@ export function HomeScreen({
 
             {manageMode === "change_meal" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
-                <p className="text-[13px] text-on-surface-variant mb-4">Choose meals for this delivery from the vendor's menu.</p>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Change Meal")}</h2>
+                <p className="text-[13px] text-on-surface-variant mb-4">{t("Choose meals for this delivery from the vendor's menu.")}</p>
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
                     <UtensilsCrossed className="text-[36px] text-slate-300 mb-2" />
-                    <p className="text-[13px] text-slate-500 font-medium">No alternate meals available from this vendor right now.</p>
-                    <p className="text-[12px] text-slate-400 mt-1">Current selection will be kept.</p>
+                    <p className="text-[13px] text-slate-500 font-medium">{t("No alternate meals available from this vendor right now.")}</p>
+                    <p className="text-[12px] text-slate-400 mt-1">{t("Current selection will be kept.")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
@@ -615,7 +615,7 @@ export function HomeScreen({
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">₹{meal.pricePerDay || meal.price || "—"}/day</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">{t("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}</p>
                           </div>
                         </button>
                       );
@@ -624,14 +624,14 @@ export function HomeScreen({
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">Cancel</button>
+                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
                   <button
                     onClick={handleChangeMeal}
                     disabled={loadingAction || selectedMealIds.length === 0}
                     className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    Confirm Change
+                    {t("Confirm Change")}
                   </button>
                 </div>
               </>

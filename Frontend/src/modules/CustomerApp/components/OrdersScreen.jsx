@@ -3,6 +3,8 @@ import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
 import useDeliverySlots, { fetchDeliverySlots, to12h } from "../../../shared/hooks/useDeliverySlots";
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../shared/i18n";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
 // Slot labels/timings come from admin-configured delivery slots (see useDeliverySlots)
@@ -13,13 +15,13 @@ const slotLabelOf = (key) => {
 };
 
 const STATUS_CONFIG = {
-  scheduled: { label: "Scheduled", color: "bg-[#E8F3F0] text-primary", icon: "schedule", canManage: true },
-  preparing: { label: "Preparing 🔥", color: "bg-amber-100 text-amber-700", icon: "soup_kitchen", canManage: false },
-  ready: { label: "Ready ✓", color: "bg-blue-100 text-blue-700", icon: "check_circle", canManage: false },
-  out_for_delivery: { label: "On the Way 🛵", color: "bg-purple-100 text-purple-700", icon: "local_shipping", canManage: false },
-  delivered: { label: "Delivered ✅", color: "bg-green-100 text-green-700", icon: "done_all", canManage: false },
-  skipped: { label: "Skipped", color: "bg-red-100 text-red-600", icon: "cancel", canManage: false },
-  failed: { label: "Failed ", color: "bg-red-100 text-red-700", icon: "error", canManage: false },
+  scheduled: { label: tKey("Scheduled"), color: "bg-[#E8F3F0] text-primary", icon: "schedule", canManage: true },
+  preparing: { label: tKey("Preparing 🔥"), color: "bg-amber-100 text-amber-700", icon: "soup_kitchen", canManage: false },
+  ready: { label: tKey("Ready ✓"), color: "bg-blue-100 text-blue-700", icon: "check_circle", canManage: false },
+  out_for_delivery: { label: tKey("On the Way 🛵"), color: "bg-purple-100 text-purple-700", icon: "local_shipping", canManage: false },
+  delivered: { label: tKey("Delivered ✅"), color: "bg-green-100 text-green-700", icon: "done_all", canManage: false },
+  skipped: { label: tKey("Skipped"), color: "bg-red-100 text-red-600", icon: "cancel", canManage: false },
+  failed: { label: tKey("Failed"), color: "bg-red-100 text-red-700", icon: "error", canManage: false },
 };
 
 const TERMINAL_STATUSES = new Set(["skipped", "delivered", "failed"]);
@@ -140,6 +142,7 @@ const OrderCard = memo(function OrderCard({
   onTip,
   onRaiseComplaint,
 }) {
+  const { t: tr } = useTranslation("customer");
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
   const mealName = order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || "Meal";
   const extraMeals = (order.meals?.length ?? 1) - 1;
@@ -188,7 +191,7 @@ const OrderCard = memo(function OrderCard({
           {isActive && (
             <span className="flex items-center gap-1 bg-[#006a5c] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse inline-block" />
-              Live
+              {tr("Live")}
             </span>
           )}
         </div>
@@ -197,7 +200,7 @@ const OrderCard = memo(function OrderCard({
             <button
               onClick={() => onRaiseComplaint(order)}
               className="text-red-500 hover:text-red-700 active:scale-90 transition-transform flex items-center p-0.5 rounded-full hover:bg-red-50"
-              title="Raise Complaint"
+              title={tr("Raise Complaint")}
             >
               <Flag className="text-[18px]" />
             </button>
@@ -219,7 +222,7 @@ const OrderCard = memo(function OrderCard({
       {/* Customer Name */}
       <div className="flex items-center gap-1.5 mb-4">
         <User className="text-[16px] text-[#5c6e68]" />
-        <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || "Maria K."}</span>
+        <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || tr("Maria K.")}</span>
       </div>
 
       <div className="h-[1px] bg-[#f0eded] w-full mb-3" />
@@ -234,14 +237,14 @@ const OrderCard = memo(function OrderCard({
             </span>
             <span className={`text-[14px] font-medium ${order.status === "skipped" || order.status === "failed" ? "text-red-500" : ""
               }`}>
-              {order.status === "skipped" ? "Skipped" : order.status === "failed" ? "Failed" : "Completed"}
+              {order.status === "skipped" ? tr("Skipped") : order.status === "failed" ? tr("Failed") : tr("Completed")}
             </span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-[#006a5c]">
             <span className="material-symbols-outlined text-[18px]">{statusCfg.icon}</span>
             <span className="text-[14px] font-medium">
-              {statusCfg.label.replace(/ [🔥✓🛵✅❌]/gu, "")}
+              {tr(statusCfg.label).replace(/ [🔥✓🛵✅❌]/gu, "")}
             </span>
           </div>
         )}
@@ -251,7 +254,7 @@ const OrderCard = memo(function OrderCard({
             onClick={() => onTrackLive(order)}
             className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
           >
-            Track Live <ArrowRight className="text-[16px]" />
+            {tr("Track Live")} <ArrowRight className="text-[16px]" />
           </button>
         ) : isPast && order.status === "delivered" ? (
           <div className="flex gap-2">
@@ -263,7 +266,7 @@ const OrderCard = memo(function OrderCard({
                 }`}
             >
               <Star className={`w-3.5 h-3.5 ${order.isRated ? "fill-[#006a5c] text-[#006a5c]" : "text-gray-400"}`} />
-              <span>{order.isRated ? `Rated (${order.deliveryRating})` : "Rate"}</span>
+              <span>{order.isRated ? tr("Rated ({{deliveryRating}})", { deliveryRating: order.deliveryRating }) : tr("Rate")}</span>
             </button>
             <button
               onClick={() => onTip(order)}
@@ -273,7 +276,7 @@ const OrderCard = memo(function OrderCard({
                 }`}
             >
               <Coins className={`w-3.5 h-3.5 ${order.driverTip > 0 ? "text-amber-500 fill-amber-500" : "text-gray-400"}`} />
-              <span>{order.driverTip > 0 ? `Tipped: ₹${order.driverTip}` : "Tip"}</span>
+              <span>{order.driverTip > 0 ? tr("Tipped: ₹{{driverTip}}", { driverTip: order.driverTip }) : tr("Tip")}</span>
             </button>
           </div>
         ) : isPast && !isTerminal && statusCfg.canManage ? (
@@ -281,7 +284,7 @@ const OrderCard = memo(function OrderCard({
             onClick={() => onManage(order)}
             className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all"
           >
-            Manage
+            {tr("Manage")}
           </button>
         ) : null}
       </div>
@@ -290,15 +293,16 @@ const OrderCard = memo(function OrderCard({
 });
 
 const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
+  const { t: tr } = useTranslation("customer");
   return (
     <div className="bg-white rounded-[16px] p-4 shadow-sm border border-[#f0f0f0] mb-4">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-extrabold text-[15px] text-[#2c3e35]">
-            {order.vendorId?.restaurantName || "Pantry Vendor"}
+            {order.vendorId?.restaurantName || tr("Pantry Vendor")}
           </h3>
           <p className="text-[10px] text-[#6e7a74] uppercase tracking-wider font-bold mt-0.5">
-            Order ID: {order.orderId}
+            {tr("Order ID: {{orderId}}", { orderId: order.orderId })}
           </p>
         </div>
         <div className="bg-[#f0f8f5] px-2.5 py-1 rounded-full border border-[#d2e8de]">
@@ -310,20 +314,20 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
       
       <div className="flex justify-between items-start mt-4 pt-3 border-t border-dashed border-[#f0f0f0]">
         <div className="space-y-0.5">
-          <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Items</span>
+          <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{tr("Items")}</span>
           <div className="text-[12px] font-medium text-[#2c3e35]">
             {order.items?.map((item, idx) => (
               <div key={idx}>{item.quantity}x {item.title}</div>
             ))}
-            {(!order.items || order.items.length === 0) && "N/A"}
+            {(!order.items || order.items.length === 0) && tr("N/A")}
           </div>
         </div>
         <div className="text-right space-y-0.5">
-          <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Dates</span>
+          <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{tr("Dates")}</span>
           <span className="text-[12px] font-medium text-[#2c3e35] block">
-            Delivery: {order.deliveryDates?.join(", ") || "N/A"}
+            {tr("Delivery:")} {order.deliveryDates?.join(", ") || tr("N/A")}
             <br />
-            Slots: {order.deliverySlots?.join(", ") || "N/A"}
+            {tr("Slots:")} {order.deliverySlots?.join(", ") || tr("N/A")}
           </span>
         </div>
       </div>
@@ -331,7 +335,7 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
       <div className="mt-3 pt-3 border-t border-dashed border-[#f0f0f0]">
         <div className="space-y-0.5 mt-2 flex justify-between items-end">
           <div>
-            <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">Total Amount</span>
+            <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{tr("Total Amount")}</span>
             <span className="text-[14px] font-extrabold text-[#006a5c] block mt-1">
               ₹{order.pricing?.total ? order.pricing.total.toFixed(2) : order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2) || "0.00"}
             </span>
@@ -341,7 +345,7 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
               onClick={() => onTrackLive && onTrackLive(order)}
               className="text-[#006a5c] border border-[#006a5c] rounded-xl px-4 py-1.5 text-[13px] font-medium hover:bg-[#e8f3f0] active:scale-95 transition-all flex items-center gap-1"
             >
-              Track Live <ArrowRight className="text-[16px]" />
+              {tr("Track Live")} <ArrowRight className="text-[16px]" />
             </button>
           )}
         </div>
@@ -352,6 +356,7 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToProfile, onShowNotificationToast, socket }) {
+  const { t: tr } = useTranslation("customer");
   const [activeSection, setActiveSection] = useState(() => localStorage.getItem("ordersActiveSection") || "Meals");
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem("ordersActiveTab") || "Upcoming");
 
@@ -484,7 +489,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     setOrders(prev => patch(prev));
     patchCache("upcoming", patch);
     patchCache("past", patch);
-    const label = STATUS_CONFIG[data.status]?.label || data.status;
+    const label = tr(STATUS_CONFIG[data.status]?.label || data.status);
     onShowNotificationToast?.(`🔔 Order ${data.orderId} → ${label}`);
   };
 
@@ -546,7 +551,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
         pauseDays,
         "Customer requested pause"
       );
-      onShowNotificationToast?.(`⏸️ Subscription paused for ${pauseDays} day${pauseDays > 1 ? "s" : ""}`);
+      onShowNotificationToast?.(tr("⏸️ Subscription paused for {{count}} day", { count: pauseDays }));
       loadOrders(activeTabRef.current, activeSectionRef.current, { bustCache: true });
       closeManage();
     } catch (err) {
@@ -554,7 +559,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     } finally {
       setLoadingAction(false);
     }
-  }, [manageOrder, pauseDays, loadOrders, onShowNotificationToast, closeManage]);
+  }, [manageOrder, pauseDays, loadOrders, onShowNotificationToast, closeManage, tr]);
 
   const openChangeMeal = useCallback(async () => {
     setManageMode("change_meal");
@@ -771,7 +776,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
           onClick={onGoBack}
           className="text-primary cursor-pointer active:scale-95 transition-all w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"
         ><ArrowLeft size={24} /></button>
-        <h1 className="text-xl font-extrabold text-primary text-center">My Orders</h1>
+        <h1 className="text-xl font-extrabold text-primary text-center">{tr("My Orders")}</h1>
         <div className="w-8" />
       </header>
 
@@ -782,13 +787,13 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
             onClick={() => setActiveSection('Meals')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all duration-300 z-10 cursor-pointer ${activeSection === 'Meals' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74] hover:text-[#1F7A63]'}`}
           >
-            Meals
+            {tr("Meals")}
           </button>
           <button 
             onClick={() => setActiveSection('Pantry')}
             className={`flex-1 py-2 text-[14px] font-bold rounded-full transition-all duration-300 z-10 cursor-pointer ${activeSection === 'Pantry' ? 'bg-[#1F7A63] text-white shadow-md' : 'bg-transparent text-[#6e7a74] hover:text-[#1F7A63]'}`}
           >
-            Pantry
+            {tr("Pantry")}
           </button>
         </div>
       </div>
@@ -818,12 +823,12 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-on-surface-variant">
             <Receipt className="text-[56px] text-[#bec9c3]" />
             <p className="text-[15px] font-semibold text-center">
-              {isPast ? (activeSection === "Meals" ? "No past meal orders yet" : "No past pantry orders yet") : (activeSection === "Meals" ? "No upcoming meal deliveries" : "No upcoming pantry deliveries")}
+              {isPast ? (activeSection === "Meals" ? tr("No past meal orders yet") : tr("No past pantry orders yet")) : (activeSection === "Meals" ? tr("No upcoming meal deliveries") : tr("No upcoming pantry deliveries"))}
             </p>
             <p className="text-[13px] text-center">
               {isPast
-                ? "Your completed orders will appear here."
-                : "Subscribe to a meal plan to get started!"}
+                ? tr("Your completed orders will appear here.")
+                : tr("Subscribe to a meal plan to get started!")}
             </p>
           </div>
         ) : (
@@ -858,10 +863,10 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
               disabled={currentPage === 1}
               className="px-4 py-2 text-[14px] font-medium text-[#006a5c] border border-[#006a5c] rounded-xl disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all"
             >
-              Previous
+              {tr("Previous")}
             </button>
             <span className="text-[14px] text-gray-500 font-medium">
-              Page {currentPage} of {totalPages}
+              {tr("Page {{currentPage}} of {{totalPages}}", { currentPage, totalPages })}
             </span>
             <button
               onClick={() => {
@@ -873,7 +878,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
               disabled={currentPage === totalPages}
               className="px-4 py-2 text-[14px] font-medium text-[#006a5c] border border-[#006a5c] rounded-xl disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all"
             >
-              Next
+              {tr("Next")}
             </button>
           </div>
         )}
@@ -891,15 +896,15 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
             {manageMode === "actions" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-1">Manage Delivery</h2>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-1">{tr("Manage Delivery")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-1 font-medium">
-                  {manageOrder.meals?.[0]?.name || "Meal"}
+                  {manageOrder.meals?.[0]?.name || tr("Meal")}
                 </p>
                 <p className="text-[12px] text-on-surface-variant mb-5">
                   {manageDeliveryInfo?.dateStr} · {manageDeliveryInfo?.slotLabel}
                   {manageDeliveryInfo?.isTomorrow && (
                     <span className="ml-2 bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      TOMORROW
+                      {tr("TOMORROW")}
                     </span>
                   )}
                 </p>
@@ -913,8 +918,8 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                       <XCircle className="text-red-500 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-[14px] font-bold text-on-surface">Skip This Delivery</p>
-                      <p className="text-[12px] text-on-surface-variant font-medium">Wallet credit will be applied</p>
+                      <p className="text-[14px] font-bold text-on-surface">{tr("Skip This Delivery")}</p>
+                      <p className="text-[12px] text-on-surface-variant font-medium">{tr("Wallet credit will be applied")}</p>
                     </div>
                     <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
@@ -927,8 +932,8 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                       <ArrowRightLeft className="text-blue-500 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-[14px] font-bold text-on-surface">Change Meal</p>
-                      <p className="text-[12px] text-on-surface-variant font-medium">Switch to a different meal option</p>
+                      <p className="text-[14px] font-bold text-on-surface">{tr("Change Meal")}</p>
+                      <p className="text-[12px] text-on-surface-variant font-medium">{tr("Switch to a different meal option")}</p>
                     </div>
                     <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
@@ -941,8 +946,8 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                       <PauseCircle className="text-amber-600 text-[22px]" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-[14px] font-bold text-on-surface">Pause Subscription</p>
-                      <p className="text-[12px] text-on-surface-variant font-medium">Pause for 1–2 days</p>
+                      <p className="text-[14px] font-bold text-on-surface">{tr("Pause Subscription")}</p>
+                      <p className="text-[12px] text-on-surface-variant font-medium">{tr("Pause for 1–2 days")}</p>
                     </div>
                     <ChevronRight className="text-on-surface-variant text-[18px]" />
                   </button>
@@ -952,23 +957,23 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                   onClick={closeManage}
                   className="w-full mt-4 py-3 text-center text-[14px] font-bold text-on-surface-variant"
                 >
-                  Cancel
+                  {tr("Cancel")}
                 </button>
               </>
             )}
 
             {manageMode === "confirm_skip" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Skip This Delivery?</h2>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{tr("Skip This Delivery?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  Your {manageDeliveryInfo?.dateStr} delivery will be skipped and the day's amount will be credited to your wallet.
+                  {tr("Your {{dateStr}} delivery will be skipped and the day's amount will be credited to your wallet.", { dateStr: manageDeliveryInfo?.dateStr })}
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setManageMode("actions")}
                     className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50"
                   >
-                    Go Back
+                    {tr("Go Back")}
                   </button>
                   <button
                     onClick={handleSkip}
@@ -978,7 +983,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     {loadingAction && (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     )}
-                    Confirm Skip
+                    {tr("Confirm Skip")}
                   </button>
                 </div>
               </>
@@ -986,9 +991,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
             {manageMode === "pause" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Pause Subscription</h2>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{tr("Pause Subscription")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-5">
-                  Select how many days to pause your subscription.
+                  {tr("Select how many days to pause your subscription.")}
                 </p>
                 <div className="flex gap-3 mb-6">
                   {[1, 2].map(d => (
@@ -1000,7 +1005,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                         : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
                         }`}
                     >
-                      {d} Day{d > 1 ? "s" : ""}
+                      {tr("{{count}} Day", { count: d })}
                     </button>
                   ))}
                 </div>
@@ -1009,7 +1014,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     onClick={() => setManageMode("actions")}
                     className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant"
                   >
-                    Go Back
+                    {tr("Go Back")}
                   </button>
                   <button
                     onClick={handlePause}
@@ -1019,7 +1024,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     {loadingAction && (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     )}
-                    Pause {pauseDays} Day{pauseDays > 1 ? "s" : ""}
+                    {tr("Pause {{count}} Day", { count: pauseDays })}
                   </button>
                 </div>
               </>
@@ -1027,18 +1032,18 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
             {manageMode === "change_meal" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">Change Meal</h2>
+                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{tr("Change Meal")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-4">
-                  Choose meals for this delivery from the vendor's menu.
+                  {tr("Choose meals for this delivery from the vendor's menu.")}
                 </p>
 
                 {availableMeals.length === 0 ? (
                   <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
                     <UtensilsCrossed className="text-[36px] text-slate-300 mb-2" />
                     <p className="text-[13px] text-slate-500 font-medium">
-                      No alternate meals available from this vendor right now.
+                      {tr("No alternate meals available from this vendor right now.")}
                     </p>
-                    <p className="text-[12px] text-slate-400 mt-1">Current selection will be kept.</p>
+                    <p className="text-[12px] text-slate-400 mt-1">{tr("Current selection will be kept.")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
@@ -1063,7 +1068,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
                             <p className="text-[11px] text-on-surface-variant font-medium">
-                              ₹{meal.pricePerDay || meal.price || "—"}/day
+                              {tr("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}
                             </p>
                           </div>
                         </button>
@@ -1077,7 +1082,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     onClick={() => setManageMode("actions")}
                     className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant"
                   >
-                    Go Back
+                    {tr("Go Back")}
                   </button>
                   <button
                     onClick={handleChangeMeal}
@@ -1087,7 +1092,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     {loadingAction && (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     )}
-                    Confirm Change
+                    {tr("Confirm Change")}
                   </button>
                 </div>
               </>
@@ -1116,9 +1121,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
               </div>
 
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Rate Delivery Partner</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">{tr("Rate Delivery Partner")}</h3>
               <p className="text-xs text-gray-500 mb-6 font-medium">
-                For order #{ratingModal.order.orderId}
+                {tr("For order #{{orderId}}", { orderId: ratingModal.order.orderId })}
               </p>
 
               {/* Star Selector */}
@@ -1149,7 +1154,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 value={ratingModal.comment}
                 disabled={ratingModal.order.isRated || ratingModal.loading}
                 onChange={(e) => setRatingModal(prev => ({ ...prev, comment: e.target.value }))}
-                placeholder="Write optional feedback about the delivery..."
+                placeholder={tr("Write optional feedback about the delivery...")}
                 className="w-full min-h-[80px] p-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] mb-6 resize-none placeholder:text-gray-400"
               />
 
@@ -1161,11 +1166,11 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                   className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {ratingModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Submit Rating
+                  {tr("Submit Rating")}
                 </button>
               ) : (
                 <div className="w-full bg-slate-50 border border-gray-200 py-3 rounded-2xl text-center text-sm font-semibold text-gray-500">
-                  Rating Submitted
+                  {tr("Rating Submitted")}
                 </div>
               )}
             </div>
@@ -1193,9 +1198,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 <Coins className="w-6 h-6 text-amber-500" />
               </div>
 
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Tip Your Delivery Partner</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">{tr("Tip Your Delivery Partner")}</h3>
               <p className="text-xs text-gray-500 mb-6 leading-relaxed px-4 text-center">
-                100% of your tip goes directly to the delivery partner for their exceptional service.
+                {tr("100% of your tip goes directly to the delivery partner for their exceptional service.")}
               </p>
 
               {/* Quick Select Buttons */}
@@ -1230,7 +1235,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     const val = e.target.value.replace(/\D/g, "");
                     setTipModal(prev => ({ ...prev, amount: val }));
                   }}
-                  placeholder="Enter custom tip amount"
+                  placeholder={tr("Enter custom tip amount")}
                   className="w-full pl-8 pr-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
                 />
               </div>
@@ -1242,7 +1247,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {tipModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {tipModal.loading ? "Processing..." : `Send Tip of ₹${tipModal.amount || "0"}`}
+                {tipModal.loading ? tr("Processing...") : tr("Send Tip of ₹{{amount}}", { amount: tipModal.amount || "0" })}
               </button>
             </div>
           </div>

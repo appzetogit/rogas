@@ -12,6 +12,7 @@ import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
 import RoutesMap from './RoutesMap';
 import { useDeliveryStore } from '../store/useDeliveryStore';
 import useDeliverySlots, { to12h } from '../../../shared/hooks/useDeliverySlots';
+import { Trans, useTranslation } from "react-i18next";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -36,11 +37,12 @@ function formatTimeAgo(dateStr) {
 
 // ─── Vendor Status Badge ──────────────────────────────────────────────────────
 const VendorStatusBadge = ({ status }) => {
+   const { t } = useTranslation("driver");
    const map = {
-      scheduled: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Pending', icon: <Clock className="w-2.5 h-2.5" /> },
-      preparing: { cls: 'bg-orange-50 text-orange-700 border-orange-200', label: 'Preparing', icon: <Flame className="w-2.5 h-2.5" /> },
-      ready: { cls: 'bg-[#1F7A63]/10 text-[#1F7A63] border-[#1F7A63]/25', label: 'Ready ✓', icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
-      picked: { cls: 'bg-blue-50 text-blue-700 border-blue-200', label: 'Picked ✓', icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
+      scheduled: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: t("Pending"), icon: <Clock className="w-2.5 h-2.5" /> },
+      preparing: { cls: 'bg-orange-50 text-orange-700 border-orange-200', label: t("Preparing"), icon: <Flame className="w-2.5 h-2.5" /> },
+      ready: { cls: 'bg-[#1F7A63]/10 text-[#1F7A63] border-[#1F7A63]/25', label: t("Ready ✓"), icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
+      picked: { cls: 'bg-blue-50 text-blue-700 border-blue-200', label: t("Picked ✓"), icon: <CheckCircle2 className="w-2.5 h-2.5" /> },
    };
    const { cls, label, icon } = map[status] || map.scheduled;
    return (
@@ -51,6 +53,7 @@ const VendorStatusBadge = ({ status }) => {
 };
 
 const StopTypeChip = ({ type }) => {
+   const { t } = useTranslation("driver");
    const isPickup = type === 'pickup';
    return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isPickup
@@ -58,18 +61,19 @@ const StopTypeChip = ({ type }) => {
          : 'bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/25'
          }`}>
          {isPickup
-            ? <><Package className="w-2.5 h-2.5" /> Pickup</>
-            : <><MapPin className="w-2.5 h-2.5" /> Delivery</>
+            ? <><Package className="w-2.5 h-2.5" /> {t("Pickup")}</>
+            : <><MapPin className="w-2.5 h-2.5" /> {t("Delivery")}</>
          }
       </span>
    );
 };
 
 const StatusBadge = ({ status, isPickup = false }) => {
+   const { t } = useTranslation("driver");
    const map = {
-      pending: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Pending' },
-      completed: { cls: 'bg-green-50 text-green-700 border-green-200', label: isPickup ? 'Picked ✓' : 'Done ✓' },
-      skipped: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Skipped' }
+      pending: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: t("Pending") },
+      completed: { cls: 'bg-green-50 text-green-700 border-green-200', label: isPickup ? t("Picked ✓") : t("Done ✓") },
+      skipped: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: t("Skipped") }
    };
    const { cls, label } = map[status] || map.pending;
    return (
@@ -81,6 +85,7 @@ const StatusBadge = ({ status, isPickup = false }) => {
 
 // ─── Stop Card ─────────────────────────────────────────────────────────────────
 const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
+   const { t } = useTranslation("driver");
    const isPickup = stop.type === 'pickup';
    const isCompleted = stop.status === 'completed';
    const isLocked = !isSlotActive; // between slots — show but locked
@@ -109,7 +114,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
          {isLocked && (
             <div className="absolute top-2 right-2 z-10">
                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded-full text-[9px] font-bold text-gray-500">
-                  🔒 Preview
+                  {t("🔒 Preview")}
                </span>
             </div>
          )}
@@ -131,7 +136,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
                      <StopTypeChip type={stop.type} />
                      {isFirst && !isCompleted && isSlotActive && (
                         <span className="ml-1.5 text-[9px] font-bold text-[#1F7A63] uppercase tracking-widest">
-                           ← NEXT STOP
+                           {t("← NEXT STOP")}
                         </span>
                      )}
                   </div>
@@ -151,7 +156,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
             {/* Order count for vendor stops */}
             {isPickup && stop.orderCount > 0 && (
                <p className="text-[10px] font-bold text-[#1F7A63] mb-1">
-                  📦 {stop.orderCount} meal box{stop.orderCount > 1 ? 'es' : ''} to collect
+                  {t("📦 {{count}} meal box to collect", { count: stop.orderCount })}
                </p>
             )}
 
@@ -172,7 +177,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 active:scale-95 transition-all"
                   >
                      <Phone className="w-3 h-3 text-[#1F7A63]" />
-                     Call
+                     {t("Call")}
                   </a>
                   {stop.lat && stop.lng && (
                      <a
@@ -183,7 +188,7 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1F7A63]/10 border border-[#1F7A63]/20 rounded-xl text-xs font-semibold text-[#1F7A63] hover:bg-[#1F7A63]/20 active:scale-95 transition-all"
                      >
                         <Navigation2 className="w-3 h-3" />
-                        Navigate
+                        {t("Navigate")}
                      </a>
                   )}
                </div>
@@ -207,6 +212,7 @@ const SkeletonCard = () => (
 
 // ─── Slot Timing Modal (shown between slots when clicking a stop) ──────────────
 const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
+   const { t } = useTranslation("driver");
    const { label, icon } = useDeliverySlots();
    const slotLabel = slot ? label(slot) : 'Next';
    const slotIcon = slot ? icon(slot) : '🕐';
@@ -237,11 +243,10 @@ const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
             </div>
 
             <h3 className="text-base font-black text-gray-900 mb-1">
-               {slotLabel} Slot Preview
+               {t("{{slotLabel}} Slot Preview", { slotLabel })}
             </h3>
             <p className="text-xs text-gray-500 font-medium mb-4 leading-relaxed">
-               This stop is scheduled for the <strong>{slotLabel}</strong> meal slot.
-               The slot opens at <span className="text-[#1F7A63] font-black">{nextSlotStartTime || '—'}</span>.
+               <Trans t={t} i18nKey={"This stop is scheduled for the <0>{{slotLabel}}</0> meal slot. The slot opens at <1>{{nextSlotStartTime}}</1>."} defaults={"This stop is scheduled for the <0>{{slotLabel}}</0> meal slot. The slot opens at <1>{{nextSlotStartTime}}</1>."} values={{ slotLabel, nextSlotStartTime: nextSlotStartTime || '—' }} components={[<strong />, <span className="text-[#1F7A63] font-black" />]} />
             </p>
 
             {/* Stop info */}
@@ -251,20 +256,20 @@ const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
                      {stop?.stopIndex}
                   </div>
                   <div>
-                     <p className="text-xs font-black text-gray-900">{stop?.name || 'Stop'}</p>
+                     <p className="text-xs font-black text-gray-900">{stop?.name || t("Stop")}</p>
                      {stop?.address && <p className="text-[10px] text-gray-500 font-medium">{stop.address}</p>}
                   </div>
                </div>
                {stop?.type === 'pickup' && stop?.vendorStatus && (
                   <div className="mt-2 flex items-center gap-2">
-                     <span className="text-[10px] font-bold text-gray-500">Vendor Status:</span>
+                     <span className="text-[10px] font-bold text-gray-500">{t("Vendor Status:")}</span>
                      <VendorStatusBadge status={stop.vendorStatus} />
                   </div>
                )}
             </div>
 
             <p className="text-[10px] text-center text-gray-400 font-medium">
-               Come back at {nextSlotStartTime || 'the scheduled time'} to start your route
+               {t("Come back at {{time}} to start your route", { time: nextSlotStartTime || t("the scheduled time") })}
             </p>
          </motion.div>
       </motion.div>
@@ -274,6 +279,7 @@ const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const RoutesView = ({ onSelectStop }) => {
+   const { t } = useTranslation("driver");
    const goBack = useDeliveryBackNavigation();
    const navigate = useNavigate();
    const { isOnline } = useDeliveryStore();
@@ -298,15 +304,15 @@ export const RoutesView = ({ onSelectStop }) => {
             setRouteData(res.data);
             setLastRefresh(new Date());
          } else {
-            setError('Could not load your route.');
+            setError(t("Could not load your route."));
          }
       } catch (err) {
-         setError('Failed to load route. Please check your connection.');
+         setError(t("Failed to load route. Please check your connection."));
          console.error('[RoutesView] fetchSlotRoute error:', err);
       } finally {
          setLoading(false);
       }
-   }, []);
+   }, [t]);
 
    // ── On mount ───────────────────────────────────────────────────────────────
    useEffect(() => {
@@ -339,7 +345,7 @@ export const RoutesView = ({ onSelectStop }) => {
             });
             return { ...prev, stops: updatedStops };
          });
-         toast.info(`Vendor status updated: ${vendorStatus === 'preparing' ? '🔥 Preparing' : '✅ Ready'}`);
+         toast.info(t("Vendor status updated: {{value}}", { value: vendorStatus === 'preparing' ? '🔥 Preparing' : '✅ Ready' }));
       };
 
       socket.on('vendor_order_status_changed', handleVendorStatusChange);
@@ -354,12 +360,12 @@ export const RoutesView = ({ onSelectStop }) => {
          if (res.data?.success) {
             setRouteData(res.data);
             setLastRefresh(new Date());
-            toast.success('Route updated!');
+            toast.success(t("Route updated!"));
          } else {
-            toast.error('Could not refresh route.');
+            toast.error(t("Could not refresh route."));
          }
       } catch {
-         toast.error('Refresh failed. Please try again.');
+         toast.error(t("Refresh failed. Please try again."));
       } finally {
          setRefreshing(false);
       }
@@ -375,7 +381,7 @@ export const RoutesView = ({ onSelectStop }) => {
       // Guard: if stop is already completed, don't navigate
       const stopStatus = String(stop?.status || '').toLowerCase();
       if (stopStatus === 'completed' || stopStatus === 'delivered' || stopStatus === 'done') {
-         toast.info('This stop has already been completed.');
+         toast.info(t("This stop has already been completed."));
          return;
       }
       if (!routeData?.isSlotActive) {
@@ -420,11 +426,11 @@ export const RoutesView = ({ onSelectStop }) => {
                   <ArrowLeft className="w-4 h-4" />
                </button>
                <div>
-                  <h1 className="text-lg font-black text-white uppercase tracking-tight">My Route</h1>
+                  <h1 className="text-lg font-black text-white uppercase tracking-tight">{t("My Route")}</h1>
                   <p className="text-[10px] font-medium text-emerald-100/70 mt-0.5">
                      {isSlotActive
-                        ? `${slotIcon} ${slotLabel} slot — ${slotWindow?.start || ''} to ${slotWindow?.end || ''}`
-                        : `⏳ Preview: ${slotLabel} slot at ${nextSlotStartTime}`
+                        ? t("{{slotIcon}} {{slotLabel}} slot — {{start}} to {{end}}", { slotIcon, slotLabel, start: slotWindow?.start || '', end: slotWindow?.end || '' })
+                        : t("⏳ Preview: {{slotLabel}} slot at {{nextSlotStartTime}}", { slotLabel, nextSlotStartTime })
                      }
                   </p>
                </div>
@@ -436,7 +442,7 @@ export const RoutesView = ({ onSelectStop }) => {
                className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white border border-white/20 rounded-xl text-xs font-bold active:scale-90 transition-all disabled:opacity-40"
             >
                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-               {refreshing ? 'Updating…' : 'Refresh'}
+               {refreshing ? t("Updating…") : t("Refresh")}
             </button>
          </div>
 
@@ -450,10 +456,10 @@ export const RoutesView = ({ onSelectStop }) => {
                <span className="text-2xl">{slotIcon}</span>
                <div className="flex-1">
                   <p className={`text-xs font-black ${slotColors.text}`}>
-                     {slotLabel} slot starts at {nextSlotStartTime}
+                     {t("{{slotLabel}} slot starts at {{nextSlotStartTime}}", { slotLabel, nextSlotStartTime })}
                   </p>
                   <p className="text-[10px] text-gray-500 font-medium mt-0.5">
-                     Showing upcoming {slotLabel} route — tap any stop to see details
+                     {t("Showing upcoming {{slotLabel}} route — tap any stop to see details", { slotLabel })}
                   </p>
                </div>
             </motion.div>
@@ -490,7 +496,7 @@ export const RoutesView = ({ onSelectStop }) => {
                      onClick={() => fetchSlotRoute()}
                      className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl active:scale-95 transition-all"
                   >
-                     Retry
+                     {t("Retry")}
                   </button>
                </motion.div>
             )}
@@ -507,12 +513,12 @@ export const RoutesView = ({ onSelectStop }) => {
                   </div>
                   <div>
                      <p className="text-sm font-bold text-gray-800">
-                        {isSlotActive ? 'No Orders for This Slot' : `${slotLabel} Slot Preview`}
+                        {isSlotActive ? t("No Orders for This Slot") : t("{{slotLabel}} Slot Preview", { slotLabel })}
                      </p>
                      <p className="text-xs text-gray-400 font-medium mt-1 max-w-[240px] leading-relaxed">
                         {isSlotActive
-                           ? `No ${slotLabel} orders found for today. Check back later.`
-                           : routeData?.message || `Next slot starts at ${nextSlotStartTime}.`
+                           ? t("No {{slotLabel}} orders found for today. Check back later.", { slotLabel })
+                           : routeData?.message || t("Next slot starts at {{nextSlotStartTime}}.", { nextSlotStartTime })
                         }
                      </p>
                   </div>
@@ -521,7 +527,7 @@ export const RoutesView = ({ onSelectStop }) => {
                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1F7A63] text-white text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md shadow-[#1F7A63]/20"
                   >
                      <RefreshCw className="w-3.5 h-3.5" />
-                     Refresh
+                     {t("Refresh")}
                   </button>
                </motion.div>
             )}
@@ -535,13 +541,13 @@ export const RoutesView = ({ onSelectStop }) => {
                         onClick={() => setActiveTab('list')}
                         className={`flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === 'list' ? 'bg-white text-[#1F7A63] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
                      >
-                        My Route
+                        {t("My Route")}
                      </button>
                      <button
                         onClick={() => setActiveTab('map')}
                         className={`flex-1 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${activeTab === 'map' ? 'bg-white text-[#1F7A63] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
                      >
-                        Map
+                        {t("Map")}
                      </button>
                   </div>
 
@@ -554,15 +560,15 @@ export const RoutesView = ({ onSelectStop }) => {
                   >
                      <div className="grid grid-cols-3 gap-3 mb-3">
                         <div className="bg-[#1F7A63]/10 rounded-xl py-2 px-1 border border-[#1F7A63]/25 text-center">
-                           <p className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider mb-1">Stops</p>
+                           <p className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider mb-1">{t("Stops")}</p>
                            <p className="text-xl font-black text-gray-900">{stops.length}</p>
                         </div>
                         <div className="bg-[#3B82F6]/10 rounded-xl py-2 px-1 border border-[#3B82F6]/25 text-center">
-                           <p className="text-[9px] font-bold text-[#3B82F6] uppercase tracking-wider mb-1">Orders</p>
+                           <p className="text-[9px] font-bold text-[#3B82F6] uppercase tracking-wider mb-1">{t("Orders")}</p>
                            <p className="text-xl font-black text-gray-900">{totalOrders}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl py-2 px-1 border border-gray-100 text-center">
-                           <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Vendors</p>
+                           <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">{t("Vendors")}</p>
                            <p className="text-xl font-black text-gray-900">{totalVendors}</p>
                         </div>
                      </div>
@@ -571,8 +577,8 @@ export const RoutesView = ({ onSelectStop }) => {
                      {totalVendorStops > 0 && isSlotActive && (
                         <div className="mb-3">
                            <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vendor Readiness</span>
-                              <span className="text-[10px] font-bold text-[#1F7A63]">{readyVendors}/{totalVendorStops} ready</span>
+                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{t("Vendor Readiness")}</span>
+                              <span className="text-[10px] font-bold text-[#1F7A63]">{t("{{readyVendors}}/{{totalVendorStops}} ready", { readyVendors, totalVendorStops })}</span>
                            </div>
                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                               <motion.div
@@ -588,7 +594,7 @@ export const RoutesView = ({ onSelectStop }) => {
                      {/* Last updated */}
                      <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium">
                         <Clock className="w-3 h-3" />
-                        Updated {lastRefresh ? formatTimeAgo(lastRefresh) : '—'}
+                        {t("Updated")} {lastRefresh ? formatTimeAgo(lastRefresh) : '—'}
                      </div>
                   </motion.div>
 
@@ -602,7 +608,7 @@ export const RoutesView = ({ onSelectStop }) => {
                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${isSlotActive ? 'bg-[#1F7A63]/10 border-[#1F7A63]/20' : `${slotColors.bg} ${slotColors.border}`}`}>
                         <span>{slotIcon}</span>
                         <span className={`text-[10px] font-bold ${isSlotActive ? 'text-[#1F7A63]' : slotColors.text}`}>
-                           {isSlotActive ? `Active: ${slotLabel}` : `Preview: ${slotLabel} at ${nextSlotStartTime}`}
+                           {isSlotActive ? t("Active: {{slotLabel}}", { slotLabel }) : t("Preview: {{slotLabel}} at {{nextSlotStartTime}}", { slotLabel, nextSlotStartTime })}
                         </span>
                         {isSlotActive && (
                            <span className="w-1.5 h-1.5 rounded-full bg-[#1F7A63] animate-pulse" />
@@ -617,7 +623,7 @@ export const RoutesView = ({ onSelectStop }) => {
                         {pendingStops.length > 0 && (
                            <div key="pending">
                               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
-                                 {isSlotActive ? `Upcoming — ${pendingStops.length} stops` : `${slotLabel} Preview — ${pendingStops.length} stops`}
+                                 {isSlotActive ? t("Upcoming — {{length}} stops", { length: pendingStops.length }) : t("{{slotLabel}} Preview — {{length}} stops", { slotLabel, length: pendingStops.length })}
                               </p>
                               <div className="space-y-3">
                                  {pendingStops.map((stop, idx) => (
@@ -638,7 +644,7 @@ export const RoutesView = ({ onSelectStop }) => {
                         {completedStops.length > 0 && (
                            <div key="completed">
                               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1 mt-2">
-                                 Completed — {completedStops.length} stops
+                                 {t("Completed — {{length}} stops", { length: completedStops.length })}
                               </p>
                               <div className="space-y-3">
                                  {completedStops.map((stop, idx) => (
@@ -664,7 +670,7 @@ export const RoutesView = ({ onSelectStop }) => {
                         className="space-y-3"
                      >
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
-                           Map View — {slotLabel} Route
+                           {t("Map View — {{slotLabel}} Route", { slotLabel })}
                         </p>
                         <RoutesMap stops={stops.map(s => ({
                            ...s,
@@ -723,13 +729,10 @@ export const RoutesView = ({ onSelectStop }) => {
                      </div>
 
                      <h3 className="text-lg text-center font-black text-gray-900 mb-2">
-                        You are Offline!
+                        {t("You are Offline!")}
                      </h3>
                      <p className="text-xs text-gray-500 font-medium mb-5 leading-relaxed">
-                        You must be <strong className="text-gray-800">Online</strong> before accessing any stop.
-                        Please go back to the main screen and turn on the{' '}
-                        <span className="text-[#1F7A63] font-black">Online</span> toggle,
-                        then you can access your stops.
+                        <Trans t={t} i18nKey={"You must be <0>Online</0> before accessing any stop. Please go back to the main screen and turn on the <1>Online</1> toggle, then you can access your stops."} defaults={"You must be <0>Online</0> before accessing any stop. Please go back to the main screen and turn on the <1>Online</1> toggle, then you can access your stops."} components={[<strong className="text-gray-800" />, <span className="text-[#1F7A63] font-black" />]} />
                      </p>
 
                      {/* Visual indicator */}
@@ -738,14 +741,14 @@ export const RoutesView = ({ onSelectStop }) => {
                            <div className="w-3 h-3 rounded-full bg-gray-400" />
                         </div>
                         <div>
-                           <p className="text-xs font-black text-gray-700">Status: OFFLINE</p>
+                           <p className="text-xs font-black text-gray-700">{t("Status: OFFLINE")}</p>
                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-                              Toggle to Online to start deliveries
+                              {t("Toggle to Online to start deliveries")}
                            </p>
                         </div>
                         <div className="ml-auto">
                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-600 rounded-full text-[10px] font-black border border-red-200">
-                              🔴 Offline
+                              {t("🔴 Offline")}
                            </span>
                         </div>
                      </div>
@@ -757,7 +760,7 @@ export const RoutesView = ({ onSelectStop }) => {
                         }}
                         className="w-full py-3.5 bg-[#1F7A63] text-white font-black text-sm rounded-2xl active:scale-95 transition-all shadow-lg shadow-[#1F7A63]/20"
                      >
-                        Got It — Go Online First
+                        {t("Got It — Go Online First")}
                      </button>
                   </motion.div>
                </motion.div>

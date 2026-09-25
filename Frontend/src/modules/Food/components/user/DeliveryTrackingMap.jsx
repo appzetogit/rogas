@@ -12,6 +12,7 @@ import bikeLogo from '@food/assets/bikelogo.png';
 import { subscribeOrderTracking } from '@food/realtimeTracking';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigation } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const MAP_LIBRARIES = Object.freeze(['geometry', 'places']);
 
@@ -83,6 +84,7 @@ const DeliveryTrackingMap = ({
   order = null,
   onEtaUpdate = null
 }) => {
+  const { t } = useTranslation("customer");
   const [map, setMap] = useState(null);
   const [riderLocation, setRiderLocation] = useState(null);
   const [currentEta, setCurrentEta] = useState(null);
@@ -113,7 +115,7 @@ const DeliveryTrackingMap = ({
   if (loadError) {
     return (
       <div className="w-full h-full bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center px-4 text-center">
-        <p className="text-sm text-red-700">Google Map load failed. Please verify Maps API key and allowed localhost referrers.</p>
+        <p className="text-sm text-red-700">{t("Google Map load failed. Please verify Maps API key and allowed localhost referrers.")}</p>
       </div>
     );
   }
@@ -455,7 +457,7 @@ const DeliveryTrackingMap = ({
             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-primary overflow-hidden group-hover:scale-110 transition-transform">
               <img
                 src={order?.restaurantLogo || order?.restaurantId?.logo || order?.restaurantId?.profileImage || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`}
-                alt="Restaurant"
+                alt={t("Restaurant")}
                 className="w-full h-full object-contain rounded-full bg-gray-50"
                 onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`; }}
               />
@@ -479,7 +481,7 @@ const DeliveryTrackingMap = ({
             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-green-500 overflow-hidden group-hover:scale-110 transition-transform">
               <img
                 src={order?.customerImage || order?.userId?.profileImage || order?.userId?.avatar || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`}
-                alt="Me"
+                alt={t("Me")}
                 className="w-full h-full object-contain rounded-full bg-gray-50"
                 onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`; }}
               />
@@ -504,7 +506,7 @@ const DeliveryTrackingMap = ({
             >
               <img
                 src="/MapRider.png"
-                alt="Rider"
+                alt={t("Rider")}
                 className="w-full h-full object-contain drop-shadow-2xl"
                 onError={(e) => { e.target.src = bikeLogo; }}
               />
@@ -524,7 +526,7 @@ const DeliveryTrackingMap = ({
             <div className="bg-primary/95 backdrop-blur-xl rounded-2xl p-3 shadow-[0_10px_30px_rgba(249,115,22,0.4)] border border-orange-400/50 flex flex-col min-w-[90px] group overflow-hidden relative">
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
               <div className="flex flex-col z-10">
-                <span className="text-[9px] text-white/80 font-black uppercase tracking-[0.2em] mb-0.5">Arrival</span>
+                <span className="text-[9px] text-white/80 font-black uppercase tracking-[0.2em] mb-0.5">{t("Arrival")}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-black text-white leading-none tracking-tighter">
                     {currentEta}

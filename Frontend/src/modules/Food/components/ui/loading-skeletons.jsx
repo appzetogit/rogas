@@ -1,5 +1,6 @@
 import { Skeleton } from "@food/components/ui/skeleton"
 import { cn } from "@food/utils/utils"
+import { useTranslation } from "react-i18next";
 
 const DEFAULT_CARD_COUNT = 4
 
@@ -187,8 +188,9 @@ function TableSkeleton({ rows = 8, columns = 6, className }) {
 }
 
 function OrdersDashboardSkeleton({ className }) {
+  const { t } = useTranslation("common");
   return (
-    <LoadingSkeletonRegion label="Loading orders dashboard" className={cn("space-y-6", className)}>
+    <LoadingSkeletonRegion label={t("Loading orders dashboard")} className={cn("space-y-6", className)}>
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121212]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
@@ -209,8 +211,9 @@ function OrdersDashboardSkeleton({ className }) {
 }
 
 function WalletSkeleton({ className }) {
+  const { t } = useTranslation("common");
   return (
-    <LoadingSkeletonRegion label="Loading wallet" className={cn("space-y-6 md:space-y-8", className)}>
+    <LoadingSkeletonRegion label={t("Loading wallet")} className={cn("space-y-6 md:space-y-8", className)}>
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col items-center gap-5 md:flex-row md:items-center md:gap-6">
           <Skeleton className="h-24 w-24 rounded-[28px] md:h-28 md:w-28" />
@@ -253,8 +256,9 @@ function WalletSkeleton({ className }) {
 }
 
 function ContentPageSkeleton({ className, hero = true }) {
+  const { t } = useTranslation("common");
   return (
-    <LoadingSkeletonRegion label="Loading page" className={cn("min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-[#0a0a0a] dark:to-[#151515]", className)}>
+    <LoadingSkeletonRegion label={t("Loading page")} className={cn("min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-[#0a0a0a] dark:to-[#151515]", className)}>
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8 lg:px-8">
         <div className="mb-8 flex items-center gap-4">
           <Skeleton className="h-10 w-10 rounded-full" />
@@ -281,8 +285,9 @@ function ContentPageSkeleton({ className, hero = true }) {
 }
 
 function RestaurantDetailSkeleton({ className }) {
+  const { t } = useTranslation("common");
   return (
-    <LoadingSkeletonRegion label="Loading restaurant details" className={cn("min-h-screen bg-white dark:bg-[#0a0a0a]", className)}>
+    <LoadingSkeletonRegion label={t("Loading restaurant details")} className={cn("min-h-screen bg-white dark:bg-[#0a0a0a]", className)}>
       <div className="mx-auto max-w-6xl px-4 pb-10 pt-3">
         <div className="flex items-center justify-between">
           <Skeleton className="h-11 w-11 rounded-full" />
@@ -329,8 +334,9 @@ function RestaurantDetailSkeleton({ className }) {
 }
 
 function AppShellSkeleton({ className }) {
+  const { t } = useTranslation("common");
   return (
-    <LoadingSkeletonRegion label="Loading application" className={cn("min-h-screen bg-[radial-gradient(circle_at_top_left,#fff8ef,transparent_34%),linear-gradient(180deg,#fffdf9_0%,#fff8f1_100%)] dark:bg-[linear-gradient(180deg,#0b0b0b_0%,#151515_100%)]", className)}>
+    <LoadingSkeletonRegion label={t("Loading application")} className={cn("min-h-screen bg-[radial-gradient(circle_at_top_left,#fff8ef,transparent_34%),linear-gradient(180deg,#fffdf9_0%,#fff8f1_100%)] dark:bg-[linear-gradient(180deg,#0b0b0b_0%,#151515_100%)]", className)}>
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-5 py-6 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <Skeleton className="h-11 w-40 rounded-full" />

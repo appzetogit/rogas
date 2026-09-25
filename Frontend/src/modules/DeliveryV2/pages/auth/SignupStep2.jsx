@@ -5,6 +5,8 @@ import { deliveryAPI } from "@food/api";
 import { toast } from "sonner";
 import { openCamera } from "@food/utils/imageUploadUtils";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../../shared/i18n";
 
 const COLORS = {
   primary: "#1F7A63",
@@ -39,19 +41,19 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
 );
 
 const VEHICLES = [
-  { id: "bicycle", icon: "pedal_bike", label: "Bicycle", rate: "18-22 PLN/h" },
-  { id: "ebike",   icon: "electric_bolt", label: "E-bike",  rate: "20-25 PLN/h" },
-  { id: "scooter", icon: "moped",       label: "Scooter", rate: "26-32 PLN/h" },
-  { id: "car",     icon: "directions_car", label: "Car",  rate: "22-28 PLN/h" },
+  { id: "bicycle", icon: "pedal_bike", label: tKey("Bicycle"), rate: "18-22 PLN/h" },
+  { id: "ebike",   icon: "electric_bolt", label: tKey("E-bike"),  rate: "20-25 PLN/h" },
+  { id: "scooter", icon: "moped",       label: tKey("Scooter"), rate: "26-32 PLN/h" },
+  { id: "car",     icon: "directions_car", label: tKey("Car"),  rate: "22-28 PLN/h" },
 ];
 
 const DOCUMENTS_LIST = [
-  { id: "profilePhoto", icon: "account_circle", label: "Profile Photo" },
-  { id: "drivingLicensePhoto", icon: "badge", label: "Driving Licence (Front)" },
-  { id: "drivingLicenseBackPhoto", icon: "badge", label: "Driving Licence (Back)" },
-  { id: "nationalIdUrl", icon: "contact_mail", label: "National ID / Passport" },
-  { id: "vehicleRegistrationUrl", icon: "description", label: "Vehicle Registration" },
-  { id: "vehicleInsuranceUrl", icon: "verified_user", label: "Vehicle Insurance" },
+  { id: "profilePhoto", icon: "account_circle", label: tKey("Profile Photo") },
+  { id: "drivingLicensePhoto", icon: "badge", label: tKey("Driving Licence (Front)") },
+  { id: "drivingLicenseBackPhoto", icon: "badge", label: tKey("Driving Licence (Back)") },
+  { id: "nationalIdUrl", icon: "contact_mail", label: tKey("National ID / Passport") },
+  { id: "vehicleRegistrationUrl", icon: "description", label: tKey("Vehicle Registration") },
+  { id: "vehicleInsuranceUrl", icon: "verified_user", label: tKey("Vehicle Insurance") },
 ];
 
 const createEmptyUploadedDocs = () => ({
@@ -184,6 +186,7 @@ const getFriendlyRegistrationError = (error) => {
 };
 
 function VehicleCard({ vehicle, selected, onSelect }) {
+  const { t: tr } = useTranslation("driver");
   const [pressed, setPressed] = useState(false);
   return (
     <div
@@ -221,7 +224,7 @@ function VehicleCard({ vehicle, selected, onSelect }) {
         )}
       </div>
       <div>
-        <p style={{ fontWeight: 700, fontSize: "16px", lineHeight: "24px", margin: 0 }}>{vehicle.label}</p>
+        <p style={{ fontWeight: 700, fontSize: "16px", lineHeight: "24px", margin: 0 }}>{tr(vehicle.label)}</p>
         <p style={{
           fontSize: "12px", lineHeight: "16px", letterSpacing: "0.05em", fontWeight: 600, margin: 0,
           color: selected ? COLORS.primaryFixed : COLORS.onSurfaceVariant,
@@ -235,6 +238,7 @@ function VehicleCard({ vehicle, selected, onSelect }) {
 }
 
 function DocumentCard({ doc, uploaded, previewSrc, onUploadClick, onRemove }) {
+  const { t: tr } = useTranslation("driver");
   const iconBg = uploaded
     ? `rgba(158,243,215,0.2)`
     : `rgba(255,218,213,0.4)`;
@@ -265,15 +269,15 @@ function DocumentCard({ doc, uploaded, previewSrc, onUploadClick, onRemove }) {
           </div>
           <div>
             <p style={{ fontWeight: 700, fontSize: "14px", lineHeight: "20px", margin: 0, color: COLORS.onSurface }}>
-              {doc.label}
+              {tr(doc.label)}
             </p>
             {uploaded ? (
               <p style={{ fontSize: "12px", lineHeight: "16px", fontWeight: 600, color: COLORS.primary, margin: 0, display: "flex", alignItems: "center", gap: "4px" }}>
-                Uploaded <MaterialIcon name="check" style={{ fontSize: "14px", color: COLORS.primary }} />
+                {tr("Uploaded")} <MaterialIcon name="check" style={{ fontSize: "14px", color: COLORS.primary }} />
               </p>
             ) : (
               <p style={{ fontSize: "12px", lineHeight: "16px", fontWeight: 600, color: COLORS.tertiary, margin: 0 }}>
-                Not uploaded
+                {tr("Not uploaded")}
               </p>
             )}
           </div>
@@ -297,7 +301,7 @@ function DocumentCard({ doc, uploaded, previewSrc, onUploadClick, onRemove }) {
               transition: "filter 0.15s",
             }}
           >
-            Upload
+            {tr("Upload")}
           </button>
         ) : (
           <button
@@ -322,7 +326,7 @@ function DocumentCard({ doc, uploaded, previewSrc, onUploadClick, onRemove }) {
 
       {uploaded && previewSrc && (
         <div style={{ width: "100%", height: "144px", borderRadius: "8px", overflow: "hidden", border: `1px solid ${COLORS.outlineVariant}` }}>
-          <img src={previewSrc} alt={doc.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={previewSrc} alt={tr(doc.label)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
       )}
     </div>
@@ -330,6 +334,7 @@ function DocumentCard({ doc, uploaded, previewSrc, onUploadClick, onRemove }) {
 }
 
 export default function SignupStep2() {
+  const { t: tr } = useTranslation("driver");
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
 
@@ -436,18 +441,18 @@ export default function SignupStep2() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error(tr("Please select an image file"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
+      toast.error(tr("Image size should be less than 5MB"));
       return;
     }
 
     setDocuments((prev) => ({ ...prev, [docType]: file }));
     setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }));
     await saveFileToDB(docType, file);
-    toast.success("Document uploaded successfully");
+    toast.success(tr("Document uploaded successfully"));
   };
 
   const handleTakeCameraPhoto = (docType) => {
@@ -474,13 +479,13 @@ export default function SignupStep2() {
     const requiredIds = ["profilePhoto", "drivingLicensePhoto", "drivingLicenseBackPhoto", "nationalIdUrl", "vehicleRegistrationUrl", "vehicleInsuranceUrl"];
     const missing = requiredIds.filter((id) => !documents[id]);
     if (missing.length > 0) {
-      toast.error("Please upload all required documents");
+      toast.error(tr("Please upload all required documents"));
       return;
     }
 
     const raw = sessionStorage.getItem("deliverySignupDetails");
     if (!raw) {
-      toast.error("Session expired. Please start from Create Account.");
+      toast.error(tr("Session expired. Please start from Create Account."));
       navigate("/food/delivery/signup", { replace: true });
       return;
     }
@@ -489,7 +494,7 @@ export default function SignupStep2() {
     try {
       details = JSON.parse(raw);
     } catch {
-      toast.error("Invalid session. Please start from Create Account.");
+      toast.error(tr("Invalid session. Please start from Create Account."));
       navigate("/food/delivery/signup", { replace: true });
       return;
     }
@@ -565,10 +570,10 @@ export default function SignupStep2() {
         await clearAllFilesFromDB();
         if (isCompleteProfile) {
           sessionStorage.removeItem("deliveryNeedsRegistration");
-          toast.success("Registration successful. Please login with OTP.");
+          toast.success(tr("Registration successful. Please login with OTP."));
           setTimeout(() => navigate("/food/delivery/login", { replace: true }), 1500);
         } else {
-          toast.success("Profile submitted. Waiting for admin approval.");
+          toast.success(tr("Profile submitted. Waiting for admin approval."));
           setTimeout(() => navigate("/food/delivery", { replace: true }), 1500);
         }
       } else {
@@ -610,7 +615,7 @@ export default function SignupStep2() {
               <MaterialIcon name="arrow_back" style={{ color: COLORS.primary }} />
             </button>
             <h1 style={{ fontSize: "20px", lineHeight: "26px", fontWeight: 700, color: COLORS.primary, margin: 0 }}>
-              Register as Driver
+              {tr("Register as Driver")}
             </h1>
           </div>
           <div style={{
@@ -627,10 +632,10 @@ export default function SignupStep2() {
           <section style={{ marginBottom: "32px" }}>
             <div style={{ textAlign: "center", marginBottom: "24px" }}>
               <h2 style={{ fontSize: "18px", lineHeight: "24px", fontWeight: 600, margin: 0 }}>
-                3-step registration
+                {tr("3-step registration")}
               </h2>
               <p style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, marginTop: "4px", marginBottom: 0 }}>
-                Step 2: Vehicle &amp; Documents
+                {tr("Step 2: Vehicle & Documents")}
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
@@ -664,7 +669,7 @@ export default function SignupStep2() {
               fontSize: "12px", lineHeight: "16px", letterSpacing: "0.05em", fontWeight: 600,
               color: COLORS.outline, textTransform: "uppercase", marginBottom: "12px",
             }}>
-              Vehicle Type
+              {tr("Vehicle Type")}
             </h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               {VEHICLES.map((v) => (
@@ -684,7 +689,7 @@ export default function SignupStep2() {
               fontSize: "12px", lineHeight: "16px", letterSpacing: "0.05em", fontWeight: 600,
               color: COLORS.outline, textTransform: "uppercase", marginBottom: "4px",
             }}>
-              Required Documents
+              {tr("Required Documents")}
             </h3>
             {DOCUMENTS_LIST.map((doc) => (
               <DocumentCard
@@ -729,7 +734,7 @@ export default function SignupStep2() {
               borderRadius: "24px 24px 0 0", padding: "24px", boxSizing: "border-box"
             }}>
               <h3 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 700 }}>
-                Upload {activePicker.label}
+                {tr("Upload {{label}}", { label: activePicker.label })}
               </h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
                 <button
@@ -745,7 +750,7 @@ export default function SignupStep2() {
                   }}
                 >
                   <MaterialIcon name="photo_camera" style={{ color: "#fff" }} />
-                  <span>Camera</span>
+                  <span>{tr("Camera")}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -760,7 +765,7 @@ export default function SignupStep2() {
                   }}
                 >
                   <MaterialIcon name="image" style={{ color: "#fff" }} />
-                  <span>Gallery</span>
+                  <span>{tr("Gallery")}</span>
                 </button>
               </div>
               <button
@@ -771,7 +776,7 @@ export default function SignupStep2() {
                   fontFamily: "inherit"
                 }}
               >
-                Cancel
+                {tr("Cancel")}
               </button>
             </div>
           </div>
@@ -805,13 +810,13 @@ export default function SignupStep2() {
             }}
           >
             {submitState === "idle" && (
-              <><span>Submit for Review</span><MaterialIcon name="send" style={{ color: "#fff" }} /></>
+              <><span>{tr("Submit for Review")}</span><MaterialIcon name="send" style={{ color: "#fff" }} /></>
             )}
             {submitState === "loading" && (
-              <><MaterialIcon name="progress_activity" style={{ color: "#fff", animation: "spin 1s linear infinite" }} /><span>Processing...</span></>
+              <><MaterialIcon name="progress_activity" style={{ color: "#fff", animation: "spin 1s linear infinite" }} /><span>{tr("Processing...")}</span></>
             )}
             {submitState === "done" && (
-              <><span>Submitted for Review</span><MaterialIcon name="check" style={{ color: "#fff" }} /></>
+              <><span>{tr("Submitted for Review")}</span><MaterialIcon name="check" style={{ color: "#fff" }} /></>
             )}
           </button>
         </div>

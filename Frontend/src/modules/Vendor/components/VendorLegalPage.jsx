@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { publicAPI } from "../../../services/api/index";
+import { useTranslation } from "react-i18next";
 
 export function VendorLegalPage({ pageType }) {
+  const { t } = useTranslation("vendor");
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = location.state?.backTo;
@@ -31,16 +33,16 @@ export function VendorLegalPage({ pageType }) {
         // Vendor might have specific terms, but we fallback to general terms.
         if (pageType === "terms") {
           res = await publicAPI.getTerms("terms");
-          setTitle(res.data?.data?.title || "Terms and Conditions");
+          setTitle(res.data?.data?.title || t("Terms and Conditions"));
         } else {
           res = await publicAPI.getPrivacy("privacy");
-          setTitle(res.data?.data?.title || "Privacy Policy");
+          setTitle(res.data?.data?.title || t("Privacy Policy"));
         }
         setContent(res.data?.data?.content || "Content not available.");
       } catch (err) {
         console.error("Failed to load legal page:", err);
-        setError("Failed to load content. Please try again later.");
-        setTitle(pageType === "terms" ? "Terms and Conditions" : "Privacy Policy");
+        setError(t("Failed to load content. Please try again later."));
+        setTitle(pageType === "terms" ? t("Terms and Conditions") : t("Privacy Policy"));
       } finally {
         setLoading(false);
       }
@@ -68,7 +70,7 @@ export function VendorLegalPage({ pageType }) {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-primary">
             <Loader2 className="animate-spin w-8 h-8" />
-            <span className="text-sm font-bold">Loading...</span>
+            <span className="text-sm font-bold">{t("Loading...")}</span>
           </div>
         ) : error ? (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100 text-center">

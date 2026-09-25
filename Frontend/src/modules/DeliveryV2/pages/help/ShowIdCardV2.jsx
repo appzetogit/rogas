@@ -4,8 +4,10 @@ import { deliveryAPI } from "@food/api";
 import { toast } from "sonner";
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
+import { useTranslation } from "react-i18next";
 
 export default function ShowIdCardV2() {
+  const { t } = useTranslation("driver");
   const companyName = useCompanyName();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
@@ -21,11 +23,11 @@ export default function ShowIdCardV2() {
         if (response?.data?.success && response?.data?.data?.profile) {
           setProfileData(response.data.data.profile);
         } else {
-          toast.error("Failed to load profile data");
+          toast.error(t("Failed to load profile data"));
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
-        toast.error("Failed to load ID card data");
+        toast.error(t("Failed to load ID card data"));
       } finally {
         setLoading(false);
       }
@@ -83,7 +85,7 @@ export default function ShowIdCardV2() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-          <p className="text-gray-600">Loading ID card...</p>
+          <p className="text-gray-600">{t("Loading ID card...")}</p>
         </div>
       </div>
     );
@@ -93,8 +95,8 @@ export default function ShowIdCardV2() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Failed to load ID card data</p>
-          <button onClick={goBack} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Go Back</button>
+          <p className="text-gray-600 mb-4">{t("Failed to load ID card data")}</p>
+          <button onClick={goBack} className="px-4 py-2 bg-blue-600 text-white rounded-lg">{t("Go Back")}</button>
         </div>
       </div>
     );
@@ -148,8 +150,8 @@ export default function ShowIdCardV2() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-orange-500 mb-2">{companyName}</p>
 
             {/* Delivery Partner Title */}
-            <h1 className="text-4xl font-black text-[#2B2B2B] mb-1 leading-tight">PARTNER</h1>
-            <h2 className="text-xl font-bold text-gray-400 uppercase tracking-widest mb-6">ID CARD</h2>
+            <h1 className="text-4xl font-black text-[#2B2B2B] mb-1 leading-tight">{t("PARTNER")}</h1>
+            <h2 className="text-xl font-bold text-gray-400 uppercase tracking-widest mb-6">{t("ID CARD")}</h2>
 
             {/* Active Status Badge */}
             <div className="mb-8">
@@ -162,31 +164,31 @@ export default function ShowIdCardV2() {
             <div className="w-full space-y-8 mt-4">
               <div className="flex flex-col items-center">
                  <h3 className="text-2xl font-black text-[#2B2B2B] uppercase tracking-tight">{idCardData.name}</h3>
-                 <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Full Name</p>
+                 <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">{t("Full Name")}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-8 w-full">
                  <div className="flex flex-col items-center">
                     <span className="text-sm font-black text-[#2B2B2B]">{idCardData.id}</span>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Partner ID</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("Partner ID")}</span>
                  </div>
                  <div className="flex flex-col items-center">
                     <span className="text-sm font-black text-[#2B2B2B]">{idCardData.phone}</span>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mobile</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("Mobile")}</span>
                  </div>
               </div>
 
               {idCardData.vehicle && (
                 <div className="flex flex-col items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
                    <span className="text-sm font-black text-[#2B2B2B] uppercase">{idCardData.vehicle}</span>
-                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Registered Vehicle</span>
+                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("Registered Vehicle")}</span>
                 </div>
               )}
 
               <div className="pt-4 border-t border-gray-100">
                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose">
-                   This ID card is issued for essential delivery services only. <br/>
-                   Valid On: {idCardData.validTill}
+                   {t("This ID card is issued for essential delivery services only.")} <br/>
+                   {t("Valid On: {{validTill}}", { validTill: idCardData.validTill })}
                  </p>
               </div>
             </div>

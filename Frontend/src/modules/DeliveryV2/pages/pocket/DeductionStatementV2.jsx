@@ -9,6 +9,7 @@ import { deliveryAPI } from '@food/api';
 import { formatCurrency } from '@food/utils/currency';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
+import { useTranslation } from "react-i18next";
 
 /**
  * DeductionStatementV2 - 1:1 Match with Old DeductionStatement UI.
@@ -16,6 +17,7 @@ import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const DeductionStatementV2 = () => {
+  const { t: tr } = useTranslation("driver");
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [deductions, setDeductions] = useState([]);
@@ -47,7 +49,7 @@ export const DeductionStatementV2 = () => {
            setDeductions(filtered);
         }
       } catch (err) {
-        toast.error('Failed to load deductions');
+        toast.error(tr("Failed to load deductions"));
       } finally {
         setLoading(false);
       }
@@ -65,7 +67,7 @@ export const DeductionStatementV2 = () => {
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">Deduction statement</h1>
+          <h1 className="text-xl font-bold text-[#2B2B2B] leading-none">{tr("Deduction statement")}</h1>
        </div>
 
        {/* Main Content */}
@@ -76,7 +78,7 @@ export const DeductionStatementV2 = () => {
           {loading ? (
              <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-                <p className="text-gray-600 text-sm font-medium">Loading deductions...</p>
+                <p className="text-gray-600 text-sm font-medium">{tr("Loading deductions...")}</p>
              </div>
           ) : deductions.length === 0 ? (
              <div className="flex flex-col items-center justify-center py-12">
@@ -94,8 +96,8 @@ export const DeductionStatementV2 = () => {
                       </div>
                    ))}
                 </div>
-                <p className="text-gray-600 text-base font-bold">No transactions</p>
-                <p className="text-gray-400 text-xs font-medium mt-1">No deductions were made during this period.</p>
+                <p className="text-gray-600 text-base font-bold">{tr("No transactions")}</p>
+                <p className="text-gray-400 text-xs font-medium mt-1">{tr("No deductions were made during this period.")}</p>
              </div>
           ) : (
              <div className="space-y-3 mb-6">
@@ -111,7 +113,7 @@ export const DeductionStatementV2 = () => {
                                index % 3 === 1 ? 'bg-orange-500' : 'bg-blue-500'
                             }`}></div>
                             <div>
-                               <p className="text-[#2B2B2B] text-sm font-bold leading-tight">{item.description || 'System Deduction'}</p>
+                               <p className="text-[#2B2B2B] text-sm font-bold leading-tight">{item.description || tr("System Deduction")}</p>
                                <p className="text-gray-400 text-[10px] font-bold mt-1 uppercase tracking-tight">
                                   {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                </p>

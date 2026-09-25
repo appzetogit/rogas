@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FileText, RefreshCw } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 export default function TermsAndConditionsPage() {
+  const { t } = useTranslation("office");
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -34,8 +36,8 @@ export default function TermsAndConditionsPage() {
             <FileText className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-brand-primary tracking-tight">Terms and Conditions</h1>
-            <p className="text-sm text-brand-muted mt-1">Review the rules and guidelines for using our platform.</p>
+            <h1 className="text-2xl font-bold text-brand-primary tracking-tight">{t("Terms and Conditions")}</h1>
+            <p className="text-sm text-brand-muted mt-1">{t("Review the rules and guidelines for using our platform.")}</p>
           </div>
         </div>
       </div>
@@ -44,7 +46,7 @@ export default function TermsAndConditionsPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <RefreshCw className="w-8 h-8 animate-spin text-brand-primary/50" />
-            <p className="text-sm font-medium text-brand-muted">Loading content...</p>
+            <p className="text-sm font-medium text-brand-muted">{t("Loading content...")}</p>
           </div>
         ) : (
           <div 

@@ -9,6 +9,7 @@ import { Sparkles, ClipboardCheck, UserPlus, Star, Search, X, Utensils, Check, A
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionPlansApi } from '../services/officeApi';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
+import { Trans, useTranslation } from "react-i18next";
 
 
 export default function VendorsTab({
@@ -16,6 +17,7 @@ export default function VendorsTab({
   employees,
   onAssignEmployees,
 }) {
+  const { t } = useTranslation("office");
   // Search State for Vendors
   const [vendorSearch, setVendorSearch] = useState('');
 
@@ -160,15 +162,15 @@ export default function VendorsTab({
       {/* Search Header Bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">Curated Local Vendors</h3>
-          <p className="text-xs text-brand-muted mt-1">Discover, manage, and assign subscriptions from verified organic kitchens.</p>
+          <h3 className="text-xl font-bold text-brand-brand-primary tracking-tight">{t("Curated Local Vendors")}</h3>
+          <p className="text-xs text-brand-muted mt-1">{t("Discover, manage, and assign subscriptions from verified organic kitchens.")}</p>
         </div>
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
           <input
             type="text"
             className="w-full pl-10 pr-4 py-2 bg-white border border-brand-divider rounded-lg text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-            placeholder="Search vendors..."
+            placeholder={t("Search vendors...")}
             value={vendorSearch}
             onChange={(e) => setVendorSearch(e.target.value)}
           />
@@ -179,9 +181,9 @@ export default function VendorsTab({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 bg-white card-shadow rounded-xl p-8 relative overflow-hidden border border-brand-divider">
           <div className="relative z-10 w-3/4">
-            <h3 className="text-lg font-bold text-brand-primary mb-2">Curation Phase</h3>
+            <h3 className="text-lg font-bold text-brand-primary mb-2">{t("Curation Phase")}</h3>
             <p className="text-sm text-brand-muted leading-relaxed">
-              Assign meal subscriptions to your employees for the upcoming weekly cycle. Select verified, highly-rated local partners below to feed your teams organic, healthy daily packages.
+              {t("Assign meal subscriptions to your employees for the upcoming weekly cycle. Select verified, highly-rated local partners below to feed your teams organic, healthy daily packages.")}
             </p>
           </div>
           <div className="hidden lg:block opacity-10 absolute right-4 -bottom-4 text-brand-primary z-0 pointer-events-none">
@@ -191,11 +193,11 @@ export default function VendorsTab({
 
         <div className="bg-brand-primary text-white rounded-xl p-6 flex flex-col justify-between shadow-sm">
           <div className="flex justify-between items-start">
-            <p className="text-xs uppercase tracking-widest font-semibold opacity-80">Pending Tasks</p>
+            <p className="text-xs uppercase tracking-widest font-semibold opacity-80">{t("Pending Tasks")}</p>
             <ClipboardCheck className="w-5 h-5 text-brand-primary-light" />
           </div>
           <p className="text-4xl font-extrabold my-2">{pendingCount}</p>
-          <p className="text-xs opacity-90">Active employees waiting for a meal assignment</p>
+          <p className="text-xs opacity-90">{t("Active employees waiting for a meal assignment")}</p>
         </div>
       </div>
 
@@ -203,7 +205,7 @@ export default function VendorsTab({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {filteredVendors.length === 0 ? (
           <div className="col-span-full bg-white p-12 text-center text-brand-muted border border-brand-divider rounded-xl">
-            No local vendors match your active filters or search queries.
+            {t("No local vendors match your active filters or search queries.")}
           </div>
         ) : (
           filteredVendors.map((vendor) => (
@@ -231,7 +233,7 @@ export default function VendorsTab({
                           {renderStars(vendor.rating)}
                         </div>
                         <span className="text-white text-[11px] ml-1 opacity-90 font-medium">
-                          {vendor.rating.toFixed(1)} ({vendor.reviewsCount} reviews)
+                          {t("{{rating}} ({{reviewsCount}} reviews)", { rating: vendor.rating.toFixed(1), reviewsCount: vendor.reviewsCount })}
                         </span>
                       </div>
                     </div>
@@ -265,14 +267,14 @@ export default function VendorsTab({
                   className="flex-1 py-3 bg-white border border-brand-primary text-brand-primary hover:bg-brand-primary/5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <Utensils className="w-4 h-4" />
-                  View Meal
+                  {t("View Meal")}
                 </button>
                 <button
                   onClick={() => handleOpenAssignWizard(vendor)}
                   className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  Assign
+                  {t("Assign")}
                 </button>
               </div>
             </div>
@@ -294,7 +296,7 @@ export default function VendorsTab({
               <div className="p-6 border-b border-brand-divider bg-brand-bg/10">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-bold text-brand-text">
-                    Assign <span className="text-brand-primary">{selectedVendor.name}</span>
+                    <Trans t={t} i18nKey={"Assign <0>{{name}}</0>"} defaults={"Assign <0>{{name}}</0>"} values={{ name: selectedVendor.name }} components={[<span className="text-brand-primary" />]} />
                   </h2>
                   <button onClick={() => setSelectedVendor(null)} className="text-brand-muted hover:text-brand-text cursor-pointer">
                     <X className="w-5 h-5" />
@@ -309,7 +311,7 @@ export default function VendorsTab({
                       wizardStep === 1 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted hover:bg-brand-primary/10 hover:text-brand-primary'
                     }`}
                   >
-                    1. Employees
+                    {t("1. Employees")}
                   </div>
                   <div
                     onClick={() => {
@@ -319,7 +321,7 @@ export default function VendorsTab({
                       wizardStep === 2 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
                     }`}
                   >
-                    2. Time Slot
+                    {t("2. Time Slot")}
                   </div>
                   <div
                     onClick={() => {
@@ -329,7 +331,7 @@ export default function VendorsTab({
                       wizardStep === 3 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
                     }`}
                   >
-                    3. Plan
+                    {t("3. Plan")}
                   </div>
                   <div
                     onClick={() => {
@@ -339,7 +341,7 @@ export default function VendorsTab({
                       wizardStep === 4 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
                     }`}
                   >
-                    4. Payment
+                    {t("4. Payment")}
                   </div>
                 </div>
               </div>
@@ -353,20 +355,20 @@ export default function VendorsTab({
                       <input
                         type="text"
                         className="w-full pl-10 pr-4 py-2.5 bg-white border border-brand-divider rounded-lg text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none"
-                        placeholder="Search employee names or departments..."
+                        placeholder={t("Search employee names or departments...")}
                         value={wizardSearch}
                         onChange={(e) => setWizardSearch(e.target.value)}
                       />
                     </div>
 
                     <p className="text-[11px] text-brand-muted">
-                      Select active employees below. Checked employees will receive a daily subscription box from {selectedVendor.name}.
+                      {t("Select active employees below. Checked employees will receive a daily subscription box from {{name}}.", { name: selectedVendor.name })}
                     </p>
 
                     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                       {filteredWizardEmployees.length === 0 ? (
                         <div className="p-8 text-center text-xs text-brand-muted bg-white rounded-lg border border-brand-divider/30">
-                          No active employees match search.
+                          {t("No active employees match search.")}
                         </div>
                       ) : (
                         filteredWizardEmployees.map((emp) => {
@@ -405,7 +407,7 @@ export default function VendorsTab({
                 {wizardStep === 2 && (
                   <div className="space-y-4 py-4 text-center">
                     <p className="text-xs text-brand-muted">
-                      Select the scheduled daily delivery window for these {selectedEmployeeIds.length} employee(s).
+                      {t("Select the scheduled daily delivery window for these {{length}} employee(s).", { length: selectedEmployeeIds.length })}
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -441,18 +443,18 @@ export default function VendorsTab({
                       <div>
                         <h3 className="font-bold text-base text-brand-text flex items-center gap-2">
                           <ClipboardCheck className="w-4 h-4 text-brand-primary" />
-                          Subscription Plans
+                          {t("Subscription Plans")}
                         </h3>
                         <p className="text-xs text-brand-muted mt-0.5">{selectedVendor.name}</p>
                       </div>
                     </div>
                     
-                    <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">Select Subscription Plan</h4>
+                    <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">{t("Select Subscription Plan")}</h4>
                     
                     <div className="grid grid-cols-1 gap-4 max-h-[350px] overflow-y-auto pr-2">
                       {(!subscriptionPlans || subscriptionPlans.length === 0) ? (
                         <div className="col-span-full text-center text-xs text-brand-muted p-8 bg-white rounded-xl border border-brand-divider">
-                          No active subscription plans available.
+                          {t("No active subscription plans available.")}
                         </div>
                       ) : (
                         subscriptionPlans.map((plan) => {
@@ -473,8 +475,8 @@ export default function VendorsTab({
                                   <span className="font-extrabold text-brand-primary text-sm">₹{plan.price}</span>
                                 </div>
                                 <p className="text-xs text-brand-muted mt-1">
-                                  {plan.duration === 'week' ? 'Weekly plan' : plan.duration === 'month' ? 'Monthly plan' : 'Daily plan'} 
-                                  {plan.deliveryDays === 'mon_fri' ? ' - Monday-Friday (5 Delivery Days)' : ' - Full Week (30 Delivery Days)'}
+                                  {plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : t("Daily plan")} 
+                                  {plan.deliveryDays === 'mon_fri' ? " " + t("- Monday-Friday (5 Delivery Days)") : " " + t("- Full Week (30 Delivery Days)")}
                                 </p>
                                 {plan.description && (
                                   <p className="text-xs text-brand-text mt-2 leading-relaxed">
@@ -493,7 +495,7 @@ export default function VendorsTab({
                                       <div className="w-4 h-4 bg-brand-primary rounded-full flex items-center justify-center">
                                         <Check className="w-2.5 h-2.5 text-white" />
                                       </div>
-                                      Selected
+                                      {t("Selected")}
                                     </span>
                                   )}
                                 </div>
@@ -551,43 +553,43 @@ export default function VendorsTab({
                   return (
                     <div style={S.wrap}>
                       <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginBottom: '14px' }}>
-                        Review the price summary before proceeding to payment.
+                        {t("Review the price summary before proceeding to payment.")}
                       </p>
                       <div style={S.card}>
-                        <div style={S.hdr}>Price Summary</div>
+                        <div style={S.hdr}>{t("Price Summary")}</div>
 
                         {/* Plan details */}
                         <div style={S.info}>
-                          <Row label="Subscription Plan" value={selectedMealPlan.name} />
-                          <Row label="Plan Price"        value={`₹${planPrice.toFixed(2)}`} />
-                          <Row label="Duration"          value={selectedMealPlan.duration === 'week' ? 'Weekly (Mon–Fri)' : selectedMealPlan.duration === 'month' ? 'Monthly (Full Week)' : 'Daily'} />
-                          <Row label="Assigned Employees" value={`× ${empCount}`} />
-                          <Row label="Meal Slots"        value={`${selectedSlots.map((k) => slotLabelOf(k)).join(', ')} (× ${slotCount})`} />
+                          <Row label={t("Subscription Plan")} value={selectedMealPlan.name} />
+                          <Row label={t("Plan Price")}        value={`₹${planPrice.toFixed(2)}`} />
+                          <Row label={t("Duration")}          value={selectedMealPlan.duration === 'week' ? 'Weekly (Mon–Fri)' : selectedMealPlan.duration === 'month' ? 'Monthly (Full Week)' : 'Daily'} />
+                          <Row label={t("Assigned Employees")} value={`× ${empCount}`} />
+                          <Row label={t("Meal Slots")}        value={`${selectedSlots.map((k) => slotLabelOf(k)).join(', ')} (× ${slotCount})`} />
                         </div>
 
                         {/* Cost breakdown — shown only when user clicks ⓘ */}
                         <div style={S.break}>
-                          <Row label={`Food Total  (₹${planPrice} × ${empCount})`}  value={`₹${foodTotal.toFixed(2)}`} />
+                          <Row label={t("Food Total  (₹{{planPrice}} × {{empCount}})", { planPrice, empCount })}  value={`₹${foodTotal.toFixed(2)}`} />
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>Tax & Fee Breakdown</span>
+                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{t("Tax & Fee Breakdown")}</span>
                             <button
                               onClick={() => setShowBreakdown(p => !p)}
                               style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                              title="Show/hide breakdown"
+                              title={t("Show/hide breakdown")}
                             >ⓘ</button>
                           </div>
                           {showBreakdown && (
                             <>
-                              <Row label={`Food VAT  (${foodVatPct}% of ₹${foodTotal.toFixed(2)})`}                              value={`₹${foodVatAmt.toFixed(2)}`} />
-                              <Row label={`Delivery VAT  (${slotCount}×₹${feePerOrder}×${empCount}÷100×${deliveryVatPct}%)`}  value={`₹${deliveryVatAmt.toFixed(2)}`} />
-                              <Row label={`Platform Fee  (₹${platformFeeEach} × ${empCount})`}                                  value={`₹${platformTotal.toFixed(2)}`} />
+                              <Row label={t("Food VAT  ({{foodVatPct}}% of ₹{{foodTotal}})", { foodVatPct, foodTotal: foodTotal.toFixed(2) })}                              value={`₹${foodVatAmt.toFixed(2)}`} />
+                              <Row label={t("Delivery VAT  ({{slotCount}}×₹{{feePerOrder}}×{{empCount}}÷100×{{deliveryVatPct}}%)", { slotCount, feePerOrder, empCount, deliveryVatPct })}  value={`₹${deliveryVatAmt.toFixed(2)}`} />
+                              <Row label={t("Platform Fee  (₹{{platformFeeEach}} × {{empCount}})", { platformFeeEach, empCount })}                                  value={`₹${platformTotal.toFixed(2)}`} />
                             </>
                           )}
                         </div>
 
                         {/* Grand total */}
                         <div style={S.total}>
-                          <span style={S.tlbl}>Total Price</span>
+                          <span style={S.tlbl}>{t("Total Price")}</span>
                           <span style={S.tval}>₹{grandTotal.toFixed(2)}</span>
                         </div>
                       </div>
@@ -603,7 +605,7 @@ export default function VendorsTab({
                     onClick={() => setSelectedVendor(null)}
                     className="px-5 py-2 text-brand-muted font-bold text-xs hover:text-brand-text transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                 </div>
                 <div className="flex gap-2">
@@ -614,7 +616,7 @@ export default function VendorsTab({
                       className="px-5 py-2 border border-brand-divider text-brand-muted rounded-lg font-bold text-xs hover:bg-brand-bg transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      Back
+                      {t("Back")}
                     </button>
                   )}
                   {wizardStep < 4 ? (
@@ -627,7 +629,7 @@ export default function VendorsTab({
                       }
                       className="px-6 py-2 bg-brand-primary hover:bg-brand-primary-dark disabled:opacity-40 text-white rounded-lg font-bold text-xs transition-all cursor-pointer"
                     >
-                      Next
+                      {t("Next")}
                     </button>
                   ) : (
                     <button
@@ -636,7 +638,7 @@ export default function VendorsTab({
                       className="px-6 py-2 bg-[#6b9d8a] hover:bg-[#5a8674] disabled:opacity-40 text-white rounded-lg font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center"
                     >
                       <ClipboardCheck className="w-4 h-4" />
-                      {isProcessingPayment ? 'Processing...' : 'Proceed to Checkout'}
+                      {isProcessingPayment ? t("Processing...") : t("Proceed to Checkout")}
                     </button>
                   )}
                 </div>
@@ -658,7 +660,7 @@ export default function VendorsTab({
               {/* Header */}
               <div className="p-6 border-b border-brand-divider bg-brand-bg/10 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-brand-text">
-                  Meal Plans for <span className="text-brand-primary">{viewMealVendor.name}</span>
+                  <Trans t={t} i18nKey={"Meal Plans for <0>{{name}}</0>"} defaults={"Meal Plans for <0>{{name}}</0>"} values={{ name: viewMealVendor.name }} components={[<span className="text-brand-primary" />]} />
                 </h2>
                 <button onClick={() => setViewMealVendor(null)} className="text-brand-muted hover:text-brand-text cursor-pointer">
                   <X className="w-5 h-5" />
@@ -668,7 +670,7 @@ export default function VendorsTab({
               {/* Content */}
               <div className="p-6 overflow-y-auto bg-gray-50/50">
                 {(!viewMealVendor.mealPlans || viewMealVendor.mealPlans.length === 0) ? (
-                   <p className="text-brand-muted text-center py-8">No meal plans available for this vendor.</p>
+                   <p className="text-brand-muted text-center py-8">{t("No meal plans available for this vendor.")}</p>
                 ) : (
                    <div className="space-y-4">
                      {viewMealVendor.mealPlans.map(plan => (
@@ -687,12 +689,12 @@ export default function VendorsTab({
                          <div className="flex-1 min-w-0">
                            <div className="flex justify-between items-start mb-1">
                              <div>
-                               <h4 className="font-extrabold text-brand-text text-base truncate pr-2">{plan.name || 'Meal Box'}</h4>
-                               <p className="text-xs text-brand-muted line-clamp-1">{plan.description || 'Nutritious daily meal box'}</p>
+                               <h4 className="font-extrabold text-brand-text text-base truncate pr-2">{plan.name || t("Meal Box")}</h4>
+                               <p className="text-xs text-brand-muted line-clamp-1">{plan.description || t("Nutritious daily meal box")}</p>
                              </div>
                              {(plan.nutrition?.calories || plan.nutrition?.calories === 0) && (
                                <span className="px-2.5 py-1 bg-white border border-gray-200 text-gray-500 rounded-full font-medium text-[10px] whitespace-nowrap">
-                                 {plan.nutrition.calories} kcal
+                                 {t("{{calories}} kcal", { calories: plan.nutrition.calories })}
                                </span>
                              )}
                            </div>
@@ -700,7 +702,7 @@ export default function VendorsTab({
                            <div className="mt-2 flex items-center">
                              <span className="font-extrabold text-brand-primary text-sm">
                                {plan.currency === 'INR' ? '₹' : '$'}{plan.pricePerDay || plan.price}
-                               <span className="text-brand-muted font-medium text-xs">/day</span>
+                               <span className="text-brand-muted font-medium text-xs">{t("/day")}</span>
                              </span>
                            </div>
 

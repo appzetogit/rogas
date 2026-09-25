@@ -19,8 +19,10 @@ import {
   getVendorsApi, assignMealsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi
 } from '../services/officeApi';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from "react-i18next";
 
 export default function App() {
+  const { t } = useTranslation("office");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -95,7 +97,7 @@ export default function App() {
       await addEmployeeApi(empData);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to add employee');
+      alert(error.response?.data?.message || t("Failed to add employee"));
     }
   };
 
@@ -104,7 +106,7 @@ export default function App() {
       await updateEmployeeApi(id, updatedFields);
       fetchDashboardData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to update employee');
+      alert(error.response?.data?.message || t("Failed to update employee"));
     }
   };
 
@@ -113,7 +115,7 @@ export default function App() {
       await deleteEmployeeApi(id);
       fetchDashboardData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to delete employee');
+      alert(error.response?.data?.message || t("Failed to delete employee"));
     }
   };
 
@@ -143,7 +145,7 @@ export default function App() {
           razorpaySignature: 'mock_signature'
         });
         fetchDashboardData();
-        alert(`Subscriptions assigned for ${employeeIds.length} employee(s). Deliveries scheduled for ${deliverySlot.join(', ')}.`);
+        alert(t("Subscriptions assigned for {{length}} employee(s). Deliveries scheduled for {{deliverySlot}}.", { length: employeeIds.length, deliverySlot: deliverySlot.join(', ') }));
         return;
       }
 
@@ -169,7 +171,7 @@ export default function App() {
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: "Rogas Meal Box",
-        description: "Office Meal Subscription",
+        description: t("Office Meal Subscription"),
         order_id: orderData.orderId,
         handler: async function (response) {
           try {
@@ -184,9 +186,9 @@ export default function App() {
               razorpaySignature: response.razorpay_signature
             });
             fetchDashboardData();
-            alert(`Payment successful! Subscriptions assigned for ${employeeIds.length} employee(s).`);
+            alert(t("Payment successful! Subscriptions assigned for {{length}} employee(s).", { length: employeeIds.length }));
           } catch (error) {
-            alert(error.response?.data?.message || 'Payment verified but assignment failed. Please contact support.');
+            alert(error.response?.data?.message || t("Payment verified but assignment failed. Please contact support."));
           }
         },
         prefill: {
@@ -202,7 +204,7 @@ export default function App() {
       });
       rzp.open();
     } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Failed to initiate checkout');
+      alert(error.response?.data?.message || error.message || t("Failed to initiate checkout"));
     }
   };
 
@@ -220,7 +222,7 @@ export default function App() {
         fetchDashboardData();
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to unassign employee');
+      alert(error.response?.data?.message || t("Failed to unassign employee"));
     }
   };
 
@@ -230,7 +232,7 @@ export default function App() {
       await updateCompanyDetailsApi(updatedFields);
       fetchDashboardData();
     } catch (error) {
-      alert('Failed to update company details');
+      alert(t("Failed to update company details"));
     }
   };
 
@@ -238,27 +240,27 @@ export default function App() {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'employees':
-        return 'Employees';
+        return t("Employees");
       case 'vendors':
-        return 'Vendors & Assign';
+        return t("Vendors & Assign");
       case 'meal-plans':
-        return 'Assigned Meal Plans';
+        return t("Assigned Meal Plans");
       case 'payment-history':
-        return 'Payment History';
+        return t("Payment History");
       case 'privacy-policy':
-        return 'Privacy Policy';
+        return t("Privacy Policy");
       case 'terms-and-conditions':
-        return 'Terms and Conditions';
+        return t("Terms and Conditions");
       case 'company':
-        return 'Company Details';
+        return t("Company Details");
       default:
-        return 'DailyMealBox';
+        return t("DailyMealBox");
     }
   };
 
   // Simple Notification banner alert simulation
   const handleTriggerNotificationAlert = () => {
-    alert('System Notification: Curation Period ends soon. Please finalize subscriptions before Friday.');
+    alert(t("System Notification: Curation Period ends soon. Please finalize subscriptions before Friday."));
   };
 
   return (
@@ -327,7 +329,7 @@ export default function App() {
             <button
               onClick={handleTriggerNotificationAlert}
               className="p-2 text-brand-muted hover:bg-brand-bg rounded-full transition-colors cursor-pointer relative"
-              title="System Alerts"
+              title={t("System Alerts")}
             >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-error-text rounded-full animate-pulse"></span>
@@ -400,13 +402,13 @@ export default function App() {
 
         {/* LOGISTICS FOOTER */}
         <footer className="mt-auto px-8 py-5 border-t border-brand-divider text-brand-muted flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <p>© 2026 DailyMealBox Logistics Sp. z o.o. All rights reserved.</p>
+          <p>{t("© 2026 DailyMealBox Logistics Sp. z o.o. All rights reserved.")}</p>
           <div className="flex gap-4">
             <button onClick={() => setActiveTab('privacy-policy')} className="hover:text-brand-primary underline cursor-pointer">
-              Privacy Policy
+              {t("Privacy Policy")}
             </button>
             <button onClick={() => setActiveTab('terms-and-conditions')} className="hover:text-brand-primary underline cursor-pointer">
-              Terms & Conditions
+              {t("Terms & Conditions")}
             </button>
           </div>
         </footer>

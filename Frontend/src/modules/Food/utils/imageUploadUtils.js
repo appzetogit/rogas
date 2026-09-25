@@ -1,4 +1,5 @@
 import { toast } from "sonner"
+import i18n from "../../../shared/i18n";
 
 const openTransientImageInput = ({
   onSelectFile,
@@ -115,7 +116,7 @@ export const openBrowserCameraFallback = (onSelectFile) => {
     console.error("Browser camera fallback failed:", error)
     // Only show toast for actual errors, not for user cancellation
     if (error?.message && !error.message.includes("canceled") && !error.message.includes("cancelled")) {
-      toast.error("Could not open camera")
+      toast.error(i18n.t("Could not open camera"))
     }
   }
 }
@@ -182,7 +183,7 @@ export const openCamera = async ({ onSelectFile, fileNamePrefix = "camera-photo"
       }
 
       if (!selectedFile || !String(selectedFile.type || "").startsWith("image/")) {
-        toast.error("Failed to capture image")
+        toast.error(i18n.t("Failed to capture image"))
         return
       }
 
@@ -225,7 +226,7 @@ export const openGallery = async ({ onSelectFile, fileNamePrefix = "gallery-phot
     console.error("Gallery pick failed:", error)
     // Only show error if it's not just a user cancellation
     if (error?.message && !error.message.includes("canceled") && !error.message.includes("cancelled")) {
-      toast.error("Failed to open gallery")
+      toast.error(i18n.t("Failed to open gallery"))
     }
   }
 }

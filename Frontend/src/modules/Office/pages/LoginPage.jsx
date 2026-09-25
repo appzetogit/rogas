@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
 import { getCompanyDetailsApi } from '../services/officeApi';
 import { Utensils, Mail, Lock, RefreshCw, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Trans, useTranslation } from "react-i18next";
 
 export default function LoginPage() {
+  const { t } = useTranslation("office");
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,19 +28,19 @@ export default function LoginPage() {
     const strictEmailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*)*\.[a-zA-Z]{2,6}$/;
     
     if (!strictEmailRegex.test(lowerEmail)) {
-      setError('Please enter a valid email address.');
+      setError(t("Please enter a valid email address."));
       return;
     }
 
     // Prevent common email domain typos
     const forbiddenTlds = ['.co', '.comm', '.commm', '.con', '.c0m'];
     if (forbiddenTlds.some(tld => lowerEmail.endsWith(tld))) {
-      setError('Please enter a valid email address. Typos like .co or .comm are not allowed.');
+      setError(t("Please enter a valid email address. Typos like .co or .comm are not allowed."));
       return;
     }
 
     if (!isLogin && otpValues.some(v => !v)) {
-      setError('Please enter the 6-digit OTP.');
+      setError(t("Please enter the 6-digit OTP."));
       return;
     }
 
@@ -70,10 +72,10 @@ export default function LoginPage() {
           if (company.status === 'under_review') {
             navigate('/office/under-review');
           } else if (company.status === 'rejected') {
-            setError('Your application was rejected. Please contact support.');
+            setError(t("Your application was rejected. Please contact support."));
             localStorage.removeItem('office_token');
           } else if (company.status === 'deactivated') {
-            setError('Your account has been deactivated. Please contact support.');
+            setError(t("Your account has been deactivated. Please contact support."));
             localStorage.removeItem('office_token');
           } else {
             navigate('/office/dashboard');
@@ -88,7 +90,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || (isLogin ? 'Login failed. Please check your credentials.' : 'Registration failed.'));
+      setError(err.response?.data?.message || (isLogin ? t("Login failed. Please check your credentials.") : t("Registration failed.")));
     } finally {
       setIsSubmitting(false);
     }
@@ -111,13 +113,13 @@ export default function LoginPage() {
 
   const handleSendOtp = () => {
     if (!email) {
-      setError('Please enter your email address first.');
+      setError(t("Please enter your email address first."));
       return;
     }
     setError(null);
     // Simulate sending OTP
     setIsOtpSent(true);
-    alert(`OTP sent to ${email}`);
+    alert(t("OTP sent to {{email}}", { email }));
   };
 
   return (
@@ -142,16 +144,15 @@ export default function LoginPage() {
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-16">
               <Utensils className="text-white text-2xl font-bold" />
-              <span className="text-white font-bold text-xl tracking-tight">DailyMealBox</span>
+              <span className="text-white font-bold text-xl tracking-tight">{t("DailyMealBox")}</span>
             </div>
             
             <div>
               <h1 className="text-white text-4xl font-bold leading-[1.2] mb-6">
-                Simplify your company's<br />meal logistics.
+                <Trans t={t} i18nKey={"Simplify your company's<0></0>meal logistics."} defaults={"Simplify your company's<0></0>meal logistics."} components={[<br />]} />
               </h1>
               <p className="text-white/90 text-sm max-w-[85%] leading-relaxed">
-                Efficient corporate meal subscription management<br />
-                for high-performance teams.
+                <Trans t={t} i18nKey={"Efficient corporate meal subscription management<0></0>for high-performance teams."} defaults={"Efficient corporate meal subscription management<0></0>for high-performance teams."} components={[<br />]} />
               </p>
             </div>
           </div>
@@ -159,16 +160,16 @@ export default function LoginPage() {
           <div className="relative z-10 flex items-center gap-3 mt-12">
             <div className="flex -space-x-2">
               <div className="w-8 h-8 rounded-full border border-[#287965] bg-gray-200 overflow-hidden">
-                <img alt="User" className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=4" />
+                <img alt={t("User")} className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=4" />
               </div>
               <div className="w-8 h-8 rounded-full border border-[#287965] bg-gray-200 overflow-hidden">
-                <img alt="User" className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=5" />
+                <img alt={t("User")} className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=5" />
               </div>
               <div className="w-8 h-8 rounded-full border border-[#287965] bg-gray-200 overflow-hidden">
-                <img alt="User" className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=6" />
+                <img alt={t("User")} className="w-full h-full object-cover" src="https://i.pravatar.cc/100?img=6" />
               </div>
             </div>
-            <span className="text-white/90 text-xs font-medium">Trusted by 500+ regional vendors</span>
+            <span className="text-white/90 text-xs font-medium">{t("Trusted by 500+ regional vendors")}</span>
           </div>
         </div>
 
@@ -179,15 +180,15 @@ export default function LoginPage() {
             {/* Mobile Header */}
             <div className="md:hidden flex items-center gap-2 mb-8">
               <Utensils className="text-[#287965] text-2xl font-bold" />
-              <span className="text-[#287965] font-bold text-xl tracking-tight">DailyMealBox</span>
+              <span className="text-[#287965] font-bold text-xl tracking-tight">{t("DailyMealBox")}</span>
             </div>
 
             <div className="mb-8">
               <h2 className="text-[#1A1C1E] text-2xl font-bold mb-2">
-                {isLogin ? 'Welcome back' : 'Create an account'}
+                {isLogin ? t("Welcome back") : t("Create an account")}
               </h2>
               <p className="text-[#6C7278] text-sm">
-                {isLogin ? 'Please enter your details to access your dashboard.' : 'Sign up to start managing your office meals.'}
+                {isLogin ? t("Please enter your details to access your dashboard.") : t("Sign up to start managing your office meals.")}
               </p>
             </div>
 
@@ -202,7 +203,7 @@ export default function LoginPage() {
               
               {/* Email */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#4A4C56]">Email Address</label>
+                <label className="text-sm font-medium text-[#4A4C56]">{t("Email Address")}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]" />
                   <input
@@ -210,7 +211,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
+                    placeholder={t("name@company.com")}
                     className="w-full pl-10 pr-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-sm text-[#1A1C1E] focus:outline-none focus:border-[#287965] focus:ring-1 focus:ring-[#287965] transition-colors"
                   />
                 </div>
@@ -219,9 +220,9 @@ export default function LoginPage() {
               {/* Password */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[#4A4C56]">Password</label>
+                  <label className="text-sm font-medium text-[#4A4C56]">{t("Password")}</label>
                   <a href="#" className="text-sm font-medium text-[#287965] hover:underline">
-                    Forgot Password?
+                    {t("Forgot Password?")}
                   </a>
                 </div>
                 <div className="relative">
@@ -248,13 +249,13 @@ export default function LoginPage() {
               {!isLogin && (
                 <div className="space-y-2 mt-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-[#4A4C56]">OTP Verification</label>
+                    <label className="text-sm font-medium text-[#4A4C56]">{t("OTP Verification")}</label>
                     <button 
                       type="button" 
                       onClick={handleSendOtp}
                       className="text-sm font-bold text-[#287965] hover:underline"
                     >
-                      {isOtpSent ? 'Resend OTP' : 'Send OTP'}
+                      {isOtpSent ? t("Resend OTP") : t("Send OTP")}
                     </button>
                   </div>
                   <div className="flex gap-2 justify-between pt-1">
@@ -283,7 +284,7 @@ export default function LoginPage() {
                       className="w-4 h-4 rounded border-[#D1D5DB] text-[#287965] focus:ring-[#287965]"
                     />
                     <label htmlFor="remember" className="ml-2 text-sm text-[#6C7278] cursor-pointer">
-                      Remember for 30 days
+                      {t("Remember for 30 days")}
                     </label>
                   </div>
               )}
@@ -298,7 +299,7 @@ export default function LoginPage() {
                   <RefreshCw className="animate-spin text-[20px]" />
                 ) : (
                   <>
-                    {isLogin ? 'Sign In' : 'Create Account'}
+                    {isLogin ? t("Sign In") : t("Create Account")}
                     <ArrowRight className="text-[18px]" />
                   </>
                 )}
@@ -315,7 +316,7 @@ export default function LoginPage() {
             {/* Footer */}
             <div className="text-center">
               <p className="text-sm text-[#6C7278]">
-                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                {isLogin ? t("Don't have an account?") + " " : t("Already have an account?") + " "}
                 <button
                   type="button"
                   onClick={() => {
@@ -324,7 +325,7 @@ export default function LoginPage() {
                   }} 
                   className="text-[#287965] font-medium hover:underline focus:outline-none"
                 >
-                  {isLogin ? "Sign up" : "Sign in"}
+                  {isLogin ? t("Sign up") : t("Sign in")}
                 </button>
               </p>
             </div>
@@ -332,14 +333,7 @@ export default function LoginPage() {
             {/* Terms and Privacy Policy Links */}
             <div className="text-center mt-8 pb-4">
               <p className="text-xs text-[#9EA3AE]">
-                By proceeding, you agree to our{' '}
-                <Link to="/office/public-terms" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors">
-                  Terms & Conditions
-                </Link>
-                {' '}and{' '}
-                <Link to="/office/public-privacy" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors">
-                  Privacy Policy
-                </Link>
+                <Trans t={t} i18nKey={"By proceeding, you agree to our <0>Terms & Conditions</0> and <1>Privacy Policy</1>"} defaults={"By proceeding, you agree to our <0>Terms & Conditions</0> and <1>Privacy Policy</1>"} components={[<Link to="/office/public-terms" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors" />, <Link to="/office/public-privacy" className="text-[#6C7278] hover:text-[#287965] underline decoration-[#9EA3AE]/30 hover:decoration-[#287965] transition-colors" />]} />
               </p>
             </div>
 

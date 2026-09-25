@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const COLORS = {
   primary: "#00604c",
@@ -104,29 +105,30 @@ const FeatureCard = ({ icon, title, description }) => (
 );
 
 export default function DeliveryWelcome() {
+  const { t } = useTranslation("driver");
   const [selectedVehicle, setSelectedVehicle] = useState("ebike");
   const navigate = useNavigate();
 
   const vehicles = [
-    { id: "bicycle", icon: "pedal_bike", label: "Bicycle", rate: "18-22 PLN/h" },
-    { id: "ebike", icon: "electric_bolt", label: "E-bike", rate: "28-35 PLN/h" },
+    { id: "bicycle", icon: "pedal_bike", label: t("Bicycle"), rate: "18-22 PLN/h" },
+    { id: "ebike", icon: "electric_bolt", label: t("E-bike"), rate: "28-35 PLN/h" },
   ];
 
   const features = [
     {
       icon: "bolt",
-      title: "Instant payout available",
-      description: "Get your earnings immediately after each delivery.",
+      title: t("Instant payout available"),
+      description: t("Get your earnings immediately after each delivery."),
     },
     {
       icon: "near_me",
-      title: "Smart optimised routes",
-      description: "AI-driven navigation to maximize your deliveries per hour.",
+      title: t("Smart optimised routes"),
+      description: t("AI-driven navigation to maximize your deliveries per hour."),
     },
     {
       icon: "dashboard",
-      title: "Earnings dashboard",
-      description: "Real-time tracking of bonuses, tips, and daily goals.",
+      title: t("Earnings dashboard"),
+      description: t("Real-time tracking of bonuses, tips, and daily goals."),
     },
   ];
 
@@ -189,7 +191,7 @@ export default function DeliveryWelcome() {
             {localStorage.getItem('delivery_app_logo') ? (
               <img 
                 src={localStorage.getItem('delivery_app_logo')} 
-                alt="Delivery App Logo" 
+                alt={t("Delivery App Logo")} 
                 style={{
                   width: "80px",
                   height: "80px",
@@ -232,7 +234,7 @@ export default function DeliveryWelcome() {
                 marginBottom: "8px",
               }}
             >
-              DailyMealBox
+              {t("DailyMealBox")}
             </h1>
             <p
               style={{
@@ -243,7 +245,7 @@ export default function DeliveryWelcome() {
                 marginBottom: "4px",
               }}
             >
-              Delivery Partner
+              {t("Delivery Partner")}
             </p>
           </div>
 
@@ -292,7 +294,7 @@ export default function DeliveryWelcome() {
             onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
-            Join as Delivery Partner
+            {t("Join as Delivery Partner")}
           </button>
         </section>
 
@@ -310,7 +312,7 @@ export default function DeliveryWelcome() {
               paddingLeft: "4px",
             }}
           >
-            Why drive with us?
+            {t("Why drive with us?")}
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {features.map((f) => (

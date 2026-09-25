@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SUPPORTED_COUNTRIES } from "@/config/countries";
+import { useTranslation } from "react-i18next";
 
 export default function CountrySelector({ selectedCountry, onSelect, className = "", buttonClassName = "" }) {
+  const { t } = useTranslation("common");
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const modalRef = useRef(null);
@@ -84,7 +86,7 @@ export default function CountrySelector({ selectedCountry, onSelect, className =
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search country..."
+                  placeholder={t("Search country...")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-gray-50 rounded-xl border border-gray-200 outline-none text-sm text-gray-800 focus:border-primary focus:ring-1 focus:ring-primary"
@@ -128,7 +130,7 @@ export default function CountrySelector({ selectedCountry, onSelect, className =
                 ))
               ) : (
                 <div className="py-8 text-center text-sm text-gray-400">
-                  No countries found
+                  {t("No countries found")}
                 </div>
               )}
             </div>

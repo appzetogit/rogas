@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ArrowRight, ChevronRight, Check, Navigation, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const RouteView = ({
     stops,
@@ -10,6 +11,7 @@ const RouteView = ({
     routeMetadata,
     totalEarnings
 }) => {
+    const { t } = useTranslation("driver");
     const [sliderPosition, setSliderPosition] = useState(0);
     const [justAccepted, setJustAccepted] = useState(isAccepted);
     const [dragging, setDragging] = useState(false);
@@ -56,9 +58,9 @@ const RouteView = ({
                     <Navigation className="w-6 h-6 rotate-45 text-[#3e4945]" />
                 </div>
                 <div>
-                    <h3 className="text-base font-extrabold text-gray-900">No Orders Available</h3>
+                    <h3 className="text-base font-extrabold text-gray-900">{t("No Orders Available")}</h3>
                     <p className="text-xs text-[#5d5f5b] max-w-xs mt-2 leading-relaxed">
-                        There are no active pickup or delivery orders assigned to you at the moment. You'll see route details here once assigned.
+                        {t("There are no active pickup or delivery orders assigned to you at the moment. You'll see route details here once assigned.")}
                     </p>
                 </div>
             </div>
@@ -115,9 +117,9 @@ const RouteView = ({
                 <div className="bg-white border border-[#e0e3e0] rounded-2xl p-4 flex flex-col justify-between h-40 shadow-sm text-left">
                     <div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[#3e4945] font-extrabold text-[10px] uppercase tracking-wider font-sans">VENDOR</span>
+                            <span className="text-[#3e4945] font-extrabold text-[10px] uppercase tracking-wider font-sans">{t("VENDOR")}</span>
                             <span className="bg-[#1F7A63]/10 text-[#1F7A63] px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide">
-                                {routeMetadata?.slotType || "Slot"}
+                                {routeMetadata?.slotType || t("Slot")}
                             </span>
                         </div>
                         <h3 className="text-sm font-extrabold text-gray-900 mt-2 line-clamp-1">{routeMetadata?.vendorName || "—"}</h3>
@@ -134,28 +136,28 @@ const RouteView = ({
                 <div className="flex flex-col gap-1 justify-between h-40">
                     {/* TOTAL LOAD */}
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
-                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">MEAL BOXES</span>
+                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">{t("MEAL BOXES")}</span>
                         <span className="font-extrabold text-xs text-[#1F7A63]">{routeMetadata?.totalMealBoxCount || 0}</span>
                     </div>
 
                     {/* STOPS */}
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
-                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">STOPS</span>
+                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">{t("STOPS")}</span>
                         <span className="font-extrabold text-xs text-gray-900">{routeMetadata?.stopsCount || 0}</span>
                     </div>
 
                     {/* TIME REMAINING */}
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
-                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">TIME LEFT</span>
+                        <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">{t("TIME LEFT")}</span>
                         <span className={`font-mono text-[11px] font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#1F7A63]'}`}>
-                            {timeRemaining || "3h 00m"}
+                            {timeRemaining || t("3h 00m")}
                         </span>
                     </div>
 
                     {/* TOTAL EARNINGS */}
                     {totalEarnings !== undefined && (
                         <div className="bg-[#1F7A63]/10 border border-[#1F7A63]/25 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left animate-fadeIn">
-                            <span className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider font-sans">EARNINGS</span>
+                            <span className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider font-sans">{t("EARNINGS")}</span>
                             <span className="font-extrabold text-xs text-[#1F7A63] font-sans">₹{totalEarnings.toFixed(2)}</span>
                         </div>
                     )}
@@ -170,14 +172,14 @@ const RouteView = ({
                         <div>
                             <div className="flex items-center gap-1.5 mb-1.5">
                                 <span className="bg-[#1F7A63]/10 text-[#1F7A63] px-2 py-0.5 rounded-lg text-[10px] font-bold border border-[#1F7A63]/20">
-                                    CURRENT STOP
+                                    {t("CURRENT STOP")}
                                 </span>
                                 <span className="bg-[#1F7A63] text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wide">
-                                    {isAccepted ? "ACTIVE" : "READY"}
+                                    {isAccepted ? t("ACTIVE") : t("READY")}
                                 </span>
                             </div>
-                            <h2 className="text-lg font-bold text-gray-900 leading-tight">{currentStop?.name || 'No Name'}</h2>
-                            <p className="text-xs text-[#5d5f5b] mt-0.5">{currentStop?.address || 'No Address'}</p>
+                            <h2 className="text-lg font-bold text-gray-900 leading-tight">{currentStop?.name || t("No Name")}</h2>
+                            <p className="text-xs text-[#5d5f5b] mt-0.5">{currentStop?.address || t("No Address")}</p>
                         </div>
 
                         <div className="w-11 h-11 bg-[#1F7A63] text-white rounded-full flex items-center justify-center font-bold text-base shadow-sm">
@@ -191,7 +193,7 @@ const RouteView = ({
                         className="w-full h-36 rounded-xl bg-gray-900 overflow-hidden mb-4 relative border border-gray-100 cursor-pointer group shadow-inner"
                     >
                         <img
-                            alt="Street map routing overview"
+                            alt={t("Street map routing overview")}
                             className="w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-300"
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFm1z0cbR-ro9wKCDpsH-rTQEMEvlGTuFF_BrTJyJ1vmPINaDOpNQIQihBzUifn80AYEyCHxwrVs8mS6KLosE-UDl2l-Gv5swaLKKvnvMRupEUCC8DlTTBJ5CFd1ysVjdPjOlNcja4KWSnWqkw_EBf-Xm98mJq_7vrenDvZoMAIBgHR7uD6vutPIZg3XA0hkTdCnXZNPekeI3s049OdjI7fkhcVIwJ-SC5gTtmo2oS2QGxRUsIL8BXhGUNK-4bOLGehKu9X2nITAAq"
                             referrerPolicy="no-referrer"
@@ -200,7 +202,7 @@ const RouteView = ({
 
                         <div className="absolute bottom-2.5 left-3 flex items-center gap-2">
                             <span className="bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
-                                📍 {currentStop?.name || 'Current Stop'}
+                                📍 {currentStop?.name || t("Current Stop")}
                             </span>
                         </div>
 
@@ -210,7 +212,7 @@ const RouteView = ({
                             className="absolute bottom-2.5 right-3 bg-[#1F7A63] hover:bg-[#175d4b] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 active:scale-95 transition-all"
                         >
                             <Navigation className="w-3.5 h-3.5" />
-                            Navigate
+                            {t("Navigate")}
                         </button>
                     </div>
 
@@ -234,7 +236,7 @@ const RouteView = ({
                                 className="text-xs uppercase font-extrabold tracking-wider transition-opacity select-none"
                                 style={{ opacity: 1 - sliderPosition / maxDrag, color: "#3e4945" }}
                             >
-                                Slide to Accept Route
+                                {t("Slide to Accept Route")}
                             </span>
 
                             {/* Slider Handle */}
@@ -252,7 +254,7 @@ const RouteView = ({
                             onClick={onNextStep}
                             className="w-full h-[52px] bg-[#1F7A63] text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#1F7A63]/90 shadow-md shadow-[#1F7A63]/10"
                         >
-                            START PICKUP STEP <ArrowRight className="w-5 h-5" />
+                            {t("START PICKUP STEP")} <ArrowRight className="w-5 h-5" />
                         </button>
                     )}
                 </div>
@@ -260,7 +262,7 @@ const RouteView = ({
 
             {/* Upcoming Stops List */}
             <div>
-                <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1 mb-3">UPCOMING STOPS</h3>
+                <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1 mb-3">{t("UPCOMING STOPS")}</h3>
                 <div className="space-y-3">
                     {stops.slice(1).map((stop) => (
                         <div

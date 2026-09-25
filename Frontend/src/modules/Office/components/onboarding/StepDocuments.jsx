@@ -1,47 +1,50 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, CloudUpload, Paperclip, Check, Loader2, Trash2, ShieldCheck, Sparkles } from 'lucide-react';
 import { uploadDocumentApi } from '../../services/officeApi';
+import { useTranslation } from "react-i18next";
+import { tKey } from "../../../../shared/i18n";
 
 const DOCUMENT_LIST = [
   {
     key: 'nipCertificate',
-    title: 'NIP Certificate',
-    description: 'Provide the Tax Identification Number certificate issued by the tax office.',
+    title: tKey("NIP Certificate"),
+    description: tKey("Provide the Tax Identification Number certificate issued by the tax office."),
     defaultName: 'nip_certificate.pdf',
   },
   {
     key: 'regonCertificate',
-    title: 'REGON Certificate',
-    description: 'Business identification certificate from the National Business Registry.',
+    title: tKey("REGON Certificate"),
+    description: tKey("Business identification certificate from the National Business Registry."),
     defaultName: 'regon_certificate.pdf',
   },
   {
     key: 'vatRegistration',
-    title: 'VAT Registration',
-    description: 'Valid confirmation of VAT status (EU-VAT if applicable).',
+    title: tKey("VAT Registration"),
+    description: tKey("Valid confirmation of VAT status (EU-VAT if applicable)."),
     defaultName: 'vat_registration_status.pdf',
   },
   {
     key: 'addressProof',
-    title: 'Address Proof',
-    description: 'Utility bill, bank statement, or lease agreement for office location.',
+    title: tKey("Address Proof"),
+    description: tKey("Utility bill, bank statement, or lease agreement for office location."),
     defaultName: 'utility_bill_office.pdf',
   },
   {
     key: 'idProof',
-    title: 'ID Proof of Signatory',
-    description: 'National ID or Passport copy of the authorized signing officer.',
+    title: tKey("ID Proof of Signatory"),
+    description: tKey("National ID or Passport copy of the authorized signing officer."),
     defaultName: 'id_passport_copy.pdf',
   },
   {
     key: 'authLetter',
-    title: 'Authorization Letter',
-    description: 'Official letter authorizing the representative to manage the account.',
+    title: tKey("Authorization Letter"),
+    description: tKey("Official letter authorizing the representative to manage the account."),
     defaultName: 'representative_auth_letter.pdf',
   },
 ];
 
 export default function StepDocuments({ onNext, onBack, data, updateData }) {
+  const { t } = useTranslation("office");
   const [uploadingDoc, setUploadingDoc] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -83,7 +86,7 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
       updateData({ documents: updatedDocs });
     } catch (error) {
       console.error('Upload failed:', error);
-      alert(error.response?.data?.message || 'Failed to upload document.');
+      alert(error.response?.data?.message || t("Failed to upload document."));
     } finally {
       setUploadingDoc(null);
       setUploadProgress(0);
@@ -114,7 +117,7 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
 
   const handleNext = () => {
     if (!isAllUploaded) {
-      if (confirm('For the full verification onboarding experience, we recommend uploading all files. Would you like to auto-fill them now and proceed?')) {
+      if (confirm(t("For the full verification onboarding experience, we recommend uploading all files. Would you like to auto-fill them now and proceed?"))) {
         handleAutoFill();
         setTimeout(() => {
           onNext('step3_final');
@@ -130,21 +133,21 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
       {/* Top Header */}
       <header className="w-full h-14 flex items-center justify-between bg-white border border-gray-100 rounded-xl px-6 shadow-sm">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-[#287965]">DailyMealBox</span>
+          <span className="text-lg font-bold text-[#287965]">{t("DailyMealBox")}</span>
           <div className="h-5 w-[1px] bg-gray-200" />
-          <span className="text-gray-500 font-medium text-xs md:text-sm">Vendor Verification</span>
+          <span className="text-gray-500 font-medium text-xs md:text-sm">{t("Vendor Verification")}</span>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-widest">
-          <span>Step 2 of 3</span>
+          <span>{t("Step 2 of 3")}</span>
         </div>
       </header>
 
       {/* Title Area */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1C1E] tracking-tight">Documents & Certificates</h1>
+          <h1 className="text-2xl font-bold text-[#1A1C1E] tracking-tight">{t("Documents & Certificates")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Upload the official documents to verify your business status.
+            {t("Upload the official documents to verify your business status.")}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -155,13 +158,13 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#287965]/20 text-xs font-bold text-[#287965] hover:bg-[#287965]/5 transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Auto-Fill All Files</span>
+            <span>{t("Auto-Fill All Files")}</span>
           </button>
           
           <div className="flex flex-col items-end text-right">
-            <span className="text-xs font-semibold text-gray-400 uppercase">Progress</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase">{t("Progress")}</span>
             <span className="text-sm font-bold text-[#287965]">
-              {Math.round((uploadedCount / DOCUMENT_LIST.length) * 100)}% Complete
+              {t("{{value}}% Complete", { value: Math.round((uploadedCount / DOCUMENT_LIST.length) * 100) })}
             </span>
           </div>
         </div>
@@ -199,11 +202,11 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
                 }`}>
                   <CloudUpload className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-[#1A1C1E] tracking-tight">{doc.title}</h3>
+                <h3 className="text-sm font-bold text-[#1A1C1E] tracking-tight">{t(doc.title)}</h3>
               </div>
 
               <p className="text-xs text-gray-500 mb-6 flex-grow leading-relaxed">
-                {doc.description}
+                {t(doc.description)}
               </p>
 
               {isCompleted ? (
@@ -221,13 +224,13 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
                   <div className="flex gap-2">
                     <div className="flex-grow py-2 px-3 bg-[#287965]/10 text-[#287965] font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 shadow-sm">
                       <Check className="w-3.5 h-3.5" />
-                      <span>Ready</span>
+                      <span>{t("Ready")}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleDelete(doc.key)}
                       className="p-2 border border-red-200 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Upload"
+                      title={t("Delete Upload")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -238,7 +241,7 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
                   <div className="flex justify-between items-center text-xs font-semibold text-[#287965]">
                     <span className="flex items-center gap-1.5 animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Uploading...
+                      {t("Uploading...")}
                     </span>
                     <span>{uploadProgress}%</span>
                   </div>
@@ -261,7 +264,7 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
                     className={`w-full py-2.5 px-4 rounded-lg border-2 border-[#287965] text-[#287965] hover:bg-[#287965]/5 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer ${!!uploadingDoc ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
                   >
                     <Paperclip className="w-3.5 h-3.5" />
-                    <span>Upload File</span>
+                    <span>{t("Upload File")}</span>
                   </label>
                 </div>
               )}
@@ -278,13 +281,13 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
           className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-all cursor-pointer focus:outline-none"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{t("Back")}</span>
         </button>
 
         <div className="hidden md:flex flex-col items-center">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documents Status</span>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("Documents Status")}</span>
           <span className="text-xs font-bold text-[#287965]">
-            {uploadedCount} of {DOCUMENT_LIST.length} Files Selected
+            {t("{{uploadedCount}} of {{length}} Files Selected", { uploadedCount, length: DOCUMENT_LIST.length })}
           </span>
         </div>
 
@@ -298,7 +301,7 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
           }`}
           id="step2_next_btn"
         >
-          <span>Next Step</span>
+          <span>{t("Next Step")}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
