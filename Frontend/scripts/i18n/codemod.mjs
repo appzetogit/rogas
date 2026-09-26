@@ -234,6 +234,19 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
   const varsObject = (vars) => `{ ${vars.map((v) => (v.src === v.name ? v.name : `${v.name}: ${v.src}`)).join(', ')} }`;
   const callText = (callee, key, vars) => `${callee}(${quote(key)}${vars.length ? `, ${varsObject(vars)}` : ''})`;
 
+  /** An English plural glued into a template: `${n !== 1 ? "s" : ""}`. Not translatable as a placeholder. */
+  const pluralSuffixIn = (tpl) => tpl.expressions.some((ex) => {
+    const leaves = [];
+    const collect = (n) => {
+      if (!n) return;
+      if (n.type === 'StringLiteral') leaves.push(n.value);
+      else if (n.type === 'ConditionalExpression') { collect(n.consequent); collect(n.alternate); }
+      else if (n.type === 'LogicalExpression') collect(n.right);
+    };
+    collect(ex);
+    return leaves.some((v) => ['s', 'es', 'ies'].includes(v));
+  });
+
   const templateToKey = (tpl) => {
     const used = new Map();
     const vars = [];
@@ -293,7 +306,10 @@ export function processSource(code, { ns, file = 'x.jsx', importPathToI18n = './
       let key;
       let vars = [];
       if (node.type === 'StringLiteral') key = node.value;
-      else ({ key, vars } = templateToKey(node));
+      else {
+        if (pluralSuffixIn(node)) { report.push({ kind: 'plural-suffix', text: node.quasis.map((q) => q.value.cooked).join('{…}').slice(0, 60) }); return; }
+        ({ key, vars } = templateToKey(node));
+      }
       if (/[\r\n]/.test(key) && node.type === 'TemplateLiteral') { report.push({ kind: 'multiline-template', text: key.slice(0, 60) }); return; }
       const lead = /^\s*/.exec(key)[0];
       const trail = /\s*$/.exec(key)[0];

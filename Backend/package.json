@@ -19,6 +19,7 @@
     "migrate:legacy-core:apply": "node scripts/migrate-legacy-core-data.js --apply",
     "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",
     "test:i18n": "node --test tests/i18n.test.mjs",
+    "i18n:seed:check": "node scripts/i18n-seed.mjs check",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

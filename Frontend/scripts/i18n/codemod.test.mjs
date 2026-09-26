@@ -230,3 +230,9 @@ test('optional-call toasts (onShowToast?.("...")) are translated too', () => {
 };`);
   assert.deepEqual(keysOf(res).sort(), ['Failed to skip order', 'Go', 'Order skipped']);
 });
+
+test('an English plural glued into a template literal is reported, not turned into a placeholder', () => {
+  const res = run("const A = ({ n }) => { toast.success(`Added ${n} item${n !== 1 ? 's' : ''}`); return <p>x</p>; };");
+  assert.ok(res.report.some((r) => r.kind === 'plural-suffix'));
+  assert.ok(!keysOf(res).some((k) => /item/.test(k)));
+});

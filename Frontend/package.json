@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:check": "node scripts/i18n/verify.mjs && node scripts/i18n/extract-catalog.mjs --check",
+    "i18n:extract": "node scripts/i18n/extract-catalog.mjs",
+    "i18n:test": "node --test scripts/i18n/codemod.test.mjs scripts/i18n/render.test.mjs",
+    "i18n:e2e": "node scripts/i18n/runtime.e2e.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
