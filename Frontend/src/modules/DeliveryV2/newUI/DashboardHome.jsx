@@ -158,7 +158,7 @@ const DashboardHome = ({
             <p className="mt-2.5 text-xs text-[#3e4945]">
               {progressPercent >= 100 
                 ? t("Completed! Enjoy your {{targetAmount}} PLN bonus payout.", { targetAmount: addon.targetAmount }) 
-                : t("Deliver {{targetOrders}} more orders to earn {{targetAmount}} PLN extra", { targetOrders: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
+                : t("Deliver {{count}} more order to earn {{targetAmount}} PLN extra", { count: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
             </p>
           </div>
         );

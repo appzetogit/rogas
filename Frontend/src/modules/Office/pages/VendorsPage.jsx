@@ -407,7 +407,7 @@ export default function VendorsTab({
                 {wizardStep === 2 && (
                   <div className="space-y-4 py-4 text-center">
                     <p className="text-xs text-brand-muted">
-                      {t("Select the scheduled daily delivery window for these {{length}} employee(s).", { length: selectedEmployeeIds.length })}
+                      {t("Select the scheduled daily delivery window for {{count}} employee.", { count: selectedEmployeeIds.length })}
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

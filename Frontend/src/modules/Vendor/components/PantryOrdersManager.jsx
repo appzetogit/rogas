@@ -52,7 +52,7 @@ export default function PantryOrdersManager() {
     try {
       const res = await dmbVendorAPI.updateDailyPantryStatus(orderId, deliveryId, newStatus);
       if (res.data?.success) {
-        toast.success(t("Order marked as {{newStatus}}", { newStatus }));
+        toast.success(t("Order marked as ready"));
         fetchOrders(); // refresh
       }
     } catch (err) {
@@ -127,7 +127,7 @@ export default function PantryOrdersManager() {
             <div className="w-16 h-16 rounded-2xl bg-[#eef0ec] mx-auto flex items-center justify-center mb-4">
               <Receipt className="text-[32px] text-primary" />
             </div>
-            <p className="text-[17px] text-[#1b1c1c] font-extrabold">{t("No {{activeTab}} orders", { activeTab })}</p>
+            <p className="text-[17px] text-[#1b1c1c] font-extrabold">{activeTab === 'pending' ? t("No pending orders") : t("No completed orders")}</p>
             <p className="text-[14px] text-[#6e7a74] mt-1 font-medium">{t("You're all caught up!")}</p>
           </div>
         ) : (

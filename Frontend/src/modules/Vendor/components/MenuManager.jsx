@@ -567,7 +567,7 @@ export default function MenuManager({
                                   onToggleMealStatus(meal.id);
                                 } else {
                                   onEditMeal(meal.id, { status: meal.status === 'Active' ? 'Draft' : 'Active' });
-                                  triggerToast(t("Status switched to {{value}}", { value: meal.status === 'Active' ? 'Draft' : 'Active' }));
+                                  triggerToast(meal.status === 'Active' ? t("Status switched to Draft") : t("Status switched to Active"));
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-lg border font-semibold text-[12px] active:scale-95 transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${

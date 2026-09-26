@@ -269,7 +269,7 @@ const SlotTimingModal = ({ stop, slot, nextSlotStartTime, onClose }) => {
             </div>
 
             <p className="text-[10px] text-center text-gray-400 font-medium">
-               {t("Come back at {{time}} to start your route", { time: nextSlotStartTime || t("the scheduled time") })}
+               {nextSlotStartTime ? t("Come back at {{time}} to start your route", { time: nextSlotStartTime }) : t("Come back at the scheduled time to start your route")}
             </p>
          </motion.div>
       </motion.div>
@@ -345,7 +345,7 @@ export const RoutesView = ({ onSelectStop }) => {
             });
             return { ...prev, stops: updatedStops };
          });
-         toast.info(t("Vendor status updated: {{value}}", { value: vendorStatus === 'preparing' ? '🔥 Preparing' : '✅ Ready' }));
+         toast.info(vendorStatus === 'preparing' ? t("Vendor status updated: 🔥 Preparing") : t("Vendor status updated: ✅ Ready"));
       };
 
       socket.on('vendor_order_status_changed', handleVendorStatusChange);

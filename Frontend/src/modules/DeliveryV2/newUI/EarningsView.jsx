@@ -293,7 +293,7 @@ const EarningsView = ({ stats }) => {
               <p className="text-xs text-[#3e4945] font-medium leading-relaxed">
                 {progressPercent >= 100 
                   ? t("Completed! Enjoy your {{targetAmount}} PLN bonus payout.", { targetAmount: addon.targetAmount }) 
-                  : t("Deliver {{targetOrders}} more orders to earn {{targetAmount}} PLN extra.", { targetOrders: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
+                  : t("Deliver {{count}} more order to earn {{targetAmount}} PLN extra.", { count: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
               </p>
             </section>
           );

@@ -340,7 +340,7 @@ export default function App() {
       }
     } else {
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
-      triggerGlobalToast(tr("Order status updated to {{status}}", { status }));
+      triggerGlobalToast(status === 'Preparing' ? tr("Order status updated to Preparing") : tr("Order status updated to Ready"));
     }
   };
 

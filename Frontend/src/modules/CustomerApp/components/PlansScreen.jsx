@@ -413,7 +413,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                 <section>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Select Meal Box / Plan")}</h3>
-                    <span className="text-[11px] text-primary font-bold">{t("{{length}} options", { length: mealPlans.length })}</span>
+                    <span className="text-[11px] text-primary font-bold">{t("{{count}} option", { count: mealPlans.length })}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {mealPlans.map((mp) => {
@@ -919,7 +919,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
           {/* Section heading */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">
-              {loading ? t("Loading...") : t("{{length}} vendor{{value}} available", { length: filteredPlans.length, value: filteredPlans.length !== 1 ? "s" : "" })}
+              {loading ? t("Loading...") : t("{{count}} vendor available", { count: filteredPlans.length })}
             </h2>
           </div>
 

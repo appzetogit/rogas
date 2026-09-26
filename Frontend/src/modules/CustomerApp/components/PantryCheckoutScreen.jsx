@@ -348,7 +348,7 @@ export function PantryCheckoutScreen() {
         amount: frontendGrandTotalPaise,
         currency: 'INR',
         name: 'Rogas Pantry',
-        description: t("Pantry Order — {{length}} group(s)", { length: groups.length }),
+        description: t("Pantry Order — {{count}} group", { count: groups.length }),
         order_id: razorpayOrderId,
         handler: async (response) => {
           try {
@@ -579,11 +579,11 @@ export function PantryCheckoutScreen() {
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Delivery Days")}</span>
-              <span className="font-semibold text-[#1b1c1c]">{t("{{totalDeliveryDays}} day(s)", { totalDeliveryDays })}</span>
+              <span className="font-semibold text-[#1b1c1c]">{t("{{count}} Day", { count: totalDeliveryDays })}</span>
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Delivery Slots")}</span>
-              <span className="font-semibold text-[#1b1c1c]">{t("{{totalDeliverySlots}} slot(s)", { totalDeliverySlots })}</span>
+              <span className="font-semibold text-[#1b1c1c]">{t("{{count}} slot", { count: totalDeliverySlots })}</span>
             </div>
             {foodVatPercent > 0 && (
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
@@ -639,7 +639,7 @@ export function PantryCheckoutScreen() {
       <div className="fixed bottom-0 left-0 right-0 md:left-64 md:right-auto md:w-[calc(100%_-_16rem)] max-w-[480px] mx-auto bg-white px-5 py-4 border-t border-[#f0f0f0] shadow-[0_-12px_24px_rgba(0,0,0,0.06)] z-20">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-[12px] text-[#6e7a74] font-medium">{t("Total for {{totalDeliveryDays}} day(s) · {{totalDeliverySlots}} slot(s)", { totalDeliveryDays, totalDeliverySlots })}</p>
+            <p className="text-[12px] text-[#6e7a74] font-medium">{t("Total for {{days}} · {{slots}}", { days: t("{{count}} Day", { count: totalDeliveryDays }), slots: t("{{count}} slot", { count: totalDeliverySlots }) })}</p>
             <p className="text-[11px] text-[#1F7A63] font-bold mt-0.5">{foodVatPercent > 0 ? t("Includes ₹{{foodVatAmount}} Food VAT", { foodVatAmount: foodVatAmount.toFixed(2) }) : t("All charges included")}</p>
           </div>
           <span className="text-[24px] font-extrabold text-[#1b1c1c]">₹{grandTotal.toFixed(2)}</span>

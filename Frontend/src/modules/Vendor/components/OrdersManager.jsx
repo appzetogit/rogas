@@ -165,7 +165,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       if (!isWithinPrepWindow(deliverySlot)) {
         const label = slotName(deliverySlot);
         const win = getWindowLabel(deliverySlot);
-        showToast(t("⏰ {{label}} preparation is only allowed{{value}}. Please try again later.", { label, value: win ? ` between ${win}` : '' }));
+        showToast((win ? t("⏰ {{label}} preparation is only allowed between {{window}}. Please try again later.", { label, window: win }) : t("⏰ {{label}} preparation is not allowed right now. Please try again later.", { label })));
         return;
       }
     }
@@ -175,7 +175,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       setDailyOrders(prev =>
         prev.map(o => o._id === orderId ? { ...o, status: newStatus } : o)
       );
-      showToast(t("✅ Order {{value}}!", { value: newStatus === 'preparing' ? 'In Preparation' : 'Marked Ready' }));
+      showToast(newStatus === 'preparing' ? t("✅ Order In Preparation!") : t("✅ Order Marked Ready!"));
     } catch (err) {
       showToast(err.response?.data?.message || t("Failed to update status"));
     }
@@ -186,7 +186,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     if (activeDate === 'today' && !isWithinPrepWindow(activeSlot)) {
       const label = slotName(activeSlot);
       const win = getWindowLabel(activeSlot);
-      showToast(t("⏰ {{label}} preparation is only allowed{{value}}. Please try again later.", { label, value: win ? ` between ${win}` : '' }));
+      showToast((win ? t("⏰ {{label}} preparation is only allowed between {{window}}. Please try again later.", { label, window: win }) : t("⏰ {{label}} preparation is not allowed right now. Please try again later.", { label })));
       return;
     }
     try {
@@ -386,13 +386,13 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           ) : dailyOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6">
               <Inbox className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">{t("No subscription orders {{activeDate}}", { activeDate })}</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">{activeDate === 'tomorrow' ? t("No subscription orders tomorrow") : t("No subscription orders today")}</p>
               <p className="text-[12px] text-slate-400 mt-1">{t("Orders appear when customers have active subscriptions")}</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 p-6 animate-fadeIn">
               <Inbox className="text-[40px] text-slate-300" />
-              <p className="text-[14px] text-slate-500 font-bold mt-2">{t("No {{slot}} orders {{activeDate}}", { slot: slotName(activeSlot), activeDate })}</p>
+              <p className="text-[14px] text-slate-500 font-bold mt-2">{activeDate === 'tomorrow' ? t("No {{slot}} orders tomorrow", { slot: slotName(activeSlot) }) : t("No {{slot}} orders today", { slot: slotName(activeSlot) })}</p>
               <p className="text-[12px] text-slate-400 mt-1">{t("Select another slot or check back later")}</p>
             </div>
           ) : (

@@ -146,7 +146,7 @@ export default function App() {
           razorpaySignature: 'mock_signature'
         });
         fetchDashboardData();
-        alert(t("Subscriptions assigned for {{length}} employee(s). Deliveries scheduled for {{deliverySlot}}.", { length: employeeIds.length, deliverySlot: deliverySlot.join(', ') }));
+        alert(t("Subscriptions assigned for {{count}} employee. Deliveries scheduled for {{deliverySlot}}.", { count: employeeIds.length, deliverySlot: deliverySlot.join(', ') }));
         return;
       }
 
@@ -187,7 +187,7 @@ export default function App() {
               razorpaySignature: response.razorpay_signature
             });
             fetchDashboardData();
-            alert(t("Payment successful! Subscriptions assigned for {{length}} employee(s).", { length: employeeIds.length }));
+            alert(t("Payment successful! Subscriptions assigned for {{count}} employee.", { count: employeeIds.length }));
           } catch (error) {
             alert(error.response?.data?.message || t("Payment verified but assignment failed. Please contact support."));
           }
