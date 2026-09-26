@@ -12,6 +12,7 @@ import { restaurantAPI, dmbCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import { X, CheckCircle, CheckSquare, Calendar, MapPin, Locate, ShoppingCart, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -37,6 +38,7 @@ const getPrimaryImage = (vendor) => {
 // ─── Menu Modal ────────────────────────────────────────────────────────────────
 function MenuModal({ vendorId, vendorName, onClose }) {
   const { t } = useTranslation("customer");
+  const { money } = useMoney({ vendorId });
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +106,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
                   <p className="text-[12px] text-[#6e7a74] mt-0.5 line-clamp-2">{item.description}</p>
                 )}
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[15px] font-extrabold text-primary">{t("₹{{pricePerDay}}/day", { pricePerDay: item.pricePerDay })}</span>
+                  <span className="text-[15px] font-extrabold text-primary">{t("{{price}}/day", { price: money(item.pricePerDay, { compact: true }) })}</span>
                   {item.nutrition?.calories && (
                     <span className="text-[11px] text-[#6e7a74] bg-white border border-[#e4e2e1] px-2 py-0.5 rounded-full">
                       {t("{{calories}} kcal", { calories: item.nutrition.calories })}
@@ -165,6 +167,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   // Map & Zone state
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState("");
+  const { money } = useMoney(selectedZone ? { zoneId: selectedZone } : { vendorId });
   const [lat, setLat] = useState(28.6139); // default
   const [lng, setLng] = useState(77.2090);
   const [showMap, setShowMap] = useState(false);
@@ -345,6 +348,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
       vendorId,
       vendorName,
       zoneId: selectedZone,
+      subscriptionPlanId: selectedPlan._id,
       meals: selectedMealsList,
       duration: durationCodeMap[selectedPlan.duration] || "weekly",
       durationLabel: durationLabelMap[selectedPlan.duration] || "Weekly",
@@ -442,7 +446,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-extrabold text-[14px] text-[#1b1c1c] truncate">{mp.name}</p>
-                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">{t("₹{{pricePerDay}}/day", { pricePerDay: mp.pricePerDay })}</p>
+                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">{t("{{price}}/day", { price: money(mp.pricePerDay, { compact: true }) })}</p>
                           </div>
                           {isSelected && (
                             <CheckCircle className="text-primary w-5 h-5 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -496,7 +500,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[17px] font-extrabold text-primary">₹{plan.price}</p>
+                            <p className="text-[17px] font-extrabold text-primary">{money(plan.price, { compact: true })}</p>
                             {isSelected && (
                               <div className="mt-2.5 flex items-center justify-end gap-1 text-primary">
                                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -643,7 +647,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       {activeMeal ? (
                         <div className="flex justify-between text-[#6e7a74]">
                           <span><Trans t={t} i18nKey={"Selected Meal Box: <0>{{name}}</0>"} defaults={"Selected Meal Box: <0>{{name}}</0>"} values={{ name: activeMeal.name }} components={[<strong className="text-[#1b1c1c]" />]} /></span>
-                          <span className="font-bold text-primary">{t("₹{{pricePerDay}}/day", { pricePerDay: activeMeal.pricePerDay })}</span>
+                          <span className="font-bold text-primary">{t("{{price}}/day", { price: money(activeMeal.pricePerDay, { compact: true }) })}</span>
                         </div>
                       ) : (
                         <div className="text-[#ea4335] text-[12px] font-bold">
@@ -653,7 +657,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
                       <span>{t("Plan Base Rate")}</span>
-                      <span className="font-bold">₹{selectedPlan.price}</span>
+                      <span className="font-bold">{money(selectedPlan.price, { compact: true })}</span>
                     </div>
                     <div className="flex justify-between text-[#6e7a74]">
                       <span>{t("Duration")}</span>
@@ -673,33 +677,33 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
                       <span>{t("Food Total")}</span>
-                      <span className="font-bold">₹{foodTotal.toFixed(2)}</span>
+                      <span className="font-bold">{money(foodTotal)}</span>
                     </div>
                     {foodVat > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
-                        <span>{selectedPlan.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on ₹{{foodVatBaseAmount}} Menu Total)", { foodVat, foodVatBaseAmount: foodVatBaseAmount.toFixed(2) }) : t("Food VAT ({{foodVat}}%)", { foodVat })}</span>
-                        <span className="font-bold">₹{foodVatAmount.toFixed(2)}</span>
+                        <span>{selectedPlan.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on {{foodVatBaseAmount}} Menu Total)", { foodVat, foodVatBaseAmount: money(foodVatBaseAmount) }) : t("Food VAT ({{foodVat}}%)", { foodVat })}</span>
+                        <span className="font-bold">{money(foodVatAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-[#6e7a74]">
                       <span>{t("Delivery Charge")}</span>
-                      <span className="font-bold">₹{deliveryCharge.toFixed(2)}</span>
+                      <span className="font-bold">{money(deliveryCharge)}</span>
                     </div>
                     {deliveryVat > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
                         <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat })}</span>
-                        <span className="font-bold">₹{deliveryVatAmount.toFixed(2)}</span>
+                        <span className="font-bold">{money(deliveryVatAmount)}</span>
                       </div>
                     )}
                     {platformFee > 0 && (
                       <div className="flex justify-between text-[#6e7a74]">
                         <span>{t("Platform Fee (One-time)")}</span>
-                        <span className="font-bold">₹{platformFeeAmount.toFixed(2)}</span>
+                        <span className="font-bold">{money(platformFeeAmount)}</span>
                       </div>
                     )}
                     <div className="border-t border-primary/20 pt-2 mt-2 flex justify-between">
                       <span className="font-extrabold text-[#1b1c1c]">{t("Total Price")}</span>
-                      <span className="font-extrabold text-[17px] text-primary">₹{totalPrice.toFixed(2)}</span>
+                      <span className="font-extrabold text-[17px] text-primary">{money(totalPrice)}</span>
                     </div>
                   </div>
                 </section>

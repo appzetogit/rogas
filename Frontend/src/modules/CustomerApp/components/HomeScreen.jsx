@@ -4,6 +4,7 @@ import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 
 const STATUS_COLORS = {
@@ -63,6 +64,7 @@ export function HomeScreen({
   socket,
 }) {
   const { t } = useTranslation("customer");
+  const { money } = useMoney();
   const { label: slotLabel } = useDeliverySlots();
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
@@ -615,7 +617,7 @@ export function HomeScreen({
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">{t("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">{t("{{price}}/day", { price: money(meal.pricePerDay || meal.price, { compact: true }) })}</p>
                           </div>
                         </button>
                       );

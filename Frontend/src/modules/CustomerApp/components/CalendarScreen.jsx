@@ -4,6 +4,7 @@ import { dmbCustomerAPI, restaurantAPI } from "@food/api";
 import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich, XCircle, PartyPopper, Send, ArrowLeft, MoreVertical, UtensilsCrossed, Check } from 'lucide-react';
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { Trans, useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -49,6 +50,7 @@ const formatCutoffTime = (time) => {
 
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
   const { t } = useTranslation("customer");
+  const { money } = useMoney();
   const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("meals");
@@ -821,7 +823,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                     {po.items?.map((item, i) => (
                       <div key={i} className="flex justify-between text-[14px]">
                         <span className="text-on-surface-variant font-medium">{item.quantity}x {item.title}</span>
-                        <span className="font-bold text-[#1b1c1c]">₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                        <span className="font-bold text-[#1b1c1c]">{money((item.price || 0) * (item.quantity || 1))}</span>
                       </div>
                     ))}
                   </div>
@@ -929,7 +931,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
                           </div>
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">{t("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}</p>
+                            <p className="text-[11px] text-on-surface-variant font-medium">{t("{{price}}/day", { price: money(meal.pricePerDay || meal.price, { compact: true }) })}</p>
                           </div>
                         </button>
                       );

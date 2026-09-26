@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { userAPI } from "@food/api";
 import { Trans, useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
@@ -24,6 +25,7 @@ export function ProfileScreen({
   onUpdateProfileState
 }) {
   const { t } = useTranslation("customer");
+  const { money } = useMoney({ dialCode: currentUser?.countryCode });
   const navigate = useNavigate();
   const [walletCredits, setWalletCredits] = useState(0);
 
@@ -453,7 +455,7 @@ export function ProfileScreen({
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Wallet balance")}</h3>
-                <p className="text-xs text-on-surface-variant font-medium">{t("PLN {{walletCredits}} active credits", { walletCredits: walletCredits.toFixed(2) })}</p>
+                <p className="text-xs text-on-surface-variant font-medium">{t("{{walletCredits}} active credits", { walletCredits: money(walletCredits) })}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 group-active:translate-x-1 transition-transform">

@@ -361,6 +361,16 @@ export const adminSidebarMenu = [
   //   ],
   // },
 
+  // ─── PAYMENTS ────────────────────────────────────────────────────────────
+  {
+    type: "section",
+    label: "PAYMENTS",
+    roles: ["SUPER_ADMIN", "ACCOUNTANT"],
+    items: [
+      { type: "link", label: "Payment Providers", path: "/admin/food/payments", icon: "CreditCard" },
+    ],
+  },
+
   // ─── OTA & CONTENT (AP-13) ───────────────────────────────────────────────
   {
     type: "section",

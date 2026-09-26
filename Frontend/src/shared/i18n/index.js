@@ -24,6 +24,9 @@ const baseURL =
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
     : "/api/v1";
 
+/** Base URL of the backend API, for shared modules (payments) that call public endpoints directly. */
+export const apiBaseURL = baseURL;
+
 const safeGet = (key) => {
   try {
     return localStorage.getItem(key);
@@ -207,6 +210,9 @@ const authHeaders = (panel) => {
   const token = PANEL_TOKENS[panel]?.();
   return token ? { Authorization: `Bearer ${token}` } : null;
 };
+
+/** Authorization header for the signed-in account of a panel ("user" | "restaurant" | "delivery" | "office"), or null. */
+export const getPanelAuthHeaders = authHeaders;
 
 /** Stores the chosen language on the signed-in account so push notifications arrive in it. */
 const pushPreference = async (panel, code) => {

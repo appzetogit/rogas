@@ -21,6 +21,7 @@ import { TrackerScreen } from "./components/TrackerScreen";
 import { SupportScreen } from "./components/SupportScreen";
 import { DietAndAllergensScreen } from "./components/DietAndAllergensScreen";
 import { PantryCartProvider } from "./components/PantryCartContext";
+import PaymentResultHandler from "./components/PaymentResultHandler";
 import { CustomerLegalPage } from "./components/CustomerLegalPage";
 import CustomerServicePage from "./components/CustomerServicePage";
 import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
@@ -340,6 +341,7 @@ export default function CustomerAppMain() {
 
   return (
     <PantryCartProvider>
+      <PaymentResultHandler showToast={showToast} onSubscriptionPaid={handleConfirmSubscription} />
       <div className="relative w-full min-h-screen bg-slate-50 shadow-2xl overflow-x-hidden flex flex-col md:flex-row font-sans transition-all duration-300">
         
         {/* Desktop Sidebar */}

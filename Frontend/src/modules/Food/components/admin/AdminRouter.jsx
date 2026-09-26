@@ -32,6 +32,7 @@ const AdminAllSubscribers = lazy(() => import("@food/pages/admin/restaurant/Admi
 const VendorTiming = lazy(() => import("@food/pages/admin/restaurant/VendorTiming"));
 const LanguagesPage = lazy(() => import("@food/pages/admin/i18n/LanguagesPage"));
 const TranslationsPage = lazy(() => import("@food/pages/admin/i18n/TranslationsPage"));
+const PaymentsPage = lazy(() => import("@food/pages/admin/payments/PaymentsPage"));
 const RestaurantCommission = lazy(() => import("@food/pages/admin/restaurant/RestaurantCommission"));
 const RestaurantComplaints = lazy(() => import("@food/pages/admin/restaurant/RestaurantComplaints"));
 const RestaurantReviews = lazy(() => import("@food/pages/admin/restaurant/RestaurantReviews"));
@@ -217,6 +218,7 @@ export default function AdminRouter() {
             <Route path="vendor-timing" element={<VendorTiming />} />
             <Route path="languages" element={<LanguagesPage />} />
             <Route path="translations" element={<TranslationsPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
 
             {/* RESTAURANT MANAGEMENT */}
             <Route path="zone-setup" element={<ZoneSetup />} />

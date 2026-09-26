@@ -10,6 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getSubscriptionPlansApi } from '../services/officeApi';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { Trans, useTranslation } from "react-i18next";
+import usePaymentMethods from '../../../shared/payments/usePaymentMethods';
+import useMoney from '../../../shared/payments/money';
+import PaymentMethodPicker from '../../../shared/payments/PaymentMethodPicker';
 
 
 export default function VendorsTab({
@@ -34,6 +37,8 @@ export default function VendorsTab({
   const [feePerOrder, setFeePerOrder] = useState(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const methods = usePaymentMethods({ vendorId: selectedVendor?.id, enabled: Boolean(selectedVendor) });
+  const { money } = useMoney({ vendorId: selectedVendor?.id });
 
   React.useEffect(() => {
     const fetchPlans = async () => {
@@ -125,7 +130,8 @@ export default function VendorsTab({
           selectedSlots,
           selectedMealPlan._id,  // VendorSubscriptionPlan._id — for billing/order creation
           grandTotal,
-          vendorMealPlanId       // DMBMealPlan._id — for subscription record
+          vendorMealPlanId,      // DMBMealPlan._id — for subscription record
+          methods.selected       // payment provider chosen by the office (server default when only one)
         );
         setSelectedVendor(null);
       } finally {
@@ -472,7 +478,7 @@ export default function VendorsTab({
                               <div className={`h-full bg-white border-2 rounded-xl transition-all p-4 ${isSelected ? 'border-brand-primary bg-brand-primary-light/5' : 'border-brand-divider hover:border-brand-primary/30'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                   <h4 className="font-extrabold text-sm text-brand-text">{plan.name}</h4>
-                                  <span className="font-extrabold text-brand-primary text-sm">₹{plan.price}</span>
+                                  <span className="font-extrabold text-brand-primary text-sm">{money(plan.price, { compact: true })}</span>
                                 </div>
                                 <p className="text-xs text-brand-muted mt-1">
                                   {plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : t("Daily plan")} 
@@ -561,7 +567,7 @@ export default function VendorsTab({
                         {/* Plan details */}
                         <div style={S.info}>
                           <Row label={t("Subscription Plan")} value={selectedMealPlan.name} />
-                          <Row label={t("Plan Price")}        value={`₹${planPrice.toFixed(2)}`} />
+                          <Row label={t("Plan Price")}        value={money(planPrice)} />
                           <Row label={t("Duration")}          value={selectedMealPlan.duration === 'week' ? 'Weekly (Mon–Fri)' : selectedMealPlan.duration === 'month' ? 'Monthly (Full Week)' : 'Daily'} />
                           <Row label={t("Assigned Employees")} value={`× ${empCount}`} />
                           <Row label={t("Meal Slots")}        value={`${selectedSlots.map((k) => slotLabelOf(k)).join(', ')} (× ${slotCount})`} />
@@ -569,7 +575,7 @@ export default function VendorsTab({
 
                         {/* Cost breakdown — shown only when user clicks ⓘ */}
                         <div style={S.break}>
-                          <Row label={t("Food Total  (₹{{planPrice}} × {{empCount}})", { planPrice, empCount })}  value={`₹${foodTotal.toFixed(2)}`} />
+                          <Row label={t("Food Total  ({{planPrice}} × {{empCount}})", { planPrice: money(planPrice), empCount })}  value={money(foodTotal)} />
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                             <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{t("Tax & Fee Breakdown")}</span>
                             <button
@@ -580,9 +586,9 @@ export default function VendorsTab({
                           </div>
                           {showBreakdown && (
                             <>
-                              <Row label={t("Food VAT  ({{foodVatPct}}% of ₹{{foodTotal}})", { foodVatPct, foodTotal: foodTotal.toFixed(2) })}                              value={`₹${foodVatAmt.toFixed(2)}`} />
-                              <Row label={t("Delivery VAT  ({{slotCount}}×₹{{feePerOrder}}×{{empCount}}÷100×{{deliveryVatPct}}%)", { slotCount, feePerOrder, empCount, deliveryVatPct })}  value={`₹${deliveryVatAmt.toFixed(2)}`} />
-                              <Row label={t("Platform Fee  (₹{{platformFeeEach}} × {{empCount}})", { platformFeeEach, empCount })}                                  value={`₹${platformTotal.toFixed(2)}`} />
+                              <Row label={t("Food VAT  ({{foodVatPct}}% of {{foodTotal}})", { foodVatPct, foodTotal: money(foodTotal) })}                              value={money(foodVatAmt)} />
+                              <Row label={t("Delivery VAT  ({{slotCount}}×{{feePerOrder}}×{{empCount}}÷100×{{deliveryVatPct}}%)", { slotCount, feePerOrder: money(feePerOrder, { compact: true }), empCount, deliveryVatPct })}  value={money(deliveryVatAmt)} />
+                              <Row label={t("Platform Fee  ({{platformFeeEach}} × {{empCount}})", { platformFeeEach: money(platformFeeEach, { compact: true }), empCount })}                                  value={money(platformTotal)} />
                             </>
                           )}
                         </div>
@@ -590,9 +596,17 @@ export default function VendorsTab({
                         {/* Grand total */}
                         <div style={S.total}>
                           <span style={S.tlbl}>{t("Total Price")}</span>
-                          <span style={S.tval}>₹{grandTotal.toFixed(2)}</span>
+                          <span style={S.tval}>{money(grandTotal)}</span>
                         </div>
                       </div>
+                      <PaymentMethodPicker
+                        className="mt-4"
+                        providers={methods.providers}
+                        selected={methods.selected}
+                        onSelect={methods.setSelected}
+                        loading={methods.loading}
+                        error={methods.error}
+                      />
                     </div>
                   );
                 })()}
@@ -634,7 +648,7 @@ export default function VendorsTab({
                   ) : (
                     <button
                       onClick={handleConfirmAssignment}
-                      disabled={isProcessingPayment}
+                      disabled={isProcessingPayment || methods.loading || !methods.providers.length}
                       className="px-6 py-2 bg-[#6b9d8a] hover:bg-[#5a8674] disabled:opacity-40 text-white rounded-lg font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center"
                     >
                       <ClipboardCheck className="w-4 h-4" />
@@ -701,7 +715,7 @@ export default function VendorsTab({
                            
                            <div className="mt-2 flex items-center">
                              <span className="font-extrabold text-brand-primary text-sm">
-                               {plan.currency === 'INR' ? '₹' : '$'}{plan.pricePerDay || plan.price}
+                               {money(plan.pricePerDay || plan.price, { compact: true, currency: plan.currency })}
                                <span className="text-brand-muted font-medium text-xs">{t("/day")}</span>
                              </span>
                            </div>

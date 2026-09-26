@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { dmbCustomerAPI } from "@food/api";
 import { ArrowLeft, PlusCircle, Loader2, Info } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
+import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
+import PaymentMethodPicker from "../../../shared/payments/PaymentMethodPicker";
+import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -16,11 +20,13 @@ function loadRazorpayScript() {
 
 export function WalletScreen({ onBack, currentUser }) {
     const { t } = useTranslation("customer");
+    const { money, currency } = useMoney({ dialCode: currentUser?.countryCode });
     const [walletData, setWalletData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showTopupModal, setShowTopupModal] = useState(false);
     const [topupAmount, setTopupAmount] = useState('');
     const [processing, setProcessing] = useState(false);
+    const methods = usePaymentMethods({ dialCode: currentUser?.countryCode, enabled: showTopupModal });
 
     useEffect(() => {
         fetchWallet();
@@ -46,20 +52,28 @@ export function WalletScreen({ onBack, currentUser }) {
 
         try {
             setProcessing(true);
+
+            // 1. Create the payment. The server chooses (or uses the chosen) provider for the customer's country.
+            const orderRes = await dmbCustomerAPI.createWalletTopupOrder(
+                amount,
+                paymentRequestExtras({ provider: methods.selected, returnPath: '/user/wallet', cancelPath: '/user/wallet' })
+            );
+            if (!orderRes.data?.success) throw new Error("Failed to create order");
+            const data = orderRes.data.data;
+
+            // 2a. Przelewy24 / Stripe: continue on the provider's page; the wallet is credited when the payment is confirmed.
+            const { redirected } = await continueHostedPayment(data.payment, { panel: 'user' });
+            if (redirected) return;
+
+            // 2b. Razorpay: pay inside the pop-up.
             const loaded = await loadRazorpayScript();
             if (!loaded) {
                 console.error("Razorpay SDK failed to load");
                 return;
             }
-
-            // 1. Create order
-            const orderRes = await dmbCustomerAPI.createWalletTopupOrder(amount);
-            if (!orderRes.data?.success) throw new Error("Failed to create order");
-            const { orderId: razorpayOrderId, amount: orderAmount, currency, key: rzpKey } = orderRes.data.data.razorpay;
-
-            // 2. Open Razorpay
+            const { orderId: razorpayOrderId, amount: orderAmount, currency, key: rzpKey } = data.razorpay;
             const options = {
-                key: rzpKey || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy',
+                key: rzpKey || import.meta.env.VITE_RAZORPAY_KEY_ID || '',
                 amount: orderAmount,
                 currency: currency,
                 name: 'DailyMealBox',
@@ -68,10 +82,10 @@ export function WalletScreen({ onBack, currentUser }) {
                 handler: async (response) => {
                     try {
                         const verifyRes = await dmbCustomerAPI.verifyWalletTopupPayment({
+                            transactionId: data.payment?.transactionId,
                             razorpayOrderId: response.razorpay_order_id,
                             razorpayPaymentId: response.razorpay_payment_id,
-                            razorpaySignature: response.razorpay_signature,
-                            amount: amount
+                            razorpaySignature: response.razorpay_signature
                         });
                         if (verifyRes.data?.success) {
                             setWalletData(verifyRes.data.data.wallet);
@@ -131,7 +145,7 @@ export function WalletScreen({ onBack, currentUser }) {
                         <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#1f7a63]/5 rounded-full blur-3xl"></div>
                         <div>
                             <p className="text-[14px] font-semibold text-[#3e4945] opacity-70">{t("Current Balance")}</p>
-                            <h2 className="text-[32px] text-[#1f7a63] font-extrabold mt-1">{t("PLN {{balance}}", { balance: balance.toFixed(2) })}</h2>
+                            <h2 className="text-[32px] text-[#1f7a63] font-extrabold mt-1">{money(balance)}</h2>
                         </div>
                         <button 
                             onClick={() => setShowTopupModal(true)}
@@ -172,7 +186,7 @@ export function WalletScreen({ onBack, currentUser }) {
                                             </div>
                                         </div>
                                         <span className={`font-semibold text-[16px] ${isPositive ? 'text-[#1f7a63]' : 'text-[#3e4945]'}`}>
-                                            {t("{{value}} PLN", { value: isPositive ? '+' : '-' })} {Number(tx.amount).toFixed(2)}
+                                            {isPositive ? "+" : "-"}{money(Math.abs(Number(tx.amount)))}
                                         </span>
                                     </div>
                                 );
@@ -200,10 +214,18 @@ export function WalletScreen({ onBack, currentUser }) {
                         <p className="text-sm text-gray-500 mb-4">{t("Enter amount to add to your wallet")}</p>
                         <input
                             type="number"
-                            className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-[#1f7a63] mb-6"
-                            placeholder={t("Amount in PLN")}
+                            className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-[#1f7a63] mb-4"
+                            placeholder={t("Amount in {{currency}}", { currency })}
                             value={topupAmount}
                             onChange={(e) => setTopupAmount(e.target.value)}
+                        />
+                        <PaymentMethodPicker
+                            className="mb-6"
+                            providers={methods.providers}
+                            selected={methods.selected}
+                            onSelect={methods.setSelected}
+                            loading={methods.loading}
+                            error={methods.error}
                         />
                         <div className="flex gap-3">
                             <button 
@@ -214,7 +236,7 @@ export function WalletScreen({ onBack, currentUser }) {
                             </button>
                             <button 
                                 onClick={handleTopup}
-                                disabled={processing || !topupAmount}
+                                disabled={processing || !topupAmount || methods.loading || !methods.providers.length}
                                 className="flex-1 py-3 bg-[#1f7a63] text-white font-bold rounded-lg active:scale-95 transition-transform disabled:opacity-50 flex justify-center items-center gap-2"
                             >
                                 {processing ? <Loader2 className="animate-spin" /> : t("Proceed")}

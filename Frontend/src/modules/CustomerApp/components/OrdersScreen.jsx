@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
+import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 import useDeliverySlots, { fetchDeliverySlots, to12h } from "../../../shared/hooks/useDeliverySlots";
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 import { tKey } from "../../../shared/i18n";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
@@ -143,6 +145,7 @@ const OrderCard = memo(function OrderCard({
   onRaiseComplaint,
 }) {
   const { t: tr } = useTranslation("customer");
+  const { money } = useMoney();
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.scheduled;
   const mealName = order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || "Meal";
   const extraMeals = (order.meals?.length ?? 1) - 1;
@@ -276,7 +279,7 @@ const OrderCard = memo(function OrderCard({
                 }`}
             >
               <Coins className={`w-3.5 h-3.5 ${order.driverTip > 0 ? "text-amber-500 fill-amber-500" : "text-gray-400"}`} />
-              <span>{order.driverTip > 0 ? tr("Tipped: ₹{{driverTip}}", { driverTip: order.driverTip }) : tr("Tip")}</span>
+              <span>{order.driverTip > 0 ? tr("Tipped: {{driverTip}}", { driverTip: money(order.driverTip, { compact: true }) }) : tr("Tip")}</span>
             </button>
           </div>
         ) : isPast && !isTerminal && statusCfg.canManage ? (
@@ -294,6 +297,7 @@ const OrderCard = memo(function OrderCard({
 
 const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
   const { t: tr } = useTranslation("customer");
+  const { money } = useMoney();
   return (
     <div className="bg-white rounded-[16px] p-4 shadow-sm border border-[#f0f0f0] mb-4">
       <div className="flex justify-between items-start mb-3">
@@ -337,7 +341,7 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
           <div>
             <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{tr("Total Amount")}</span>
             <span className="text-[14px] font-extrabold text-[#006a5c] block mt-1">
-              ₹{order.pricing?.total ? order.pricing.total.toFixed(2) : order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2) || "0.00"}
+              {money(order.pricing?.total ? order.pricing.total : order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) || 0)}
             </span>
           </div>
           {!isPast && (
@@ -357,6 +361,7 @@ const PantryOrderCard = ({ order, isPast, onTrackLive }) => {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToProfile, onShowNotificationToast, socket }) {
   const { t: tr } = useTranslation("customer");
+  const { money, symbol } = useMoney();
   const [activeSection, setActiveSection] = useState(() => localStorage.getItem("ordersActiveSection") || "Meals");
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem("ordersActiveTab") || "Upcoming");
 
@@ -652,41 +657,17 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
     }
     setTipModal(prev => ({ ...prev, loading: true }));
     try {
-      const res = await dmbCustomerAPI.createTipOrder(order._id, numAmount);
+      const res = await dmbCustomerAPI.createTipOrder(
+        order._id,
+        numAmount,
+        paymentRequestExtras({ returnPath: "/user/orders", cancelPath: "/user/orders" })
+      );
       if (res.data?.success) {
-        const rpOpts = res.data.razorpay;
+        // Przelewy24 / Stripe: continue on the provider's page; the tip is credited when the payment is confirmed.
+        const { redirected } = await continueHostedPayment(res.data.payment, { panel: "user" });
+        if (redirected) return;
 
-        if (rpOpts.key === "rzp_test_dummy" || rpOpts.order_id.startsWith("rzp_tip_dev_")) {
-          onShowNotificationToast?.(tr("Demo mode: Simulating payment..."));
-          setTimeout(async () => {
-            try {
-              const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
-                razorpay_order_id: rpOpts.order_id,
-                razorpay_payment_id: `rzp_pay_dev_${Math.random().toString(36).substr(2, 9)}`,
-                razorpay_signature: `rzp_sig_dev_${Math.random().toString(36).substr(2, 9)}`
-              });
-              if (verifyRes.data?.success) {
-                onShowNotificationToast?.(tr("Tip payment simulated successfully!"));
-                const patch = (list) =>
-                  list.map(o =>
-                    o._id === order._id
-                      ? { ...o, driverTip: (o.driverTip || 0) + numAmount }
-                      : o
-                  );
-                setOrders(prev => patch(prev));
-                patchCache("past", patch);
-                setTipModal({ show: false, order: null, amount: "", loading: false });
-              } else {
-                onShowNotificationToast?.(tr("Failed to verify simulated tip"));
-                setTipModal(prev => ({ ...prev, loading: false }));
-              }
-            } catch (err) {
-              onShowNotificationToast?.(err.response?.data?.message || tr("Simulation failed"));
-              setTipModal(prev => ({ ...prev, loading: false }));
-            }
-          }, 1500);
-          return;
-        }
+        const rpOpts = res.data.razorpay;
 
         const checkoutOptions = {
           key: rpOpts.key,
@@ -698,6 +679,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
           handler: async function (response) {
             try {
               const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
+                transactionId: res.data.payment?.transactionId,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
@@ -1068,7 +1050,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                           <div>
                             <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
                             <p className="text-[11px] text-on-surface-variant font-medium">
-                              {tr("₹{{pricePerDay}}/day", { pricePerDay: meal.pricePerDay || meal.price || "—" })}
+                              {tr("{{price}}/day", { price: money(meal.pricePerDay || meal.price, { compact: true }) })}
                             </p>
                           </div>
                         </button>
@@ -1216,7 +1198,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                       : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                       }`}
                   >
-                    ₹{val}
+                    {money(val, { compact: true })}
                   </button>
                 ))}
               </div>
@@ -1224,7 +1206,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
               {/* Custom Amount Input */}
               <div className="w-full relative mb-6">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
-                  ₹
+                  {symbol}
                 </span>
                 <input
                   type="text"
@@ -1236,7 +1218,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                     setTipModal(prev => ({ ...prev, amount: val }));
                   }}
                   placeholder={tr("Enter custom tip amount")}
-                  className="w-full pl-8 pr-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
                 />
               </div>
 
@@ -1247,7 +1229,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
                 className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {tipModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {tipModal.loading ? tr("Processing...") : tr("Send Tip of ₹{{amount}}", { amount: tipModal.amount || "0" })}
+                {tipModal.loading ? tr("Processing...") : tr("Send Tip of {{amount}}", { amount: money(tipModal.amount || 0, { compact: true }) })}
               </button>
             </div>
           </div>

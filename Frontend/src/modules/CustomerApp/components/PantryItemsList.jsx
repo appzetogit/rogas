@@ -6,6 +6,7 @@ import { usePantryCart } from './PantryCartContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 export function PantryItemsList() {
   const { t } = useTranslation("customer");
@@ -13,6 +14,7 @@ export function PantryItemsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const { cart, addItem, removeItem, getItemQuantity, cartTotal, totalItems } = usePantryCart();
+  const { money } = useMoney({ vendorId: cart?.vendorId });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -125,7 +127,7 @@ export function PantryItemsList() {
                   <p className="text-[11px] text-[#6e7a74] mb-2 truncate">{t("by {{restaurantName}}", { restaurantName: item.vendorId.restaurantName })}</p>
                 )}
                 <div className="flex items-center justify-between mt-auto h-[32px]">
-                  <span className="font-extrabold text-[15px] text-[#1F7A63]">{t("{{price}} PLN", { price: item.price.toFixed(2) })}</span>
+                  <span className="font-extrabold text-[15px] text-[#1F7A63]">{money(item.price)}</span>
                   
                   {qty === 0 ? (
                     <button 
@@ -172,7 +174,7 @@ export function PantryItemsList() {
               </div>
               <div className="text-left">
                 <p className="text-[12px] font-medium text-white/80">{t("{{totalItems}} items", { totalItems })}</p>
-                <p className="text-[15px] font-extrabold">{t("{{cartTotal}} PLN", { cartTotal: cartTotal.toFixed(2) })}</p>
+                <p className="text-[15px] font-extrabold">{money(cartTotal)}</p>
               </div>
             </div>
             <span className="text-[15px] font-extrabold flex items-center gap-1">

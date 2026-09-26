@@ -5,8 +5,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { dmbCustomerAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, currentUser, selectedPlanDetails }) {
   const { t } = useTranslation("customer");
+  const { currency } = useMoney({ zoneId: selectedPlanDetails?.zoneId });
   const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
   const [companyName, setCompanyName] = useState(initialSettings.companyName || currentUser?.companyName || '');
   const [nipVat, setNipVat] = useState(initialSettings.nipVat || currentUser?.companyNip || '');
@@ -123,9 +125,9 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
       theme: 'grid',
       head: [['Description', 'Payment Method', 'Amount']],
       body: [
-        ['Subscription Amount', 'Prepaid/Wallet', `INR ${totalPrice.toFixed(2)}`]
+        ['Subscription Amount', 'Prepaid/Wallet', `${currency} ${totalPrice.toFixed(2)}`]
       ],
-      foot: [['Total Paid Amount', '', `INR ${totalPrice.toFixed(2)}`]],
+      foot: [['Total Paid Amount', '', `${currency} ${totalPrice.toFixed(2)}`]],
       headStyles: { fillColor: [40, 121, 101] },
       footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
     });

@@ -6,6 +6,7 @@ import { API_BASE_URL } from '@food/api/config';
 import { toast } from 'sonner';
 import { dmbCustomerAPI } from '../../../services/api';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 export function PantryItemDetails() {
   const { t } = useTranslation("customer");
@@ -27,6 +28,7 @@ export function PantryItemDetails() {
       : item;
   
   const vendorId = item?.vendorId?._id || item?.vendorId;
+  const { money } = useMoney({ vendorId });
   const count = itemToAdd ? getItemQuantity(itemToAdd._id) : 0;
 
   useEffect(() => {
@@ -147,10 +149,10 @@ export function PantryItemDetails() {
                 <div className="text-right">
                    {item.otherPlatformPrice && item.otherPlatformPrice > displayPrice && (
                       <div className="text-xs text-gray-400 line-through font-medium mb-0.5">
-                         {Number(item.otherPlatformPrice).toFixed(2)} {t("PLN")}
+                         {money(item.otherPlatformPrice)}
                       </div>
                    )}
-                   <div className="text-xl font-extrabold text-[#00604c]">{Number(displayPrice).toFixed(2)} {t("PLN")}</div>
+                   <div className="text-xl font-extrabold text-[#00604c]">{money(displayPrice)}</div>
                 </div>
               </div>
               
@@ -179,7 +181,7 @@ export function PantryItemDetails() {
                             : 'border border-[#bec9c3]/40 text-[#3e4945] hover:bg-[#eae7e7]'
                         }`}
                       >
-                        {v.name} - {Number(v.price).toFixed(2)} {t("PLN")}
+                        {v.name} - {money(v.price)}
                       </button>
                     ))}
                   </div>

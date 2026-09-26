@@ -2,8 +2,12 @@ import { useState } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
-import { ArrowLeft, CheckCircle, Banknote, Lock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Lock } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
+import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
+import PaymentMethodPicker from "../../../shared/payments/PaymentMethodPicker";
+import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
 
@@ -31,6 +35,8 @@ export function CheckoutScreen({
   const [paying, setPaying] = useState(false);
   const { getSlot, window: slotWindow, label: slotName, icon: slotIcon } = useDeliverySlots();
   const plan = selectedPlanDetails || {};
+  const methods = usePaymentMethods({ zoneId: plan.zoneId });
+  const { money } = useMoney({ zoneId: plan.zoneId });
   const pricing = plan.pricing || {};
   const meals = plan.meals || [];
   const durationLabel = plan.durationLabel || "Weekly";
@@ -47,7 +53,7 @@ export function CheckoutScreen({
     ? plan.deliverySlots.map(describeSlot).join(" + ")
     : describeSlot(plan.deliverySlot);
 
-  const handleRazorpayPayment = async () => {
+  const handlePayment = async () => {
     if (paying) return;
     const token = localStorage.getItem("user_accessToken");
     if (!token) {
@@ -57,15 +63,8 @@ export function CheckoutScreen({
 
     setPaying(true);
     try {
-      // Step 1: Load Razorpay script
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        onShowNotificationToast(" " + t("Razorpay failed to load. Check network."));
-        setPaying(false);
-        return;
-      }
-
-      // Step 2: Create order on backend
+      // Step 1: Create the order on the backend. The server picks the payment provider for the customer's country
+      // (or uses the one they chose) and returns what to do next.
       const orderRes = await dmbCustomerAPI.createSubscriptionOrder({
         vendorId: plan.vendorId,
         zoneId: plan.zoneId,
@@ -76,25 +75,40 @@ export function CheckoutScreen({
         deliverySlots: plan.deliverySlots,
         deliveryAddress: plan.deliveryAddress,
         pricing: plan.pricing, // containing totalPrice and basePricePerDay
+        subscriptionPlanId: plan.subscriptionPlanId,
         startDate: plan.startDate || null,
         invoiceType: invoicePrefs?.receiptType || "receipt",
+        ...paymentRequestExtras({ provider: methods.selected, zoneId: plan.zoneId, returnPath: "/user/home", cancelPath: "/user/checkout" }),
       });
 
-      const { razorpayOrderId, razorpayKeyId, amount, subscription: subData } = orderRes.data;
+      // Step 2a: Przelewy24 / Stripe: leave for the provider's page. The webhook activates the subscription and the
+      // return page brings the customer back.
+      const { redirected } = await continueHostedPayment(orderRes.data.payment, { panel: "user" });
+      if (redirected) return;
 
-      // Step 3: Open Razorpay checkout
+      // Step 2b: Razorpay: pay inside the pop-up.
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        onShowNotificationToast(" " + t("Razorpay failed to load. Check network."));
+        setPaying(false);
+        return;
+      }
+
+      const { razorpayOrderId, razorpayKeyId, amount, currency, subscription: subData, payment } = orderRes.data;
+
       const options = {
         key: razorpayKeyId || RAZORPAY_KEY_ID,
         amount,
-        currency: "INR",
+        currency: currency || "INR",
         name: "DailyMealBox",
         description: t("Subscription: {{durationLabel}} ({{deliveryDays}})", { durationLabel, deliveryDays }),
         image: plan.vendorImage || undefined,
         order_id: razorpayOrderId,
         handler: async (response) => {
           try {
-            // Step 4: Verify payment + activate subscription
+            // Step 3: Verify payment + activate subscription
             await dmbCustomerAPI.verifySubscriptionPayment({
+              transactionId: payment?.transactionId,
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
@@ -171,7 +185,7 @@ export function CheckoutScreen({
               {meals.map((item, idx) => (
                 <div key={item.mealPlanId || idx} className="flex justify-between text-[14px]">
                   <span className="text-[#1b1c1c] font-medium">{item.name}</span>
-                  <span className="font-semibold text-[#6e7a74]">{t("₹{{pricePerDay}}/day", { pricePerDay: item.pricePerDay })}</span>
+                  <span className="font-semibold text-[#6e7a74]">{t("{{price}}/day", { price: money(item.pricePerDay, { compact: true }) })}</span>
                 </div>
               ))}
             </div>
@@ -179,7 +193,7 @@ export function CheckoutScreen({
             <div className="border-t border-[#f0eded] pt-3 space-y-2">
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">{t("Daily Base Rate")}</span>
-                <span className="font-bold">{t("₹{{basePricePerDay}}/day", { basePricePerDay })}</span>
+                <span className="font-bold">{t("{{price}}/day", { price: money(basePricePerDay, { compact: true }) })}</span>
               </div>
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">{t("Duration")}</span>
@@ -210,37 +224,37 @@ export function CheckoutScreen({
 
               <div className="border-t border-[#f0eded] pt-2 flex justify-between text-[14px] text-[#6e7a74]">
                 <span>{t("Food Total")}</span>
-                <span className="font-semibold">₹{(pricing.subtotal !== undefined ? pricing.subtotal : totalPrice).toFixed(2)}</span>
+                <span className="font-semibold">{money(pricing.subtotal !== undefined ? pricing.subtotal : totalPrice)}</span>
               </div>
               {pricing.foodVatAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>{pricing.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on ₹{{amount}} Menu)", { foodVat: pricing.foodVat || 0, amount: (pricing.foodVatBaseAmount || 0).toFixed(2) }) : t("Food VAT ({{foodVat}}%)", { foodVat: pricing.foodVat || 0 })}</span>
-                  <span className="font-semibold">₹{pricing.foodVatAmount.toFixed(2)}</span>
+                  <span>{pricing.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on {{amount}} Menu)", { foodVat: pricing.foodVat || 0, amount: money(pricing.foodVatBaseAmount || 0) }) : t("Food VAT ({{foodVat}}%)", { foodVat: pricing.foodVat || 0 })}</span>
+                  <span className="font-semibold">{money(pricing.foodVatAmount)}</span>
                 </div>
               )}
               {pricing.deliveryCharge > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
                   <span>{t("Delivery Charge")}</span>
-                  <span className="font-semibold">₹{pricing.deliveryCharge.toFixed(2)}</span>
+                  <span className="font-semibold">{money(pricing.deliveryCharge)}</span>
                 </div>
               )}
               {pricing.deliveryVatAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
                   <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat: pricing.deliveryVat || 0 })}</span>
-                  <span className="font-semibold">₹{pricing.deliveryVatAmount.toFixed(2)}</span>
+                  <span className="font-semibold">{money(pricing.deliveryVatAmount)}</span>
                 </div>
               )}
               {pricing.platformFeeAmount > 0 && (
                 <div className="flex justify-between text-[14px] text-[#6e7a74]">
                   <span>{t("Platform Fee")}</span>
-                  <span className="font-semibold">₹{pricing.platformFeeAmount.toFixed(2)}</span>
+                  <span className="font-semibold">{money(pricing.platformFeeAmount)}</span>
                 </div>
               )}
             </div>
 
             <div className="border-t border-[#f0eded] pt-3 flex justify-between items-center">
               <span className="text-[15px] font-extrabold text-[#1b1c1c]">{t("Total Amount")}</span>
-              <span className="text-[20px] font-extrabold text-primary">₹{totalPrice.toFixed(2)}</span>
+              <span className="text-[20px] font-extrabold text-primary">{money(totalPrice)}</span>
             </div>
           </div>
         </section>
@@ -283,25 +297,20 @@ export function CheckoutScreen({
         {/* Payment Method */}
         <section className="space-y-3">
           <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Payment")}</h2>
-          <div className="bg-white border border-[#e4e2e1]/30 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
-            <div className="w-10 h-10 bg-primary/10 flex items-center justify-center rounded-xl">
-              <Banknote className="text-primary" />
-            </div>
-            <div>
-              <p className="text-[14px] font-bold text-[#1b1c1c]">{t("Razorpay")}</p>
-              <p className="text-[12px] text-[#6e7a74]">{t("UPI · Cards · Net Banking · Wallets")}</p>
-            </div>
-            <div className="ml-auto">
-              <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt={t("Razorpay")} className="h-6" onError={(e) => e.target.style.display = "none"} />
-            </div>
-          </div>
+          <PaymentMethodPicker
+            providers={methods.providers}
+            selected={methods.selected}
+            onSelect={methods.setSelected}
+            loading={methods.loading}
+            error={methods.error}
+          />
         </section>
 
         {/* CTA */}
         <div className="pt-2 space-y-4">
           <button
-            onClick={handleRazorpayPayment}
-            disabled={paying || !plan.vendorId}
+            onClick={handlePayment}
+            disabled={paying || !plan.vendorId || methods.loading || !methods.providers.length}
             className="w-full bg-[#1F7A63] disabled:opacity-60 hover:bg-[#155a49] text-white py-4 rounded-2xl font-extrabold text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {paying ? (
@@ -312,12 +321,12 @@ export function CheckoutScreen({
             ) : (
               <>
                 <Lock className="text-[20px]" />
-                {t("Pay ₹{{totalPrice}} & Subscribe", { totalPrice })}
+                {t("Pay {{totalPrice}} & Subscribe", { totalPrice: money(totalPrice) })}
               </>
             )}
           </button>
           <p className="text-center text-[11px] text-[#6e7a74] leading-relaxed px-4">
-            {t("🔒 Secure payment via Razorpay · By subscribing, you agree to our Terms of Service and auto-renewal policy.")}
+            {t("🔒 Secure payment · By subscribing, you agree to our Terms of Service and auto-renewal policy.")}
           </p>
         </div>
       </main>

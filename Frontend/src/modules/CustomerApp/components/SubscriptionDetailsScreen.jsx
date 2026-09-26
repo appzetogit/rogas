@@ -3,9 +3,11 @@ import { dmbCustomerAPI } from "@food/api";
 import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { Trans, useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
   const { t } = useTranslation("customer");
+  const { money } = useMoney();
   const { label: slotName } = useDeliverySlots();
   const [subscriptions, setSubscriptions] = useState([]);
   const [pantryOrders, setPantryOrders] = useState([]);
@@ -335,7 +337,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                     <div className="space-y-0.5 text-right">
                       <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Amount Paid")}</span>
                       <span className="text-lg font-extrabold text-primary block mt-1">
-                        {sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice).toFixed(2) : "0.00"} {sub.pricing?.currency || t("PLN")}
+                        {money(sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice) : 0, { currency: sub.pricing?.currency })}
                       </span>
                     </div>
                   </div>
@@ -470,7 +472,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                     <div className="space-y-0.5 mt-2">
                       <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Total Amount")}</span>
                       <span className="text-lg font-extrabold text-primary block mt-1">
-                        {po.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)} {t("PLN")}
+                        {money(po.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0) || 0)}
                       </span>
                     </div>
                   </div>

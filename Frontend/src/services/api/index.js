@@ -649,6 +649,14 @@ export const adminAPI = {
   deleteDeliverySlot: (id) => adminClient.delete(`/food/admin/delivery-slots/${String(id)}`),
 
   /** Languages & translations (admin) */
+  /** Payments: provider switches, country routing, transactions */
+  getPaymentsOverview: () => adminClient.get("/food/admin/payments"),
+  updatePaymentSettings: (body) => adminClient.put("/food/admin/payments/settings", body ?? {}),
+  testPaymentProvider: (id) => adminClient.post(`/food/admin/payments/providers/${String(id)}/test`),
+  getPaymentTransactions: (params = {}) => adminClient.get("/food/admin/payments/transactions", { params }),
+  getPaymentTransaction: (id) => adminClient.get(`/food/admin/payments/transactions/${String(id)}`),
+  recheckPaymentTransaction: (id) => adminClient.post(`/food/admin/payments/transactions/${String(id)}/recheck`),
+  refundPaymentTransaction: (id, body) => adminClient.post(`/food/admin/payments/transactions/${String(id)}/refund`, body ?? {}),
   getLanguages: () => adminClient.get("/food/admin/i18n/languages"),
   createLanguage: (body) => adminClient.post("/food/admin/i18n/languages", body ?? {}),
   updateLanguage: (id, body) => adminClient.put(`/food/admin/i18n/languages/${String(id)}`, body ?? {}),
@@ -1645,8 +1653,8 @@ export const deliveryAPI = {
     deliveryClient.get("/food/delivery/cash-limit"),
   createWithdrawalRequest: (body) =>
     deliveryClient.post("/food/delivery/wallet/withdraw", body ?? {}),
-  createDepositOrder: (amount) =>
-    deliveryClient.post("/food/delivery/wallet/deposit/order", { amount }),
+  createDepositOrder: (amount, extra = {}) =>
+    deliveryClient.post("/food/delivery/wallet/deposit/order", { amount, ...extra }),
   verifyDepositPayment: (body) =>
     deliveryClient.post("/food/delivery/wallet/deposit/verify", body ?? {}),
   /** Wallet transactions - from wallet response (no separate backend endpoint) */
@@ -2126,6 +2134,8 @@ export const dmbCustomerAPI = {
   verifySubscriptionPayment: (data) => userClient.post("/dmb/payments/verify-payment", data),
   // Pantry Orders (USER)
   createPantryOrder: (data) => userClient.post("/dmb/pantry-orders/create-order", data),
+  /** One payment for the whole cart: { vendorId, groups: [{ items, deliveryDates, deliverySlots }], deliveryAddress, expectedTotal, provider, returnPath, cancelPath } */
+  createPantryCheckout: (data) => userClient.post("/dmb/pantry-orders/checkout", data),
   verifyPantryPayment: (data) => userClient.post("/dmb/pantry-orders/verify-payment", data),
   getMyPantryOrders: (params) => {
     if (typeof params === 'string') return userClient.get("/dmb/pantry-orders/my-orders", { params: { type: params } });
@@ -2167,12 +2177,12 @@ export const dmbCustomerAPI = {
   /** Rate a delivered order (rating + optional feedback + tip) */
   rateOrder: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/rate`, data),
   /** Create Razorpay order for tip */
-  createTipOrder: (orderId, amount) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/payment-order`, { amount }),
+  createTipOrder: (orderId, amount, extra = {}) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/payment-order`, { amount, ...extra }),
   /** Verify Razorpay payment signature for tip */
   verifyTipPayment: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/verify-payment`, data),
   /** Customer Wallet APIs */
   getWallet: () => userClient.get("/food/user/wallet"),
-  createWalletTopupOrder: (amount) => userClient.post("/food/user/wallet/topup/order", { amount }),
+  createWalletTopupOrder: (amount, extra = {}) => userClient.post("/food/user/wallet/topup/order", { amount, ...extra }),
   verifyWalletTopupPayment: (data) => userClient.post("/food/user/wallet/topup/verify", data),
   /** Admin Customer Wallet API */
   getAllCustomerWallets: () => adminClient.get("/food/admin/customers/wallet/wallet-transactions"),

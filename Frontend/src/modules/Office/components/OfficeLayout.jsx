@@ -21,6 +21,8 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
+import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
+import usePaymentResult from "../../../shared/payments/usePaymentResult";
 
 export default function App() {
   const { t } = useTranslation("office");
@@ -121,36 +123,27 @@ export default function App() {
   };
 
   // 2. Meal Subscription Actions (Assignment / Unassignment)
-  const handleAssignEmployees = async (employeeIds, vendorId, deliverySlot, subscriptionPlanId, totalAmount, vendorMealPlanId) => {
+  const handleAssignEmployees = async (employeeIds, vendorId, deliverySlot, subscriptionPlanId, totalAmount, vendorMealPlanId, provider) => {
     try {
-      // Step 1: Create order — pass subscriptionPlanId + totalAmount (for billing)
+      // Step 1: Create the order. The server picks the payment provider for the vendor's country (or uses the chosen one);
+      // meals are assigned only after the payment is confirmed.
       const orderRes = await createAssignmentOrderApi({
         employeeIds,
         subscriptionPlanId,
         vendorId,
         slots: deliverySlot,
-        totalAmount
+        totalAmount,
+        mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
+        ...paymentRequestExtras({ provider, returnPath: '/office/AssignedMealPlans', cancelPath: '/office/VendorsAssign' }),
       });
       const orderData = orderRes.data.data;
 
-      // Dev/mock bypass — backend returns isMock:true when Razorpay is not configured
-      if (orderData.isMock || orderData.orderId.startsWith('mock_')) {
-        await assignMealsApi({
-          employeeIds,
-          vendorId,
-          mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
-          subscriptionPlanId,                                  // keep for reference
-          slots: deliverySlot,
-          razorpayOrderId: orderData.orderId,
-          razorpayPaymentId: 'mock_payment_' + Date.now(),
-          razorpaySignature: 'mock_signature'
-        });
-        fetchDashboardData();
-        alert(t("Subscriptions assigned for {{count}} employee. Deliveries scheduled for {{deliverySlot}}.", { count: employeeIds.length, deliverySlot: deliverySlot.join(', ') }));
-        return;
-      }
+      // Step 2a: Przelewy24 / Stripe: continue on the provider's page. The webhook assigns the meals and the return page
+      // brings the office back here.
+      const { redirected } = await continueHostedPayment(orderData.payment, { panel: 'office' });
+      if (redirected) return;
 
-      // Step 2: Load Razorpay Script dynamically if not already present
+      // Step 2b: Razorpay: load the script if needed
       if (!window.Razorpay) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
@@ -177,6 +170,7 @@ export default function App() {
         handler: async function (response) {
           try {
             await assignMealsApi({
+              transactionId: orderData.payment?.transactionId,
               employeeIds,
               vendorId,
               mealPlanId: vendorMealPlanId || subscriptionPlanId,
@@ -209,6 +203,13 @@ export default function App() {
     }
   };
 
+  // Back from a hosted payment page (Przelewy24 / Stripe): the meals were assigned by the payment confirmation.
+  usePaymentResult(({ status, purpose }) => {
+    if (status === 'success' && purpose === 'office') {
+      fetchDashboardData();
+      alert(t("Payment successful! Subscriptions have been assigned."));
+    }
+  });
 
   const handleUnassignEmployee = async (id) => {
     try {

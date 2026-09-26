@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, MessageSquare, Send, Loader2, CheckCircle, XCircle, AlertCircle, Info, RefreshCw, HandCoins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 import { tKey } from "../../../shared/i18n";
 
 const STATUS_CONFIG = {
@@ -23,6 +24,7 @@ const REASONS = [
 
 export default function CustomerServicePage() {
   const { t } = useTranslation("customer");
+  const { money } = useMoney();
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +215,7 @@ export default function CustomerServicePage() {
                       </div>
                       {req.status === 'approved' && req.refundAmount > 0 && (
                         <div className="text-[12px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
-                          {t("+₹{{refundAmount}} Refunded", { refundAmount: req.refundAmount })}
+                          {t("+{{refundAmount}} Refunded", { refundAmount: money(req.refundAmount, { compact: true }) })}
                         </div>
                       )}
                     </div>

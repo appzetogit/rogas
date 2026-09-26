@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, Calendar as CalendarIcon, MapPin, Receipt, Info, X, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react';
 import { usePantryCart } from './PantryCartContext';
 import { dmbCustomerAPI } from '@food/api';
+import usePaymentMethods from '../../../shared/payments/usePaymentMethods';
+import PaymentMethodPicker from '../../../shared/payments/PaymentMethodPicker';
+import { continueHostedPayment, paymentRequestExtras } from '../../../shared/payments/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useTranslation } from "react-i18next";
+import useMoney from "../../../shared/payments/money";
 import { tKey } from "../../../shared/i18n";
 
 const mapContainerStyle = { width: '100%', height: '100%' };
@@ -81,6 +85,8 @@ export function PantryCheckoutScreen() {
   // Global slots
   const [globalSlots, setGlobalSlots] = useState(['lunch']);
   const [loading, setLoading] = useState(false);
+  const methods = usePaymentMethods({ vendorId: cart?.vendorId });
+  const { money } = useMoney({ vendorId: cart?.vendorId });
   const [deliveryAddress, setDeliveryAddress] = useState(null);
   // Pricing config from backend
   const [pricingConfig, setPricingConfig] = useState({ foodVatPercent: 0, platformFee: 0 });
@@ -298,86 +304,50 @@ export function PantryCheckoutScreen() {
         const resolvedSlots = getItemSlots(item);
         const key = [...resolvedDates].sort().join(',') + '|' + [...resolvedSlots].sort().join(',');
 
-        if (!dateGroups[key]) dateGroups[key] = { dates: resolvedDates, slots: resolvedSlots, items: [] };
+        if (!dateGroups[key]) dateGroups[key] = { deliveryDates: resolvedDates, deliverySlots: resolvedSlots, items: [] };
         dateGroups[key].items.push({ pantryItemId: item.pantryItemId, quantity: item.quantity });
       });
-
       const groups = Object.values(dateGroups);
 
-      // 2. Single Razorpay payment for grandTotal
+      // 2. One request creates every group's order and ONE payment for the whole cart. The server prices the cart from
+      // the database; expectedTotal only lets it warn us when prices changed since this screen was loaded.
+      const res = await dmbCustomerAPI.createPantryCheckout({
+        vendorId: cart.vendorId,
+        groups,
+        deliveryAddress,
+        expectedTotal: grandTotal,
+        ...paymentRequestExtras({ provider: methods.selected, returnPath: '/user/orders', cancelPath: '/user/pantry-checkout' }),
+      });
+      if (!res.data?.success) throw new Error(res.data?.message || 'Failed to create order');
+
+      // 3a. Przelewy24 / Stripe: continue on the provider's page. The webhook marks the orders paid; the return page
+      // brings the customer back and the cart is cleared there.
+      const { redirected } = await continueHostedPayment(res.data.payment, { panel: 'user' });
+      if (redirected) return;
+
+      // 3b. Razorpay: pay inside the pop-up.
       const loaded = await loadRazorpayScript();
       if (!loaded || !window.Razorpay) {
         toast.error(t("Razorpay SDK not loaded."));
-        setLoading(false);
         return;
       }
-
-      // Create a temporary order using the first group to get razorpay order id.
-      // Pass grandTotal as totalOverride so the backend uses the frontend-calculated amount.
-      const frontendGrandTotalPaise = Math.round(grandTotal * 100);
-      const firstGroupPayload = {
-        vendorId: cart.vendorId,
-        items: groups[0].items,
-        deliveryDates: groups[0].dates,
-        deliverySlots: groups[0].slots,
-        deliveryAddress,
-        totalOverride: grandTotal, // backend must use this exact amount
-      };
-
-      const firstRes = await dmbCustomerAPI.createPantryOrder(firstGroupPayload);
-      if (!firstRes.data?.success) throw new Error(firstRes.data?.message || 'Failed to create order');
-
-      const { order: firstOrder, razorpayOrderId, razorpayKeyId, razorpayAmount } = firstRes.data;
-
-      // ── Amount mismatch guard ──────────────────────────────────────────────
-      // Validate that the amount the backend sent to Razorpay matches what we
-      // computed on the frontend. If they differ, do NOT open Razorpay.
-      const backendAmountPaise = razorpayAmount != null
-        ? Math.round(Number(razorpayAmount))
-        : frontendGrandTotalPaise; // if backend didn't return it, we trust it matched
-
-      if (backendAmountPaise !== frontendGrandTotalPaise) {
-        toast.error(t("Server error. Please try again later."));
-        setLoading(false);
-        return;
-      }
-      // ──────────────────────────────────────────────────────────────────────
-
+      const { order: firstOrder, razorpayOrderId, razorpayKeyId, razorpayAmount, payment } = res.data;
       const options = {
         key: razorpayKeyId,
-        amount: frontendGrandTotalPaise,
-        currency: 'INR',
+        amount: razorpayAmount,
+        currency: payment?.currency || 'INR',
         name: 'Rogas Pantry',
         description: t("Pantry Order — {{count}} group", { count: groups.length }),
         order_id: razorpayOrderId,
         handler: async (response) => {
           try {
-            // Verify first order payment
             const verifyRes = await dmbCustomerAPI.verifyPantryPayment({
               orderId: firstOrder.orderId,
+              transactionId: payment?.transactionId,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             });
-
             if (!verifyRes.data?.success) throw new Error('Payment verification failed');
-
-            // Place remaining group orders (2, 3, ...) silently
-            for (let i = 1; i < groups.length; i++) {
-              const g = groups[i];
-              try {
-                await dmbCustomerAPI.createPantryOrder({
-                  vendorId: cart.vendorId,
-                  items: g.items,
-                  deliveryDates: g.dates,
-                  deliverySlots: g.slots,
-                  deliveryAddress,
-                  paymentId: response.razorpay_payment_id, // link to same payment
-                });
-              } catch (groupErr) {
-                console.error(`Group ${i + 1} order failed:`, groupErr);
-              }
-            }
-
             clearCart();
             toast.success(t("Payment successful! Your orders are placed."));
             navigate('/user/orders');
@@ -447,7 +417,7 @@ export function PantryCheckoutScreen() {
 
                     {/* Price */}
                     <span className="font-extrabold text-[14px] text-[#1F7A63] shrink-0">
-                      ₹{(item.price * item.quantity).toFixed(2)}
+                      {money(item.price * item.quantity)}
                     </span>
 
                     {/* Expand toggle */}
@@ -467,7 +437,7 @@ export function PantryCheckoutScreen() {
 
                   {/* ── Qty Stepper row (always visible) ── */}
                   <div className="flex items-center justify-between px-4 pb-3">
-                    <span className="text-[12px] text-[#a0a8a5]">{t("₹{{price}} / unit", { price: item.price.toFixed(2) })}</span>
+                    <span className="text-[12px] text-[#a0a8a5]">{t("{{price}} / unit", { price: money(item.price) })}</span>
                     <div className="flex items-center gap-2 bg-[#f5f5f0] rounded-full px-3 py-1">
                       <button
                         onClick={() => removeItem(item.pantryItemId)}
@@ -575,7 +545,7 @@ export function PantryCheckoutScreen() {
           <div className="space-y-2">
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Items Total")}</span>
-              <span className="font-semibold text-[#1b1c1c]">₹{itemsTotal.toFixed(2)}</span>
+              <span className="font-semibold text-[#1b1c1c]">{money(itemsTotal)}</span>
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Delivery Days")}</span>
@@ -588,21 +558,33 @@ export function PantryCheckoutScreen() {
             {foodVatPercent > 0 && (
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
                 <span>{t("Food VAT ({{foodVatPercent}}%)", { foodVatPercent })}</span>
-                <span className="font-semibold text-[#1b1c1c]">₹{foodVatAmount.toFixed(2)}</span>
+                <span className="font-semibold text-[#1b1c1c]">{money(foodVatAmount)}</span>
               </div>
             )}
             {platformFee > 0 && (
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
                 <span>{t("Platform Fee")}</span>
-                <span className="font-semibold text-[#1b1c1c]">₹{platformFee.toFixed(2)}</span>
+                <span className="font-semibold text-[#1b1c1c]">{money(platformFee)}</span>
               </div>
             )}
             <div className="h-[1px] bg-[#f0f0f0] my-1" />
             <div className="flex justify-between text-[16px] font-extrabold text-[#1b1c1c]">
               <span>{t("Grand Total")}</span>
-              <span className="text-primary">₹{grandTotal.toFixed(2)}</span>
+              <span className="text-primary">{money(grandTotal)}</span>
             </div>
           </div>
+        </div>
+
+        {/* ── PAYMENT ── */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-[#e4e2e1]/50">
+          <h2 className="text-[16px] font-extrabold text-[#1b1c1c] mb-3">{t("Payment")}</h2>
+          <PaymentMethodPicker
+            providers={methods.providers}
+            selected={methods.selected}
+            onSelect={methods.setSelected}
+            loading={methods.loading}
+            error={methods.error}
+          />
         </div>
 
       </div>
@@ -640,13 +622,13 @@ export function PantryCheckoutScreen() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <p className="text-[12px] text-[#6e7a74] font-medium">{t("Total for {{days}} · {{slots}}", { days: t("{{count}} Day", { count: totalDeliveryDays }), slots: t("{{count}} slot", { count: totalDeliverySlots }) })}</p>
-            <p className="text-[11px] text-[#1F7A63] font-bold mt-0.5">{foodVatPercent > 0 ? t("Includes ₹{{foodVatAmount}} Food VAT", { foodVatAmount: foodVatAmount.toFixed(2) }) : t("All charges included")}</p>
+            <p className="text-[11px] text-[#1F7A63] font-bold mt-0.5">{foodVatPercent > 0 ? t("Includes {{foodVatAmount}} Food VAT", { foodVatAmount: money(foodVatAmount) }) : t("All charges included")}</p>
           </div>
-          <span className="text-[24px] font-extrabold text-[#1b1c1c]">₹{grandTotal.toFixed(2)}</span>
+          <span className="text-[24px] font-extrabold text-[#1b1c1c]">{money(grandTotal)}</span>
         </div>
         <button
           onClick={handlePayment}
-          disabled={loading || !deliveryAddress}
+          disabled={loading || !deliveryAddress || methods.loading || !methods.providers.length}
           className="w-full h-[54px] bg-[#1F7A63] hover:bg-[#155a49] disabled:bg-[#bec9c3] disabled:text-white/70 text-white rounded-[14px] font-extrabold text-[16px] shadow-[0_8px_24px_rgba(31,122,99,0.25)] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           {loading ? (

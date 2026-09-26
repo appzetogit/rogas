@@ -73,6 +73,7 @@ const RedirectToFood = () => {
 
 const MasterLandingPage = lazy(() => import('./MasterLandingPage'))
 const AdminRouter = lazy(() => import('../modules/Food/components/admin/AdminRouter'))
+const PaymentReturnPage = lazy(() => import('../shared/payments/PaymentReturnPage'))
 
 const AppRoutes = () => {
   const location = useLocation()
@@ -118,6 +119,9 @@ const AppRoutes = () => {
       {/* Food Module - Handle both /food and root / for the user app */}
       {/* Food Module - Handle both /food and root / for the user app */}
       <Route path="/food/*" element={<FoodAppWrapper />} />
+
+      {/* Where Przelewy24 / Stripe send the customer back after paying (no panel, no login needed) */}
+      <Route path="/payment/return" element={<Suspense fallback={<PageLoader />}><PaymentReturnPage /></Suspense>} />
 
       {/* Global Admin Portal */}
       <Route path="/admin/*" element={<AdminRouter />} />
