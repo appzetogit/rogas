@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { authMiddleware } from '../../core/auth/auth.middleware.js';
 import { PaymentTransaction } from './payments.models.js';
 import { resolvePaymentContext, resolveProviders } from './payments.settings.js';
@@ -24,12 +25,17 @@ const ownsTransaction = (req, tx) => {
 export const paymentsRouter = express.Router();
 
 /**
- * GET /api/v1/payments/methods?zoneId=&country=
+ * GET /api/v1/payments/methods?zoneId=|vendorId=|country=|dialCode=
  * What the checkout screen may offer this customer. Public: it reveals nothing but provider names and the currency.
  */
 paymentsRouter.get('/methods', async (req, res) => {
     try {
-        const ctx = await resolvePaymentContext({ zoneId: req.query.zoneId, country: req.query.country, dialCode: req.query.dialCode });
+        let zoneId = req.query.zoneId;
+        if (!zoneId && req.query.vendorId && mongoose.Types.ObjectId.isValid(String(req.query.vendorId))) {
+            const { FoodRestaurant } = await import('../food/restaurant/models/restaurant.model.js');
+            zoneId = (await FoodRestaurant.findById(req.query.vendorId).select('zoneId').lean())?.zoneId;
+        }
+        const ctx = await resolvePaymentContext({ zoneId, country: req.query.country, dialCode: req.query.dialCode });
         const ids = await resolveProviders(ctx);
         res.json({
             success: true,
