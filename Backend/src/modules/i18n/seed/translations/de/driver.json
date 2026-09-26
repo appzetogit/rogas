@@ -15,6 +15,7 @@
  "{{slotLabel}} slot starts at {{nextSlotStartTime}}": "Zeitfenster {{slotLabel}} beginnt um {{nextSlotStartTime}}",
  "{{tips}} PLN": "{{tips}} PLN",
  "{{topUp}} PLN": "{{topUp}} PLN",
+ "{{value}} PLN": "{{value}} PLN",
  "← Back": "← Zurück",
  "← NEXT STOP": "← NÄCHSTER STOPP",
  "⏳ Preview: {{slotLabel}} slot at {{nextSlotStartTime}}": "⏳ Vorschau: Zeitfenster {{slotLabel}} um {{nextSlotStartTime}}",

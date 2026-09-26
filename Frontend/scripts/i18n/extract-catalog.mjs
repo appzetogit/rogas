@@ -27,7 +27,7 @@ const NAMESPACES = ['common', 'customer', 'vendor', 'driver', 'office', 'notific
 const toPosix = (p) => p.split(path.sep).join('/');
 
 /** Extra folders that are not codemod targets but use t() (the language switcher itself). */
-const EXTRA_DIRS = [{ dir: 'shared/i18n', ns: 'common' }];
+const EXTRA_DIRS = [{ dir: 'shared/i18n', ns: 'common' }, { dir: 'shared/payments', ns: 'common' }];
 
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
