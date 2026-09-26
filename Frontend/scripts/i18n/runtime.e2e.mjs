@@ -54,6 +54,12 @@ try {
   check('fresh visitor is English', rt.getCurrentLanguage(), 'en');
   check('English text is the key', T('Cancel', { ns: 'common' }), 'Cancel');
 
+  // 1b. Backend unreachable at first (restarting / old build): the app stays usable in English, and a later sync recovers
+  axios.defaults.baseURL = 'http://127.0.0.1:9';
+  await rt.syncLanguages();
+  check('backend down: list stays empty, English still works', [rt.getLanguageList().languages.length, T('Cancel', { ns: 'common' })], [0, 'Cancel']);
+  axios.defaults.baseURL = `http://127.0.0.1:${port}`;
+
   // 2. Languages come from the admin-managed list
   await rt.syncLanguages();
   check('language list from backend', rt.getLanguageList().languages.map((l) => l.code), ['en', 'pl', 'ru', 'uk', 'de']);

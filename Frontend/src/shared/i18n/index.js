@@ -144,8 +144,15 @@ applyDocumentLanguage(initial.lng);
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-/** Downloads the admin-managed language list and the active bundles. Safe to call repeatedly. */
-export const syncLanguages = async () => {
+let syncing = null;
+
+/** Downloads the admin-managed language list and the active bundles. Safe to call repeatedly (concurrent calls share one request). */
+export const syncLanguages = () => {
+  if (!syncing) syncing = runSync().finally(() => { syncing = null; });
+  return syncing;
+};
+
+const runSync = async () => {
   try {
     const { data } = await axios.get(`${baseURL}/i18n/languages`, { timeout: 15000 });
     if (!data?.languages) return;

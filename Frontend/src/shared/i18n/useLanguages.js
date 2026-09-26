@@ -10,6 +10,8 @@ export default function useLanguages() {
 
   useEffect(() => {
     setList(getLanguageList());
+    // Opening a picker before the list ever downloaded: fetch it now instead of staying English-only.
+    if (!getLanguageList().languages.length) syncLanguages();
     return subscribe(() => setList({ ...getLanguageList() }));
   }, []);
 
