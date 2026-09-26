@@ -1,0 +1,23 @@
+{
+ "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} Box bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
+ "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} Boxen bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
+ "{{planName}} from your vendor is confirmed for tomorrow. Bon appétit!": "{{planName}} von Ihrem Partner ist für morgen bestätigt. Guten Appetit!",
+ "{{planName}} will be delivered on {{date}}. Get ready!": "{{planName}} wird am {{date}} geliefert. Machen Sie sich bereit!",
+ "🍱 Tomorrow's Meal is Confirmed!": "🍱 Das morgige Essen ist bestätigt!",
+ "🍱 Tomorrow's Meal Ready!": "🍱 Das morgige Essen ist fertig!",
+ "🛵 Driver arriving soon!": "🛵 Fahrer kommt bald!",
+ "A customer skipped tomorrow's delivery. Update your preparation count.": "Ein Kunde hat die morgige Lieferung übersprungen. Aktualisieren Sie Ihre Zubereitungsmenge.",
+ "A new customer subscribed to your meal plan.": "Ein neuer Kunde hat Ihren Mahlzeitenplan abonniert.",
+ "A subscriber cancelled. Check your analytics for retention tips.": "Ein Abonnent hat gekündigt. Tipps zur Kundenbindung finden Sie in Ihrer Analyse.",
+ "Batch {{batchId}} collected ✓": "Charge {{batchId}} abgeholt ✓",
+ "Customer Skip": "Kunde überspringt",
+ "Delivered! 🎉": "Geliefert! 🎉",
+ "Driver collected {{count}} boxes at {{time}}. PIN verified._one": "Fahrer hat {{count}} Box um {{time}} abgeholt. PIN verifiziert.",
+ "Driver collected {{count}} boxes at {{time}}. PIN verified._other": "Fahrer hat {{count}} Boxen um {{time}} abgeholt. PIN verifiziert.",
+ "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
+ "Orders ready for pickup! 🟢": "Bestellungen abholbereit! 🟢",
+ "Subscriber Cancelled": "Abonnent hat gekündigt",
+ "Your DailyMealBox has been delivered. Enjoy!": "Ihre DailyMealBox wurde geliefert. Guten Appetit!",
+ "Your delivery is {{distance}}m away. PIN: {{pin}}": "Ihre Lieferung ist {{distance}} m entfernt. PIN: {{pin}}",
+ "Your meal has been delivered. Enjoy! Rate your experience →": "Ihre Mahlzeit wurde geliefert. Guten Appetit! Bewerten Sie Ihr Erlebnis →"
+}

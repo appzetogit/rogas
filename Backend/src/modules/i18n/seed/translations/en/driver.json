@@ -1,0 +1,8 @@
+{
+ "📦 {{count}} meal box to collect_one": "📦 {{count}} meal box to collect",
+ "📦 {{count}} meal box to collect_other": "📦 {{count}} meal boxes to collect",
+ "Deliver {{count}} more order to earn {{targetAmount}} PLN extra_one": "Deliver {{count}} more order to earn {{targetAmount}} PLN extra",
+ "Deliver {{count}} more order to earn {{targetAmount}} PLN extra_other": "Deliver {{count}} more orders to earn {{targetAmount}} PLN extra",
+ "Deliver {{count}} more order to earn {{targetAmount}} PLN extra._one": "Deliver {{count}} more order to earn {{targetAmount}} PLN extra.",
+ "Deliver {{count}} more order to earn {{targetAmount}} PLN extra._other": "Deliver {{count}} more orders to earn {{targetAmount}} PLN extra."
+}

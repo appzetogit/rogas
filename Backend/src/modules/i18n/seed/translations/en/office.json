@@ -1,0 +1,8 @@
+{
+ "Payment successful! Subscriptions assigned for {{count}} employee._one": "Payment successful! Subscriptions assigned for {{count}} employee.",
+ "Payment successful! Subscriptions assigned for {{count}} employee._other": "Payment successful! Subscriptions assigned for {{count}} employees.",
+ "Select the scheduled daily delivery window for {{count}} employee._one": "Select the scheduled daily delivery window for {{count}} employee.",
+ "Select the scheduled daily delivery window for {{count}} employee._other": "Select the scheduled daily delivery window for {{count}} employees.",
+ "Subscriptions assigned for {{count}} employee. Deliveries scheduled for {{deliverySlot}}._one": "Subscriptions assigned for {{count}} employee. Deliveries scheduled for {{deliverySlot}}.",
+ "Subscriptions assigned for {{count}} employee. Deliveries scheduled for {{deliverySlot}}._other": "Subscriptions assigned for {{count}} employees. Deliveries scheduled for {{deliverySlot}}."
+}

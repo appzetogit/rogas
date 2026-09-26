@@ -1,0 +1,22 @@
+{
+ "{{count}} Day_one": "{{count}} Day",
+ "{{count}} Day_other": "{{count}} Days",
+ "{{count}} option_one": "{{count}} option",
+ "{{count}} option_other": "{{count}} options",
+ "{{count}} slot_one": "{{count}} slot",
+ "{{count}} slot_other": "{{count}} slots",
+ "{{count}} vendor available_one": "{{count}} vendor available",
+ "{{count}} vendor available_other": "{{count}} vendors available",
+ "× {{count}} slot_one": "× {{count}} slot",
+ "× {{count}} slot_other": "× {{count}} slots",
+ "⏸️ Subscription paused for {{count}} day_one": "⏸️ Subscription paused for {{count}} day",
+ "⏸️ Subscription paused for {{count}} day_other": "⏸️ Subscription paused for {{count}} days",
+ "⚠️ Your subscription has <0>{{count}} day</0> remaining._one": "⚠️ Your subscription has <0>{{count}} day</0> remaining.",
+ "⚠️ Your subscription has <0>{{count}} day</0> remaining._other": "⚠️ Your subscription has <0>{{count}} days</0> remaining.",
+ "Pantry Order — {{count}} group_one": "Pantry Order — {{count}} group",
+ "Pantry Order — {{count}} group_other": "Pantry Order — {{count}} groups",
+ "Pause {{count}} Day_one": "Pause {{count}} Day",
+ "Pause {{count}} Day_other": "Pause {{count}} Days",
+ "Subscription paused for {{count}} day._one": "Subscription paused for {{count}} day.",
+ "Subscription paused for {{count}} day._other": "Subscription paused for {{count}} days."
+}

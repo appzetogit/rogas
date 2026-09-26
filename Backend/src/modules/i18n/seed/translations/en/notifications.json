@@ -1,0 +1,6 @@
+{
+ "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} box ready. Collection PIN: {{pin}}. Tap to navigate.",
+ "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate.",
+ "Driver collected {{count}} boxes at {{time}}. PIN verified._one": "Driver collected {{count}} box at {{time}}. PIN verified.",
+ "Driver collected {{count}} boxes at {{time}}. PIN verified._other": "Driver collected {{count}} boxes at {{time}}. PIN verified."
+}
