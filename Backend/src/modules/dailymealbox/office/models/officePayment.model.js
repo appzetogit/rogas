@@ -37,6 +37,15 @@ const officePaymentSchema = new mongoose.Schema(
             ref: 'VendorSubscriptionPlan',
             default: null
         },
+        /** Meal plan and start date to assign once the payment is confirmed. */
+        mealPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'DMBMealPlan', default: null },
+        startDate: { type: Date, default: null },
+        planType: { type: String, default: '' },
+        /** publicId of the payment_transactions row that pays for this order (any provider). */
+        paymentTransactionId: { type: String, default: '', index: true },
+        provider: { type: String, default: '' },
+        /** Set once the employees' assignments have been created. */
+        fulfilledAt: { type: Date, default: null },
         /** Vendor assigned */
         vendorId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -51,7 +60,7 @@ const officePaymentSchema = new mongoose.Schema(
             }
         ],
         slots: [{ type: String }],
-        /** Amount in INR (not paise) */
+        /** Amount in major units of `currency` (not paise/grosze) */
         amount: {
             type: Number,
             required: true

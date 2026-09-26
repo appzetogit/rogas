@@ -77,6 +77,9 @@ export const FEATURE_TOGGLE_CATEGORIES = [
 
 export const FEATURE_TOGGLE_STATES = ['on', 'off', 'partial'];
 
+/** Provider on/off switches moved to the Payments page (Admin > Payments); they are no longer generic feature toggles. */
+export const RETIRED_FEATURE_TOGGLE_KEYS = ['payments.razorpay', 'payments.przelewy24', 'payments.stripe'];
+
 export const DEFAULT_FEATURE_TOGGLES = [
     ['ordering.subscriptions', 'ordering', 'Subscriptions'],
     ['ordering.oneTimeOrders', 'ordering', 'One-time orders'],
@@ -89,9 +92,6 @@ export const DEFAULT_FEATURE_TOGGLES = [
     ['slots.dinner', 'slots', 'Dinner slot'],
     ['payments.cod', 'payments', 'Cash on delivery'],
     ['payments.wallet', 'payments', 'Wallet payments'],
-    ['payments.razorpay', 'payments', 'Razorpay'],
-    ['payments.przelewy24', 'payments', 'Przelewy24'],
-    ['payments.stripe', 'payments', 'Stripe'],
     ['smart.forecasting', 'smart', 'Food forecasting'],
     ['smart.fraudAlerts', 'smart', 'Fraud alerts'],
     ['smart.routeOptimization', 'smart', 'Route optimization'],

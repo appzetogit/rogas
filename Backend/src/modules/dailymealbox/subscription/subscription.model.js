@@ -117,7 +117,7 @@ const subscriptionSchema = new mongoose.Schema(
         // ─── Payment ──────────────────────────────────────────────────────────
         paymentMethod: {
             type: String,
-            enum: ['razorpay', 'cash', 'wallet'],
+            enum: ['razorpay', 'przelewy24', 'stripe', 'cash', 'wallet'],
             default: 'razorpay'
         },
 

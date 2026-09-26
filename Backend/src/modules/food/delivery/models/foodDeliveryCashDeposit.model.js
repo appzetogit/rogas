@@ -14,7 +14,7 @@ const foodDeliveryCashDepositSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['cash', 'razorpay', 'upi', 'bank_transfer'],
+        enum: ['cash', 'razorpay', 'przelewy24', 'stripe', 'upi', 'bank_transfer'],
         default: 'cash'
     },
     status: {
@@ -28,6 +28,8 @@ const foodDeliveryCashDepositSchema = new mongoose.Schema({
         default: ''
     },
     razorpayPaymentId: String,
+    /** publicId of the payment_transactions row that paid for this deposit (any provider). */
+    paymentTransactionId: { type: String, default: '', index: true },
     adminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

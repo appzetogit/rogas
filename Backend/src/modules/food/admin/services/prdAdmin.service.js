@@ -20,7 +20,8 @@ import {
     ADMIN_PRD_ROLES,
     DEFAULT_FEATURE_TOGGLES,
     FEATURE_TOGGLE_CATEGORIES,
-    FEATURE_TOGGLE_STATES
+    FEATURE_TOGGLE_STATES,
+    RETIRED_FEATURE_TOGGLE_KEYS
 } from '../constants/adminPrd.js';
 
 const objectIdOrNull = (value) =>
@@ -229,7 +230,7 @@ export async function seedDefaultFeatureToggles() {
 
 export async function listFeatureToggles(query = {}) {
     await seedDefaultFeatureToggles();
-    const filter = {};
+    const filter = { key: { $nin: RETIRED_FEATURE_TOGGLE_KEYS } };
     if (query.category) filter.category = String(query.category).trim();
     if (query.scope) filter.scope = String(query.scope).trim();
     if (query.cityId && objectIdOrNull(query.cityId)) filter.cityId = objectIdOrNull(query.cityId);

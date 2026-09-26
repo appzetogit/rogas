@@ -22,6 +22,7 @@ import adminWalletRoutes from './adminWallet.routes.js';
 import { requirePermission } from '../../../../middleware/rbac.middleware.js';
 import { adminSlotRouter } from '../../../dailymealbox/deliverySlot/deliverySlot.routes.js';
 import { adminI18nRouter } from '../../../i18n/i18n.routes.js';
+import { adminPaymentsRouter } from '../../../payments/payments.admin.routes.js';
 
 const router = express.Router();
 
@@ -378,6 +379,7 @@ router.delete('/vendor-subscription-plans/:id', requirePermission('vendorManagem
 
 // ----- Languages & translations (multi-language management) -----
 router.use('/i18n', adminI18nRouter);
+router.use('/payments', adminPaymentsRouter);
 
 // ----- Delivery Slots (dynamic meal slots CRUD) -----
 router.use('/delivery-slots', adminSlotRouter);

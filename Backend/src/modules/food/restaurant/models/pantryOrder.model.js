@@ -64,6 +64,9 @@ const pantryOrderSchema = new mongoose.Schema(
         pricing: {
             itemsTotal: { type: Number, required: true },
             deliveryFee: { type: Number, required: true },
+            foodVatPercent: { type: Number, default: 0 },
+            foodVatAmount: { type: Number, default: 0 },
+            platformFee: { type: Number, default: 0 },
             total: { type: Number, required: true }
         },
         status: {

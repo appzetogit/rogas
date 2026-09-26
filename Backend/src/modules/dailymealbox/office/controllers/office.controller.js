@@ -10,8 +10,10 @@ import { DMBMealPlan } from '../../mealplan/mealPlan.model.js';
 import { DMBSubscription } from '../../subscription/subscription.model.js';
 import { VendorSubscriptionPlan } from '../../subscription/vendorSubscriptionPlan.model.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
-import { createRazorpayOrder, verifyPaymentSignature, isRazorpayConfigured, getRazorpayKeyId } from '../../../food/orders/helpers/razorpay.helper.js';
-import { assertValidSlotKeys, listSlots, getSlotLabel } from '../../deliverySlot/deliverySlot.service.js';
+import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../../payments/payments.service.js';
+import { resolvePaymentContext, resolveProviders } from '../../../payments/payments.settings.js';
+import { PaymentTransaction } from '../../../payments/payments.models.js';
+import { fulfilOfficePayment, OfficeAssignError } from '../office.assignment.service.js';
 
 // ─── Employee Controllers ─────────────────────────────────────────────────────
 
@@ -245,9 +247,10 @@ export const getVendors = async (req, res) => {
 };
 
 export const createAssignmentOrder = async (req, res) => {
+    let pending = null;
     try {
         const accountId = req.user.accountId;
-        const { employeeIds, subscriptionPlanId, vendorId, slots, totalAmount } = req.body;
+        const { employeeIds, subscriptionPlanId, vendorId, slots, totalAmount, mealPlanId, startDate, planType, provider, returnPath, cancelPath, language } = req.body;
 
         if (!employeeIds || employeeIds.length === 0 || !subscriptionPlanId || !slots || slots.length === 0) {
             return sendError(res, 400, 'Missing required fields: employeeIds, subscriptionPlanId, slots');
@@ -257,251 +260,108 @@ export const createAssignmentOrder = async (req, res) => {
         const subPlan = await VendorSubscriptionPlan.findById(subscriptionPlanId);
         if (!subPlan) return sendError(res, 404, 'Subscription plan not found');
 
-        // Use the pre-calculated totalAmount from frontend (already includes VAT etc)
-        // Fallback to plan price * employees if not provided
-        const finalAmount = totalAmount ? Number(totalAmount) : subPlan.price * employeeIds.length;
-        const amountPaise = Math.round(finalAmount * 100);
-
-        let orderId = 'mock_order_' + Date.now();
-        const isMock = !isRazorpayConfigured();
-
-        if (!isMock) {
-            const rzOrder = await createRazorpayOrder(amountPaise, 'INR', 'off_' + Date.now());
-            orderId = rzOrder.id;
+        // The total is worked out in the browser (it includes VAT and fees). Never accept less than the plan itself costs.
+        const planFloor = Math.round(subPlan.price * employeeIds.length * 100) / 100;
+        const finalAmount = totalAmount ? Number(totalAmount) : planFloor;
+        if (!Number.isFinite(finalAmount) || finalAmount + 0.01 < planFloor) {
+            return sendError(res, 400, 'The price has changed. Please reload and try again.');
         }
 
-        // Create a pending payment record
+        // Country and currency follow the vendor's zone (where the meals are cooked and delivered).
         const company = await OfficeCompany.findOne({ accountId });
-        await OfficePayment.create({
+        let zoneId = null;
+        if (vendorId) zoneId = (await FoodRestaurant.findById(vendorId).select('zoneId').lean())?.zoneId;
+        const ctx = await resolvePaymentContext({ zoneId });
+        const available = await resolveProviders({ country: ctx.country, currency: ctx.currency });
+        if (!available.length) return sendError(res, 503, 'No payment method is available for your region right now. Please contact support.');
+
+        // A pending record holds everything needed to deliver the order once the payment is confirmed.
+        pending = await OfficePayment.create({
             accountId,
             companyId: company?._id,
-            razorpayOrderId: orderId,
+            razorpayOrderId: `pending_${accountId}_${Date.now()}`,
             subscriptionPlanId,
             vendorId: vendorId || null,
+            mealPlanId: mealPlanId || null,
+            startDate: startDate ? new Date(startDate) : null,
+            planType: planType || '',
             employeeIds,
             slots,
             amount: finalAmount,
-            currency: 'INR',
-            status: 'pending',
-            isMock
+            currency: ctx.currency,
+            status: 'pending'
         });
 
-        return sendResponse(res, 200, 'Order created successfully', {
-            orderId,
-            amount: amountPaise,
-            currency: 'INR',
-            razorpayKeyId: getRazorpayKeyId(),
-            isMock
+        const { payment } = await startPayment({
+            purpose: 'office',
+            ownerType: 'office',
+            ownerId: accountId,
+            amount: finalAmount,
+            currency: ctx.currency,
+            country: ctx.country,
+            provider,
+            description: `Office meal subscription (${employeeIds.length} ${employeeIds.length === 1 ? 'employee' : 'employees'})`,
+            customer: { name: company?.legalName, email: company?.contactEmail, phone: company?.contactPhone },
+            language,
+            returnPath: returnPath || '/office/payments',
+            cancelPath: cancelPath || '/office/vendors',
+            refs: { officePaymentId: String(pending._id) }
         });
+
+        pending.razorpayOrderId = payment.provider === 'razorpay' ? payment.action.orderId : payment.transactionId;
+        pending.paymentTransactionId = payment.transactionId;
+        pending.provider = payment.provider;
+        await pending.save();
+
+        const data = { payment, orderId: pending.razorpayOrderId, amount: payment.amountMinor, currency: payment.currency, isMock: payment.provider === 'mock' };
+        if (payment.provider === 'razorpay') data.razorpayKeyId = payment.action.key;
+        return sendResponse(res, 200, 'Order created successfully', data);
     } catch (error) {
+        if (pending) await OfficePayment.deleteOne({ _id: pending._id, status: 'pending' }).catch(() => {});
+        if (error instanceof PaymentsError) return sendError(res, error.statusCode, error.message);
         return sendError(res, 500, error.message);
     }
 };
 
+/**
+ * Finishes an office purchase. The browser calls this after paying (Razorpay pop-up or returning from a hosted page).
+ * Meal plans are assigned only once the payment is confirmed, either now or already by the payment webhook.
+ */
 export const assignMealPlan = async (req, res) => {
     try {
         const accountId = req.user.accountId;
-        const { employeeIds, vendorId, mealPlanId, subscriptionPlanId, startDate, slots, planType, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+        const { mealPlanId, startDate, planType, transactionId, razorpayOrderId } = req.body;
 
-        if (!employeeIds || employeeIds.length === 0 || !vendorId || !mealPlanId || !slots || slots.length === 0) {
-            return sendError(res, 400, 'Missing required assignment fields');
-        }
-
-        // Razorpay Verification
-        if (isRazorpayConfigured() && razorpayOrderId && razorpayPaymentId && razorpaySignature) {
-            const isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
-            if (!isValid) {
-                return sendError(res, 400, 'Invalid payment signature');
-            }
-        }
-
-        const company = await OfficeCompany.findOne({ accountId });
-        if (!company) {
-             return sendError(res, 404, 'Company not found');
-        }
-
-        // ── Fetch the actual meal plan to get real pricing and name ─────────────
-        const mealPlan = await DMBMealPlan.findById(mealPlanId);
-        const pricePerDay = mealPlan ? Number(mealPlan.pricePerDay || 0) : 0;
-        const normalizedSlots = Array.isArray(slots) ? slots.map(s => s.toLowerCase()) : [slots.toLowerCase()];
-        await assertValidSlotKeys(normalizedSlots);
-        const _slotDefs = await listSlots();
-        const slotDisplay = (keys) => keys.map(k => getSlotLabel(_slotDefs, k)).join(', ');
-
-        // ── Fetch the VendorSubscriptionPlan to get the correct duration ─────────
-        // The frontend always sends subscriptionPlanId; planType in the body is NOT
-        // reliably sent and must NOT be used as a fallback for plan duration logic.
-        let resolvedPlanDuration = 'month'; // safe default
-        let resolvedDeliveryDays = 'full_week';
-        let resolvedDaysCount = 0;
-
-        if (subscriptionPlanId) {
-            const vendorSubPlan = await VendorSubscriptionPlan.findById(subscriptionPlanId);
-            if (vendorSubPlan) {
-                resolvedPlanDuration = vendorSubPlan.duration || 'month';   // 'day' | 'week' | 'month'
-                resolvedDeliveryDays = vendorSubPlan.deliveryDays || 'full_week'; // 'mon_fri' | 'full_week'
-                resolvedDaysCount = vendorSubPlan.daysCount || 0;
-            }
-        } else if (planType) {
-            // Fallback: honour an explicitly provided planType if subscriptionPlanId is missing
-            resolvedPlanDuration = planType.toLowerCase();
-        }
-
-        // ── Parse company delivery address into structured fields ───────────────
-        // The company stores address as a single string; we try to extract parts.
-        const rawAddress = company.deliveryAddress || company.registeredAddress || 'Office Address';
-        // Split by comma to get city/state hints: "Street, City, State ZIP"
-        const addressParts = rawAddress.split(',').map(p => p.trim()).filter(Boolean);
-        const companyDeliveryAddress = {
-            label: 'Office',
-            fullName: company.legalName || '',
-            street: addressParts[0] || 'Office Address',
-            city: addressParts[1] || addressParts[0] || 'Office City',
-            state: addressParts[2] || addressParts[1] || addressParts[0] || 'Office State',
-            zipCode: addressParts[3] || '',
-            phone: company.contactPhone || ''
-        };
-
-        const assignments = [];
-        
-        for (const empId of employeeIds) {
-            const employee = await OfficeEmployee.findById(empId);
-            if (!employee) continue;
-
-            // Upsert assignment
-            let assignment = await OfficeMealAssignment.findOne({ employeeId: empId, accountId });
-
-            if (assignment) {
-                assignment.vendorId = vendorId;
-                assignment.mealPlanId = mealPlanId;
-                assignment.mealSlots = normalizedSlots;
-                assignment.startDate = startDate || new Date();
-                assignment.status = 'active';
-                await assignment.save();
-            } else {
-                assignment = new OfficeMealAssignment({
-                    accountId,
-                    companyId: company._id,
-                    employeeId: empId,
-                    vendorId,
-                    mealPlanId,
-                    mealSlots: normalizedSlots,
-                    startDate: startDate || new Date()
-                });
-                await assignment.save();
-            }
-            
-            assignments.push(assignment);
-
-            // ── Resolve FoodUser strictly using userId ─────────────
-            let user = null;
-            if (employee.userId) {
-                user = await FoodUser.findById(employee.userId);
-            }
-            if (!user) {
-                // Missing FoodUser link, skip assignment for this employee
-                continue;
-            }
-
-            if (user) {
-                // Cancel any old active/paused subscription from office for this user
-                await DMBSubscription.updateMany(
-                    { userId: user._id, source: 'office', status: { $in: ['active', 'paused'] } },
-                    { status: 'cancelled', cancelledAt: new Date(), cancellationReason: 'Replaced by new office assignment' }
-                );
-
-                // Calculate end date and working days based on the resolved plan from VendorSubscriptionPlan
-                const subscriptionStartDate = startDate ? new Date(startDate) : new Date();
-                const subscriptionEndDate = new Date(subscriptionStartDate);
-
-                let workingDays;
-
-                if (resolvedPlanDuration === 'day') {
-                    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 1);
-                    workingDays = 1;
-                } else if (resolvedPlanDuration === 'week') {
-                    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 7);
-                    // mon_fri = 5 delivery days, full_week = 7 delivery days
-                    workingDays = resolvedDeliveryDays === 'mon_fri' ? 5 : 7;
-                } else {
-                    // 'month' — use resolvedDeliveryDays to determine working days
-                    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
-                    workingDays = resolvedDeliveryDays === 'mon_fri' ? 22 : 30;
-                }
-
-                // If the admin has explicitly stored a daysCount on the plan, prefer that
-                if (resolvedDaysCount > 0) {
-                    workingDays = resolvedDaysCount;
-                }
-
-                const calculatedTotalPrice = pricePerDay * workingDays;
-
-                const newSub = new DMBSubscription({
-                    userId: user._id,
-                    vendorId,
-                    mealPlanId,
-                    meals: mealPlanId ? [{ mealPlanId, quantity: 1 }] : [],
-                    status: 'active',
-                    startDate: subscriptionStartDate,
-                    endDate: subscriptionEndDate,
-                    duration: resolvedPlanDuration,
-                    deliverySlot: normalizedSlots[0],
-                    deliverySlots: normalizedSlots,
-                    deliveryDays: resolvedDeliveryDays,
-                    deliveryAddress: companyDeliveryAddress,
-                    pricing: {
-                        basePricePerDay: pricePerDay,
-                        deliveryFeePerDay: 0,
-                        totalPrice: calculatedTotalPrice,
-                        currency: 'INR'
-                    },
-                    paymentMethod: 'cash',
-                    autoRenew: true,
-                    source: 'office',
-                    companyId: company._id,
-                    // B2B Invoice details
-                    companyName: company.legalName || '',
-                    companyNip: company.nip || '',
-                    billingEmail: company.contactEmail || '',
-                    invoiceType: 'b2b_vat'
-                });
-                await newSub.save();
-
-                // Link subscriptionId back to the assignment
-                assignment.subscriptionId = newSub._id;
-                await assignment.save();
-
-                // Update FoodUser's subscriptionStatus and deliverySlot
-                user.subscriptionStatus = 'active';
-                user.deliverySlot = slotDisplay(normalizedSlots);
-                await user.save();
-            }
-
-            // ────────────────────────────────────────────────────────────────
-
-            // Update employee's denormalized fields
-            employee.assignedVendorId = vendorId;
-            employee.assignedMealPlanId = mealPlanId;
-            employee.deliverySlot = slotDisplay(normalizedSlots);
-            employee.subscriptionStatus = 'active';
-            await employee.save();
-        }
-
-        // Save payment as paid in history
-        await OfficePayment.findOneAndUpdate(
-            { razorpayOrderId: razorpayOrderId },
-            { 
-                razorpayPaymentId, 
-                razorpaySignature,
-                status: 'paid'
-            }
+        const office = await OfficePayment.findOne(
+            transactionId
+                ? { accountId, paymentTransactionId: String(transactionId) }
+                : { accountId, razorpayOrderId: String(razorpayOrderId || '') }
         );
+        if (!office || !(transactionId || razorpayOrderId)) return sendError(res, 402, 'Payment is required to assign a meal plan');
 
+        // Older clients only send these now; the order itself may not have them yet.
+        if (!office.fulfilledAt) {
+            if (!office.mealPlanId && mealPlanId) office.mealPlanId = mealPlanId;
+            if (!office.startDate && startDate) office.startDate = new Date(startDate);
+            if (!office.planType && planType) office.planType = planType;
+            if (office.isModified()) await office.save();
+        }
+
+        const tx = await findOwnedTransaction({ publicId: office.paymentTransactionId, purpose: 'office', ownerId: accountId });
+        if (!tx) return sendError(res, 404, 'Payment not found');
+        if (tx.provider === 'razorpay' && req.body.razorpayPaymentId && !['paid', 'partially_refunded', 'refunded'].includes(tx.status)) {
+            await confirmRazorpayPayment(tx, { ...req.body, razorpayOrderId: tx.providerOrderId });
+        }
+        const fresh = await PaymentTransaction.findById(tx._id);
+        if (!['paid', 'partially_refunded', 'refunded'].includes(fresh.status)) return sendError(res, 402, 'Payment has not been completed yet');
+
+        // The confirmation above normally delivers the order already; this covers the case where it did not yet.
+        const { assignments } = await fulfilOfficePayment(office._id, { paymentTxId: fresh.publicId, providerPaymentId: fresh.providerPaymentId });
         return sendResponse(res, 200, 'Meal plan assigned successfully', assignments);
     } catch (error) {
+        if (error instanceof PaymentsError || error instanceof OfficeAssignError) return sendError(res, error.statusCode || 400, error.message);
         return sendError(res, 500, error.message);
     }
-
 };
 
 export const getAssignments = async (req, res) => {

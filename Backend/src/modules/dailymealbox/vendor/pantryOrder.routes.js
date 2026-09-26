@@ -4,210 +4,250 @@ import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { FoodItem } from '../../food/admin/models/food.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
-import { createRazorpayOrder, verifyPaymentSignature, isRazorpayConfigured, getRazorpayKeyId } from '../../food/orders/helpers/razorpay.helper.js';
+import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
+import { resolvePaymentContext, resolveProviders } from '../../payments/payments.settings.js';
 
 const router = express.Router();
 
 // ─── USER ROUTES ────────────────────────────────────────────────────────────
 
-// 1. Create Order (and Razorpay intent)
-router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
+
+const normalizeAddress = (raw) => {
+    if (typeof raw === 'string') {
+        return { street: raw, city: 'Unknown', state: 'Unknown', pincode: '000000', label: 'Home', location: { type: 'Point', coordinates: [0, 0] } };
+    }
+    return {
+        street: raw.street || 'Unknown',
+        city: raw.city || 'Unknown',
+        state: raw.state || 'Unknown',
+        pincode: raw.pincode || '000000',
+        label: raw.label || 'Home',
+        location: raw.location || { type: 'Point', coordinates: [0, 0] }
+    };
+};
+
+/** Food VAT % (per vendor) and platform fee (platform-wide), both set by the admin. */
+const loadCartPricingConfig = async (vendorId) => {
+    let feePerOrder = 5; // fallback
+    let platformFee = 0;
     try {
-        const { vendorId, items, deliveryDates, deliverySlots, deliveryAddress: customDeliveryAddress, totalOverride } = req.body;
-        const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
+        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+        const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+        if (feeConfig && Number(feeConfig.feePerOrder) > 0) feePerOrder = Number(feeConfig.feePerOrder);
+        if (feeConfig && Number(feeConfig.platformFee) > 0) platformFee = Number(feeConfig.platformFee);
+    } catch (err) { }
+    let foodVatPercent = 0;
+    try {
+        const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
+        const commConfig = await FoodRestaurantCommission.findOne({ restaurantId: vendorId }).lean();
+        if (commConfig && Number(commConfig.foodVatPercent) > 0) foodVatPercent = Number(commConfig.foodVatPercent);
+    } catch (err) { }
+    return { feePerOrder, platformFee, foodVatPercent };
+};
 
-        if (!userId) {
-            return res.status(401).json({ success: false, message: 'Unauthorized: User ID missing from token' });
+const startOfWeek = () => {
+    const d = new Date();
+    const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
+    const weekStart = new Date(d.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
+};
+
+/**
+ * Prices the whole cart from the database (never from the browser) and creates one pending order per date/slot group.
+ * Total = items total x (distinct delivery days x distinct slots) + food VAT + platform fee, the same formula the
+ * checkout screen shows. Returns the pending orders and the amount to collect.
+ */
+const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAddress, minimumTotal = 0 }) => {
+    const cfg = await loadCartPricingConfig(vendorId);
+    const priced = [];
+    const allDates = new Set();
+    const allSlots = new Set();
+    let itemsTotalAll = 0;
+
+    for (const group of groups) {
+        if (!group.items?.length || !group.deliveryDates?.length || !group.deliverySlots?.length) {
+            throw new PaymentsError('Missing required fields', 400, 'BAD_REQUEST');
         }
-
-        if (!vendorId || !items || !items.length || !deliveryDates || !deliveryDates.length || !deliverySlots || !deliverySlots.length) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
-        }
-
-        const user = await FoodUser.findById(userId);
-        const finalDeliveryAddress = customDeliveryAddress || (user ? user.deliveryAddress : null);
-
-        if (!finalDeliveryAddress) {
-            return res.status(400).json({ success: false, message: 'User delivery address not found' });
-        }
-
-        // Normalize address to prevent Mongoose validation errors
-        let normalizedAddress = finalDeliveryAddress;
-        if (typeof finalDeliveryAddress === 'string') {
-            normalizedAddress = {
-                street: finalDeliveryAddress,
-                city: 'Unknown',
-                state: 'Unknown',
-                pincode: '000000',
-                label: 'Home',
-                location: { type: 'Point', coordinates: [0, 0] }
-            };
-        } else if (typeof finalDeliveryAddress === 'object') {
-            normalizedAddress = {
-                street: finalDeliveryAddress.street || 'Unknown',
-                city: finalDeliveryAddress.city || 'Unknown',
-                state: finalDeliveryAddress.state || 'Unknown',
-                pincode: finalDeliveryAddress.pincode || '000000',
-                label: finalDeliveryAddress.label || 'Home',
-                location: finalDeliveryAddress.location || { type: 'Point', coordinates: [0, 0] }
-            };
-        }
-
-        // Calculate daily items total
-        let dailyItemsTotal = 0;
+        let groupItemsTotal = 0;
         const processedItems = [];
-        for (const item of items) {
+        for (const item of group.items) {
             const pItem = await FoodItem.findById(item.pantryItemId);
-            if (!pItem || pItem.restaurantId.toString() !== vendorId) {
-                return res.status(400).json({ success: false, message: `Invalid pantry item: ${item.title}` });
+            if (!pItem || pItem.restaurantId.toString() !== String(vendorId)) {
+                throw new PaymentsError(`Invalid pantry item: ${item.title || item.pantryItemId}`, 400, 'BAD_REQUEST');
             }
-            if (!pItem.isAvailable) {
-                return res.status(400).json({ success: false, message: `Item out of stock: ${item.title}` });
-            }
+            if (!pItem.isAvailable) throw new PaymentsError(`Item out of stock: ${item.title || pItem.name}`, 400, 'BAD_REQUEST');
+            const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
             const itemPrice = pItem.price || (pItem.variants && pItem.variants.length > 0 ? pItem.variants[0].price : 0);
-            dailyItemsTotal += itemPrice * item.quantity;
-            processedItems.push({
-                pantryItemId: pItem._id,
-                title: pItem.name,
-                price: itemPrice,
-                quantity: item.quantity
-            });
+            groupItemsTotal += itemPrice * quantity;
+            processedItems.push({ pantryItemId: pItem._id, title: pItem.name, price: itemPrice, quantity });
         }
+        group.deliveryDates.forEach((d) => allDates.add(d));
+        group.deliverySlots.forEach((s) => allSlots.add(s));
+        itemsTotalAll += groupItemsTotal;
+        priced.push({ group, processedItems, itemsTotal: groupItemsTotal });
+    }
 
-        // Fetch dynamic delivery fee configured by Admin
-        let feePerOrder = 5; // fallback
-        let platformFee = 0;
-        try {
-            const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-            const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-            if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
-                feePerOrder = Number(feeConfig.feePerOrder);
-            }
-            if (feeConfig && Number(feeConfig.platformFee) > 0) {
-                platformFee = Number(feeConfig.platformFee);
-            }
-        } catch (err) { }
+    const foodVatAmountAll = round2(itemsTotalAll * (cfg.foodVatPercent / 100));
+    const serverTotal = round2(itemsTotalAll * (allDates.size * allSlots.size) + foodVatAmountAll + cfg.platformFee);
+    // Older single-group clients pass the whole-cart total they computed; honour it only when it is HIGHER than ours.
+    const grandTotal = Math.max(serverTotal, round2(minimumTotal));
+    if (!(grandTotal > 0)) throw new PaymentsError('Invalid order total', 400, 'BAD_REQUEST');
 
-        // Fetch vendor Food VAT % from commission config
-        let foodVatPercent = 0;
-        try {
-            const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
-            const commConfig = await FoodRestaurantCommission.findOne({ restaurantId: vendorId }).lean();
-            if (commConfig && Number(commConfig.foodVatPercent) > 0) {
-                foodVatPercent = Number(commConfig.foodVatPercent);
-            }
-        } catch (err) { }
-
-        const dailyDeliveryFee = feePerOrder;
-
-        // Total cost — matches frontend formula exactly:
-        // Grand Total = Items Total × (Days × Slots) + Food VAT + Platform Fee
-        const numDates = deliveryDates.length;
-        const numSlots = deliverySlots.length;
-        const itemsTotal = dailyItemsTotal;
-        const foodVatAmount = Math.round((itemsTotal * (foodVatPercent / 100)) * 100) / 100;
-        const deliveryFee = dailyDeliveryFee * numDates;
-        const grandTotal = (itemsTotal * (numDates * numSlots)) + foodVatAmount + platformFee;
-
-        // If the frontend passed a pre-calculated totalOverride, use it as the
-        // authoritative amount. This ensures the Razorpay order amount always
-        // matches the Grand Total shown in the checkout UI (which accounts for
-        // the union of dates/slots across ALL items, not just this group).
-        const effectiveGrandTotal =
-            totalOverride != null && Number(totalOverride) > 0
-                ? Number(totalOverride)
-                : grandTotal;
-
-        const razorpayAmountPaise = Math.round(effectiveGrandTotal * 100);
-
-        const orderId = `PO-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-        // Get the start of the current week (Monday)
-        const d = new Date();
-        const currentDayIdx = d.getDay();
-        const diff = d.getDate() - currentDayIdx + (currentDayIdx === 0 ? -6 : 1);
-        const weekStartDate = new Date(d.setDate(diff));
-        weekStartDate.setHours(0, 0, 0, 0);
+    // Split the grand total across the orders in proportion to their items so the parts add up exactly.
+    let allocated = 0;
+    const orders = [];
+    const weekStartDate = startOfWeek();
+    for (let i = 0; i < priced.length; i++) {
+        const { group, processedItems, itemsTotal } = priced[i];
+        const share = i === priced.length - 1 ? round2(grandTotal - allocated) : round2(itemsTotalAll > 0 ? grandTotal * (itemsTotal / itemsTotalAll) : grandTotal / priced.length);
+        allocated = round2(allocated + share);
 
         const dailyDeliveries = [];
-        for (const dateStr of deliveryDates) {
+        for (const dateStr of group.deliveryDates) {
             const dayDate = new Date(dateStr);
             const dayOfWeek = dayDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-            for (const slot of deliverySlots) {
-                dailyDeliveries.push({
-                    date: dayDate,
-                    dayOfWeek: dayOfWeek,
-                    slot: slot,
-                    status: 'scheduled'
-                });
-            }
+            for (const slot of group.deliverySlots) dailyDeliveries.push({ date: dayDate, dayOfWeek, slot, status: 'scheduled' });
         }
-
-        let razorpayOrder = null;
-        if (isRazorpayConfigured()) {
-            razorpayOrder = await createRazorpayOrder(razorpayAmountPaise, 'INR', orderId);
-        }
-
-        const newOrder = await PantryOrder.create({
-            orderId,
+        orders.push({
+            orderId: `PO-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
             userId,
             vendorId,
             items: processedItems,
-            deliveryDates,
-            deliverySlots,
-            deliveryAddress: normalizedAddress,
+            deliveryDates: group.deliveryDates,
+            deliverySlots: group.deliverySlots,
+            deliveryAddress,
             pricing: {
                 itemsTotal,
-                deliveryFee,
-                foodVatPercent,
-                foodVatAmount,
-                platformFee,
-                total: effectiveGrandTotal
+                deliveryFee: cfg.feePerOrder * group.deliveryDates.length,
+                foodVatPercent: cfg.foodVatPercent,
+                foodVatAmount: round2(foodVatAmountAll * (itemsTotalAll > 0 ? itemsTotal / itemsTotalAll : 1)),
+                platformFee: i === 0 ? cfg.platformFee : 0,
+                total: share
             },
             status: 'pending_payment',
             dailyDeliveries,
-            paymentOrderId: razorpayOrder ? razorpayOrder.id : `mock_order_${orderId}`,
+            paymentOrderId: '',
             weekStartDate
         });
+    }
+    return { orders: await PantryOrder.insertMany(orders), grandTotal };
+};
 
-        res.status(200).json({
-            success: true,
-            order: newOrder,
-            razorpayOrderId: newOrder.paymentOrderId,
-            razorpayKeyId: getRazorpayKeyId() || 'rzp_test_dummy',
-            razorpayAmount: razorpayAmountPaise, // paise — for frontend amount-mismatch guard
+/** Creates the pending orders and starts one payment that settles all of them. */
+const checkoutPantry = async (req, res, { groups, minimumTotal, expectedTotal }) => {
+    const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized: User ID missing from token' });
+    const { vendorId, deliveryAddress: customDeliveryAddress, provider, zoneId, returnPath, cancelPath, language } = req.body;
+    if (!vendorId || !groups?.length) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+    const user = await FoodUser.findById(userId);
+    const finalDeliveryAddress = customDeliveryAddress || (user ? user.deliveryAddress : null);
+    if (!finalDeliveryAddress) return res.status(400).json({ success: false, message: 'User delivery address not found' });
+
+    // Where the customer is decides the provider and currency: the vendor's zone, else the customer's phone country.
+    let vendorZone = zoneId;
+    if (!vendorZone) {
+        const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+        vendorZone = (await FoodRestaurant.findById(vendorId).select('zoneId').lean())?.zoneId;
+    }
+    const ctx = await resolvePaymentContext({ zoneId: vendorZone, dialCode: user?.countryCode });
+    const available = await resolveProviders({ country: ctx.country, currency: ctx.currency });
+    if (!available.length) {
+        return res.status(503).json({ success: false, code: 'NO_PROVIDER', message: 'No payment method is available for your region right now. Please contact support.' });
+    }
+
+    let orders = [];
+    try {
+        const built = await createPendingPantryOrders({ userId, vendorId, groups, deliveryAddress: normalizeAddress(finalDeliveryAddress), minimumTotal });
+        orders = built.orders;
+        if (expectedTotal != null && Math.abs(round2(expectedTotal) - built.grandTotal) > 0.01) {
+            throw new PaymentsError('Prices have changed. Please review your cart and try again.', 409, 'PRICE_CHANGED');
+        }
+        const { payment } = await startPayment({
+            purpose: 'pantry',
+            ownerType: 'user',
+            ownerId: userId,
+            amount: built.grandTotal,
+            currency: ctx.currency,
+            country: ctx.country,
+            provider,
+            description: `Pantry order (${orders.length} ${orders.length === 1 ? 'group' : 'groups'})`,
+            customer: { name: user?.name, email: user?.email, phone: user?.phone },
+            language,
+            returnPath: returnPath || '/user/orders',
+            cancelPath: cancelPath || '/user/cart',
+            refs: { orderIds: orders.map((o) => o.orderId) }
         });
-
+        await PantryOrder.updateMany({ _id: { $in: orders.map((o) => o._id) } }, { $set: { paymentOrderId: payment.provider === 'razorpay' ? payment.action.orderId : payment.transactionId } });
+        const body = { success: true, payment, order: orders[0], orders };
+        if (payment.provider === 'razorpay') {
+            // Fields the existing checkout screen reads. razorpayAmount is in minor units (paise/grosze).
+            Object.assign(body, { razorpayOrderId: payment.action.orderId, razorpayKeyId: payment.action.key, razorpayAmount: payment.action.amount });
+        }
+        return res.status(200).json(body);
     } catch (error) {
+        if (orders.length) await PantryOrder.deleteMany({ _id: { $in: orders.map((o) => o._id) }, status: 'pending_payment' }).catch(() => {});
+        if (error instanceof PaymentsError) return res.status(error.statusCode).json({ success: false, code: error.code, message: error.message });
         console.error('Error creating pantry order:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+        return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// 1. Checkout: one payment for the whole cart, all date/slot groups created together
+router.post('/checkout', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
+    try {
+        const { groups, expectedTotal } = req.body;
+        return await checkoutPantry(req, res, { groups, expectedTotal });
+    } catch (error) {
+        console.error('Error in pantry checkout:', error);
+        return res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 });
 
-// 2. Verify Payment
+// 1b. Create Order (single group, kept for older clients)
+router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
+    try {
+        const { items, deliveryDates, deliverySlots, totalOverride } = req.body;
+        if (!items || !items.length || !deliveryDates || !deliveryDates.length || !deliverySlots || !deliverySlots.length) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        return await checkoutPantry(req, res, { groups: [{ items, deliveryDates, deliverySlots }], minimumTotal: totalOverride != null ? Number(totalOverride) : 0 });
+    } catch (error) {
+        console.error('Error creating pantry order:', error);
+        return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// 2. Verify Payment (Razorpay only; hosted-page providers settle through their webhook)
 router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
-        const { orderId, razorpayPaymentId, razorpaySignature } = req.body;
+        const { orderId, transactionId, razorpayOrderId } = req.body;
         const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
 
-        const order = await PantryOrder.findOne({ orderId, userId });
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-        if (order.status !== 'pending_payment') return res.status(400).json({ success: false, message: 'Order already processed' });
+        const order = orderId ? await PantryOrder.findOne({ orderId, userId }) : null;
+        const tx = await findOwnedTransaction({
+            publicId: transactionId,
+            providerOrderId: razorpayOrderId || order?.paymentOrderId,
+            purpose: 'pantry',
+            ownerId: userId
+        });
+        if (!tx) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (order && !(tx.refs?.orderIds || []).includes(order.orderId)) return res.status(400).json({ success: false, message: 'Payment does not belong to this order' });
 
-        if (isRazorpayConfigured()) {
-            const isValid = verifyPaymentSignature(order.paymentOrderId, razorpayPaymentId, razorpaySignature);
-            if (!isValid) return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        const after = await confirmRazorpayPayment(tx, {
+            razorpay_order_id: tx.providerOrderId,
+            razorpay_payment_id: req.body.razorpayPaymentId,
+            razorpay_signature: req.body.razorpaySignature
+        });
+        if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) {
+            return res.status(400).json({ success: false, message: 'Payment is not completed yet' });
         }
-
-        order.status = 'paid';
-        order.paymentId = razorpayPaymentId || `mock_payment_${orderId}`;
-        order.paymentSignature = razorpaySignature || 'mock_signature';
-        order.paymentStatus = 'completed';
-        await order.save();
-
-        res.status(200).json({ success: true, message: 'Payment verified successfully', order });
-
+        const orders = await PantryOrder.find({ orderId: { $in: tx.refs?.orderIds || [] }, userId });
+        res.status(200).json({ success: true, message: 'Payment verified successfully', order: orders[0], orders });
     } catch (error) {
+        if (error instanceof PaymentsError) return res.status(error.statusCode).json({ success: false, message: error.message });
         console.error('Error verifying pantry payment:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }

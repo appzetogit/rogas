@@ -14,8 +14,8 @@ export const getUserWalletController = async (req, res, next) => {
 export const createWalletTopupOrderController = async (req, res, next) => {
     try {
         const userId = req.user?.userId;
-        const amount = req.body?.amount;
-        const data = await createWalletTopupOrder(userId, amount);
+        const { amount, provider, zoneId, returnPath, cancelPath, language } = req.body || {};
+        const data = await createWalletTopupOrder(userId, amount, { provider, zoneId, returnPath, cancelPath, language });
         return sendResponse(res, 200, 'Top-up order created successfully', data);
     } catch (error) {
         next(error);

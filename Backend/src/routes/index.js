@@ -18,6 +18,7 @@ import * as businessSettingsController from '../modules/food/admin/controllers/b
 import { requireRoles } from '../core/roles/role.middleware.js';
 import { getQueuesController } from '../controllers/admin.controller.js';
 import webhookRoutes from '../core/payments/routes/webhook.routes.js';
+import { paymentsRouter } from '../modules/payments/payments.routes.js';
 // Legacy search routes disabled
 // import searchRoutes from '../modules/food/search/routes/search.routes.js';
 import appConfigRoutes from '../core/appConfig/appConfig.routes.js';
@@ -73,6 +74,7 @@ router.use('/v1/food/notifications', authMiddleware, requireRoles('USER', 'RESTA
 router.use('/v1/food/orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), orderUserRoutes);
 router.use('/v1/food/payments', authMiddleware, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);
+router.use('/v1/payments', paymentsRouter);
 router.use('/v1/fcm-tokens', fcmRoutes);
 router.use('/fcm-tokens', fcmRoutes);
 

@@ -60,6 +60,14 @@ const startServer = async () => {
             logger.error(`[i18n] Seeding failed: ${err.message}`);
         }
 
+        // 1-pay. Background upkeep for payments: settle payments whose webhook never arrived, deliver paid orders that failed once.
+        try {
+            const { startPaymentsJobs } = await import('./src/modules/payments/payments.service.js');
+            startPaymentsJobs();
+        } catch (err) {
+            logger.error(`[payments] Could not start upkeep jobs: ${err.message}`);
+        }
+
         // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
         try {
             const db = mongoose.connection.db;

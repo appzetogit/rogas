@@ -4,6 +4,7 @@ import { FoodOrder } from '../../../modules/food/orders/models/order.model.js';
 import * as foodTransactionService from '../../../modules/food/orders/services/foodTransaction.service.js';
 import { config } from '../../../config/env.js';
 import { logger } from '../../../utils/logger.js';
+import { handleRazorpayEvents } from '../../../modules/payments/payments.service.js';
 
 /**
  * ✅ NEW: Centralized Razorpay Webhook Handler (Core Layer)
@@ -106,6 +107,9 @@ export const handleRazorpayWebhook = async (req, res) => {
                 logger.warn(`Webhook [refund.processed]: Order not found or already refunded for RZ-Payment: ${rzPaymentId}`);
             }
         }
+
+        // Payments started through the payments service (subscriptions, wallet top-ups, ...) settle here too.
+        await handleRazorpayEvents(req.body);
 
         res.status(200).json({ status: 'ok' });
     } catch (err) {
