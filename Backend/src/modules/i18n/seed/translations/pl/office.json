@@ -1,5 +1,5 @@
 {
- "- Full Week (30 Delivery Days)": "- Cały tydzień (30 dni dostaw)",
+ "- Full Week ({{planDays}} Delivery Days)": "- Cały tydzień ({{planDays}} dni dostaw)",
  "- Monday-Friday (5 Delivery Days)": "- Poniedziałek–piątek (5 dni dostaw)",
  "{{length}} Employees": "Pracownicy: {{length}}",
  "{{rating}} ({{reviewsCount}} reviews)": "{{rating}} (opinie: {{reviewsCount}})",
@@ -268,6 +268,8 @@
  "Tell us about your company": "Opowiedz nam o swojej firmie",
  "Thank you for applying to DailyMealBox. Your company profile is currently being reviewed by our administration team. We will notify you once it has been approved.": "Dziękujemy za złożenie wniosku do DailyMealBox. Profil Twojej firmy jest obecnie weryfikowany przez nasz zespół administracyjny. Powiadomimy Cię po jego zatwierdzeniu.",
  "This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?": "Ta czynność natychmiast dezaktywuje Twoje konto i nastąpi wylogowanie. Czy na pewno chcesz kontynuować?",
+ "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one before assigning employees.": "Ten dostawca nie opublikował jeszcze planu posiłków, więc cena nie jest dostępna. Poproś go o dodanie planu przed przypisaniem pracowników.",
+ "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one in Menu Management before assigning employees here.": "Ten dostawca nie opublikował jeszcze planu posiłków, więc cena nie jest dostępna. Poproś go o dodanie planu w Zarządzaniu menu, zanim przypiszesz tu pracowników.",
  "To:": "Do:",
  "Total Employees": "Łączna liczba pracowników",
  "Track and manage your meal subscription orders and payments.": "Śledź zamówienia i płatności za subskrypcje posiłków oraz zarządzaj nimi.",

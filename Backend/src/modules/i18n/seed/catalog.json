@@ -598,7 +598,6 @@
   "Personalized Nutrition",
   "Phone Number (Read-Only)",
   "Phone number is linked to auth and cannot be changed.",
-  "Plan Base Rate",
   "Plan Details",
   "Plant-based only",
   "Platform Fee",
@@ -1975,7 +1974,7 @@
   "Zoom in"
  ],
  "office": [
-  "- Full Week (30 Delivery Days)",
+  "- Full Week ({{planDays}} Delivery Days)",
   "- Monday-Friday (5 Delivery Days)",
   "{{length}} Employees",
   "{{rating}} ({{reviewsCount}} reviews)",
@@ -2238,6 +2237,8 @@
   "Tell us about your company",
   "Thank you for applying to DailyMealBox. Your company profile is currently being reviewed by our administration team. We will notify you once it has been approved.",
   "This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?",
+  "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one before assigning employees.",
+  "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one in Menu Management before assigning employees here.",
   "To:",
   "Total Employees",
   "Track and manage your meal subscription orders and payments.",

@@ -1,5 +1,5 @@
 {
- "- Full Week (30 Delivery Days)": "- Весь тиждень (30 днів доставки)",
+ "- Full Week ({{planDays}} Delivery Days)": "- Увесь тиждень ({{planDays}} днів доставки)",
  "- Monday-Friday (5 Delivery Days)": "- Понеділок–п'ятниця (5 днів доставки)",
  "{{length}} Employees": "Працівників: {{length}}",
  "{{rating}} ({{reviewsCount}} reviews)": "{{rating}} (відгуків: {{reviewsCount}})",
@@ -268,6 +268,8 @@
  "Tell us about your company": "Розкажіть нам про вашу компанію",
  "Thank you for applying to DailyMealBox. Your company profile is currently being reviewed by our administration team. We will notify you once it has been approved.": "Дякуємо за заявку до DailyMealBox. Профіль вашої компанії зараз розглядає наша адміністративна команда. Ми повідомимо вас після схвалення.",
  "This action will immediately deactivate your account, and you will be logged out. Are you sure you want to proceed?": "Ця дія негайно деактивує ваш акаунт, і вас буде виведено із системи. Ви впевнені, що хочете продовжити?",
+ "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one before assigning employees.": "Цей постачальник ще не опублікував план харчування, тому ціна недоступна. Попросіть його додати план перед призначенням співробітників.",
+ "This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one in Menu Management before assigning employees here.": "Цей постачальник ще не опублікував план харчування, тому ціна недоступна. Попросіть його додати план у розділі «Керування меню», перш ніж призначати тут співробітників.",
  "To:": "До:",
  "Total Employees": "Усього працівників",
  "Track and manage your meal subscription orders and payments.": "Відстежуйте замовлення та платежі за підписками на харчування й керуйте ними.",
