@@ -366,6 +366,7 @@
  "No upcoming meal deliveries": "Brak nadchodzących dostaw posiłków",
  "No upcoming pantry deliveries": "Brak nadchodzących dostaw ze spiżarni",
  "No vendors found": "Nie znaleziono partnerów",
+ "Nothing to check out": "Nie ma nic do opłacenia",
  "Office Meal Plan": "Biurowy plan posiłków",
  "Order ID": "Numer zamówienia",
  "ORDER ID:": "NUMER ZAMÓWIENIA:",
@@ -590,6 +591,7 @@
  "Your dietary preferences": "Twoje preferencje żywieniowe",
  "Your meal has been successfully delivered. Enjoy your meal!": "Twój posiłek został dostarczony. Smacznego!",
  "your phone number": "Twój numer telefonu",
+ "Your plan selection has expired or wasn't found. Please pick a plan again.": "Twój wybór planu wygasł lub nie został znaleziony. Wybierz plan ponownie.",
  "Your weekly food, automated.": "Twoje cotygodniowe jedzenie — automatycznie.",
  "zł": "zł"
 }

@@ -145,6 +145,22 @@ export function CheckoutScreen({
     }
   };
 
+  // No plan to check out (draft expired, private browsing, or this page was opened directly — e.g. the browser's
+  // Back button after a hosted payment page can reload the app fresh and lose the in-memory selection). Never show
+  // a checkout with a payable PLN 0.00 button; send the customer back to pick a plan instead.
+  if (!plan.vendorId) {
+    return (
+      <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-3xl">🛒</div>
+        <h1 className="text-lg font-extrabold">{t("Nothing to check out")}</h1>
+        <p className="text-sm text-[#6e7a74] max-w-xs">{t("Your plan selection has expired or wasn't found. Please pick a plan again.")}</p>
+        <button onClick={onGoBack} className="mt-2 rounded-2xl bg-primary px-6 py-3 font-bold text-white">
+          {t("Browse Plans")}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32">
       {/* Top App Bar */}

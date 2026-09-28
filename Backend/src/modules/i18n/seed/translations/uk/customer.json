@@ -366,6 +366,7 @@
  "No upcoming meal deliveries": "Найближчих доставок страв немає",
  "No upcoming pantry deliveries": "Найближчих доставок зі спижарні немає",
  "No vendors found": "Партнерів не знайдено",
+ "Nothing to check out": "Немає чого оплачувати",
  "Office Meal Plan": "Офісний план харчування",
  "Order ID": "Номер замовлення",
  "ORDER ID:": "НОМЕР ЗАМОВЛЕННЯ:",
@@ -590,6 +591,7 @@
  "Your dietary preferences": "Ваші харчові вподобання",
  "Your meal has been successfully delivered. Enjoy your meal!": "Вашу страву успішно доставлено. Смачного!",
  "your phone number": "ваш номер телефону",
+ "Your plan selection has expired or wasn't found. Please pick a plan again.": "Термін дії вибраного плану минув або його не знайдено. Будь ласка, виберіть план знову.",
  "Your weekly food, automated.": "Ваша щотижнева їжа — автоматично.",
  "zł": "zł"
 }

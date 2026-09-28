@@ -216,8 +216,31 @@ export default function CustomerAppMain() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
 
-  // Holds the full checkout data from PlansScreen (vendorId, mealPlanId, slot, days, address, pricing)
-  const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
+  // Holds the full checkout data from PlansScreen (vendorId, mealPlanId, slot, days, address, pricing).
+  // Also mirrored to sessionStorage: a hosted payment page (Przelewy24, Stripe) is a full page navigation away
+  // from the app, and pressing the browser's Back button there often reloads the app fresh rather than restoring
+  // its in-memory state, which would otherwise leave the checkout screen with no plan and show PLN 0.00 for
+  // everything. 30 minutes matches how long the server keeps a payment open (PAYMENT_WINDOW_MINUTES).
+  const CHECKOUT_DRAFT_KEY = "dmb_checkout_draft";
+  const CHECKOUT_DRAFT_MAX_AGE_MS = 30 * 60 * 1000;
+  const [selectedPlanDetails, setSelectedPlanDetailsState] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_DRAFT_KEY) || "null");
+      if (saved && Date.now() - saved.savedAt < CHECKOUT_DRAFT_MAX_AGE_MS) return saved.data;
+    } catch {
+      /* corrupt or unavailable: start fresh */
+    }
+    return null;
+  });
+  const setSelectedPlanDetails = (data) => {
+    setSelectedPlanDetailsState(data);
+    try {
+      if (data) sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify({ data, savedAt: Date.now() }));
+      else sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+    } catch {
+      /* private mode or storage full: the in-memory value above still works for this tab */
+    }
+  };
 
   const [tomorrowMeal, setTomorrowMeal] = useState({
     day: "Mon",
@@ -329,6 +352,7 @@ export default function CustomerAppMain() {
       name: selectedPlanDetails?.mealPlanName || prev.name,
       status: "Confirmed",
     }));
+    setSelectedPlanDetails(null); // paid: the saved checkout draft is no longer needed
     navigate("/user/home");
     showToast(t("🎉 Subscription confirmed! Your first meal box is on its way."));
   };
@@ -667,7 +691,7 @@ export default function CustomerAppMain() {
 
           <Route path="checkout" element={
             <CheckoutScreen
-              onGoBack={() => navigate("/user/plans")}
+              onGoBack={() => { setSelectedPlanDetails(null); navigate("/user/plans"); }}
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings", { state: { from: 'checkout' } })}
               onShowNotificationToast={showToast}
               invoicePrefs={invoicePrefs}

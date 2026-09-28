@@ -352,6 +352,7 @@
  "No upcoming meal deliveries": "Keine bevorstehenden Mahlzeitenlieferungen",
  "No upcoming pantry deliveries": "Keine bevorstehenden Vorratslieferungen",
  "No vendors found": "Keine Partner gefunden",
+ "Nothing to check out": "Nichts zum Bezahlen",
  "Office Meal Plan": "Büro-Mahlzeitenplan",
  "Order ID": "Bestellnummer",
  "ORDER ID:": "BESTELLNUMMER:",
@@ -570,6 +571,7 @@
  "Your dietary preferences": "Ihre Ernährungspräferenzen",
  "Your meal has been successfully delivered. Enjoy your meal!": "Ihre Mahlzeit wurde erfolgreich geliefert. Guten Appetit!",
  "your phone number": "Ihre Telefonnummer",
+ "Your plan selection has expired or wasn't found. Please pick a plan again.": "Ihre Planauswahl ist abgelaufen oder wurde nicht gefunden. Bitte wählen Sie erneut einen Plan.",
  "Your weekly food, automated.": "Ihr wöchentliches Essen, automatisiert.",
  "zł": "zł"
 }

@@ -366,6 +366,7 @@
  "No upcoming meal deliveries": "Предстоящих доставок блюд нет",
  "No upcoming pantry deliveries": "Предстоящих доставок из кладовой нет",
  "No vendors found": "Партнёры не найдены",
+ "Nothing to check out": "Нечего оплачивать",
  "Office Meal Plan": "Офисный план питания",
  "Order ID": "Номер заказа",
  "ORDER ID:": "НОМЕР ЗАКАЗА:",
@@ -590,6 +591,7 @@
  "Your dietary preferences": "Ваши пищевые предпочтения",
  "Your meal has been successfully delivered. Enjoy your meal!": "Ваше блюдо успешно доставлено. Приятного аппетита!",
  "your phone number": "ваш номер телефона",
+ "Your plan selection has expired or wasn't found. Please pick a plan again.": "Срок действия выбранного плана истёк или он не найден. Пожалуйста, выберите план заново.",
  "Your weekly food, automated.": "Ваша еженедельная еда — автоматически.",
  "zł": "zł"
 }
