@@ -40,6 +40,18 @@ export default function VendorsTab({
   const methods = usePaymentMethods({ vendorId: selectedVendor?.id, enabled: Boolean(selectedVendor) });
   const { money } = useMoney({ vendorId: selectedVendor?.id });
 
+  // The food price is the vendor's own meal plan (set in their Menu Management), never the admin's.
+  // Subscription plans here only decide the duration (day count) and the VAT/platform-fee policy.
+  const vendorMealPlan = selectedVendor?.mealPlans?.[0] || null;
+  const getPlanDays = (plan) => {
+    if (!plan) return 0;
+    const monFri = plan.deliveryDays === 'mon_fri';
+    if (plan.duration === 'day') return 1;
+    if (plan.duration === 'week') return monFri ? 5 : 7;
+    if (plan.duration === 'month') return monFri ? 20 : 30;
+    return 0;
+  };
+
   React.useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -102,27 +114,26 @@ export default function VendorsTab({
   };
 
   const handleConfirmAssignment = async () => {
-    if (selectedVendor && selectedEmployeeIds.length > 0 && selectedSlots.length > 0 && selectedMealPlan) {
+    if (selectedVendor && selectedEmployeeIds.length > 0 && selectedSlots.length > 0 && selectedMealPlan && vendorMealPlan) {
       try {
         setIsProcessingPayment(true);
-        // Compute grand total to pass to backend for Razorpay order
-        const planPrice       = Number(selectedMealPlan.price || 0);
-        const empCount        = selectedEmployeeIds.length;
-        const slotCount       = selectedSlots.length;
-        const foodVatPct      = Number(selectedMealPlan.foodVat || 0);
-        const deliveryVatPct  = Number(selectedMealPlan.deliveryVat || 0);
-        const platformFeeEach = Number(selectedMealPlan.platformFee || 0);
-        const foodTotal       = planPrice * empCount;
-        const foodVatAmt      = foodTotal * (foodVatPct / 100);
-        const deliveryBase    = slotCount * feePerOrder * empCount;
-        const deliveryVatAmt  = (deliveryBase / 100) * deliveryVatPct;
-        const platformTotal   = platformFeeEach * empCount;
-        const grandTotal      = foodTotal + foodVatAmt + deliveryVatAmt + platformTotal;
+        // Compute grand total to pass to backend for Razorpay order. Food price comes from the vendor's own meal
+        // plan (pricePerDay); the subscription plan only supplies the duration and the VAT/fee policy.
+        const days             = getPlanDays(selectedMealPlan);
+        const planPrice        = Number(vendorMealPlan.pricePerDay || 0) * days; // whole-duration food price, per employee
+        const empCount         = selectedEmployeeIds.length;
+        const slotCount        = selectedSlots.length;
+        const foodVatPct       = Number(selectedMealPlan.foodVat || 0);
+        const deliveryVatPct   = Number(selectedMealPlan.deliveryVat || 0);
+        const platformFeeEach  = Number(selectedMealPlan.platformFee || 0);
+        const foodTotal        = planPrice * empCount;
+        const foodVatAmt       = foodTotal * (foodVatPct / 100);
+        const deliveryBase     = slotCount * feePerOrder * empCount;
+        const deliveryVatAmt   = (deliveryBase / 100) * deliveryVatPct;
+        const platformTotal    = platformFeeEach * empCount;
+        const grandTotal       = foodTotal + foodVatAmt + deliveryVatAmt + platformTotal;
 
-        // Get the vendor's first real DMBMealPlan _id (for subscription linking)
-        const vendorMealPlanId = selectedVendor.mealPlans && selectedVendor.mealPlans.length > 0
-          ? selectedVendor.mealPlans[0]._id
-          : null;
+        const vendorMealPlanId = vendorMealPlan._id;
 
         onAssignEmployees(
           selectedEmployeeIds,
@@ -456,7 +467,13 @@ export default function VendorsTab({
                     </div>
                     
                     <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">{t("Select Subscription Plan")}</h4>
-                    
+
+                    {!vendorMealPlan && (
+                      <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+                        {t("This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one in Menu Management before assigning employees here.")}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 gap-4 max-h-[350px] overflow-y-auto pr-2">
                       {(!subscriptionPlans || subscriptionPlans.length === 0) ? (
                         <div className="col-span-full text-center text-xs text-brand-muted p-8 bg-white rounded-xl border border-brand-divider">
@@ -465,24 +482,27 @@ export default function VendorsTab({
                       ) : (
                         subscriptionPlans.map((plan) => {
                           const isSelected = selectedMealPlan?._id === plan._id;
+                          const planDays = getPlanDays(plan);
+                          const planPrice = vendorMealPlan ? Number(vendorMealPlan.pricePerDay || 0) * planDays : null;
                           return (
-                            <label key={plan._id} className="cursor-pointer block">
+                            <label key={plan._id} className={`block ${vendorMealPlan ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                               <input
                                 type="radio"
                                 name="subscription-plan-option"
                                 className="peer hidden"
                                 value={plan._id}
                                 checked={isSelected}
+                                disabled={!vendorMealPlan}
                                 onChange={() => setSelectedMealPlan(plan)}
                               />
                               <div className={`h-full bg-white border-2 rounded-xl transition-all p-4 ${isSelected ? 'border-brand-primary bg-brand-primary-light/5' : 'border-brand-divider hover:border-brand-primary/30'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                   <h4 className="font-extrabold text-sm text-brand-text">{plan.name}</h4>
-                                  <span className="font-extrabold text-brand-primary text-sm">{money(plan.price, { compact: true })}</span>
+                                  <span className="font-extrabold text-brand-primary text-sm">{planPrice !== null ? money(planPrice, { compact: true }) : '—'}</span>
                                 </div>
                                 <p className="text-xs text-brand-muted mt-1">
-                                  {plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : t("Daily plan")} 
-                                  {plan.deliveryDays === 'mon_fri' ? " " + t("- Monday-Friday (5 Delivery Days)") : " " + t("- Full Week (30 Delivery Days)")}
+                                  {plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : t("Daily plan")}
+                                  {plan.deliveryDays === 'mon_fri' ? " " + t("- Monday-Friday (5 Delivery Days)") : " " + t("- Full Week ({{planDays}} Delivery Days)", { planDays })}
                                 </p>
                                 {plan.description && (
                                   <p className="text-xs text-brand-text mt-2 leading-relaxed">
@@ -514,9 +534,10 @@ export default function VendorsTab({
                   </div>
                 )}
                 
-                {wizardStep === 4 && selectedMealPlan && (() => {
-                  const planPrice        = Number(selectedMealPlan.price || 0);
-                  const empCount         = selectedEmployeeIds.length;
+                {wizardStep === 4 && selectedMealPlan && vendorMealPlan && (() => {
+                  const days              = getPlanDays(selectedMealPlan);
+                  const planPrice         = Number(vendorMealPlan.pricePerDay || 0) * days;
+                  const empCount          = selectedEmployeeIds.length;
                   const slotCount        = selectedSlots.length;
                   const foodVatPct       = Number(selectedMealPlan.foodVat || 0);
                   const deliveryVatPct   = Number(selectedMealPlan.deliveryVat || 0);

@@ -124,6 +124,12 @@ export default function App() {
 
   // 2. Meal Subscription Actions (Assignment / Unassignment)
   const handleAssignEmployees = async (employeeIds, vendorId, deliverySlot, subscriptionPlanId, totalAmount, vendorMealPlanId, provider) => {
+    // The price charged is the vendor's own meal plan, never the admin's subscriptionPlanId — never send one in
+    // place of the other.
+    if (!vendorMealPlanId) {
+      alert(t("This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one before assigning employees."));
+      return;
+    }
     try {
       // Step 1: Create the order. The server picks the payment provider for the vendor's country (or uses the chosen one);
       // meals are assigned only after the payment is confirmed.
@@ -133,7 +139,7 @@ export default function App() {
         vendorId,
         slots: deliverySlot,
         totalAmount,
-        mealPlanId: vendorMealPlanId || subscriptionPlanId, // prefer actual DMBMealPlan _id
+        mealPlanId: vendorMealPlanId, // the vendor's own DMBMealPlan._id — this is what sets the price
         ...paymentRequestExtras({ provider, returnPath: '/office/AssignedMealPlans', cancelPath: '/office/VendorsAssign' }),
       });
       const orderData = orderRes.data.data;
@@ -173,7 +179,7 @@ export default function App() {
               transactionId: orderData.payment?.transactionId,
               employeeIds,
               vendorId,
-              mealPlanId: vendorMealPlanId || subscriptionPlanId,
+              mealPlanId: vendorMealPlanId,
               subscriptionPlanId,
               slots: deliverySlot,
               razorpayOrderId: response.razorpay_order_id,

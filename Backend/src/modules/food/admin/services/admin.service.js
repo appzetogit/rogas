@@ -5999,12 +5999,7 @@ export async function getVendorSubscriptionPlans(query = {}) {
 export async function createVendorSubscriptionPlan(body) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Plan name is required');
-    
-    const price = toFiniteNumber(body.price);
-    if (price === null || price < 0) {
-        throw new ValidationError('Plan price is required and must be a non-negative number');
-    }
-    
+
     const duration = typeof body.duration === 'string' ? body.duration.trim().toLowerCase() : '';
     if (!duration || !['day', 'week', 'month'].includes(duration)) {
         throw new ValidationError('Duration must be day, week, or month');
@@ -6027,7 +6022,6 @@ export async function createVendorSubscriptionPlan(body) {
 
     const plan = new VendorSubscriptionPlan({
         name,
-        price,
         duration,
         description: typeof body.description === 'string' ? body.description.trim() : '',
         features: Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [],
@@ -6054,14 +6048,6 @@ export async function updateVendorSubscriptionPlan(id, body) {
         const name = typeof body.name === 'string' ? body.name.trim() : '';
         if (!name) throw new ValidationError('Plan name cannot be empty');
         plan.name = name;
-    }
-    
-    if (body.price !== undefined) {
-        const price = toFiniteNumber(body.price);
-        if (price === null || price < 0) {
-            throw new ValidationError('Plan price must be a non-negative number');
-        }
-        plan.price = price;
     }
     
     if (body.duration !== undefined) {

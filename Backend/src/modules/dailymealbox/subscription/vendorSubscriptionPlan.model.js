@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 
 /**
- * VendorSubscriptionPlan — Platform subscription plan model for Vendors
- * Tracks available subscription packages created by admin that vendors can buy/subscribe to.
- * Durations: day (One Day), week (One Week), month (One Month)
+ * VendorSubscriptionPlan — duration + fee template shared by every vendor (e.g. "Weekly", "Monthly").
+ * Admin sets the things that are genuinely platform-wide policy: which durations exist, VAT rates and the
+ * platform fee. The food price itself is NOT set here — it comes from the vendor's own DMBMealPlan.pricePerDay
+ * (Menu Management), multiplied by this plan's day count. `price` is kept only so old records keep whatever
+ * value they were created with; nothing reads it to charge a customer any more.
  */
 const vendorSubscriptionPlanSchema = new mongoose.Schema(
     {
@@ -12,9 +14,10 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
+        /** @deprecated no longer used to charge customers — see file comment. Kept for old records only. */
         price: {
             type: Number,
-            required: true,
+            default: 0,
             min: 0
         },
         duration: {

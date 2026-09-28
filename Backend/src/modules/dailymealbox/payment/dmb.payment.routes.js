@@ -5,6 +5,7 @@ import { FoodUser } from '../../../core/users/user.model.js';
 import { createSubscription } from '../subscription/subscription.service.js';
 import { DMBSubscription } from '../subscription/subscription.model.js';
 import { VendorSubscriptionPlan } from '../subscription/vendorSubscriptionPlan.model.js';
+import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
 import { logger } from '../../../utils/logger.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
@@ -15,10 +16,12 @@ const router = express.Router();
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 /**
- * The total is calculated in the customer's browser, so the server refuses anything below what the plan itself costs
- * (VAT can only add to it). Without this a customer could edit the request and pay a fraction of the price.
+ * The total is calculated in the customer's browser, so the server refuses anything below what the order itself
+ * costs (VAT can only add to it). Without this a customer could edit the request and pay a fraction of the price.
+ * The food price is the vendor's own DMBMealPlan.pricePerDay (Menu Management) — never admin-set; the duration
+ * (day count), delivery fee and platform fee are the admin's shared plan policy.
  */
-const assertPriceFloor = async ({ subscriptionPlanId, slots, pricing }) => {
+export const assertPriceFloor = async ({ subscriptionPlanId, slots, pricing, meals }) => {
     if (!subscriptionPlanId) {
         logger.warn('Subscription checkout without subscriptionPlanId: price floor not verified');
         return;
@@ -35,7 +38,10 @@ const assertPriceFloor = async ({ subscriptionPlanId, slots, pricing }) => {
     } catch {
         /* no fee configured */
     }
-    const floor = round2(plan.price * slots + days * slots * feePerOrder + (Number(plan.platformFee) || 0));
+    const mealDocs = await DMBMealPlan.find({ _id: { $in: (meals || []).map((m) => m.mealPlanId) } }).select('pricePerDay').lean();
+    const priceById = Object.fromEntries(mealDocs.map((d) => [String(d._id), d.pricePerDay]));
+    const foodPerDay = (meals || []).reduce((sum, m) => sum + (priceById[String(m.mealPlanId)] || 0) * (Number(m.quantity) || 1), 0);
+    const floor = round2(foodPerDay * days * slots + days * slots * feePerOrder + (Number(plan.platformFee) || 0));
     const total = Number(pricing.totalPrice !== undefined ? pricing.totalPrice : pricing.totalPerWeek);
     if (!Number.isFinite(total) || total + 0.01 < floor) {
         throw new Error('The price has changed. Please reload the plan and try again.');
@@ -69,7 +75,7 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
         if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
             return res.status(400).json({ success: false, message: 'Invalid total price' });
         }
-        await assertPriceFloor({ subscriptionPlanId, slots: finalSlots.length, pricing });
+        await assertPriceFloor({ subscriptionPlanId, slots: finalSlots.length, pricing, meals: finalMeals });
 
         const user = await FoodUser.findById(userId).select('name email phone countryCode').lean();
         const ctx = await resolvePaymentContext({ zoneId, dialCode: user?.countryCode });

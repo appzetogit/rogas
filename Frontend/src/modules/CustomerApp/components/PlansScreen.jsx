@@ -293,7 +293,9 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const activeMenuCount = mealPlans.length;
   const avgMenuPrice = activeMenuCount > 0 ? (sumActiveMenuPrices / activeMenuCount) : 0;
 
-  const basePricePerDay = selectedPlan ? (selectedPlan.price / daysCount) : 0;
+  // The food price is the vendor's own meal price (set in their Menu Management), never the admin's. The
+  // subscription plan only supplies the duration (day count) and the VAT/platform-fee policy.
+  const basePricePerDay = selectedMealsList.reduce((sum, m) => sum + (m.pricePerDay || 0), 0);
   const foodTotal = basePricePerDay * selectedSlots.length * daysCount;
 
   const foodVat = selectedPlan ? (selectedPlan.foodVat || 0) : 0;
@@ -471,15 +473,17 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                     {subscriptionPlans.map((plan) => {
                       const isSelected = selectedPlan?._id === plan._id;
                       const planDays = getDaysCount(plan);
+                      const planPrice = activeMeal ? basePricePerDay * planDays : null;
                       const displayDuration = plan.duration === "day" ? "Daily" : plan.duration === "week" ? "Weekly" : "Monthly";
                       const displaySchedule = plan.deliveryDays === "mon_fri" ? "Monday–Friday" : "Full Week";
-                      
+
                       return (
                         <button
                           key={plan._id}
                           type="button"
+                          disabled={!activeMeal}
                           onClick={() => setSelectedPlan(plan)}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex justify-between items-start gap-3 ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-[#e4e2e1] bg-[#f9f9f7] hover:border-primary/20"}`}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex justify-between items-start gap-3 ${!activeMeal ? "opacity-60 cursor-not-allowed" : ""} ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-[#e4e2e1] bg-[#f9f9f7] hover:border-primary/20"}`}
                         >
                           <div className="flex-1 min-w-0">
                             <p className="font-extrabold text-[15px] text-[#1b1c1c]">{plan.name}</p>
@@ -500,7 +504,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[17px] font-extrabold text-primary">{money(plan.price, { compact: true })}</p>
+                            <p className="text-[17px] font-extrabold text-primary">{planPrice !== null ? money(planPrice, { compact: true }) : "—"}</p>
                             {isSelected && (
                               <div className="mt-2.5 flex items-center justify-end gap-1 text-primary">
                                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
@@ -656,10 +660,6 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
                       )}
                     </div>
                     <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>{t("Plan Base Rate")}</span>
-                      <span className="font-bold">{money(selectedPlan.price, { compact: true })}</span>
-                    </div>
-                    <div className="flex justify-between text-[#6e7a74]">
                       <span>{t("Duration")}</span>
                       <span className="font-bold">
                         {selectedPlan.duration === "day" ? t("Daily") : selectedPlan.duration === "week" ? t("Weekly") : t("Monthly")}

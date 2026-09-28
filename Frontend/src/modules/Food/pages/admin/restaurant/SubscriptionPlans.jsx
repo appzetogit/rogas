@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { 
   Plus, Edit2, Trash2, ShieldAlert, Check, X, Award, 
-  IndianRupee, Calendar, Layers, Eye, FileText, CheckCircle2, AlertCircle, Loader2
+  Calendar, Layers, Eye, FileText, CheckCircle2, AlertCircle, Loader2
 } from "lucide-react"
 import { adminAPI } from "@food/api"
 
@@ -20,7 +20,6 @@ export default function SubscriptionPlans() {
   // Form states
   const [formData, setFormData] = useState({
     name: "",
-    price: "",
     duration: "month",
     description: "",
     features: [""],
@@ -60,7 +59,6 @@ export default function SubscriptionPlans() {
     setEditingPlan(null)
     setFormData({
       name: "",
-      price: "",
       duration: "month",
       description: "",
       features: [""],
@@ -79,7 +77,6 @@ export default function SubscriptionPlans() {
     setEditingPlan(plan)
     setFormData({
       name: plan.name || "",
-      price: plan.price !== undefined ? String(plan.price) : "",
       duration: plan.duration || "month",
       description: plan.description || "",
       features: plan.features && plan.features.length > 0 ? [...plan.features] : [""],
@@ -123,10 +120,6 @@ export default function SubscriptionPlans() {
       alert("Plan name is required")
       return
     }
-    if (formData.price === "" || isNaN(Number(formData.price)) || Number(formData.price) < 0) {
-      alert("Please enter a valid non-negative price")
-      return
-    }
     if (isNaN(Number(formData.foodVat)) || Number(formData.foodVat) < 0) {
       alert("Food VAT must be a non-negative number")
       return
@@ -142,7 +135,6 @@ export default function SubscriptionPlans() {
 
     const payload = {
       name: formData.name.trim(),
-      price: Number(formData.price),
       duration: formData.duration,
       description: formData.description.trim(),
       features: formData.features.map(f => f.trim()).filter(Boolean),
@@ -221,8 +213,8 @@ export default function SubscriptionPlans() {
                 <Award className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Vendor Subscription Plans</h1>
-                <p className="text-sm text-slate-500">Manage subscription packages created for vendor registrations</p>
+                <h1 className="text-2xl font-bold text-slate-900">Subscription Plans</h1>
+                <p className="text-sm text-slate-500">Duration options and VAT / platform-fee policy for meal subscriptions. Vendors set their own food price in Menu Management.</p>
               </div>
             </div>
             <button
@@ -302,17 +294,9 @@ export default function SubscriptionPlans() {
                     </span>
                   </div>
 
-                  {/* Plan Name & Price */}
+                  {/* Plan Name */}
                   <h3 className="text-xl font-bold text-slate-900 mb-1">{plan.name}</h3>
-                  <p className="text-xs text-slate-400 mb-4 truncate" title={plan.description}>{plan.description || "No description provided."}</p>
-
-                  <div className="flex items-baseline gap-1 mb-4 border-b border-slate-100 pb-4">
-                    <span className="text-3xl font-extrabold text-slate-950 flex items-center">
-                      <IndianRupee className="w-5 h-5 shrink-0" />
-                      {plan.price}
-                    </span>
-                    <span className="text-slate-500 text-sm">/ {plan.duration}</span>
-                  </div>
+                  <p className="text-xs text-slate-400 mb-4 border-b border-slate-100 pb-4" title={plan.description}>{plan.description || "No description provided."}</p>
 
                   {/* Config settings */}
                   <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-lg p-2.5 mb-4 border border-slate-100 text-center text-[10px] font-medium text-slate-650">
@@ -326,7 +310,7 @@ export default function SubscriptionPlans() {
                     </div>
                     <div>
                       <div className="text-slate-400 font-semibold mb-0.5">Plat. Fee</div>
-                      <div className="font-bold text-slate-800">₹{plan.platformFee ?? 0}</div>
+                      <div className="font-bold text-slate-800">{plan.platformFee ?? 0}</div>
                     </div>
                   </div>
 
@@ -394,7 +378,7 @@ export default function SubscriptionPlans() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">{editingPlan ? "Edit Subscription Plan" : "Create Subscription Plan"}</h3>
-                  <p className="text-xs text-slate-500">Configure plan limits, prices and durations</p>
+                  <p className="text-xs text-slate-500">Configure the duration and VAT / platform-fee policy</p>
                 </div>
               </div>
               <button
@@ -423,26 +407,8 @@ export default function SubscriptionPlans() {
                 />
               </div>
 
-              {/* Price and Duration */}
+              {/* Duration & Delivery Schedule */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Price (INR) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      placeholder="e.g. 1500"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full pl-8 pr-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Duration <span className="text-red-500">*</span>
@@ -457,10 +423,7 @@ export default function SubscriptionPlans() {
                     <option value="month">One Month</option>
                   </select>
                 </div>
-              </div>
 
-              {/* Delivery Days & Platform Fee */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Delivery Schedule <span className="text-red-500">*</span>
@@ -474,20 +437,21 @@ export default function SubscriptionPlans() {
                     <option value="mon_fri">Monday–Friday</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Platform Fee (INR)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 10"
-                    value={formData.platformFee}
-                    onChange={(e) => setFormData({ ...formData, platformFee: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+              {/* Platform Fee */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Platform Fee (in the customer's currency, charged once per subscription)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 10"
+                  value={formData.platformFee}
+                  onChange={(e) => setFormData({ ...formData, platformFee: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
 
               {/* VAT Settings */}
@@ -528,7 +492,7 @@ export default function SubscriptionPlans() {
                     Apply Food VAT on Vendor Food Menu
                   </label>
                   <span className="text-[11px] text-slate-500 block leading-tight mt-0.5">
-                    Calculate Food VAT on total menu rate instead of plan base rate
+                    Calculate Food VAT on the vendor's full menu rate instead of just the food total
                   </span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">

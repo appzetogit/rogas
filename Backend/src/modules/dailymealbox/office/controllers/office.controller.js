@@ -246,6 +246,19 @@ export const getVendors = async (req, res) => {
     }
 };
 
+/** How many delivery days a VendorSubscriptionPlan's duration covers. */
+export const daysForSubscriptionPlan = (subPlan) => {
+    const monFri = subPlan.deliveryDays === 'mon_fri';
+    return subPlan.duration === 'day' ? 1 : subPlan.duration === 'week' ? (monFri ? 5 : 7) : (monFri ? 20 : 30);
+};
+
+/**
+ * The minimum an office order for `employeeCount` employees can cost: the vendor's own meal price (never the
+ * admin's) for the plan's full duration, once per employee. Exported so tests can check this directly.
+ */
+export const officeAssignmentPlanFloor = ({ subPlan, mealPlan, employeeCount }) =>
+    Math.round(Number(mealPlan.pricePerDay || 0) * daysForSubscriptionPlan(subPlan) * employeeCount * 100) / 100;
+
 export const createAssignmentOrder = async (req, res) => {
     let pending = null;
     try {
@@ -255,13 +268,20 @@ export const createAssignmentOrder = async (req, res) => {
         if (!employeeIds || employeeIds.length === 0 || !subscriptionPlanId || !slots || slots.length === 0) {
             return sendError(res, 400, 'Missing required fields: employeeIds, subscriptionPlanId, slots');
         }
+        if (!mealPlanId) return sendError(res, 400, 'mealPlanId is required (the vendor meal plan being assigned)');
 
-        // Lookup the admin-created subscription plan
-        const subPlan = await VendorSubscriptionPlan.findById(subscriptionPlanId);
+        // Duration/fee policy (admin-set, shared across vendors) and the vendor's own meal price (vendor-set).
+        const [subPlan, mealPlan] = await Promise.all([
+            VendorSubscriptionPlan.findById(subscriptionPlanId).lean(),
+            DMBMealPlan.findById(mealPlanId).select('pricePerDay vendorId').lean()
+        ]);
         if (!subPlan) return sendError(res, 404, 'Subscription plan not found');
+        if (!mealPlan) return sendError(res, 404, 'Meal plan not found');
+        if (vendorId && String(mealPlan.vendorId) !== String(vendorId)) return sendError(res, 400, 'That meal plan does not belong to the selected vendor');
 
-        // The total is worked out in the browser (it includes VAT and fees). Never accept less than the plan itself costs.
-        const planFloor = Math.round(subPlan.price * employeeIds.length * 100) / 100;
+        // The total is worked out in the browser (it includes VAT and fees). Never accept less than the vendor's own
+        // meal price for the full plan duration costs.
+        const planFloor = officeAssignmentPlanFloor({ subPlan, mealPlan, employeeCount: employeeIds.length });
         const finalAmount = totalAmount ? Number(totalAmount) : planFloor;
         if (!Number.isFinite(finalAmount) || finalAmount + 0.01 < planFloor) {
             return sendError(res, 400, 'The price has changed. Please reload and try again.');
