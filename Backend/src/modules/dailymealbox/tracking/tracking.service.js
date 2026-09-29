@@ -5,6 +5,7 @@ import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { logger } from '../../../utils/logger.js';
 import { msg } from '../../i18n/i18n.service.js';
+import { checkInDriver } from '../../food/delivery/services/attendance.service.js';
 
 const DRIVER_LOCATION_TTL = 30; // Redis TTL in seconds (5s emit, 30s TTL)
 const GPS_ARRIVING_SOON_THRESHOLD = 500; // meters
@@ -215,6 +216,9 @@ export const driverGoOnline = async (driverId, io) => {
         availabilityStatus: 'online',
         isOnline: true
     });
+
+    // A shift's attendance check-in: going online during a scheduled/confirmed shift's window resolves it.
+    checkInDriver(driverId).catch((err) => logger.warn(`Attendance check-in failed for driver ${driverId}: ${err?.message || err}`));
 
     const driver = await FoodDeliveryPartner.findById(driverId).select('name city zoneIds');
 

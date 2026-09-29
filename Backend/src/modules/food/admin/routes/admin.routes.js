@@ -24,6 +24,7 @@ import { adminSlotRouter } from '../../../dailymealbox/deliverySlot/deliverySlot
 import { adminI18nRouter } from '../../../i18n/i18n.routes.js';
 import { adminPaymentsRouter } from '../../../payments/payments.admin.routes.js';
 import { adminEmailRouter } from '../../../email/email.admin.routes.js';
+import { adminAttendanceRouter } from '../../../food/delivery/routes/attendance.admin.routes.js';
 
 const router = express.Router();
 
@@ -382,6 +383,7 @@ router.delete('/vendor-subscription-plans/:id', requirePermission('vendorManagem
 router.use('/i18n', adminI18nRouter);
 router.use('/payments', adminPaymentsRouter);
 router.use('/email', adminEmailRouter);
+router.use('/attendance', adminAttendanceRouter);
 
 // ----- Delivery Slots (dynamic meal slots CRUD) -----
 router.use('/delivery-slots', adminSlotRouter);

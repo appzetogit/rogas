@@ -76,6 +76,14 @@ const startServer = async () => {
             logger.error(`[email] Could not start upkeep jobs: ${err.message}`);
         }
 
+        // 1-attendance. Background upkeep for driver attendance: seeds tomorrow's shifts, flags no-shows, reminds admins of unconfirmed shifts.
+        try {
+            const { startAttendanceJobs } = await import('./src/modules/food/delivery/services/attendance.service.js');
+            startAttendanceJobs();
+        } catch (err) {
+            logger.error(`[attendance] Could not start upkeep jobs: ${err.message}`);
+        }
+
         // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
         try {
             const db = mongoose.connection.db;

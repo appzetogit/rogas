@@ -10,6 +10,7 @@ import { CollectionBatch } from '../delivery/collectionBatch.model.js';
 import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { notifyDriverOfRouteUpdate } from '../subscription/dmb.dailyOrder.service.js';
+import { listShiftsForDriver, confirmShift } from '../../food/delivery/services/attendance.service.js';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -709,6 +710,28 @@ router.get('/stats', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (re
         const driver = await FoodDeliveryPartner.findById((req.user.userId || req.user._id))
             .select('earningsToday deliveriesToday cashBalance rating isOnline currentShift');
         res.json({ success: true, stats: driver });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Shift Schedule + Attendance (DA-11) ───────────────────────────────────
+router.get('/shifts', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const driverId = req.user.userId || req.user._id;
+        const { from, to } = req.query;
+        const shifts = await listShiftsForDriver(driverId, { fromDate: from, toDate: to });
+        res.json({ success: true, data: { shifts } });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/shifts/:id/confirm', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const driverId = req.user.userId || req.user._id;
+        const shift = await confirmShift(driverId, req.params.id);
+        res.json({ success: true, data: { shift } });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
