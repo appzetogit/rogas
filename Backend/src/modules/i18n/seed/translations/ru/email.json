@@ -1,8 +1,12 @@
 {
+ "{{driverName}} did not check in for their {{slotKey}} shift on {{date}}. Reassign the route if needed.": "{{driverName}} не отметился на свою смену {{slotKey}} {{date}}. При необходимости переназначьте маршрут.",
+ "{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.": "{{driverName}} не подтвердил свою смену {{slotKey}}, которая начинается примерно через 2 часа, {{date}}.",
  "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Новый клиент подписался на ваш план питания. Откройте приложение для поставщиков, чтобы увидеть подробности.",
  "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Подписчик отменил подписку на ваш план питания. Посмотрите аналитику, чтобы узнать советы по удержанию клиентов.",
  "Application not approved": "Заявка не одобрена",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Поздравляем, {{restaurantName}}! Ваш ресторан одобрен нашей командой и уже доступен в DailyMealBox. Вы можете сразу начать принимать заказы — откройте приложение для поставщиков, чтобы завершить настройку меню.",
+ "Driver has not confirmed an upcoming shift": "Водитель не подтвердил предстоящую смену",
+ "Driver no-show": "Неявка водителя",
  "New Subscriber! 🎉": "Новый подписчик! 🎉",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Платёж {{publicId}} ({{purpose}}) для {{customerEmail}} не прошёл: {{reason}}. Сумма: {{amount}} {{currency}}.",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Платёж {{publicId}} ({{purpose}}) для {{customerEmail}} был возвращён на сумму {{refundedAmount}} {{currency}}. Причина: {{reason}}.",

@@ -1,8 +1,12 @@
 {
+ "{{driverName}} did not check in for their {{slotKey}} shift on {{date}}. Reassign the route if needed.": "{{driverName}} hat sich nicht für die {{slotKey}}-Schicht am {{date}} angemeldet. Weisen Sie die Route bei Bedarf neu zu.",
+ "{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.": "{{driverName}} hat die {{slotKey}}-Schicht, die in etwa 2 Stunden am {{date}} beginnt, nicht bestätigt.",
  "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Ein neuer Kunde hat Ihren Menüplan abonniert. Öffnen Sie die Partner-App, um die Details zu sehen.",
  "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Ein Abonnent hat sein Abonnement Ihres Menüplans gekündigt. Sehen Sie sich Ihre Analysen für Tipps zur Kundenbindung an.",
  "Application not approved": "Antrag nicht genehmigt",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Herzlichen Glückwunsch, {{restaurantName}}! Ihr Restaurant wurde von unserem Team genehmigt und ist jetzt live auf DailyMealBox. Sie können sofort Bestellungen entgegennehmen — öffnen Sie die Partner-App, um Ihr Menü fertig einzurichten.",
+ "Driver has not confirmed an upcoming shift": "Fahrer hat eine bevorstehende Schicht nicht bestätigt",
+ "Driver no-show": "Fahrer nicht erschienen",
  "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Zahlung {{publicId}} ({{purpose}}) für {{customerEmail}} fehlgeschlagen: {{reason}}. Betrag: {{amount}} {{currency}}.",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Zahlung {{publicId}} ({{purpose}}) für {{customerEmail}} wurde in Höhe von {{refundedAmount}} {{currency}} erstattet. Grund: {{reason}}.",

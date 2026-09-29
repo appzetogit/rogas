@@ -1,8 +1,12 @@
 {
+ "{{driverName}} did not check in for their {{slotKey}} shift on {{date}}. Reassign the route if needed.": "{{driverName}} nie zameldował się na swoją zmianę {{slotKey}} w dniu {{date}}. W razie potrzeby przydziel trasę ponownie.",
+ "{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.": "{{driverName}} nie potwierdził swojej zmiany {{slotKey}} rozpoczynającej się za około 2 godziny, w dniu {{date}}.",
  "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Nowy klient zasubskrybował Twój plan posiłków. Otwórz aplikację dla dostawców, aby zobaczyć szczegóły.",
  "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Subskrybent anulował subskrypcję Twojego planu posiłków. Sprawdź swoją analitykę, aby poznać wskazówki dotyczące utrzymania klientów.",
  "Application not approved": "Wniosek nie został zatwierdzony",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Gratulacje, {{restaurantName}}! Twoja restauracja została zatwierdzona przez nasz zespół i jest już dostępna w DailyMealBox. Możesz od razu zacząć przyjmować zamówienia — otwórz aplikację dla dostawców, aby dokończyć konfigurację menu.",
+ "Driver has not confirmed an upcoming shift": "Kierowca nie potwierdził nadchodzącej zmiany",
+ "Driver no-show": "Nieobecność kierowcy",
  "New Subscriber! 🎉": "Nowy subskrybent! 🎉",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Płatność {{publicId}} ({{purpose}}) dla {{customerEmail}} nie powiodła się: {{reason}}. Kwota: {{amount}} {{currency}}.",
  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Płatność {{publicId}} ({{purpose}}) dla {{customerEmail}} została zwrócona w kwocie {{refundedAmount}} {{currency}}. Powód: {{reason}}.",
