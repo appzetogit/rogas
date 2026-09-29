@@ -154,9 +154,16 @@ before(async () => {
         PAYMENTS_MODE: 'live', PAYMENTS_JOBS: 'false'
     });
     delete process.env.MONGO_URI;
+    // Never let this suite's transactions (fulfil/refund/fail all now send an email) touch a real Mongo or SMTP
+    // server, no matter what the developer's own .env has configured.
+    delete process.env.EMAIL_HOST;
+    delete process.env.EMAIL_USER;
+    delete process.env.EMAIL_PASS;
 
     await mongoose.connect(BASE_URI, { dbName: DB_NAME });
     svc = await import('../src/modules/payments/payments.service.js');
+    const emailSvc = await import('../src/modules/email/email.service.js');
+    emailSvc._setTransporterForTests({ sendMail: async () => ({ messageId: 'test' }), verify: async () => true });
     settings = await import('../src/modules/payments/payments.settings.js');
     models = await import('../src/modules/payments/payments.models.js');
     locale = await import('../src/modules/payments/payments.locale.js');
@@ -692,6 +699,70 @@ test('Stripe refunds go to the PaymentIntent; a provider failure leaves no phant
     const synced = await models.PaymentTransaction.findOne({ publicId: transaction.publicId });
     assert.equal(synced.status, 'refunded');
     assert.equal(synced.refundedMinor, 6000);
+});
+
+// ─── Emails: paid / failed / refunded, every purpose, no customer email = no crash ────────────
+
+test('a fulfilled payment emails the customer a receipt', async () => {
+    const { EmailLog } = await import('../src/modules/email/email.models.js');
+    const { transaction } = await topup({ ownerId: new mongoose.Types.ObjectId() });
+    await post('/webhook/przelewy24', p24Notification(transaction.publicId));
+    const tx = await models.PaymentTransaction.findOne({ publicId: transaction.publicId });
+    assert.equal(tx.fulfilment.done, true);
+
+    const log = await EmailLog.findOne({ to: 'anna@example.com', templateKey: 'Payment received' }).sort({ createdAt: -1 });
+    assert.ok(log, 'a receipt email was queued');
+    assert.equal(log.language, 'pl');
+    assert.match(log.html, /50/); // the PLN 50 amount, somewhere in the body
+});
+
+test('a transaction with no customer email never throws trying to send one', async () => {
+    const { transaction } = await topup({ customer: {} });
+    await post('/webhook/przelewy24', p24Notification(transaction.publicId));
+    const tx = await models.PaymentTransaction.findOne({ publicId: transaction.publicId });
+    assert.equal(tx.fulfilment.done, true, 'fulfilment still completes with no email address on file');
+});
+
+test('a failed payment emails the customer, and CCs the admin support inbox when one is configured', async () => {
+    const { EmailLog } = await import('../src/modules/email/email.models.js');
+    const { FoodBusinessSettings } = await import('../src/modules/food/admin/models/businessSettings.model.js');
+    await FoodBusinessSettings.deleteMany({});
+    await FoodBusinessSettings.create({ supportEmail: 'ops@example.test' });
+
+    const { transaction } = await topup();
+    await svc.applyProviderResult(transaction._id, { state: 'failed', reason: 'Card declined' }, 'test');
+
+    const customerLog = await EmailLog.findOne({ to: 'anna@example.com', templateKey: 'Payment failed' }).sort({ createdAt: -1 });
+    assert.ok(customerLog, 'the customer is told their payment failed');
+    assert.match(customerLog.html, /Card declined/);
+
+    const adminLog = await EmailLog.findOne({ to: 'ops@example.test', templateKey: 'Payment failed' }).sort({ createdAt: -1 });
+    assert.ok(adminLog, 'the admin support inbox is told too');
+    assert.match(adminLog.html, /anna@example\.com/);
+
+    // An expired (abandoned) checkout is not a failure the customer or admin needs an email about.
+    const before = await EmailLog.countDocuments({ templateKey: 'Payment failed' });
+    const { transaction: abandoned } = await topup();
+    await svc.applyProviderResult(abandoned._id, { state: 'expired' }, 'test');
+    assert.equal(await EmailLog.countDocuments({ templateKey: 'Payment failed' }), before, 'expiry sends no "Payment failed" email');
+});
+
+test('a refund emails the customer and the admin support inbox', async () => {
+    const { EmailLog } = await import('../src/modules/email/email.models.js');
+    const { FoodBusinessSettings } = await import('../src/modules/food/admin/models/businessSettings.model.js');
+    await FoodBusinessSettings.deleteMany({});
+    await FoodBusinessSettings.create({ supportEmail: 'ops2@example.test' });
+
+    const tx = await paidP24({ customer: { email: 'refund-recipient@example.com' }, amount: 40 });
+    await svc.refundTransaction(tx.publicId, { amount: 15, reason: 'Order not delivered' });
+
+    const customerLog = await EmailLog.findOne({ to: 'refund-recipient@example.com', templateKey: 'Refund issued' });
+    assert.ok(customerLog, 'the customer is emailed about the refund');
+    assert.match(customerLog.html, /15\.00/);
+
+    const adminLog = await EmailLog.findOne({ to: 'ops2@example.test', templateKey: 'Refund issued' });
+    assert.ok(adminLog, 'the admin support inbox is told too');
+    assert.match(adminLog.html, /Order not delivered/);
 });
 
 // ─── Safety rails ────────────────────────────────────────────────────────────

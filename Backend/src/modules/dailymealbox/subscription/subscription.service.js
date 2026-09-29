@@ -1,11 +1,20 @@
 import { DMBSubscription } from './subscription.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
+import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { logger } from '../../../utils/logger.js';
 import { getIO } from '../../../config/socket.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 import { msg } from '../../i18n/i18n.service.js';
+import { queueEmail } from '../../email/email.service.js';
+
+/**
+ * Never lets an email problem break a subscription action. Each `queueEmail({...})` below is written out at its
+ * own call site with literal subjectKey/bodyKey text — the i18n catalog extractor needs that literal to make a
+ * string translatable; forwarding it through a variable would hide it from every language but English.
+ */
+const emailSafe = (promise, label) => promise.catch((err) => logger.warn(`${label} not sent: ${err?.message || err}`));
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const toDateOnly = (date) => {
@@ -220,6 +229,19 @@ export const activateSubscription = async (subscriptionId) => {
         body: msg('A new customer subscribed to your meal plan.'),
         data: { screen: 'subscribers', event: 'new_subscriber', subscriptionId }
     });
+    const vendor = await FoodRestaurant.findById(sub.vendorId).select('ownerEmail').lean();
+    if (vendor?.ownerEmail) {
+        await emailSafe(
+            queueEmail({
+                to: vendor.ownerEmail,
+                subjectKey: 'New Subscriber! 🎉',
+                bodyKey: 'A new customer subscribed to your meal plan. Open the vendor app to see the details.',
+                ownerType: 'RESTAURANT',
+                ownerId: sub.vendorId
+            }),
+            `New-subscriber email for vendor ${sub.vendorId}`
+        );
+    }
 
     return sub;
 };
@@ -564,6 +586,34 @@ export const cancelSubscription = async ({ subscriptionId, userId, reason }) => 
         body: msg('A subscriber cancelled. Check your analytics for retention tips.'),
         data: { screen: 'analytics', event: 'subscriber_cancelled', subscriptionId }
     });
+    const [user, vendor] = await Promise.all([
+        FoodUser.findById(userId).select('email').lean(),
+        FoodRestaurant.findById(sub.vendorId).select('ownerEmail').lean()
+    ]);
+    if (user?.email) {
+        await emailSafe(
+            queueEmail({
+                to: user.email,
+                subjectKey: 'Your subscription has been cancelled',
+                bodyKey: "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.",
+                ownerType: 'USER',
+                ownerId: userId
+            }),
+            `Cancellation email for user ${userId}`
+        );
+    }
+    if (vendor?.ownerEmail) {
+        await emailSafe(
+            queueEmail({
+                to: vendor.ownerEmail,
+                subjectKey: 'Subscriber Cancelled',
+                bodyKey: 'A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.',
+                ownerType: 'RESTAURANT',
+                ownerId: sub.vendorId
+            }),
+            `Subscriber-cancelled email for vendor ${sub.vendorId}`
+        );
+    }
 
     logger.info(`Subscription cancelled: ${subscriptionId} by user ${userId}`);
     return sub;

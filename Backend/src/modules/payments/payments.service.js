@@ -6,12 +6,42 @@ import { toMinor, fromMinor } from './payments.locale.js';
 import { PAYMENT_WINDOW_MINUTES } from './payments.config.js';
 import { getPurpose } from './purposes/index.js';
 import { logger } from '../../utils/logger.js';
+import { queueEmail } from '../email/email.service.js';
 
 export { PaymentsError };
 
 const PAID_LIKE = ['paid', 'partially_refunded', 'refunded'];
 const OPEN = ['created', 'pending'];
 const FULFIL_LOCK_MS = 60_000;
+
+/**
+ * Building blocks for "what happened to your payment" emails, covering every purpose (subscription, pantry,
+ * wallet top-up, tip, office, driver deposit) at once — the transaction already carries who to email and in what
+ * language, so nothing purpose-specific is needed here.
+ *
+ * IMPORTANT: each `queueEmail({...})` call below is written out at its own call site, with the English
+ * subjectKey/bodyKey text as literal strings, rather than forwarded through a shared function. The i18n catalog
+ * extractor (Frontend/scripts/i18n/extract-catalog.mjs) statically finds `queueEmail({ subjectKey: "...", ... })`
+ * calls in the source — a literal at the call site is required for a string to become translatable; forwarding it
+ * through a variable would silently hide it from every language but English. `emailSafe(...)` only wraps the
+ * resulting promise, so it never hides the call itself.
+ */
+const emailSafe = (promise, label) => promise.catch((err) => logger.warn(`${label} not sent: ${err?.message || err}`));
+
+/** Vars every payment-result email shares. */
+const paymentVars = (tx, extra = {}) => ({ description: tx.description || tx.purpose, amount: fromMinor(tx.amountMinor, tx.currency).toFixed(2), currency: tx.currency, ...extra });
+const adminVars = (tx, extra = {}) => ({ publicId: tx.publicId, purpose: tx.purpose, customerEmail: tx.customer?.email || 'unknown', ...paymentVars(tx, extra) });
+
+/** The address the admin (support inbox) is told about a payment problem worth their attention. */
+const adminAlertEmail = async () => {
+    try {
+        const { FoodBusinessSettings } = await import('../food/admin/models/businessSettings.model.js');
+        const settings = await FoodBusinessSettings.findOne().select('supportEmail').lean();
+        return settings?.supportEmail || '';
+    } catch {
+        return '';
+    }
+};
 
 /** Only same-site relative paths may be stored as return targets (prevents open redirects through the return page). */
 export const sanitizePath = (p) => {
@@ -125,6 +155,18 @@ export const fulfil = async (tx) => {
             logger.error(`Payment ${tx.publicId} needs attention: ${outcome.attention}`);
         }
         await PaymentTransaction.updateOne({ _id: tx._id }, update);
+        if (claimed.customer?.email) {
+            await emailSafe(
+                queueEmail({
+                    to: claimed.customer.email,
+                    subjectKey: 'Payment received',
+                    bodyKey: 'Thank you! We have received your payment of {{amount}} {{currency}} for {{description}}. You can see the details any time from the app.',
+                    language: claimed.language,
+                    vars: paymentVars(claimed)
+                }),
+                `Payment received email for ${claimed.publicId}`
+            );
+        }
     } catch (err) {
         logger.error(`Fulfilment of ${tx.publicId} (${tx.purpose}) failed: ${err?.message || err}`);
         await PaymentTransaction.updateOne(
@@ -170,6 +212,36 @@ const settleNotPaid = async (tx, state, reason, source) => {
             await getPurpose(updated.purpose).onFailed?.(updated, state);
         } catch (err) {
             logger.warn(`onFailed for ${tx.publicId} threw: ${err?.message || err}`);
+        }
+        // Only an actual failure, not a quietly abandoned checkout (state "expired") or a customer-cancelled one —
+        // those need no email, the customer already knows nothing happened.
+        if (state === 'failed') {
+            const failReason = updated.failureReason || 'unknown';
+            if (updated.customer?.email) {
+                await emailSafe(
+                    queueEmail({
+                        to: updated.customer.email,
+                        subjectKey: 'Payment failed',
+                        bodyKey: 'We could not process your payment of {{amount}} {{currency}} for {{description}}. Reason: {{reason}}\n\nYou can try again any time from the app.',
+                        language: updated.language,
+                        vars: paymentVars(updated, { reason: failReason })
+                    }),
+                    `Payment failed email for ${updated.publicId}`
+                );
+            }
+            const adminTo = await adminAlertEmail();
+            if (adminTo) {
+                await emailSafe(
+                    queueEmail({
+                        to: adminTo,
+                        subjectKey: 'Payment failed',
+                        bodyKey: 'Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.',
+                        language: 'en',
+                        vars: adminVars(updated, { reason: failReason })
+                    }),
+                    `Admin payment-failed alert for ${updated.publicId}`
+                );
+            }
         }
     }
     return updated || (await reload(tx));
@@ -378,6 +450,35 @@ export const refundTransaction = async (publicId, { amount, reason = '', actor =
             { _id: tx._id, 'refunds.refundKey': refundKey },
             { $set: { 'refunds.$.status': out.status, 'refunds.$.providerRefundId': out.providerRefundId || '', status: total >= tx.amountMinor ? 'refunded' : 'partially_refunded' } }
         );
+        const refunded = await reload(tx);
+        const refundedAmount = fromMinor(amountMinor, tx.currency).toFixed(2);
+        const refundReason = String(reason || 'not given');
+        if (refunded.customer?.email) {
+            await emailSafe(
+                queueEmail({
+                    to: refunded.customer.email,
+                    subjectKey: 'Refund issued',
+                    bodyKey: "We've refunded {{refundedAmount}} {{currency}} for {{description}} to your original payment method. It can take a few days to appear, depending on your bank.",
+                    language: refunded.language,
+                    vars: paymentVars(refunded, { refundedAmount })
+                }),
+                `Refund issued email for ${refunded.publicId}`
+            );
+        }
+        const adminTo = await adminAlertEmail();
+        if (adminTo) {
+            await emailSafe(
+                queueEmail({
+                    to: adminTo,
+                    subjectKey: 'Refund issued',
+                    bodyKey: 'Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.',
+                    language: 'en',
+                    vars: adminVars(refunded, { refundedAmount, reason: refundReason })
+                }),
+                `Admin refund alert for ${refunded.publicId}`
+            );
+        }
+        return refunded;
     } catch (err) {
         await PaymentTransaction.updateOne(
             { _id: tx._id, 'refunds.refundKey': refundKey },
@@ -385,7 +486,6 @@ export const refundTransaction = async (publicId, { amount, reason = '', actor =
         );
         throw new PaymentsError(`The provider rejected the refund: ${err?.message || err}`, 502, 'REFUND_FAILED');
     }
-    return reload(tx);
 };
 
 // ─── Background upkeep ───────────────────────────────────────────────────────

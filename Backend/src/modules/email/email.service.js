@@ -29,7 +29,12 @@ const buildTransporter = () => {
         host: cfg.host,
         port: cfg.port,
         secure: cfg.secure,
-        auth: { user: cfg.user, pass: cfg.pass }
+        auth: { user: cfg.user, pass: cfg.pass },
+        // A slow or unreachable SMTP server must fail fast, not hang the request that triggered the email (or,
+        // worse, a background job) for a long time — the retry queue already handles a failed attempt gracefully.
+        connectionTimeout: 8_000,
+        greetingTimeout: 8_000,
+        socketTimeout: 8_000
     });
     transporterSignature = signature;
     return transporter;
