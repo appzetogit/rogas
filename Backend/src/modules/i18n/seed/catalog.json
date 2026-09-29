@@ -2296,13 +2296,27 @@
   "Your meal has been delivered. Enjoy! Rate your experience →"
  ],
  "email": [
+  "A new customer subscribed to your meal plan. Open the vendor app to see the details.",
+  "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.",
   "Application not approved",
   "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.",
+  "New Subscriber! 🎉",
+  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.",
+  "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.",
+  "Payment failed",
+  "Payment received",
+  "Refund issued",
+  "Subscriber Cancelled",
+  "Thank you! We have received your payment of {{amount}} {{currency}} for {{description}}. You can see the details any time from the app.",
   "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.",
   "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.",
   "Update on your registration",
+  "We could not process your payment of {{amount}} {{currency}} for {{description}}. Reason: {{reason}}\n\nYou can try again any time from the app.",
+  "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.",
+  "We've refunded {{refundedAmount}} {{currency}} for {{description}} to your original payment method. It can take a few days to appear, depending on your bank.",
   "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.",
   "Welcome! You are approved.",
-  "Your kitchen is live!"
+  "Your kitchen is live!",
+  "Your subscription has been cancelled"
  ]
 }

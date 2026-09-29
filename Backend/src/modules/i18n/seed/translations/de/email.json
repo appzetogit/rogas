@@ -1,10 +1,24 @@
 {
+ "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Ein neuer Kunde hat Ihren Menüplan abonniert. Öffnen Sie die Partner-App, um die Details zu sehen.",
+ "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Ein Abonnent hat sein Abonnement Ihres Menüplans gekündigt. Sehen Sie sich Ihre Analysen für Tipps zur Kundenbindung an.",
  "Application not approved": "Antrag nicht genehmigt",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Herzlichen Glückwunsch, {{restaurantName}}! Ihr Restaurant wurde von unserem Team genehmigt und ist jetzt live auf DailyMealBox. Sie können sofort Bestellungen entgegennehmen — öffnen Sie die Partner-App, um Ihr Menü fertig einzurichten.",
+ "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Zahlung {{publicId}} ({{purpose}}) für {{customerEmail}} fehlgeschlagen: {{reason}}. Betrag: {{amount}} {{currency}}.",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Zahlung {{publicId}} ({{purpose}}) für {{customerEmail}} wurde in Höhe von {{refundedAmount}} {{currency}} erstattet. Grund: {{reason}}.",
+ "Payment failed": "Zahlung fehlgeschlagen",
+ "Payment received": "Zahlung erhalten",
+ "Refund issued": "Rückerstattung erfolgt",
+ "Subscriber Cancelled": "Abonnent hat gekündigt",
+ "Thank you! We have received your payment of {{amount}} {{currency}} for {{description}}. You can see the details any time from the app.": "Vielen Dank! Wir haben Ihre Zahlung über {{amount}} {{currency}} für {{description}} erhalten. Die Details finden Sie jederzeit in der App.",
  "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.": "Vielen Dank für Ihre Bewerbung als DailyMealBox-Lieferpartner. Wir konnten Ihren Antrag dieses Mal nicht genehmigen.\n\nGrund: {{reason}}\n\nSie können das markierte Problem beheben und Ihre Dokumente jederzeit erneut in der App einreichen.",
  "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.": "Vielen Dank für Ihre Bewerbung bei DailyMealBox, {{restaurantName}}. Wir konnten Ihre Registrierung dieses Mal nicht genehmigen.\n\nGrund: {{reason}}\n\nSie können das markierte Problem beheben und Ihren Antrag jederzeit erneut in der Partner-App einreichen.",
  "Update on your registration": "Update zu Ihrer Registrierung",
+ "We could not process your payment of {{amount}} {{currency}} for {{description}}. Reason: {{reason}}\n\nYou can try again any time from the app.": "Wir konnten Ihre Zahlung über {{amount}} {{currency}} für {{description}} nicht verarbeiten. Grund: {{reason}}\n\nSie können es jederzeit in der App erneut versuchen.",
+ "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.": "Wir haben Ihr DailyMealBox-Abonnement wie gewünscht gekündigt. Es werden keine weiteren Lieferungen geplant und Ihnen wird nichts mehr berechnet.\n\nSie können jederzeit im Tab „Pläne“ ein neues Abonnement starten.",
+ "We've refunded {{refundedAmount}} {{currency}} for {{description}} to your original payment method. It can take a few days to appear, depending on your bank.": "Wir haben {{refundedAmount}} {{currency}} für {{description}} auf Ihre ursprüngliche Zahlungsmethode erstattet. Je nach Bank kann es einige Tage dauern, bis der Betrag angezeigt wird.",
  "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.": "Willkommen an Bord{{name}}! Ihr Antrag als Lieferpartner wurde genehmigt. Sie können jetzt in der App online gehen und mit dem Verdienen beginnen.",
  "Welcome! You are approved.": "Willkommen! Sie wurden genehmigt.",
- "Your kitchen is live!": "Ihre Küche ist jetzt live!"
+ "Your kitchen is live!": "Ihre Küche ist jetzt live!",
+ "Your subscription has been cancelled": "Ihr Abonnement wurde gekündigt"
 }

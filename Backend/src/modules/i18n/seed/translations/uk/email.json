@@ -1,10 +1,24 @@
 {
+ "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Новий клієнт підписався на ваш план харчування. Відкрийте застосунок для постачальників, щоб побачити деталі.",
+ "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Підписник скасував підписку на ваш план харчування. Перегляньте аналітику, щоб дізнатися поради щодо утримання клієнтів.",
  "Application not approved": "Заявку не схвалено",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Вітаємо, {{restaurantName}}! Ваш ресторан схвалено нашою командою і вже доступний у DailyMealBox. Ви можете одразу почати приймати замовлення — відкрийте застосунок для постачальників, щоб завершити налаштування меню.",
+ "New Subscriber! 🎉": "Новий підписник! 🎉",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Платіж {{publicId}} ({{purpose}}) для {{customerEmail}} не пройшов: {{reason}}. Сума: {{amount}} {{currency}}.",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Платіж {{publicId}} ({{purpose}}) для {{customerEmail}} було повернено на суму {{refundedAmount}} {{currency}}. Причина: {{reason}}.",
+ "Payment failed": "Платіж не пройшов",
+ "Payment received": "Платіж отримано",
+ "Refund issued": "Повернення виконано",
+ "Subscriber Cancelled": "Підписник скасував підписку",
+ "Thank you! We have received your payment of {{amount}} {{currency}} for {{description}}. You can see the details any time from the app.": "Дякуємо! Ми отримали ваш платіж на суму {{amount}} {{currency}} за {{description}}. Деталі можна переглянути в застосунку будь-коли.",
  "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.": "Дякуємо за заявку на роль кур'єра DailyMealBox. Цього разу ми не змогли схвалити вашу заявку.\n\nПричина: {{reason}}\n\nВи можете виправити зазначену проблему і повторно надіслати документи в застосунку будь-коли.",
  "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.": "Дякуємо за заявку на приєднання до DailyMealBox, {{restaurantName}}. Цього разу ми не змогли схвалити вашу реєстрацію.\n\nПричина: {{reason}}\n\nВи можете виправити зазначену проблему і повторно подати заявку в застосунку для постачальників будь-коли.",
  "Update on your registration": "Оновлення щодо реєстрації",
+ "We could not process your payment of {{amount}} {{currency}} for {{description}}. Reason: {{reason}}\n\nYou can try again any time from the app.": "Ми не змогли обробити ваш платіж на суму {{amount}} {{currency}} за {{description}}. Причина: {{reason}}\n\nВи можете спробувати ще раз у застосунку будь-коли.",
+ "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.": "Ми скасували вашу підписку DailyMealBox на ваш запит. Жодних доставок більше не заплановано, і з вас не буде повторно списано кошти.\n\nВи можете оформити нову підписку будь-коли на вкладці «Плани».",
+ "We've refunded {{refundedAmount}} {{currency}} for {{description}} to your original payment method. It can take a few days to appear, depending on your bank.": "Ми повернули {{refundedAmount}} {{currency}} за {{description}} на ваш початковий спосіб оплати. Зарахування коштів може тривати кілька днів залежно від банку.",
  "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.": "Ласкаво просимо{{name}}! Вашу заявку на роль кур'єра схвалено. Тепер ви можете перейти в застосунку в режим онлайн і почати заробляти.",
  "Welcome! You are approved.": "Ласкаво просимо! Вас схвалено.",
- "Your kitchen is live!": "Ваша кухня вже онлайн!"
+ "Your kitchen is live!": "Ваша кухня вже онлайн!",
+ "Your subscription has been cancelled": "Вашу підписку скасовано"
 }

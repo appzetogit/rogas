@@ -1,10 +1,24 @@
 {
+ "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Nowy klient zasubskrybował Twój plan posiłków. Otwórz aplikację dla dostawców, aby zobaczyć szczegóły.",
+ "A subscriber has cancelled their subscription to your meal plan. Check your analytics for retention tips.": "Subskrybent anulował subskrypcję Twojego planu posiłków. Sprawdź swoją analitykę, aby poznać wskazówki dotyczące utrzymania klientów.",
  "Application not approved": "Wniosek nie został zatwierdzony",
  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Gratulacje, {{restaurantName}}! Twoja restauracja została zatwierdzona przez nasz zespół i jest już dostępna w DailyMealBox. Możesz od razu zacząć przyjmować zamówienia — otwórz aplikację dla dostawców, aby dokończyć konfigurację menu.",
+ "New Subscriber! 🎉": "Nowy subskrybent! 🎉",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} failed: {{reason}}. Amount: {{amount}} {{currency}}.": "Płatność {{publicId}} ({{purpose}}) dla {{customerEmail}} nie powiodła się: {{reason}}. Kwota: {{amount}} {{currency}}.",
+ "Payment {{publicId}} ({{purpose}}) for {{customerEmail}} was refunded {{refundedAmount}} {{currency}}. Reason: {{reason}}.": "Płatność {{publicId}} ({{purpose}}) dla {{customerEmail}} została zwrócona w kwocie {{refundedAmount}} {{currency}}. Powód: {{reason}}.",
+ "Payment failed": "Płatność nie powiodła się",
+ "Payment received": "Płatność otrzymana",
+ "Refund issued": "Zwrot wykonany",
+ "Subscriber Cancelled": "Subskrybent anulował subskrypcję",
+ "Thank you! We have received your payment of {{amount}} {{currency}} for {{description}}. You can see the details any time from the app.": "Dziękujemy! Otrzymaliśmy Twoją płatność w wysokości {{amount}} {{currency}} za {{description}}. Szczegóły możesz zobaczyć w dowolnym momencie w aplikacji.",
  "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.": "Dziękujemy za zgłoszenie chęci zostania kurierem DailyMealBox. Tym razem nie mogliśmy zatwierdzić Twojego wniosku.\n\nPowód: {{reason}}\n\nMożesz poprawić zgłoszony problem i ponownie przesłać dokumenty w aplikacji w dowolnym momencie.",
  "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.": "Dziękujemy za zgłoszenie chęci dołączenia do DailyMealBox, {{restaurantName}}. Tym razem nie mogliśmy zatwierdzić Twojej rejestracji.\n\nPowód: {{reason}}\n\nMożesz poprawić zgłoszony problem i ponownie przesłać wniosek w aplikacji dla dostawców w dowolnym momencie.",
  "Update on your registration": "Aktualizacja dotycząca rejestracji",
+ "We could not process your payment of {{amount}} {{currency}} for {{description}}. Reason: {{reason}}\n\nYou can try again any time from the app.": "Nie mogliśmy przetworzyć Twojej płatności w wysokości {{amount}} {{currency}} za {{description}}. Powód: {{reason}}\n\nMożesz spróbować ponownie w dowolnym momencie w aplikacji.",
+ "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.": "Anulowaliśmy Twoją subskrypcję DailyMealBox zgodnie z prośbą. Nie zaplanujemy już żadnych dostaw i nie zostaniesz ponownie obciążony opłatą.\n\nMożesz rozpocząć nową subskrypcję w dowolnym momencie w zakładce Plany.",
+ "We've refunded {{refundedAmount}} {{currency}} for {{description}} to your original payment method. It can take a few days to appear, depending on your bank.": "Zwróciliśmy {{refundedAmount}} {{currency}} za {{description}} na Twoją pierwotną metodę płatności. Pojawienie się środków może potrwać kilka dni, w zależności od banku.",
  "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.": "Witamy na pokładzie{{name}}! Twój wniosek o zostanie kurierem został zatwierdzony. Możesz teraz przejść w tryb online w aplikacji i zacząć zarabiać.",
  "Welcome! You are approved.": "Witaj! Zostałeś zatwierdzony.",
- "Your kitchen is live!": "Twoja kuchnia jest już dostępna!"
+ "Your kitchen is live!": "Twoja kuchnia jest już dostępna!",
+ "Your subscription has been cancelled": "Twoja subskrypcja została anulowana"
 }
