@@ -21,6 +21,7 @@
     "test:i18n": "node --test tests/i18n.test.mjs",
     "test:payments": "node --test tests/payments.test.mjs",
     "test:plan-pricing": "node --test tests/planPricing.test.mjs",
+    "test:email": "node --test tests/email.test.mjs",
     "i18n:seed:check": "node scripts/i18n-seed.mjs check",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

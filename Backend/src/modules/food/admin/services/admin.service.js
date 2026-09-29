@@ -3,6 +3,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { VendorSubscriptionPlan } from '../../../dailymealbox/subscription/vendorSubscriptionPlan.model.js';
 import { buildRawDownloadUrlFromFileUrl } from '../../../../services/cloudinary.service.js';
+import { queueEmail } from '../../../email/email.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { DeliveryShiftChangeRequest } from '../../delivery/models/shiftChangeRequest.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
@@ -3805,6 +3806,18 @@ export async function approveRestaurant(id) {
         } catch (e) {
             console.error('Failed to send restaurant approval notification:', e);
         }
+
+        // PRD ACM-50: vendor approval is FCM + email, cannot be turned off.
+        if (!isZoneChange && updated.ownerEmail) {
+            queueEmail({
+                to: updated.ownerEmail,
+                subjectKey: 'Your kitchen is live!',
+                bodyKey: 'Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.',
+                vars: { restaurantName: updated.restaurantName },
+                ownerType: 'RESTAURANT',
+                ownerId: updated._id
+            }).catch((e) => console.error('Failed to send restaurant approval email:', e.message));
+        }
     }
     return updated;
 }
@@ -3874,6 +3887,18 @@ export async function rejectRestaurant(id, reason) {
             );
         } catch (e) {
             console.error('Failed to send restaurant rejection notification:', e);
+        }
+
+        // PRD ACM-50: vendor rejection is FCM + email, cannot be turned off.
+        if (!isZoneChange && updated.ownerEmail) {
+            queueEmail({
+                to: updated.ownerEmail,
+                subjectKey: 'Update on your registration',
+                bodyKey: 'Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.',
+                vars: { restaurantName: updated.restaurantName, reason: reason || 'Incomplete documents' },
+                ownerType: 'RESTAURANT',
+                ownerId: updated._id
+            }).catch((e) => console.error('Failed to send restaurant rejection email:', e.message));
         }
     }
     return updated;
@@ -5228,6 +5253,18 @@ export async function approveDeliveryPartner(id, zoneIds, allowedShifts, maxVend
         console.error('Failed to send delivery partner approval notification:', e);
     }
 
+    // PRD ACM-64: driver approval is FCM + email, cannot be turned off.
+    if (partner.email) {
+        queueEmail({
+            to: partner.email,
+            subjectKey: 'Welcome! You are approved.',
+            bodyKey: 'Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.',
+            vars: { name: partner.name ? `, ${partner.name}` : '' },
+            ownerType: 'DELIVERY_PARTNER',
+            ownerId: partner._id
+        }).catch((e) => console.error('Failed to send delivery partner approval email:', e.message));
+    }
+
     // Referral crediting: on approval, credit the referrer partner's pocket balance via DeliveryBonusTransaction.
     try {
         const referrerId = partner.referredBy ? String(partner.referredBy) : '';
@@ -5308,6 +5345,18 @@ export async function rejectDeliveryPartner(id, reason) {
             );
         } catch (e) {
             console.error('Failed to send delivery partner rejection notification:', e);
+        }
+
+        // PRD ACM-64: driver rejection is FCM + email, cannot be turned off.
+        if (updated.email) {
+            queueEmail({
+                to: updated.email,
+                subjectKey: 'Application not approved',
+                bodyKey: 'Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.',
+                vars: { reason: reason || 'Incomplete documents' },
+                ownerType: 'DELIVERY_PARTNER',
+                ownerId: updated._id
+            }).catch((e) => console.error('Failed to send delivery partner rejection email:', e.message));
         }
     }
     return updated;

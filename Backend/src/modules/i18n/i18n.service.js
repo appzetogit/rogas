@@ -10,8 +10,8 @@ const SEED_DIR = process.env.I18N_SEED_DIR || path.join(path.dirname(fileURLToPa
 /** English is both the default and the fallback language: it is the text written in the code. */
 export const FALLBACK_LANGUAGE = 'en';
 
-export const NAMESPACES = ['common', 'customer', 'vendor', 'driver', 'office', 'notifications'];
-export const FRONTEND_NAMESPACES = NAMESPACES.filter((n) => n !== 'notifications');
+export const NAMESPACES = ['common', 'customer', 'vendor', 'driver', 'office', 'notifications', 'email'];
+export const FRONTEND_NAMESPACES = NAMESPACES.filter((n) => n !== 'notifications' && n !== 'email');
 
 const SEED_LANGUAGES = [
     { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', isSystem: true, isDefault: true, sortOrder: 1 },

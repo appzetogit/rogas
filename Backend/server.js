@@ -68,6 +68,14 @@ const startServer = async () => {
             logger.error(`[payments] Could not start upkeep jobs: ${err.message}`);
         }
 
+        // 1-mail. Background upkeep for transactional email: retries failed sends with backoff.
+        try {
+            const { startEmailJobs } = await import('./src/modules/email/email.service.js');
+            startEmailJobs();
+        } catch (err) {
+            logger.error(`[email] Could not start upkeep jobs: ${err.message}`);
+        }
+
         // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
         try {
             const db = mongoose.connection.db;

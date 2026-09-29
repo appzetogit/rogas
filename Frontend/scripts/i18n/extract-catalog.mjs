@@ -22,7 +22,9 @@ const FRONTEND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SRC = path.join(FRONTEND, 'src');
 const BACKEND = path.resolve(FRONTEND, '..', 'Backend');
 const CATALOG_FILE = path.join(BACKEND, 'src', 'modules', 'i18n', 'seed', 'catalog.json');
-const NAMESPACES = ['common', 'customer', 'vendor', 'driver', 'office', 'notifications'];
+const NAMESPACES = ['common', 'customer', 'vendor', 'driver', 'office', 'notifications', 'email'];
+/** Server-only namespaces: never shipped to the frontend bundle, never merged into "common". */
+const BACKEND_NAMESPACES = ['notifications', 'email'];
 
 const toPosix = (p) => p.split(path.sep).join('/');
 
@@ -101,10 +103,17 @@ export function keysInSource(code, { file = 'x.jsx', defaultNs = 'common' } = {}
   return { keys, problems };
 }
 
-/** Backend push notification strings: msg("...") descriptors and plain titles registered via notify("..."). */
+/**
+ * Backend server-side strings: msg("...") / translateFor(...) descriptors and plain titles registered via
+ * notify("..."), plus queueEmail({ subjectKey, bodyKey }) calls. msg/translateFor default to the "notifications"
+ * namespace (push notifications); a literal namespace argument — msg(key, vars, "email") or
+ * translateFor(role, id, key, vars, "email") — files the string under that namespace instead. queueEmail's
+ * subjectKey/bodyKey are always "email" (see src/modules/email/email.service.js).
+ */
 export function keysInBackend() {
   const out = [];
   const problems = [];
+  const literalOf = (n) => (n?.type === 'StringLiteral' ? n.value : n?.type === 'TemplateLiteral' && n.expressions.length === 0 ? n.quasis[0].value.cooked : null);
   const root = path.join(BACKEND, 'src');
   const stack = [root];
   while (stack.length) {
@@ -114,18 +123,36 @@ export function keysInBackend() {
       if (e.isDirectory()) { if (e.name !== 'node_modules') stack.push(f); continue; }
       if (!/\.js$/.test(e.name) || /modules[\\/]i18n[\\/]/.test(f)) continue;
       const code = fs.readFileSync(f, 'utf8');
-      if (!/\bmsg\(|\bpushText\(|\btranslateFor\(/.test(code)) continue;
+      if (!/\bmsg\(|\bpushText\(|\btranslateFor\(|\bqueueEmail\(/.test(code)) continue;
       let ast;
       try { ast = parse(code, { sourceType: 'module', plugins: ['optionalChaining', 'dynamicImport', 'topLevelAwait'] }); } catch { continue; }
       traverse(ast, {
         CallExpression(p) {
           const c = p.node.callee;
-          if (c.type !== 'Identifier' || !['msg', 'pushText', 'translateFor'].includes(c.name)) return;
-          // msg(key, vars) / pushText(key) take the key first; translateFor(role, id, key, vars) takes it third.
-          const a = p.node.arguments[c.name === 'translateFor' ? 2 : 0];
-          const key = a?.type === 'StringLiteral' ? a.value : a?.type === 'TemplateLiteral' && a.expressions.length === 0 ? a.quasis[0].value.cooked : null;
+          if (c.type !== 'Identifier') return;
+          if (c.name === 'queueEmail') {
+            const opts = p.node.arguments[0];
+            if (opts?.type !== 'ObjectExpression') return;
+            for (const propName of ['subjectKey', 'bodyKey']) {
+              const prop = opts.properties.find((pr) => pr.type === 'ObjectProperty' && pr.key?.name === propName);
+              if (!prop) continue;
+              const key = literalOf(prop.value);
+              if (key === null) problems.push(`non-literal queueEmail({ ${propName} }) at ${toPosix(path.relative(BACKEND, f))}:${p.node.loc.start.line}`);
+              else out.push({ key, ns: 'email' });
+            }
+            return;
+          }
+          if (!['msg', 'pushText', 'translateFor'].includes(c.name)) return;
+          // msg(key, vars, ns?) / pushText(key) take the key first; translateFor(role, id, key, vars, ns?) takes it third.
+          const keyIndex = c.name === 'translateFor' ? 2 : 0;
+          const nsIndex = c.name === 'translateFor' ? 4 : c.name === 'msg' ? 2 : -1;
+          const key = literalOf(p.node.arguments[keyIndex]);
           if (key === null) problems.push(`non-literal ${c.name}() at ${toPosix(path.relative(BACKEND, f))}:${p.node.loc.start.line}`);
-          else out.push({ key, ns: 'notifications' });
+          else {
+            const nsArg = nsIndex >= 0 ? p.node.arguments[nsIndex] : null;
+            const ns = nsArg?.type === 'StringLiteral' && BACKEND_NAMESPACES.includes(nsArg.value) ? nsArg.value : 'notifications';
+            out.push({ key, ns });
+          }
         },
       });
     }
@@ -153,10 +180,11 @@ export function buildCatalog() {
 
   const catalog = Object.fromEntries(NAMESPACES.map((n) => [n, []]));
   for (const [key, nsSet] of uses) {
-    const frontend = [...nsSet].filter((n) => n !== 'notifications');
-    if (nsSet.has('notifications') && frontend.length === 0) catalog.notifications.push(key);
-    else if (nsSet.has('notifications')) { catalog.notifications.push(key); catalog.common.push(key); }
-    else catalog[frontend.length > 1 || frontend.includes('common') ? 'common' : frontend[0]].push(key);
+    const backend = [...nsSet].filter((n) => BACKEND_NAMESPACES.includes(n));
+    const frontend = [...nsSet].filter((n) => !BACKEND_NAMESPACES.includes(n));
+    for (const n of backend) catalog[n].push(key);
+    if (frontend.length && backend.length) catalog.common.push(key);
+    else if (frontend.length) catalog[frontend.length > 1 || frontend.includes('common') ? 'common' : frontend[0]].push(key);
   }
   for (const n of NAMESPACES) catalog[n] = [...new Set(catalog[n])].sort((a, b) => a.localeCompare(b));
   return { catalog, problems, keyCount: uses.size };
