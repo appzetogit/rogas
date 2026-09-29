@@ -361,13 +361,14 @@ export const adminSidebarMenu = [
   //   ],
   // },
 
-  // ─── PAYMENTS ────────────────────────────────────────────────────────────
+  // ─── PAYMENTS & EMAIL ────────────────────────────────────────────────────
   {
     type: "section",
-    label: "PAYMENTS",
+    label: "PAYMENTS & EMAIL",
     roles: ["SUPER_ADMIN", "ACCOUNTANT"],
     items: [
       { type: "link", label: "Payment Providers", path: "/admin/food/payments", icon: "CreditCard" },
+      { type: "link", label: "Email", path: "/admin/food/email", icon: "Mail" },
     ],
   },
 

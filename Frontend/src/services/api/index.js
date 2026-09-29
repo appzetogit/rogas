@@ -657,6 +657,12 @@ export const adminAPI = {
   getPaymentTransaction: (id) => adminClient.get(`/food/admin/payments/transactions/${String(id)}`),
   recheckPaymentTransaction: (id) => adminClient.post(`/food/admin/payments/transactions/${String(id)}/recheck`),
   refundPaymentTransaction: (id, body) => adminClient.post(`/food/admin/payments/transactions/${String(id)}/refund`, body ?? {}),
+  /** Email: SMTP status, test connection, send log */
+  getEmailOverview: () => adminClient.get("/food/admin/email"),
+  testEmailConnection: () => adminClient.post("/food/admin/email/test"),
+  getEmailLogs: (params = {}) => adminClient.get("/food/admin/email/logs", { params }),
+  getEmailLog: (id) => adminClient.get(`/food/admin/email/logs/${String(id)}`),
+  resendEmailLog: (id, body) => adminClient.post(`/food/admin/email/logs/${String(id)}/resend`, body ?? {}),
   getLanguages: () => adminClient.get("/food/admin/i18n/languages"),
   createLanguage: (body) => adminClient.post("/food/admin/i18n/languages", body ?? {}),
   updateLanguage: (id, body) => adminClient.put(`/food/admin/i18n/languages/${String(id)}`, body ?? {}),
