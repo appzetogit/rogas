@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useMemo, useEffect } from "react"
 import { 
   Search, Plus, Edit, Trash2, ArrowUpDown, 
@@ -14,6 +15,7 @@ const debugError = (...args) => {}
 
 
 export default function RestaurantCommission() {
+  const { money, symbol } = useMoney()
   const [searchQuery, setSearchQuery] = useState("")
   const [commissions, setCommissions] = useState([])
   const [approvedRestaurants, setApprovedRestaurants] = useState([])
@@ -465,7 +467,7 @@ export default function RestaurantCommission() {
                               {commission.defaultCommission?.type === 'percentage' ? (
                                 <>{commission.defaultCommission.value}%</>
                               ) : (
-                                <>₹{commission.defaultCommission.value}</>
+                                <>{money(commission.defaultCommission.value, { compact: true })}</>
                               )}
                             </span>
                           </td>
@@ -593,7 +595,7 @@ export default function RestaurantCommission() {
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="amount">Fixed Amount (₹)</option>
+                    <option value="amount">Fixed Amount ({symbol})</option>
                   </select>
                 </div>
                 <div>

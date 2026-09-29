@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
  */
 export const PocketBalanceV2 = () => {
   const { t } = useTranslation("driver");
+  const { money } = useMoney();
   const navigate = useNavigate();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
@@ -164,7 +166,7 @@ export const PocketBalanceV2 = () => {
                   <div>
                      <p className="text-xs font-bold">{t("Withdraw currently disabled")}</p>
                      <p className="text-[10px] font-medium opacity-80 leading-tight mt-1">
-                        {walletState.withdrawableAmount <= 0 ? t("Withdrawable amount is ₹0") : t("Minimum withdrawal requirement is ₹{{withdrawalLimit}}", { withdrawalLimit: walletState.withdrawalLimit })}
+                        {walletState.withdrawableAmount <= 0 ? t("Withdrawable amount is {{amount}}", { amount: money(0, { compact: true }) }) : t("Minimum withdrawal requirement is {{withdrawalLimit}}", { withdrawalLimit: money(walletState.withdrawalLimit, { compact: true }) })}
                      </p>
                   </div>
                </div>
@@ -173,7 +175,7 @@ export const PocketBalanceV2 = () => {
              {/* Top Withdraw Section */}
              <div className="bg-white p-8 mb-4 text-center border-b border-gray-100 shadow-sm">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t("Withdrawable Amount")}</p>
-                <h2 className="text-5xl font-black text-black mb-6 tracking-tighter">₹{walletState.withdrawableAmount.toFixed(0)}</h2>
+                <h2 className="text-5xl font-black text-black mb-6 tracking-tighter">{money(walletState.withdrawableAmount, { compact: true })}</h2>
                 
                 <button 
                   onClick={handleWithdraw}

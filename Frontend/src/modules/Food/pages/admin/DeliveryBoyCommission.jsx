@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useMemo, useEffect } from "react"
 import { Search, Edit, Trash2, IndianRupee, Settings, Check, Columns, MapPin, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
@@ -10,6 +11,7 @@ const debugError = (...args) => {}
 
 
 export default function DeliveryBoyCommission() {
+  const { money, symbol } = useMoney()
   const [searchQuery, setSearchQuery] = useState("")
   const [commissions, setCommissions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -427,7 +429,7 @@ export default function DeliveryBoyCommission() {
                 <p className="font-semibold text-blue-900 mb-1">Fixed + Extra Distance Commission</p>
                 <p className="text-slate-600">
                   Commission is calculated as: <strong>Base payout for 0-{formulaMinDistance} km + Extra per km after {formulaMinDistance} km</strong>.
-                  Example: if base is ₹25 and extra is ₹5/km, then 6 km earns ₹25 + (2 x ₹5) = ₹35.
+                  Example: if base is {money(25, { compact: true })} and extra is {money(5, { compact: true })}/km, then 6 km earns {money(25, { compact: true })} + (2 x {money(5, { compact: true })}) = {money(35, { compact: true })}.
                 </p>
                 <p className="text-slate-600 mt-1">
                   Only the slab with <strong>min distance = 0</strong> can have a base payout. All other slabs should keep base payout set to 0 and use only amount per km.
@@ -464,10 +466,10 @@ export default function DeliveryBoyCommission() {
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Distance Slab (km)</th>
                   )}
                   {visibleColumns.commissionPerKm && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Amount Per/Km (₹)</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Amount Per/Km ({symbol})</th>
                   )}
                   {visibleColumns.basePayout && (
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Base Payout (₹)</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Base Payout ({symbol})</th>
                   )}
                   {visibleColumns.status && (
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Status</th>
@@ -662,7 +664,7 @@ export default function DeliveryBoyCommission() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Extra Per Kilometer after {formulaMinDistance} km (₹) <span className="text-red-500">*</span>
+                Extra Per Kilometer after {formulaMinDistance} km ({symbol}) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -679,7 +681,7 @@ export default function DeliveryBoyCommission() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Fixed Payout for 0-{formulaMinDistance} km (₹) <span className="text-red-500">*</span>
+                Fixed Payout for 0-{formulaMinDistance} km ({symbol}) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

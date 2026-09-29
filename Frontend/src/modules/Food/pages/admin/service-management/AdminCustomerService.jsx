@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect } from 'react';
 import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
@@ -208,7 +209,7 @@ export default function AdminCustomerService() {
                     </p>
                   ) : (
                     <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-amber-500" /> Customer requested a wallet refund of ₹{req.refundAmount}.
+                      <Wallet className="w-4 h-4 text-amber-500" /> Customer requested a wallet refund of {formatCurrency(req.refundAmount)}.
                     </p>
                   )}
                 </div>

@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, UtensilsCrossed, ChefHat, Megaphone, Search } from "lucide-react"
 import api from "@food/api"
@@ -14,6 +15,7 @@ const debugError = (...args) => {}
 
 
 export default function LandingPageManagement() {
+  const { money, symbol } = useMoney()
   const [activeTab, setActiveTab] = useState('banners')
   const [exploreMoreSubTab, setExploreMoreSubTab] = useState('icons')
 
@@ -1748,7 +1750,7 @@ export default function LandingPageManagement() {
                   </div>
 
                   <div>
-                    <Label htmlFor="under-250-price">Under Price Limit (₹)</Label>
+                    <Label htmlFor="under-250-price">Under Price Limit ({symbol})</Label>
                     <Input
                       id="under-250-price"
                       type="number"
@@ -1759,7 +1761,7 @@ export default function LandingPageManagement() {
                       className="mt-2"
                       placeholder="250"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Button will show "Under ₹{settings.under250PriceLimit || 250}" on user home page</p>
+                    <p className="text-xs text-slate-500 mt-1">Button will show "Under {money(settings.under250PriceLimit || 250, {  compact: true  })}" on user home page</p>
                   </div>
 
                   <div>

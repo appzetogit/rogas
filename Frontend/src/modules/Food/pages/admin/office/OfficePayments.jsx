@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
 import { Receipt } from 'lucide-react';
+import { formatCurrency } from '@food/utils/currency';
 
 const STATUS_COLORS = {
   paid:     { bg: '#dcfce7', text: '#15803d', dot: '#16a34a', label: 'Paid' },
@@ -12,9 +13,6 @@ const STATUS_COLORS = {
 
 const DURATION_MAP = { week: 'Weekly', month: 'Monthly', day: 'Daily' };
 
-function fmt(n) {
-  return Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -70,8 +68,8 @@ export default function OfficePayments() {
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
         {[
-          { label: 'Total Collected', value: `₹${fmt(stats.total)}`, icon: 'payments', color: '#16a34a', bg: '#dcfce7' },
-          { label: 'Paid Amount', value: `₹${fmt(stats.paid)}`, icon: 'check_circle', color: '#15803d', bg: '#bbf7d0' },
+          { label: 'Total Collected', value: formatCurrency(stats.total), icon: 'payments', color: '#16a34a', bg: '#dcfce7' },
+          { label: 'Paid Amount', value: formatCurrency(stats.paid), icon: 'check_circle', color: '#15803d', bg: '#bbf7d0' },
           { label: 'Pending Txns', value: stats.pending, icon: 'pending', color: '#ca8a04', bg: '#fef9c3' },
           { label: 'Failed Txns', value: stats.failed, icon: 'cancel', color: '#dc2626', bg: '#fee2e2' },
         ].map(c => (
@@ -152,7 +150,7 @@ export default function OfficePayments() {
                   </div>
                   <p style={{ fontSize: '12px', color: '#475569', margin: 0, alignSelf: 'center' }}>{p.vendor?.restaurantName || '—'}</p>
                   <p style={{ fontSize: '13px', color: '#475569', margin: 0, alignSelf: 'center' }}>{p.employeeIds?.length || 0} emp</p>
-                  <p style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: 0, alignSelf: 'center' }}>₹{fmt(p.amount)}</p>
+                  <p style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: 0, alignSelf: 'center' }}>{formatCurrency(p.amount, p.currency)}</p>
                   <div style={{ alignSelf: 'center' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.text, fontSize: '11px', fontWeight: 700 }}>
                       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.dot, display: 'inline-block' }} />
@@ -220,7 +218,7 @@ export default function OfficePayments() {
               {/* Amount highlight */}
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
                 <p style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Amount Paid</p>
-                <p style={{ fontSize: '32px', fontWeight: 900, color: '#15803d', margin: 0 }}>₹{fmt(selected.amount)}</p>
+                <p style={{ fontSize: '32px', fontWeight: 900, color: '#15803d', margin: 0 }}>{formatCurrency(selected.amount, selected.currency)}</p>
               </div>
 
               {/* Detail rows */}
@@ -228,11 +226,11 @@ export default function OfficePayments() {
                 { label: 'Company', value: selected.company?.legalName || '—' },
                 { label: 'Subscription Plan', value: selected.plan?.name || '—' },
                 { label: 'Plan Duration', value: DURATION_MAP[selected.plan?.duration] || '—' },
-                { label: 'Plan Price', value: selected.plan?.price ? `₹${fmt(selected.plan.price)}` : '—' },
+                { label: 'Plan Price', value: selected.plan?.price ? formatCurrency(selected.plan.price, selected.currency) : '—' },
                 { label: 'Vendor', value: selected.vendor?.restaurantName || '—' },
                 { label: 'Employees Covered', value: selected.employeeIds?.length || 0 },
                 { label: 'Meal Slots', value: (selected.slots || []).join(', ') || '—' },
-                { label: 'Currency', value: selected.currency || 'INR' },
+                { label: 'Currency', value: selected.currency || '—' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{label}</span>

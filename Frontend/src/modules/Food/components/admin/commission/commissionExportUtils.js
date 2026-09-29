@@ -1,6 +1,7 @@
+import { formatCurrency } from '@food/utils/currency'
 // Export utility functions for commission rules
 export const exportCommissionToCSV = (commissions, filename = "delivery-boy-commission") => {
-  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (₹)", "Base Payout (₹)", "Status"]
+  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km", "Base Payout", "Status"]
   const rows = commissions.map((commission) => [
     commission.sl,
     commission.name,
@@ -28,7 +29,7 @@ export const exportCommissionToCSV = (commissions, filename = "delivery-boy-comm
 }
 
 export const exportCommissionToExcel = (commissions, filename = "delivery-boy-commission") => {
-  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (₹)", "Base Payout (₹)", "Status"]
+  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km", "Base Payout", "Status"]
   const rows = commissions.map((commission) => [
     commission.sl,
     commission.name,
@@ -56,7 +57,7 @@ export const exportCommissionToExcel = (commissions, filename = "delivery-boy-co
 }
 
 export const exportCommissionToPDF = (commissions, filename = "delivery-boy-commission") => {
-  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (₹)", "Base Payout (₹)", "Status"]
+  const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km", "Base Payout", "Status"]
   
   let htmlContent = `
     <!DOCTYPE html>
@@ -88,8 +89,8 @@ export const exportCommissionToPDF = (commissions, filename = "delivery-boy-comm
               <td>${commission.name}</td>
               <td>${commission.minDistance}</td>
               <td>${commission.maxDistance === null ? "Unlimited" : commission.maxDistance}</td>
-              <td>₹${commission.commissionPerKm}</td>
-              <td>₹${commission.basePayout}</td>
+              <td>${formatCurrency(commission.commissionPerKm)}</td>
+              <td>${formatCurrency(commission.basePayout)}</td>
               <td>${commission.status ? "Active" : "Inactive"}</td>
             </tr>
           `).join("")}

@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -284,7 +285,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
                  <p className="text-amber-700 text-[10px] font-bold uppercase tracking-widest mb-1">
                     {isPaid ? "Amount Paid Online" : "Cash to Collect"}
                  </p>
-                 <p className="text-amber-950 text-3xl sm:text-4xl font-bold">₹{amountToCollect.toFixed(2)}</p>
+                 <p className="text-amber-950 text-3xl sm:text-4xl font-bold">{money(amountToCollect)}</p>
                </div>
                {isPaid && <div className="bg-green-500 text-white px-4 py-2 rounded-full text-[10px] font-bold">PAID ✓</div>}
              </div>
@@ -352,7 +353,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
               onClick={e => e.stopPropagation()}
             >
               <h3 className="text-gray-950 font-bold text-xl mb-2">Scan to Pay</h3>
-              <p className="text-gray-500 text-sm mb-8 font-medium">Order Total: ₹{amountToCollect.toFixed(2)}</p>
+              <p className="text-gray-500 text-sm mb-8 font-medium">Order Total: {money(amountToCollect)}</p>
               
               <div className="flex flex-col items-center gap-6 bg-gray-50 rounded-3xl border-2 border-gray-100 p-6 mb-8 w-full">
                  <img 
@@ -385,6 +386,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
 };
 
 export const DeliveryVerificationModal = ({ order, onComplete, onClose }) => {
+  const { money } = useMoney();
   const alreadyVerified = !!order?.deliveryVerification?.dropOtp?.verified;
   const paymentMethod = (
     order?.paymentMethod ||

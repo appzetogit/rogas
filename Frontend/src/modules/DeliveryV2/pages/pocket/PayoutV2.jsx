@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft,
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
  */
 export const PayoutV2 = () => {
   const { t: tr } = useTranslation("driver");
+  const { money } = useMoney();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -139,7 +141,7 @@ export const PayoutV2 = () => {
                         </span>
                       </div>
                       <p className="text-[#2B2B2B] text-xl font-bold mb-1">
-                        ₹{withdrawal.amount}
+                        {money(withdrawal.amount, { compact: true })}
                       </p>
                       <p className="text-gray-500 text-[11px] font-medium">
                         {tr("Requested: {{date}}", { date: withdrawal.date })}

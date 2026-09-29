@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, X, Loader2, Calendar, Clock, MapPin, Phone, Mail, User, CreditCard, Box, FileText, CheckCircle2, XCircle } from "lucide-react";
@@ -136,7 +137,7 @@ export default function VendorSubscriberDetails({ propId, propSubId, onClose, is
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500">Amount</span>
-                  <span className="text-sm font-bold text-slate-900">₹{(data.pricing?.totalPrice || 0).toFixed(2)}</span>
+                  <span className="text-sm font-bold text-slate-900">{formatCurrency(data.pricing?.totalPrice || 0, data.pricing?.currency)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500">Status</span>

@@ -2,13 +2,9 @@ import { useState, useEffect, useCallback } from "react"
 import { Search, PiggyBank, Loader2, Package, RefreshCw } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { formatCurrency } from "@food/utils/currency"
 const debugLog = (...args) => {}
 const debugError = (...args) => {}
-
-const formatCurrency = (amount) => {
-  if (amount == null) return "₹0.00"
-  return `₹${Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 
 export default function DeliveryBoyWallet() {
   const [wallets, setWallets] = useState([])

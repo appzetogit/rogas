@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useEffect, useMemo } from "react"
 import { Search, Plus, Edit, Trash2, ToggleLeft, ToggleRight, Settings, ArrowUpDown, Check, Columns, Package } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -10,6 +11,7 @@ const debugError = (...args) => {}
 
 
 export default function EarningAddon() {
+  const { symbol } = useMoney()
   const [searchQuery, setSearchQuery] = useState("")
   const [earningAddons, setEarningAddons] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -352,7 +354,7 @@ export default function EarningAddon() {
                     {visibleColumns.earningAmount && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         <div className="flex items-center gap-2">
-                          <span>Earning Amount (₹)</span>
+                          <span>Earning Amount ({symbol})</span>
                         </div>
                       </th>
                     )}
@@ -422,7 +424,7 @@ export default function EarningAddon() {
                         {visibleColumns.earningAmount && (
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-1">
-                              <span className="text-sm font-semibold text-emerald-500">₹</span>
+                              <span className="text-sm font-semibold text-emerald-500">{symbol}</span>
                               <span className="text-sm font-medium text-slate-900">{addon.earningAmount?.toFixed(2)}</span>
                             </div>
                           </td>
@@ -542,10 +544,10 @@ export default function EarningAddon() {
               </div>
               <div className="space-y-1.5">
                 <label className="block text-sm font-semibold text-slate-700">
-                  Earning Amount (₹) <span className="text-red-500">*</span>
+                  Earning Amount ({symbol}) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-emerald-500">₹</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-emerald-500">{symbol}</span>
                   <input
                     type="number"
                     required

@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useEffect } from "react";
 import { Info, Upload, Save, Loader2, MonitorSmartphone, Truck, Store, Palette, Check, AlertTriangle, Search, Activity, ShoppingBag, CreditCard, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -63,6 +64,7 @@ const predefinedThemes = [
 ];
 
 export default function ThemeSettings() {
+  const { money } = useMoney()
   const [selectedApp, setSelectedApp] = useState('user_app');
   const [activeTab, setActiveTab] = useState('manual'); // 'manual' or 'predefined'
   const [loading, setLoading] = useState(false);
@@ -602,7 +604,7 @@ export default function ThemeSettings() {
                             <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--prev-card-text-muted)' }}>Gross Revenue</span>
                             <span className="text-xs">💰</span>
                           </div>
-                          <p className="text-base font-bold mt-1" style={{ color: 'var(--prev-text-primary)' }}>₹45,280</p>
+                          <p className="text-base font-bold mt-1" style={{ color: 'var(--prev-text-primary)' }}>{money(45280, { compact: true })}</p>
                           <span className="text-[9px] text-emerald-500 font-semibold">↑ 12% vs last month</span>
                         </div>
                         
@@ -654,14 +656,14 @@ export default function ThemeSettings() {
                                   <td className="py-1.5">
                                     <span className="px-1.5 py-0.5 rounded-full text-[8px] bg-emerald-100 text-emerald-800 font-bold">Success</span>
                                   </td>
-                                  <td className="py-1.5 text-right font-semibold" style={{ color: 'var(--prev-text-primary)' }}>₹450</td>
+                                  <td className="py-1.5 text-right font-semibold" style={{ color: 'var(--prev-text-primary)' }}>{money(450, { compact: true })}</td>
                                 </tr>
                                 <tr>
                                   <td className="py-1.5 text-slate-700" style={{ color: 'var(--prev-text-primary)' }}>#1203</td>
                                   <td className="py-1.5">
                                     <span className="px-1.5 py-0.5 rounded-full text-[8px] bg-amber-100 text-amber-800 font-bold">Pending</span>
                                   </td>
-                                  <td className="py-1.5 text-right font-semibold" style={{ color: 'var(--prev-text-primary)' }}>₹780</td>
+                                  <td className="py-1.5 text-right font-semibold" style={{ color: 'var(--prev-text-primary)' }}>{money(780, { compact: true })}</td>
                                 </tr>
                               </tbody>
                             </table>

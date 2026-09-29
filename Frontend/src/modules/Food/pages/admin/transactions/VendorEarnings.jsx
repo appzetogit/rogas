@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportTransactionsToExcel, exportTransactionsToPDF } from "@food/components/admin/transactions/transactionsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { formatCurrency } from "@food/utils/currency"
 
 export default function VendorEarnings() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -70,13 +71,6 @@ export default function VendorEarnings() {
 
     return { activeCount, totalGross, totalCommission, totalNet, totalBalance }
   }, [vendors])
-
-  const formatCurrency = (amount) => {
-    return `₹${(amount || 0).toLocaleString('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`
-  }
 
   const handleExport = async (format) => {
     if (vendors.length === 0) {
@@ -249,11 +243,11 @@ export default function VendorEarnings() {
                     {visibleColumns.vendorName && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Vendor Name</th>}
                     {visibleColumns.ownerName && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Owner Details</th>}
                     {visibleColumns.totalOrders && <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Orders</th>}
-                    {visibleColumns.grossEarnings && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Gross (₹)</th>}
-                    {visibleColumns.commissionDeduction && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Commission (₹)</th>}
-                    {visibleColumns.netEarnings && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Net Share (₹)</th>}
-                    {visibleColumns.totalWithdrawals && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Withdrawn (₹)</th>}
-                    {visibleColumns.availableBalance && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Wallet Balance (₹)</th>}
+                    {visibleColumns.grossEarnings && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Gross</th>}
+                    {visibleColumns.commissionDeduction && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Commission</th>}
+                    {visibleColumns.netEarnings && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Net Share</th>}
+                    {visibleColumns.totalWithdrawals && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Withdrawn</th>}
+                    {visibleColumns.availableBalance && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Wallet Balance</th>}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100 text-left">

@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, ChevronDown, Loader2, Gift, X, 
@@ -15,6 +16,7 @@ import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
  * Font: Poppins
  */
 export const HistoryV2 = () => {
+  const { money } = useMoney();
   const goBack = useDeliveryBackNavigation();
   const [activeTab, setActiveTab] = useState("daily");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -204,11 +206,11 @@ export const HistoryV2 = () => {
           <div className="bg-[#E9F9F4] rounded-2xl p-6 border border-[#D1F2E8] flex justify-between items-center">
              <div>
                 <p className="text-[11px] font-bold text-[#10B981] mb-1">COD Collected</p>
-                <h3 className="text-xl font-bold text-[#2B2B2B]">₹{metrics.cod.toFixed(2)}</h3>
+                <h3 className="text-xl font-bold text-[#2B2B2B]">{money(metrics.cod)}</h3>
              </div>
              <div className="text-right">
                 <p className="text-[11px] font-bold text-[#10B981] mb-1">Earnings</p>
-                <h3 className="text-xl font-bold text-[#2B2B2B]">₹{metrics.earnings.toFixed(2)}</h3>
+                <h3 className="text-xl font-bold text-[#2B2B2B]">{money(metrics.earnings)}</h3>
              </div>
           </div>
 
@@ -255,11 +257,11 @@ export const HistoryV2 = () => {
                              </div>
                              <div className="text-center">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">COD</p>
-                                <p className="text-sm font-bold text-[#2B2B2B]">₹{collection.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-[#2B2B2B]">{money(collection)}</p>
                              </div>
                              <div className="text-right">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Earning</p>
-                                <p className="text-sm font-bold text-[#2B2B2B]">₹{payout.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-[#2B2B2B]">{money(payout)}</p>
                              </div>
                          </div>
                       </div>
@@ -300,7 +302,7 @@ export const HistoryV2 = () => {
                       ) : bonusTransactions.length > 0 ? bonusTransactions.map((tx, i) => (
                          <div key={i} className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex justify-between items-center">
                             <div>
-                               <p className="text-lg font-bold text-[#2B2B2B] mb-0.5">₹{Number(tx.amount || 0).toFixed(2)}</p>
+                               <p className="text-lg font-bold text-[#2B2B2B] mb-0.5">{money(tx.amount || 0)}</p>
                                <p className="text-sm font-medium text-gray-600 line-clamp-1">{tx.description || 'Bonus Payout'}</p>
                                <p className="text-[10px] text-gray-400 font-medium mt-1">{new Date(tx.createdAt || tx.date).toLocaleDateString()}</p>
                             </div>

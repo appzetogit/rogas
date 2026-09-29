@@ -3,6 +3,7 @@ import { Save, Loader2, DollarSign, Plus, Trash2, Edit, Check, X } from "lucide-
 import { Button } from "@food/components/ui/button"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import useMoney from "@/shared/payments/money"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -10,6 +11,7 @@ const debugError = (...args) => {}
 
 // Fee Settings Component - Range-based delivery fee configuration
 export default function FeeSettings() {
+  const { money, symbol } = useMoney()
   const [feeSettings, setFeeSettings] = useState({
     deliveryFee: "",
     deliveryFeeRanges: [],
@@ -291,7 +293,7 @@ export default function FeeSettings() {
                         <tr>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 border-b border-slate-200">Min (km)</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 border-b border-slate-200">Max (km)</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 border-b border-slate-200">Delivery Fee (₹)</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 border-b border-slate-200">Delivery Fee ({symbol})</th>
                           <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700 border-b border-slate-200">Actions</th>
                         </tr>
                       </thead>
@@ -330,7 +332,7 @@ export default function FeeSettings() {
                                 <td className="px-4 py-3 text-sm font-medium text-green-600 border-b border-slate-100">
                                   {isEditing ? (
                                     <div className="flex items-center gap-1">
-                                      <span className="text-slate-400">₹</span>
+                                      <span className="text-slate-400">{symbol}</span>
                                       <input
                                         type="number"
                                         value={newRange.fee}
@@ -339,7 +341,7 @@ export default function FeeSettings() {
                                       />
                                     </div>
                                   ) : (
-                                    <>₹{range.fee}</>
+                                    <>{money(range.fee, { compact: true })}</>
                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-center border-b border-slate-100">
@@ -422,7 +424,7 @@ export default function FeeSettings() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Delivery Fee (₹)</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Delivery Fee ({symbol})</label>
                         <input
                           type="number"
                           value={newRange.fee}
@@ -444,7 +446,7 @@ export default function FeeSettings() {
                       </div>
                     </div>
                     <p className="text-xs text-slate-500 mt-2 italic">
-                      Example: Orders between 0 km and 5 km will have ₹50 delivery fee.
+                      Example: Orders between 0 km and 5 km will have a {money(50, { compact: true })} delivery fee.
                     </p>
                   </div>
                 )}
@@ -455,7 +457,7 @@ export default function FeeSettings() {
                 {/* Free Delivery Up To */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Free Delivery Up To (₹)
+                    Free Delivery Up To ({symbol})
                   </label>
                   <input
                     type="number"
@@ -475,7 +477,7 @@ export default function FeeSettings() {
                 {/* Platform Fee */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Platform Fee (₹)
+                    Platform Fee ({symbol})
                   </label>
                   <input
                     type="number"
@@ -493,7 +495,7 @@ export default function FeeSettings() {
                 {/* Packaging Fee */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Packaging Charges Fee (₹)
+                    Packaging Charges Fee ({symbol})
                   </label>
                   <input
                     type="number"
@@ -532,7 +534,7 @@ export default function FeeSettings() {
                 {/* Delivery Bonus Amount */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Delivery Bonus Amount (₹)
+                    Delivery Bonus Amount ({symbol})
                   </label>
                   <input
                     type="number"

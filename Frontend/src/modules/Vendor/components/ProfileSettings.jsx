@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
+import useMoney from "@/shared/payments/money";
 
 const mapContainerStyle = {
   width: '100%',
@@ -530,6 +531,7 @@ export default function ProfileSettings({
   onSignOut
 }) {
   const { t: tr } = useTranslation("vendor");
+  const { money, symbol } = useMoney();
   const navigate = useNavigate();
   const [subView, setSubView] = useState('profile');
 
@@ -697,7 +699,7 @@ export default function ProfileSettings({
       return;
     }
     if (amt > availableBalance) {
-      triggerToast(tr("Insufficient balance. Maximum available is ₹{{availableBalance}}", { availableBalance }));
+      triggerToast(tr("Insufficient balance. Maximum available is {{availableBalance}}", { availableBalance: money(availableBalance) }));
       return;
     }
 
@@ -1645,7 +1647,7 @@ export default function ProfileSettings({
           <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-5 text-on-primary shadow-md relative overflow-hidden mt-4">
             <p className="text-[11px] uppercase tracking-wider opacity-85 font-bold">{tr("Available Balance")}</p>
             <h3 className="text-3xl font-extrabold mt-1">
-              ₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              {money(availableBalance)}
             </h3>
           </div>
 
@@ -1654,7 +1656,7 @@ export default function ProfileSettings({
             <h4 className="text-[11px] font-bold uppercase tracking-wider text-outline">{tr("Request Payout")}</h4>
             <form onSubmit={handleCreateWithdrawRequest} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold block mb-1">{tr("Amount to Withdraw (₹)")}</label>
+                <label className="text-[11px] font-bold block mb-1">{tr("Amount to Withdraw ({{symbol}})", { symbol })}</label>
                 <input
                   type="number"
                   value={withdrawAmount}
@@ -1711,7 +1713,7 @@ export default function ProfileSettings({
                   return (
                     <div key={w._id} className="bg-white rounded-2xl p-4 shadow-xs border border-outline-variant/15 flex justify-between items-center text-left">
                       <div>
-                        <p className="text-[14px] font-extrabold text-on-surface">₹{w.amount.toFixed(2)}</p>
+                        <p className="text-[14px] font-extrabold text-on-surface">{money(w.amount)}</p>
                         <p className="text-[11px] text-outline font-medium mt-0.5">{formattedDate}</p>
                       </div>
                       <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${

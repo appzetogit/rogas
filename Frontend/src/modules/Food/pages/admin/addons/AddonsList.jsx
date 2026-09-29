@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import { useEffect, useMemo, useState } from "react"
 import { Eye, Loader2, Search, Trash2, Pencil } from "lucide-react"
 import { Switch } from "@food/components/ui/switch"
@@ -292,7 +293,7 @@ export default function AddonsList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-900">
-                        ₹{Number(addon?.draft?.price ?? addon?.price ?? 0).toFixed(2)}
+                        {formatCurrency(Number(addon?.draft?.price ?? addon?.price ?? 0))}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -359,7 +360,7 @@ export default function AddonsList() {
                 </p>
                 <p>
                   <span className="font-semibold text-slate-700">Price:</span>{" "}
-                  <span className="text-slate-900">₹{Number(selectedAddon?.draft?.price ?? 0).toFixed(2)}</span>
+                  <span className="text-slate-900">{formatCurrency(Number(selectedAddon?.draft?.price ?? 0))}</span>
                 </p>
                 <p>
                   <span className="font-semibold text-slate-700">Available:</span>{" "}

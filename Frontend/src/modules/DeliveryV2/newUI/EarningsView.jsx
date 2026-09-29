@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import { useState, useEffect } from "react";
 import { Info, Gift, CalendarDays, ShieldCheck, Coins } from "lucide-react";
 import { deliveryAPI } from "@food/api";
@@ -19,6 +20,7 @@ const formatDate = (dateStr) => {
 
 const EarningsView = ({ stats }) => {
   const { t } = useTranslation("driver");
+  const { money } = useMoney();
   const [activeTab, setActiveTab] = useState("today");
   const getTotalsByTab = () => {
     const periodData = stats[activeTab === "week" ? "week" : activeTab === "month" ? "month" : "today"] || {
@@ -412,22 +414,22 @@ const EarningsView = ({ stats }) => {
             <h3 className="font-extrabold text-gray-900 text-sm">{t("Tips Overview")}</h3>
           </div>
           <span className="text-xs font-bold text-gray-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-            {t("Total: ₹{{totalTips}}", { totalTips: tipsData.totalTips.toFixed(2) })}
+            {t("Total: {{totalTips}}", { totalTips: money(tipsData.totalTips) })}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2.5">
           <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">{t("Today")}</span>
-            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.todayTips.toFixed(2)}</span>
+            <span className="text-sm font-extrabold text-gray-800">{money(tipsData.todayTips)}</span>
           </div>
           <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">{t("This Week")}</span>
-            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.weeklyTips.toFixed(2)}</span>
+            <span className="text-sm font-extrabold text-gray-800">{money(tipsData.weeklyTips)}</span>
           </div>
           <div className="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">{t("This Month")}</span>
-            <span className="text-sm font-extrabold text-gray-800">₹{tipsData.monthlyTips.toFixed(2)}</span>
+            <span className="text-sm font-extrabold text-gray-800">{money(tipsData.monthlyTips)}</span>
           </div>
         </div>
 
@@ -454,7 +456,7 @@ const EarningsView = ({ stats }) => {
                       })}
                     </span>
                   </div>
-                  <span className="font-extrabold text-emerald-600 font-sans">+₹{item.amount.toFixed(2)}</span>
+                  <span className="font-extrabold text-emerald-600 font-sans">+{money(item.amount)}</span>
                 </div>
               ))}
             </div>

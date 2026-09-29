@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
+import { formatCurrency } from "@food/utils/currency"
 import { toast } from "sonner"
 
 const debugLog = (...args) => {}
@@ -19,8 +20,8 @@ export default function TaxReport() {
   })
   const [reports, setReports] = useState([])
   const [stats, setStats] = useState({
-    totalIncome: "₹0.00",
-    totalTax: "₹0.00"
+    totalIncome: formatCurrency(0),
+    totalTax: formatCurrency(0)
   })
   const [loading, setLoading] = useState(true)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -63,8 +64,8 @@ export default function TaxReport() {
       if (response?.data?.success && response.data.data) {
         setReports(response.data.data.reports || [])
         setStats(response.data.data.stats || {
-          totalIncome: "₹0.00",
-          totalTax: "₹0.00"
+          totalIncome: formatCurrency(0),
+          totalTax: formatCurrency(0)
         })
       } else {
         setReports([])

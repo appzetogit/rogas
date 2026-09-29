@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { 
@@ -174,7 +175,7 @@ const KitchenPartnersList = () => {
     {
       id: 3,
       title: "TOTAL EARNINGS",
-      value: `₹${partners.reduce((sum, p) => sum + (p.earnings || 0), 0).toLocaleString()}`,
+      value: formatCurrency(partners.reduce((sum, p) => sum + (p.earnings || 0), 0)),
       icon: <Wallet className="w-5 h-5 text-[#1F7A63]" />,
       chartColor: "text-[#1F7A63]",
     },
@@ -287,7 +288,7 @@ const KitchenPartnersList = () => {
                     <td className="px-6 py-4 text-slate-600">{partner.address?.city || "-"}</td>
                     <td className="px-6 py-4 text-slate-600">{Array.isArray(partner.homeCooks) ? partner.homeCooks.length : (partner.homeCooks || 0)}</td>
                     <td className="px-6 py-4 text-slate-600">{partner.orders}</td>
-                    <td className="px-6 py-4 text-slate-600">₹{partner.earnings?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-slate-600">{formatCurrency(partner.earnings || 0)}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${

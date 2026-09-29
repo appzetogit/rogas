@@ -1,3 +1,5 @@
+import { formatCurrency } from "@food/utils/currency"
+import { currencySymbol } from "@/shared/payments/money"
 import { useState, useEffect, useMemo } from "react"
 import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2, Truck } from "lucide-react"
 
@@ -270,10 +272,7 @@ export default function OrdersTable({
                           const itemPrice = Number(item.price ?? 0)
                           return (
                             <div key={idx || item.itemId || `item-price-${idx}`} className="text-sm text-slate-500">
-                              {`₹${itemPrice.toLocaleString(undefined, {
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                              })}`}
+                              {formatCurrency(itemPrice, order.currency)}
                             </div>
                           )
                         })
@@ -288,10 +287,7 @@ export default function OrdersTable({
                     <span className="text-sm font-medium text-slate-700">
                       {(() => {
                         const deliveryCharge = Number(order.deliveryCharge ?? 0)
-                        return `₹${deliveryCharge.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}`
+                        return formatCurrency(deliveryCharge, order.currency)
                       })()}
                     </span>
                   </td>
@@ -308,10 +304,7 @@ export default function OrdersTable({
                         const amount = Number.isFinite(Number(rawAmount))
                           ? Number(rawAmount)
                           : 0;
-                        return `₹${amount.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}`;
+                        return formatCurrency(amount, order.currency);
                       })()}
                     </div>
                     <div className={`text-xs mt-0.5 ${getPaymentStatusColor(order.paymentStatus)}`}>
@@ -523,7 +516,7 @@ export default function OrdersTable({
                                 ? "Process Wallet Refund (Add to user wallet)"
                                 : "Process Refund via Razorpay"}
                             >
-                              <span className="text-sm">₹</span>
+                              <span className="text-sm">{currencySymbol(order?.currency)}</span>
                               <span>Refund</span>
                             </button>
                           ) : null}

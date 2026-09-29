@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import { useState, useEffect, useRef } from "react";
 import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
@@ -21,6 +22,7 @@ const DeliveryConfirmation = ({
   onReportIssue
 }) => {
   const { t } = useTranslation("driver");
+  const { money } = useMoney();
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [errorText, setErrorText] = useState("");
@@ -581,7 +583,7 @@ const DeliveryConfirmation = ({
         <span className="text-xl">💸</span>
         <div>
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#1b5e20]">{t("Delivery Earning")}</p>
-          <p className="text-base font-extrabold">₹{order?.riderEarning || 0}</p>
+          <p className="text-base font-extrabold">{money(order?.riderEarning || 0, { compact: true })}</p>
         </div>
       </div>
       <div className="bg-[#4caf50] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">

@@ -7,11 +7,7 @@ import { useState, useEffect } from 'react';
 import { dmbVendorAPI } from '../../../services/api/index';
 import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle, ShoppingBag, Coins, Landmark } from 'lucide-react';
 import { useTranslation } from "react-i18next";
-
-function fmt(n) {
-  const num = Number(n) || 0;
-  return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import useMoney from "@/shared/payments/money";
 
 function formatDate(d) {
   if (!d) return '—';
@@ -21,6 +17,8 @@ function formatDate(d) {
 
 export default function EarningsManager({ transactions, onAddTransaction }) {
   const { t } = useTranslation("vendor");
+  const { money } = useMoney();
+  const fmt = (n) => money(Number(n) || 0);
   const [subView, setSubView] = useState('summary');
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState(null);

@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../../../../services/api/index.js';
@@ -282,7 +283,7 @@ const MenuBulkUpload = () => {
                             <h4 className="font-bold text-gray-900 truncate">{item.name}</h4>
                           </div>
                           <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">{item.description}</p>
-                          <div className="font-black text-sm text-gray-900">₹{item.price}</div>
+                          <div className="font-black text-sm text-gray-900">{formatCurrency(item.price)}</div>
                         </div>
                       </div>
                     ))}

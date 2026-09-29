@@ -25,17 +25,9 @@ import {
 } from "recharts"
 import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, ShieldCheck, AlertTriangle } from "lucide-react"
 import { adminAPI } from "@food/api"
+import { formatCurrency } from "@food/utils/currency"
 const debugLog = () => {}
 const debugError = () => {}
-
-const INR_SYMBOL = "\u20B9"
-
-function formatCurrency(amount, options = {}) {
-  const numericAmount = Number(amount || 0)
-  const formattedAmount = numericAmount.toLocaleString("en-IN", options)
-  return `${INR_SYMBOL}${formattedAmount}`
-}
-
 
 export default function AdminHome() {
   const navigate = useNavigate()

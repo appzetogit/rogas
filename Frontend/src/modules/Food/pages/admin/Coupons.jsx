@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Search } from "lucide-react"
 import { adminAPI } from "@food/api"
@@ -7,6 +8,7 @@ const debugError = (...args) => {}
 
 
 export default function Coupons() {
+  const { symbol } = useMoney()
   const [searchQuery, setSearchQuery] = useState("")
   const [offers, setOffers] = useState([])
   const [restaurants, setRestaurants] = useState([])
@@ -398,7 +400,7 @@ export default function Coupons() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Min Order Value (₹)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Min Order Value ({symbol})</label>
                 <input
                   type="number"
                   min="0"
@@ -412,7 +414,7 @@ export default function Coupons() {
               </div>
 
                 <div title={formData.discountType === "flat-price" ? "Max discount is not applicable for flat coupons" : ""}>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Max Discount (₹, optional)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Max Discount ({symbol}, optional)</label>
                 <input
                   type="number"
                   min="0"

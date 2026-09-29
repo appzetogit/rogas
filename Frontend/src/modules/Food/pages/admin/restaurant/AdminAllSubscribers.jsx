@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect } from "react";
 import { Search, Loader2, ChevronLeft, ChevronRight, Eye, Calendar, Activity, CreditCard, Clock, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -85,7 +86,7 @@ export default function AdminAllSubscribers() {
           { title: "Total Subscribers", value: summary?.totalSubscribers || 0, icon: <Activity size={20} />, color: "text-blue-600", bg: "bg-blue-50" },
           { title: "Active Plans", value: summary?.activeSubscribers || 0, icon: <CreditCard size={20} />, color: "text-green-600", bg: "bg-green-50" },
           { title: "Paused Plans", value: summary?.pausedSubscribers || 0, icon: <Clock size={20} />, color: "text-yellow-600", bg: "bg-yellow-50" },
-          { title: "Total Revenue", value: `₹${summary?.totalRevenue?.toLocaleString() || 0}`, icon: <CreditCard size={20} />, color: "text-purple-600", bg: "bg-purple-50" }
+          { title: "Total Revenue", value: formatCurrency(summary?.totalRevenue || 0), icon: <CreditCard size={20} />, color: "text-purple-600", bg: "bg-purple-50" }
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
             <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>

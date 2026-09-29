@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft,
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
  */
 export const LimitSettlementV2 = () => {
   const { t: tr } = useTranslation("driver");
+  const { money } = useMoney();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
@@ -134,7 +136,7 @@ export const LimitSettlementV2 = () => {
                                   </span>
                                </div>
                                <p className="text-[#2B2B2B] text-xl font-bold mb-1 font-poppins">
-                                  ₹{tx.amount}
+                                  {money(tx.amount, { compact: true })}
                                </p>
                                <p className="text-gray-600 text-sm mb-1 font-medium">
                                   {tx.description}

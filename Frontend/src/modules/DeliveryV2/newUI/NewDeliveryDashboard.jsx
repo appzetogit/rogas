@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ const dropBeforeFor = (slotKey) => {
 
 function NewDeliveryDashboard({ children }) {
   const { t: tr } = useTranslation("driver");
+  const { money } = useMoney();
   useDMBTracking();
   const [stats, setStats] = useState(INITIAL_DRIVER_STATS);
   const [orders, setOrders] = useState([]);
@@ -693,7 +695,7 @@ function NewDeliveryDashboard({ children }) {
                 {newBatchRequest.totalEarnings !== undefined && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center">
                     <span className="text-xs font-bold text-emerald-800">{tr("Est. Delivery Earnings")}</span>
-                    <span className="text-base font-black text-emerald-700">₹{Number(newBatchRequest.totalEarnings).toFixed(2)}</span>
+                    <span className="text-base font-black text-emerald-700">{money(Number(newBatchRequest.totalEarnings))}</span>
                   </div>
                 )}
 

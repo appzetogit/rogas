@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import { useState, useMemo } from "react"
 import { Settings, Building, ShoppingBag, Download, ChevronDown, FileText, FileSpreadsheet, Code, Filter, Search, RefreshCw } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -269,10 +270,7 @@ export default function DisbursementPage({
                     <div className="text-right">
                       <p className="text-sm text-slate-500 mb-1">Total amount</p>
                       <p className="text-lg font-bold text-slate-900">
-                        ₹ {disbursement.totalAmount.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatCurrency(disbursement.totalAmount)}
                       </p>
                     </div>
                     <div className="flex gap-2">

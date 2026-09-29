@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, MapPin, FastForward, Clock, Phone, ChefHat, ChevronDown, WifiOff } from 'lucide-react';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
  * Matches the Zomato/Swiggy style Green Header + White Card.
  */
 export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
+  const { money } = useMoney();
   const { riderLocation, isOnline } = useDeliveryStore();
   const [timeLeft, setTimeLeft] = useState(30);
 
@@ -135,10 +137,10 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
           <div>
             <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mb-1">Incoming Request</p>
             <div className="flex items-end gap-2">
-              <h2 className="text-2xl sm:text-4xl font-bold tracking-tighter">₹{Number(earnings || 0).toFixed(2)}</h2>
+              <h2 className="text-2xl sm:text-4xl font-bold tracking-tighter">{money(Number(earnings || 0))}</h2>
               {bonus > 0 && (
                 <p className="text-white/70 text-xs font-semibold mb-1">
-                  (₹{Number(baseEarnings).toFixed(0)} + ₹{Number(bonus).toFixed(0)} Bonus)
+                  ({money(Number(baseEarnings), { compact: true })} + {money(Number(bonus), { compact: true })} Bonus)
                 </p>
               )}
             </div>

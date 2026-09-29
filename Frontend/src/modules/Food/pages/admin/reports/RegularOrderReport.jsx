@@ -364,11 +364,7 @@ export default function RegularOrderReport() {
     [filteredOrders]
   )
 
-  const formatAmount = (amount) =>
-    `₹${Number(amount || 0).toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`
+  const formatAmount = (amount) => formatCurrency(Number(amount || 0))
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }))

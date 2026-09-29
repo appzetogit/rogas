@@ -3,9 +3,11 @@ import { restaurantAPI, uploadAPI } from '../../../services/api/index';
 import { Plus, Edit2, Trash2, X, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from "react-i18next";
+import useMoney from "@/shared/payments/money";
 
 export default function PantryMenuManager({ items, setItems }) {
   const { t } = useTranslation("vendor");
+  const { money, symbol } = useMoney();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
@@ -227,7 +229,7 @@ export default function PantryMenuManager({ items, setItems }) {
                       <p className="text-[16px] font-extrabold text-primary mt-1">
                         {item.variants?.length > 0 
                             ? t("{{length}} Variants", { length: item.variants.length }) 
-                            : `₹${Number(item.price).toFixed(2)}`}
+                            : money(Number(item.price))}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 mt-auto">
@@ -309,7 +311,7 @@ export default function PantryMenuManager({ items, setItems }) {
 
               <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Base Price (₹)")}</label>
+                    <label className="block text-[13px] font-bold text-on-surface-variant mb-1.5 ml-1">{t("Base Price ({{symbol}})", { symbol })}</label>
                     <input
                       type="number"
                       step="0.01"

@@ -1,9 +1,11 @@
+import useMoney from "@/shared/payments/money"
 import React, { useState, useEffect } from "react";
 import { Search, Loader2, ChevronDown, ChevronLeft, ChevronRight, Eye, Calendar, Clock, CreditCard, Activity, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { adminAPI } from "@food/api";
 
 export default function VendorSubscribers({ vendorId }) {
+  const { money } = useMoney({ vendorId })
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   const [subscribers, setSubscribers] = useState([]);
@@ -82,7 +84,7 @@ export default function VendorSubscribers({ vendorId }) {
         </div>
         <div className="bg-white p-4 rounded-xl border border-indigo-200 shadow-sm flex flex-col items-center text-center bg-indigo-50/50">
           <p className="text-sm text-indigo-600 font-medium">Revenue</p>
-          <p className="text-2xl font-bold text-indigo-700">₹{(summary?.totalRevenue || 0).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-indigo-700">{money(summary?.totalRevenue || 0)}</p>
         </div>
       </div>
 
@@ -196,7 +198,7 @@ export default function VendorSubscribers({ vendorId }) {
                       </span>
                     </td>
                     <td className="py-3 px-4 font-medium text-slate-800">
-                      ₹{sub.totalRevenue?.toFixed(2)}
+                      {money(sub.totalRevenue || 0)}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Link

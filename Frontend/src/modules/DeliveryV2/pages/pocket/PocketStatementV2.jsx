@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowLeft,
@@ -19,6 +20,7 @@ import { useTranslation } from "react-i18next";
  */
 export const PocketStatementV2 = () => {
   const { t } = useTranslation("driver");
+  const { money } = useMoney();
   const goBack = useDeliveryBackNavigation();
 
   // Current week range (Sunday - Saturday)
@@ -151,19 +153,19 @@ export const PocketStatementV2 = () => {
                 <div className="text-left">
                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Orders")}</p>
                    <p className="text-base font-bold text-black leading-none">
-                      ₹{summary.totalEarning.toFixed(0)}
+                      {money(summary.totalEarning, { compact: true })}
                    </p>
                 </div>
                 <div>
                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Bonus")}</p>
                    <p className="text-base font-bold text-black leading-none">
-                      ₹{summary.totalBonus.toFixed(0)}
+                      {money(summary.totalBonus, { compact: true })}
                    </p>
                 </div>
                 <div className="text-right">
                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">{t("Total")}</p>
                    <p className="text-base font-bold text-primary leading-none">
-                      ₹{summary.grandTotal.toFixed(0)}
+                      {money(summary.grandTotal, { compact: true })}
                    </p>
                 </div>
              </div>
@@ -224,21 +226,21 @@ export const PocketStatementV2 = () => {
                                <div className="mb-2">
                                   <p className="text-[10px] text-gray-400 font-bold uppercase">{t("Earning")}</p>
                                   <p className="text-sm font-bold text-black">
-                                     ₹{amounts.earning}
+                                     {money(amounts.earning, { compact: true })}
                                   </p>
                                </div>
                                {amounts.bonus > 0 && (
                                   <div className="mb-2">
                                      <p className="text-[10px] text-emerald-500 font-bold uppercase">{t("Bonus")}</p>
                                      <p className="text-sm font-bold text-emerald-600">
-                                        + ₹{amounts.bonus}
+                                        + {money(amounts.bonus, { compact: true })}
                                      </p>
                                   </div>
                                )}
                                <div className="pt-2 border-t border-gray-50">
                                   <p className="text-[10px] text-gray-800 font-bold uppercase">{t("Total")}</p>
                                   <p className="text-base font-bold text-primary">
-                                     ₹{amounts.total}
+                                     {money(amounts.total, { compact: true })}
                                   </p>
                                </div>
                             </div>

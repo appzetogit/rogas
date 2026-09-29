@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
@@ -25,6 +26,7 @@ import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
  * Matches ProfilePage.jsx exactly.
  */
 export const ProfileV2 = () => {
+  const { money } = useMoney();
   const navigate = useNavigate()
   const location = useLocation()
   const [profile, setProfile] = useState(null)
@@ -75,7 +77,7 @@ export const ProfileV2 = () => {
 
   const handleShareReferral = async () => {
     if (!referralLink) return
-    const rewardText = referralReward > 0 ? `₹${referralReward}` : "rewards"
+    const rewardText = referralReward > 0 ? money(referralReward, { compact: true }) : "rewards"
     const shareText = `Join as a delivery partner and earn ${rewardText}.`
     try {
       if (navigator.share) {
@@ -217,7 +219,7 @@ export const ProfileV2 = () => {
           <div className="bg-white rounded-xl p-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h3 className="text-base font-bold text-[#2B2B2B] mb-1">
-                Share & Earn{referralReward > 0 ? ` ₹${referralReward}` : ""}
+                Share & Earn{referralReward > 0 ? ` ${money(referralReward, { compact: true })}` : ""}
               </h3>
               <p className="text-gray-500 text-xs font-medium">Invite friends to join the delivery partner fleet.</p>
             </div>

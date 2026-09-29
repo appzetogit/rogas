@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import { useState, useEffect, useCallback } from "react";
 import { 
   DollarSign, TrendingUp, Store, Bike, Repeat, 
@@ -28,11 +29,6 @@ export default function FinancialManagement() {
   useEffect(() => {
     fetchFinancialOverview();
   }, [fetchFinancialOverview]);
-
-  const formatCurrency = (val) => {
-    const num = Number(val) || 0;
-    return `₹ ${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   if (loading) {
     return (

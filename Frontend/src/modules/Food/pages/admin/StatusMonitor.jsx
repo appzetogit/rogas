@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money"
 import React, { useState, useEffect, useRef } from 'react';
 import api from '@food/api/axios';
 import { getGoogleMapsApiKey } from '@food/utils/googleMapsApiKey';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { getRestaurantAvailabilityStatus } from '../../utils/restaurantAvailability';
 
 export default function StatusMonitor() {
+  const { money, symbol } = useMoney()
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('statusMonitorTab') || 'restaurants';
   }); // 'restaurants' or 'delivery'
@@ -249,9 +251,9 @@ function RestaurantDetails({ restaurant }) {
           <p className="text-2xl font-bold text-red-700">{stats.cancelledOrders || 0}</p>
         </div>
         <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 flex flex-col items-center justify-center text-center">
-          <span className="w-5 h-5 flex items-center justify-center text-purple-500 mb-2 font-bold text-lg">₹</span>
+          <span className="w-5 h-5 flex items-center justify-center text-purple-500 mb-2 font-bold text-lg">{symbol}</span>
           <p className="text-xs text-purple-600 font-medium">Revenue</p>
-          <p className="text-2xl font-bold text-purple-700">₹{stats.revenue?.toFixed(0) || 0}</p>
+          <p className="text-2xl font-bold text-purple-700">{money(stats.revenue || 0, { compact: true })}</p>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { formatCurrency } from "@food/utils/currency"
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Search, CheckCircle2, XCircle, Eye, Clock, Loader2 } from "lucide-react"
 import { Card } from "@food/components/ui/card"
@@ -465,7 +466,7 @@ export default function FoodApproval() {
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Price</label>
-                        <p className="text-sm font-bold text-green-600">{selectedRequest.price !== null && selectedRequest.price !== undefined ? `₹${selectedRequest.price}` : '-'}</p>
+                        <p className="text-sm font-bold text-green-600">{selectedRequest.price !== null && selectedRequest.price !== undefined ? formatCurrency(selectedRequest.price) : '-'}</p>
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</label>

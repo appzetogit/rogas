@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from "@food/components/ui/dialog"
 import { Button } from "@food/components/ui/button"
+import { formatCurrency } from "@food/utils/currency"
 
 export default function RefundModal({ isOpen, onOpenChange, order, onConfirm, isProcessing }) {
   const [refundAmount, setRefundAmount] = useState("")
@@ -46,7 +47,7 @@ export default function RefundModal({ isOpen, onOpenChange, order, onConfirm, is
     }
 
     if (amount > maxAmount) {
-      setError(`Refund राशि कुल राशि (₹${maxAmount.toFixed(2)}) से अधिक नहीं हो सकती`)
+      setError(`Refund amount cannot exceed the total amount (${formatCurrency(maxAmount, order?.currency)})`)
       return
     }
 
@@ -104,7 +105,7 @@ export default function RefundModal({ isOpen, onOpenChange, order, onConfirm, is
               <p className="text-sm text-red-600 mt-1">{error}</p>
             )}
             <p className="text-xs text-slate-500">
-              Maximum refundable amount: ₹{maxAmount.toFixed(2)}
+              Maximum refundable amount: {formatCurrency(maxAmount, order?.currency)}
             </p>
           </div>
 

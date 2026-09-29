@@ -144,6 +144,6 @@ export const initRazorpayPayment = async (options) => {
  * @returns {String} Formatted amount string
  */
 export const formatAmount = (amount) => {
-  return `₹${(amount / 100).toFixed(2)}`;
+  return `INR ${(amount / 100).toFixed(2)}`; // Razorpay only ever charges INR
 };
 

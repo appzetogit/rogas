@@ -1,5 +1,6 @@
 // Export utility functions for reports
 import { downloadFile } from "@/shared/utils/downloadUtils"
+import { formatCurrency } from "@food/utils/currency"
 export const exportReportsToCSV = (data, headers, filename = "report") => {
   const rows = data.map((item, index) => {
     return headers.map(header => {
@@ -209,12 +210,12 @@ export const exportTransactionReportToPDF = (transactions, filename = "transacti
               <td>${transaction.orderId}</td>
               <td>${transaction.restaurant}</td>
               <td>${transaction.customerName}</td>
-              <td>₹${transaction.totalItemAmount.toFixed(2)}</td>
-              <td>₹${transaction.couponDiscount.toFixed(2)}</td>
-              <td>₹${transaction.vatTax.toFixed(2)}</td>
-              <td>₹${transaction.deliveryCharge.toFixed(2)}</td>
-              <td>₹${Number(transaction.platformFee || 0).toFixed(2)}</td>
-              <td>₹${transaction.orderAmount.toFixed(2)}</td>
+              <td>${formatCurrency(transaction.totalItemAmount, transaction.currency)}</td>
+              <td>${formatCurrency(transaction.couponDiscount, transaction.currency)}</td>
+              <td>${formatCurrency(transaction.vatTax, transaction.currency)}</td>
+              <td>${formatCurrency(transaction.deliveryCharge, transaction.currency)}</td>
+              <td>${formatCurrency(Number(transaction.platformFee || 0), transaction.currency)}</td>
+              <td>${formatCurrency(transaction.orderAmount, transaction.currency)}</td>
             </tr>
           `).join("")}
         </tbody>

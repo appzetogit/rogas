@@ -1,3 +1,4 @@
+import useMoney from "@/shared/payments/money";
 import { useState, useEffect } from "react";
 import { ArrowRight, ChevronRight, Check, Navigation, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ const RouteView = ({
     totalEarnings
 }) => {
     const { t } = useTranslation("driver");
+    const { money } = useMoney();
     const [sliderPosition, setSliderPosition] = useState(0);
     const [justAccepted, setJustAccepted] = useState(isAccepted);
     const [dragging, setDragging] = useState(false);
@@ -158,7 +160,7 @@ const RouteView = ({
                     {totalEarnings !== undefined && (
                         <div className="bg-[#1F7A63]/10 border border-[#1F7A63]/25 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left animate-fadeIn">
                             <span className="text-[9px] font-bold text-[#1F7A63] uppercase tracking-wider font-sans">{t("EARNINGS")}</span>
-                            <span className="font-extrabold text-xs text-[#1F7A63] font-sans">₹{totalEarnings.toFixed(2)}</span>
+                            <span className="font-extrabold text-xs text-[#1F7A63] font-sans">{money(totalEarnings)}</span>
                         </div>
                     )}
                 </div>
