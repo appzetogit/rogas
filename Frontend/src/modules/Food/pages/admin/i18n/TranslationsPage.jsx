@@ -10,6 +10,7 @@ const NS_LABELS = {
   driver: 'Delivery app',
   office: 'Office portal',
   notifications: 'Push notifications',
+  email: 'Emails',
 };
 const PAGE_SIZE = 40;
 

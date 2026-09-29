@@ -2294,5 +2294,15 @@
   "Your DailyMealBox has been delivered. Enjoy!",
   "Your delivery is {{distance}}m away. PIN: {{pin}}",
   "Your meal has been delivered. Enjoy! Rate your experience →"
+ ],
+ "email": [
+  "Application not approved",
+  "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.",
+  "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.",
+  "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.",
+  "Update on your registration",
+  "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.",
+  "Welcome! You are approved.",
+  "Your kitchen is live!"
  ]
 }

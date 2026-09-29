@@ -1,0 +1,10 @@
+{
+ "Application not approved": "Antrag nicht genehmigt",
+ "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Herzlichen Glückwunsch, {{restaurantName}}! Ihr Restaurant wurde von unserem Team genehmigt und ist jetzt live auf DailyMealBox. Sie können sofort Bestellungen entgegennehmen — öffnen Sie die Partner-App, um Ihr Menü fertig einzurichten.",
+ "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.": "Vielen Dank für Ihre Bewerbung als DailyMealBox-Lieferpartner. Wir konnten Ihren Antrag dieses Mal nicht genehmigen.\n\nGrund: {{reason}}\n\nSie können das markierte Problem beheben und Ihre Dokumente jederzeit erneut in der App einreichen.",
+ "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.": "Vielen Dank für Ihre Bewerbung bei DailyMealBox, {{restaurantName}}. Wir konnten Ihre Registrierung dieses Mal nicht genehmigen.\n\nGrund: {{reason}}\n\nSie können das markierte Problem beheben und Ihren Antrag jederzeit erneut in der Partner-App einreichen.",
+ "Update on your registration": "Update zu Ihrer Registrierung",
+ "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.": "Willkommen an Bord{{name}}! Ihr Antrag als Lieferpartner wurde genehmigt. Sie können jetzt in der App online gehen und mit dem Verdienen beginnen.",
+ "Welcome! You are approved.": "Willkommen! Sie wurden genehmigt.",
+ "Your kitchen is live!": "Ihre Küche ist jetzt live!"
+}

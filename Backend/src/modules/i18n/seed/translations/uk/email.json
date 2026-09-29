@@ -1,0 +1,10 @@
+{
+ "Application not approved": "Заявку не схвалено",
+ "Congratulations, {{restaurantName}}! Your restaurant has been approved by our team and is now live on DailyMealBox. You can start receiving orders right away — open the vendor app to finish setting up your menu.": "Вітаємо, {{restaurantName}}! Ваш ресторан схвалено нашою командою і вже доступний у DailyMealBox. Ви можете одразу почати приймати замовлення — відкрийте застосунок для постачальників, щоб завершити налаштування меню.",
+ "Thanks for applying to become a DailyMealBox delivery partner. We were not able to approve your application this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your documents from the app at any time.": "Дякуємо за заявку на роль кур'єра DailyMealBox. Цього разу ми не змогли схвалити вашу заявку.\n\nПричина: {{reason}}\n\nВи можете виправити зазначену проблему і повторно надіслати документи в застосунку будь-коли.",
+ "Thanks for applying to join DailyMealBox, {{restaurantName}}. We were not able to approve your registration this time.\n\nReason: {{reason}}\n\nYou can fix the flagged issue and resubmit your application from the vendor app at any time.": "Дякуємо за заявку на приєднання до DailyMealBox, {{restaurantName}}. Цього разу ми не змогли схвалити вашу реєстрацію.\n\nПричина: {{reason}}\n\nВи можете виправити зазначену проблему і повторно подати заявку в застосунку для постачальників будь-коли.",
+ "Update on your registration": "Оновлення щодо реєстрації",
+ "Welcome aboard{{name}}! Your delivery partner application has been approved. You can now go online in the app and start earning.": "Ласкаво просимо{{name}}! Вашу заявку на роль кур'єра схвалено. Тепер ви можете перейти в застосунку в режим онлайн і почати заробляти.",
+ "Welcome! You are approved.": "Ласкаво просимо! Вас схвалено.",
+ "Your kitchen is live!": "Ваша кухня вже онлайн!"
+}
