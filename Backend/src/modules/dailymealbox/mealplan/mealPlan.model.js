@@ -31,7 +31,7 @@ const mealPlanSchema = new mongoose.Schema(
         photos: { type: [String], default: [] },
         /** Price per delivery day */
         pricePerDay: { type: Number, required: true, min: 0 },
-        currency: { type: String, default: 'INR' },
+        currency: { type: String, default: 'PLN' }, // display only — never used to price anything, see subscription plan pricing fix
 
         // ─── Location ──────────────────────────────────────────────────────────
         city: { type: String, required: true, index: true },

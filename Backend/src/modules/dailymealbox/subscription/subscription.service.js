@@ -166,7 +166,7 @@ export const createSubscription = async ({
         applyFoodVatOnMenu: pricing?.applyFoodVatOnMenu === true || pricing?.applyFoodVatOnMenu === 'true',
         totalPerWeek: pricing?.totalPerWeek || 0,
         totalPrice: pricing?.totalPrice || 0,
-        currency: pricing?.currency || 'INR'
+        currency: pricing?.currency || 'PLN'
     };
 
     // Calculate endDate from the resolved startDate

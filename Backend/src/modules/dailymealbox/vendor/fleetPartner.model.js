@@ -35,7 +35,7 @@ const fleetPartnerSchema = new mongoose.Schema(
                 periodStart: { type: Date },
                 periodEnd: { type: Date },
                 amount: { type: Number },
-                currency: { type: String, default: 'INR' },
+                currency: { type: String, default: 'PLN' },
                 status: {
                     type: String,
                     enum: ['pending', 'approved', 'paid', 'rejected'],

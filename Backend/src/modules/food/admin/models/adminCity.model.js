@@ -30,6 +30,10 @@ const adminCitySchema = new mongoose.Schema(
             default: 'planned',
             index: true
         },
+        // Left as 'INR', not the platform default: payments.settings.js's currencyFor() specifically treats an
+        // unchanged 'INR' as "never really set" for any non-Indian country, so it can fall back to that country's
+        // real default currency. Changing this default would break that detection — see currencyFor() before
+        // touching this.
         currency: { type: String, required: true, trim: true, uppercase: true, default: 'INR' },
         vatRate: { type: Number, default: 0, min: 0 },
         defaultLanguage: { type: String, trim: true, default: 'en' },

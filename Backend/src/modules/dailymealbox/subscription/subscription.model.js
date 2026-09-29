@@ -111,7 +111,7 @@ const subscriptionSchema = new mongoose.Schema(
             applyFoodVatOnMenu: { type: Boolean, default: false },
             totalPerWeek: { type: Number, required: false, min: 0 },
             totalPrice: { type: Number, required: true, min: 0 },
-            currency: { type: String, default: 'INR' }
+            currency: { type: String, default: 'PLN' } // fallback only — always set explicitly at creation
         },
 
         // ─── Payment ──────────────────────────────────────────────────────────

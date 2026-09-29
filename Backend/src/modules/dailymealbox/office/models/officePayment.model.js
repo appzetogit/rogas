@@ -67,7 +67,7 @@ const officePaymentSchema = new mongoose.Schema(
         },
         currency: {
             type: String,
-            default: 'INR'
+            default: 'PLN' // fallback only — always set explicitly at creation
         },
         status: {
             type: String,

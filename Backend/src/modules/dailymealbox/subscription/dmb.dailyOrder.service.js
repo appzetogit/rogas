@@ -1064,7 +1064,7 @@ export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
                         deliveryVatAmount,
                         platformFee,
                         totalPrice: finalTotalPrice,
-                        currency: 'INR'
+                        currency: sub.pricing?.currency || 'PLN'
                     },
                     deliveryAddress: sub.deliveryAddress
                 });
@@ -1214,7 +1214,7 @@ export const ensureOrdersForUser = async (userId) => {
                             deliveryVatAmount,
                             platformFee,
                             totalPrice: finalTotalPrice,
-                            currency: 'INR'
+                            currency: sub.pricing?.currency || 'PLN'
                         },
                         deliveryAddress: sub.deliveryAddress
                     }).catch(e => logger.warn(`ensureOrdersForUser: ${e.message}`));

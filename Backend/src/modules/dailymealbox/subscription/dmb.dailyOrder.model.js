@@ -82,7 +82,7 @@ const dmbDailyOrderSchema = new mongoose.Schema(
             deliveryVatAmount: { type: Number, default: 0 },
             platformFee: { type: Number, default: 0 },
             totalPrice: { type: Number, default: 0 },
-            currency: { type: String, default: 'INR' }
+            currency: { type: String, default: 'PLN' } // fallback only — always set explicitly at creation
         },
 
         deliveryAddress: {
