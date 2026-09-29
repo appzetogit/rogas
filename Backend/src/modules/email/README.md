@@ -52,6 +52,14 @@ every other string in the app is. `bodyKey` may contain blank-line-separated par
 tags in the sent HTML automatically. Attachments: `attachments: [{ filename, path }]` — `path` is a URL or local
 path, exactly like the existing `nodemailer` usage in `utils/email.js`.
 
+**Write `queueEmail({...})` out at its own call site, every time.** The extractor finds translatable strings by
+statically matching a literal `subjectKey`/`bodyKey` *at the `queueEmail(...)` call itself* — forwarding them
+through a helper function (`const notify = (subjectKey, bodyKey) => queueEmail({ subjectKey, bodyKey })`) hides
+them from every language but English, silently. If you want a reusable safety wrapper, wrap the returned *promise*,
+not the call: `emailSafe(queueEmail({ subjectKey: 'Literal text', ... }), 'label for the log')` is fine;
+`emailSafe({ subjectKey, ... })` that builds the call for you is not. See `payments.service.js` /
+`subscription.service.js` for the pattern.
+
 ## Configuration (`Backend/.env`, never committed)
 
 Same variables `utils/email.js` already used — nothing new to set up if those already work:
@@ -64,22 +72,31 @@ Same variables `utils/email.js` already used — nothing new to set up if those 
 
 ## What's wired up so far, and what's backlog
 
-**Wired as the first real example** (proves the whole pipeline end to end, with tests):
-- Vendor application approved / rejected (`admin.service.js` → `approveRestaurant`/`rejectRestaurant`)
-- Driver application approved / rejected (`admin.service.js` → `approveDeliveryPartner`/`rejectDeliveryPartner`)
+**Wired:**
+- Vendor application approved / rejected (`food/admin/services/admin.service.js` → `approveRestaurant`/`rejectRestaurant`, ACM-50)
+- Driver application approved / rejected (same file → `approveDeliveryPartner`/`rejectDeliveryPartner`, ACM-64)
+- Payment received / payment failed / refund issued — one hook each in `payments/payments.service.js`
+  (`fulfil`, `settleNotPaid`, `refundTransaction`), so it covers **every purpose at once**: subscription, pantry,
+  wallet top-up, tip, office, driver deposit. A failure or refund also emails the admin support inbox
+  (`FoodBusinessSettings.supportEmail`). An expired/abandoned checkout is deliberately silent.
+- Subscription: new subscriber (to the vendor) and customer-initiated cancellation (to both the customer and the
+  vendor) — `dailymealbox/subscription/subscription.service.js` → `activateSubscription`/`cancelSubscription`.
 
-**Not wired yet** — the SOP lists many more trigger points; this service is ready for all of them (`queueEmail()` is
-the whole integration), they just haven't been connected to their trigger points yet:
+**Not wired yet** — the SOP lists more trigger points; the service is ready for all of them (`queueEmail()`, written
+literally at the call site, is the whole integration), they just aren't connected yet:
 food/driving licence expiring & expired, payout/settlement sent, commission rate changed, vacation-mode notices,
-pantry order confirmation, card-payment-failure retry emails, GDPR deletion confirmation, business-holiday notices,
-driver-invitation-by-email (fleet partners, P0), B2C receipt / B2B monthly invoice delivery, gift-subscription
-delivery, and Mailchimp marketing sync (a separate integration, not a `queueEmail()` trigger).
+pantry order confirmation/cancellation, GDPR deletion confirmation, business-holiday notices, driver-invitation-by-
+email (fleet partners, P0), B2C receipt / B2B monthly invoice delivery, gift-subscription delivery, and Mailchimp
+marketing sync (a separate integration, not a `queueEmail()` trigger).
 
 ## Testing
 
-`EMAIL_TEST_MONGO_URI=mongodb://127.0.0.1:27017 npm run test:email` (needs a **local** MongoDB). The SMTP
+`EMAIL_TEST_MONGO_URI=mongodb://127.0.0.1:27017 npm run test:email` (needs a **local** MongoDB). Also see
+`npm run test:subscription-emails` and the email-specific tests inside `npm run test:payments`. The SMTP
 transporter is replaced by a fake (`_setTransporterForTests`) — no real network or credentials involved, following
-the same pattern the payments module uses for its Razorpay client in tests.
+the same pattern the payments module uses for its Razorpay client in tests. `payments.test.mjs` also deletes
+`EMAIL_HOST`/`EMAIL_USER`/`EMAIL_PASS` from `process.env` before running, in case the developer's own `.env` has
+real ones — the same "never touch a real external service from a test" rule already applied to `MONGO_URI`.
 
 To try it against a real inbox in development: set the four `EMAIL_*` variables to a real SMTP account (e.g. a
 Mailtrap or Gmail app-password sandbox), restart the backend, and use **Admin → Email → Test connection**.
