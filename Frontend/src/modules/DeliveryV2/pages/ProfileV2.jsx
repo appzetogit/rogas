@@ -14,18 +14,21 @@ import {
   Briefcase,
   Trash2,
   AlertTriangle,
-  Bell
+  Bell,
+  CalendarCheck
 } from "lucide-react"
 import { deliveryAPI, notificationAPI } from "@food/api"
 import { toast } from "sonner"
 import { clearModuleAuth } from "@food/utils/auth"
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
+import { useTranslation } from "react-i18next"
 
 /**
  * ProfileV2 - 1:1 EXACT Restoration of the Legacy Profile Hub.
  * Matches ProfilePage.jsx exactly.
  */
 export const ProfileV2 = () => {
+  const { t } = useTranslation("driver");
   const { money } = useMoney();
   const navigate = useNavigate()
   const location = useLocation()
@@ -180,7 +183,7 @@ export const ProfileV2 = () => {
 
       <div className="px-4 py-6">
         {/* Navigation Buttons */}
-        <div className="grid grid-cols-1 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <button
             onClick={() => navigate("/food/delivery/history")}
             className="bg-white rounded-xl p-4 flex flex-col items-center gap-2 border border-transparent active:bg-gray-50 transition-colors"
@@ -189,6 +192,15 @@ export const ProfileV2 = () => {
               <Bike className="w-6 h-6 text-gray-700" />
             </div>
             <span className="text-sm font-bold text-[#2B2B2B]">Trips history</span>
+          </button>
+          <button
+            onClick={() => navigate("/food/delivery/shifts")}
+            className="bg-white rounded-xl p-4 flex flex-col items-center gap-2 border border-transparent active:bg-gray-50 transition-colors"
+          >
+            <div className="rounded-full bg-gray-50 p-3">
+              <CalendarCheck className="w-6 h-6 text-gray-700" />
+            </div>
+            <span className="text-sm font-bold text-[#2B2B2B]">{t("My Shifts")}</span>
           </button>
         </div>
 

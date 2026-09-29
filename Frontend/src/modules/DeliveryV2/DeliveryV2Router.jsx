@@ -33,6 +33,7 @@ import PrivacyPolicyV2 from './pages/PrivacyPolicyV2';
 import NotificationsV2 from './pages/NotificationsV2';
 import DeliveryServicePage from './pages/DeliveryServicePage';
 import DeliveryRidesPage from './pages/DeliveryRidesPage';
+import ShiftsV2 from './pages/ShiftsV2';
 
 
 const DeliveryV2Router = () => {
@@ -66,6 +67,7 @@ const DeliveryV2Router = () => {
         <Route path="/profile/withdrawals" element={<ProtectedRoute><NewDeliveryDashboard><ProfileWithdrawalsV2 /></NewDeliveryDashboard></ProtectedRoute>} />
         <Route path="/profile/documents" element={<ProtectedRoute><NewDeliveryDashboard><ProfileDocsV2 /></NewDeliveryDashboard></ProtectedRoute>} />
         <Route path="/service" element={<ProtectedRoute><NewDeliveryDashboard><DeliveryServicePage /></NewDeliveryDashboard></ProtectedRoute>} />
+        <Route path="/shifts" element={<ProtectedRoute><NewDeliveryDashboard><ShiftsV2 /></NewDeliveryDashboard></ProtectedRoute>} />
         <Route path="/rides" element={<ProtectedRoute><NewDeliveryDashboard><DeliveryRidesPage /></NewDeliveryDashboard></ProtectedRoute>} />
         
         {/* Support Systems */}

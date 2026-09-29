@@ -663,6 +663,9 @@ export const adminAPI = {
   getEmailLogs: (params = {}) => adminClient.get("/food/admin/email/logs", { params }),
   getEmailLog: (id) => adminClient.get(`/food/admin/email/logs/${String(id)}`),
   resendEmailLog: (id, body) => adminClient.post(`/food/admin/email/logs/${String(id)}/resend`, body ?? {}),
+  /** Driver attendance: per-driver rate for a month, and tomorrow's confirmation status */
+  getAttendanceOverview: (params = {}) => adminClient.get("/food/admin/attendance/overview", { params }),
+  getTomorrowShifts: () => adminClient.get("/food/admin/attendance/tomorrow"),
   getLanguages: () => adminClient.get("/food/admin/i18n/languages"),
   createLanguage: (body) => adminClient.post("/food/admin/i18n/languages", body ?? {}),
   updateLanguage: (id, body) => adminClient.put(`/food/admin/i18n/languages/${String(id)}`, body ?? {}),
@@ -1327,7 +1330,9 @@ export const dmbDeliveryAPI = {
   uploadDeliveryPhoto: (orderId, photoUrl, deliveryGps = null) => deliveryClient.post("/dmb/driver/delivery-photo", { orderId, photoUrl, deliveryGps }),
   confirmPayment: (orderId, method) => deliveryClient.post("/dmb/driver/confirm-payment", { orderId, method }),
   getDashboardStats: () => deliveryClient.get("/food/delivery/dashboard-stats"),
-  updateLocation: (lat, lng, heading = 0, speed = 0) => deliveryClient.post("/dmb/driver/location", { lat, lng, heading, speed })
+  updateLocation: (lat, lng, heading = 0, speed = 0) => deliveryClient.post("/dmb/driver/location", { lat, lng, heading, speed }),
+  getShifts: (params = {}) => deliveryClient.get("/dmb/driver/shifts", { params }),
+  confirmShift: (shiftId) => deliveryClient.post(`/dmb/driver/shifts/${shiftId}/confirm`)
 };
 
 
