@@ -114,38 +114,42 @@ const syncSeed = async () => {
         await Language.updateOne({ code: FALLBACK_LANGUAGE }, { $set: { isDefault: true } });
     }
 
-    // Keys are owned by the code: make the catalog exactly match the seed.
+    // Keys are owned by the code: make the catalog exactly match the seed. Namespaces are independent, so sync them concurrently.
     const validRowKeys = {};
-    for (const ns of NAMESPACES) {
-        const keys = [...new Set(catalog[ns] || [])];
-        validRowKeys[ns] = new Set(keys.flatMap((k) => (isPluralKey(k) ? [k, ...PLURAL_CATEGORIES.map((c) => `${k}_${c}`)] : [k])));
-        for (const part of chunk(keys, 1000)) {
-            await TranslationKey.bulkWrite(part.map((key) => ({ updateOne: { filter: { namespace: ns, key }, update: { $setOnInsert: { namespace: ns, key } }, upsert: true } })));
-        }
-        await TranslationKey.deleteMany({ namespace: ns, key: { $nin: keys } });
+    await Promise.all(
+        NAMESPACES.map(async (ns) => {
+            const keys = [...new Set(catalog[ns] || [])];
+            validRowKeys[ns] = new Set(keys.flatMap((k) => (isPluralKey(k) ? [k, ...PLURAL_CATEGORIES.map((c) => `${k}_${c}`)] : [k])));
+            for (const part of chunk(keys, 1000)) {
+                await TranslationKey.bulkWrite(part.map((key) => ({ updateOne: { filter: { namespace: ns, key }, update: { $setOnInsert: { namespace: ns, key } }, upsert: true } })));
+            }
+            await TranslationKey.deleteMany({ namespace: ns, key: { $nin: keys } });
 
-        const stale = (await Translation.find({ namespace: ns }).select('key').lean()).filter((r) => !validRowKeys[ns].has(r.key)).map((r) => r._id);
-        if (stale.length) await Translation.deleteMany({ _id: { $in: stale } });
-    }
+            const stale = (await Translation.find({ namespace: ns }).select('key').lean()).filter((r) => !validRowKeys[ns].has(r.key)).map((r) => r._id);
+            if (stale.length) await Translation.deleteMany({ _id: { $in: stale } });
+        })
+    );
     await TranslationKey.deleteMany({ namespace: { $nin: NAMESPACES } });
 
-    // Seed translations never overwrite what an admin already typed.
+    // Seed translations never overwrite what an admin already typed. Languages are independent, so sync them concurrently.
     const existingLanguages = new Set((await Language.find().select('code').lean()).map((l) => l.code));
-    for (const [lang, byNs] of Object.entries(translations)) {
-        if (!existingLanguages.has(lang)) continue;
-        let inserted = 0;
-        for (const [ns, map] of Object.entries(byNs)) {
-            if (!NAMESPACES.includes(ns)) continue;
-            const ops = Object.entries(map)
-                .filter(([key, value]) => typeof value === 'string' && value.trim() && validRowKeys[ns]?.has(key))
-                .map(([key, value]) => ({ updateOne: { filter: { language: lang, namespace: ns, key }, update: { $setOnInsert: { language: lang, namespace: ns, key, value } }, upsert: true } }));
-            for (const part of chunk(ops, 1000)) {
-                const res = await Translation.bulkWrite(part, { ordered: false });
-                inserted += res.upsertedCount || 0;
+    await Promise.all(
+        Object.entries(translations).map(async ([lang, byNs]) => {
+            if (!existingLanguages.has(lang)) return;
+            let inserted = 0;
+            for (const [ns, map] of Object.entries(byNs)) {
+                if (!NAMESPACES.includes(ns)) continue;
+                const ops = Object.entries(map)
+                    .filter(([key, value]) => typeof value === 'string' && value.trim() && validRowKeys[ns]?.has(key))
+                    .map(([key, value]) => ({ updateOne: { filter: { language: lang, namespace: ns, key }, update: { $setOnInsert: { language: lang, namespace: ns, key, value } }, upsert: true } }));
+                for (const part of chunk(ops, 1000)) {
+                    const res = await Translation.bulkWrite(part, { ordered: false });
+                    inserted += res.upsertedCount || 0;
+                }
             }
-        }
-        if (inserted > 0) await Language.updateOne({ code: lang }, { $inc: { version: 1 } });
-    }
+            if (inserted > 0) await Language.updateOne({ code: lang }, { $inc: { version: 1 } });
+        })
+    );
 
     await I18nMeta.updateOne({ _id: 'seed' }, { $set: { seedHash: hash, languagesSeeded: true } }, { upsert: true });
     clearCaches();
