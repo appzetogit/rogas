@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { dmbSlotAPI } from "../../services/api";
 
 const TTL_MS = 60 * 1000;
@@ -67,7 +67,8 @@ export default function useDeliverySlots() {
     [getSlot]
   );
 
-  const enabledSlots = slots.filter((s) => s.isEnabled);
+  // Stable identity: screens use this as an effect dependency, and a fresh array each render loops them.
+  const enabledSlots = useMemo(() => slots.filter((s) => s.isEnabled), [slots]);
 
   return { slots, enabledSlots, loading, error, getSlot, label, icon, window, refresh: () => fetchDeliverySlots(true) };
 }

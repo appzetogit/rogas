@@ -6,13 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportDeliverymenToExcel, exportDeliverymenToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { toast } from "sonner"
 import SlotCheckboxes from '../../../../../shared/components/SlotCheckboxes';
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugError = () => {}
 
 
 const formatCurrency = (amount) => {
   const numericAmount = Number(amount)
   if (!Number.isFinite(numericAmount)) return "\u20B90.00"
-  return `\u20B9${numericAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `\u20B9${numericAmount.toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function DeliverymanList() {

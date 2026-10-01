@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -112,7 +113,7 @@ export default function EarningAddonHistory() {
     try {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return dateString
-      return date.toLocaleDateString('en-IN', {
+      return date.toLocaleDateString(getCurrentLanguage(), {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -461,7 +462,7 @@ export default function EarningAddonHistory() {
                               <span className="text-sm text-slate-700">{formatDate(item.date || item.completedAt)}</span>
                               {item.completedAt && (
                                 <span className="text-xs text-slate-400 mt-0.5">
-                                  {new Date(item.completedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                  {new Date(item.completedAt).toLocaleTimeString(getCurrentLanguage(), { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               )}
                             </div>

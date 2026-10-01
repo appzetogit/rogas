@@ -7,6 +7,7 @@ import { adminAPI } from "@food/api"
 import { Can } from "@food/hooks/usePermissions"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -660,7 +661,7 @@ export default function Customers() {
                     <span className="text-xs font-semibold text-slate-700">Total Spent</span>
                   </div>
                   <p className="text-xl font-bold text-green-600">
-                    {"\u20B9"}{(userDetails.totalOrderAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {"\u20B9"}{(userDetails.totalOrderAmount || 0).toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3">
@@ -742,7 +743,7 @@ export default function Customers() {
                           </div>
                           <div>
                             <p className="text-[10px] font-semibold text-slate-500 uppercase">Plan Amount</p>
-                            <p className="text-xs font-bold text-slate-800">{"\u20B9"}{(plan.amount || 0).toLocaleString('en-IN')}</p>
+                            <p className="text-xs font-bold text-slate-800">{"\u20B9"}{(plan.amount || 0).toLocaleString(getCurrentLanguage())}</p>
                           </div>
                         </div>
 
@@ -787,7 +788,7 @@ export default function Customers() {
                           <p className="text-xs text-slate-600">{order.restaurantName}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">{"\u20B9"}{(order.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="text-sm font-semibold text-slate-900">{"\u20B9"}{(order.total || 0).toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-slate-600 capitalize">{order.status}</p>
                         </div>
                       </div>

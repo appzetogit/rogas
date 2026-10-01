@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE_URL, BACKEND_ORIGIN } from '@/services/api/axios';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || BACKEND_ORIGIN;
 
 /**
  * useOrderTracking — DailyMealBox Customer Live Tracking Hook
@@ -112,8 +113,8 @@ export const useAdminLiveMap = (city) => {
 
     const reassignDriver = useCallback(async (orderId, newDriverId) => {
         try {
-            const token = localStorage.getItem('accessToken') || localStorage.getItem('adminToken');
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/v1/food/admin/orders/${orderId}/reassign`, {
+            const token = localStorage.getItem('admin_accessToken');
+            const res = await fetch(`${API_BASE_URL}/food/admin/orders/${orderId}/reassign`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ new_driver_id: newDriverId })

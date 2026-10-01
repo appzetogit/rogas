@@ -425,6 +425,7 @@ export const registerRestaurant = async (payload, files) => {
                 ? new mongoose.Types.ObjectId(String(zoneId).trim())
                 : undefined,
             zoneName,
+            city: (city || '').trim() || zoneName,
             // Store unified location object (geo + address).
             location: {
                 type: 'Point',

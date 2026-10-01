@@ -6,6 +6,7 @@ import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportRep
 import { adminAPI } from "@food/api"
 import { formatCurrency } from "@food/utils/currency"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -455,7 +456,7 @@ export default function TaxReport() {
                     {reportDetail.orders.map((order) => (
                       <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-slate-900">{order.orderId}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{new Date(order.date).toLocaleDateString('en-IN')}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{new Date(order.date).toLocaleDateString(getCurrentLanguage())}</td>
                         <td className="px-4 py-3 text-sm text-right text-slate-700">{order.totalAmount}</td>
                         <td className="px-4 py-3 text-sm text-right font-semibold text-red-600">{order.taxAmount}</td>
                       </tr>

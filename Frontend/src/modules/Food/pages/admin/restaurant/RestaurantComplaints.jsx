@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@food/components/ui/dialog"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -258,7 +259,7 @@ export default function RestaurantComplaints() {
                   </div>
                 )}
                 <p className="text-xs text-gray-400">
-                  {new Date(complaint.createdAt).toLocaleDateString('en-IN', {
+                  {new Date(complaint.createdAt).toLocaleDateString(getCurrentLanguage(), {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',

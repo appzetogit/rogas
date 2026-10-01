@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminAPI } from "@food/api";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const STORAGE_KEY = "admin_notifications_dismissed_v1";
 const UPDATE_EVENT = "adminNotificationsUpdated";
@@ -36,7 +37,7 @@ const toDateValue = (value) => {
 const toDateLabel = (value) => {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleString("en-IN", {
+  return date.toLocaleString(getCurrentLanguage(), {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

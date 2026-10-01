@@ -12,6 +12,7 @@ import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Downl
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 import useMoney from "@/shared/payments/money";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const mapContainerStyle = {
   width: '100%',
@@ -1230,7 +1231,7 @@ export default function ProfileSettings({
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0" style={{ background: scfg.bg, color: scfg.color }}>{scfg.label}</span>
                         </div>
                         <p className="text-[11px] text-outline mt-0.5">{catLabel} · {ticket.complaintRef || `#${String(ticket._id).slice(-6).toUpperCase()}`}</p>
-                        <p className="text-[11px] text-outline/70 mt-0.5">{new Date(ticket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        <p className="text-[11px] text-outline/70 mt-0.5">{new Date(ticket.createdAt).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                       </div>
                       <ChevronRight className="text-outline text-[18px] shrink-0 mt-1" />
                     </button>
@@ -1391,7 +1392,7 @@ export default function ProfileSettings({
                           <span className="text-[11px] text-outline font-mono">{t.complaintRef || `#${String(t._id).slice(-6).toUpperCase()}`}</span>
                         </div>
                         <h3 className="font-bold text-[14px] text-on-surface mt-1">{t.subject}</h3>
-                        <p className="text-[11px] text-outline mt-0.5">{catLabel} · {new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[11px] text-outline mt-0.5">{catLabel} · {new Date(t.createdAt).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                     </div>
                   </div>
@@ -1426,7 +1427,7 @@ export default function ProfileSettings({
                           <div className="flex items-center gap-2">
                             <Headset className="text-primary text-[16px]" />
                             <span className="text-[11px] font-bold text-primary">{tr("Support Team")}</span>
-                            <span className="text-[10px] text-outline ml-auto">{t.customerResponseAt ? new Date(t.customerResponseAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
+                            <span className="text-[10px] text-outline ml-auto">{t.customerResponseAt ? new Date(t.customerResponseAt).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
                           <p className="text-[13px] text-on-surface leading-relaxed">{t.customerResponseMessage}</p>
                         </div>
@@ -1437,7 +1438,7 @@ export default function ProfileSettings({
                           <div className="flex items-center gap-2">
                             <Headset className="text-primary text-[16px]" />
                             <span className="text-[11px] font-bold text-primary">{r.responderName || tr("Support Team")}</span>
-                            <span className="text-[10px] text-outline ml-auto">{r.at ? new Date(r.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
+                            <span className="text-[10px] text-outline ml-auto">{r.at ? new Date(r.at).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
                           <p className="text-[13px] text-on-surface leading-relaxed">{r.message}</p>
                         </div>
@@ -1467,7 +1468,7 @@ export default function ProfileSettings({
                             <div>
                               <span className="text-[11px] font-bold" style={{ color: tcfg.color }}>{tcfg.label}</span>
                               {trail.note && <p className="text-[11px] text-outline mt-0.5">{trail.note}</p>}
-                              <p className="text-[10px] text-outline/60">{trail.at ? new Date(trail.at).toLocaleString('en-IN') : ''}</p>
+                              <p className="text-[10px] text-outline/60">{trail.at ? new Date(trail.at).toLocaleString(getCurrentLanguage()) : ''}</p>
                             </div>
                           </div>
                         );
@@ -1702,7 +1703,7 @@ export default function ProfileSettings({
               <div className="space-y-2.5">
                 {withdrawals.map((w) => {
                   const date = new Date(w.createdAt);
-                  const formattedDate = date.toLocaleString('en-IN', {
+                  const formattedDate = date.toLocaleString(getCurrentLanguage(), {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',

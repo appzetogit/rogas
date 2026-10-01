@@ -2620,10 +2620,10 @@ export async function getPendingRestaurants() {
         let location = r.location;
         let addressLine1 = r.addressLine1;
         let addressLine2 = r.addressLine2;
-        let area = r.area;
-        let city = r.city;
-        let state = r.state;
-        let pincode = r.pincode;
+        let area = r.area || r.location?.area;
+        let city = r.city || r.location?.city;
+        let state = r.state || r.location?.state;
+        let pincode = r.pincode || r.location?.pincode;
         let landmark = r.landmark;
         let status = r.status;
         let pendingUpdateReason = r.pendingUpdateReason;

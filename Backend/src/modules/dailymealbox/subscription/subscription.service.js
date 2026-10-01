@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { DMBSubscription } from './subscription.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
@@ -15,6 +16,13 @@ import { queueEmail } from '../../email/email.service.js';
  * string translatable; forwarding it through a variable would hide it from every language but English.
  */
 const emailSafe = (promise, label) => promise.catch((err) => logger.warn(`${label} not sent: ${err?.message || err}`));
+
+const findSubQuery = (id, extra = {}) => {
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        return { $or: [{ _id: id }, { subscriptionId: id }], ...extra };
+    }
+    return { subscriptionId: id, ...extra };
+};
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const toDateOnly = (date) => {
@@ -248,7 +256,7 @@ export const activateSubscription = async (subscriptionId) => {
 
 // ─── Skip Delivery (PRD ACM-13) ────────────────────────────────────────────
 export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason }) => {
-    const sub = await DMBSubscription.findOne({ subscriptionId, userId });
+    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId }));
     if (!sub) throw new Error('Subscription not found');
     if (sub.status !== 'active') throw new Error('Only active subscriptions can be skipped');
 
@@ -292,7 +300,7 @@ export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason })
 
 // ─── Pause Subscription (PRD ACM-14) ──────────────────────────────────────
 export const pauseSubscription = async ({ subscriptionId, userId, pauseDays, reason }) => {
-    const sub = await DMBSubscription.findOne({ subscriptionId, userId });
+    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId }));
     if (!sub) throw new Error('Subscription not found');
     if (sub.status !== 'active') throw new Error('Only active subscriptions can be paused');
 
@@ -435,7 +443,7 @@ export const pauseSubscription = async ({ subscriptionId, userId, pauseDays, rea
 
 // ─── Resume Subscription ───────────────────────────────────────────────────
 export const resumeSubscription = async (subscriptionId) => {
-    const sub = await DMBSubscription.findOne({ subscriptionId, status: 'paused' });
+    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { status: 'paused' }));
     if (!sub) return null;
 
     const now = toDateOnly(new Date());
@@ -566,7 +574,7 @@ export const resumeSubscription = async (subscriptionId) => {
 // ─── Cancel Subscription (PRD ACM-15 — EU Law, max 2-tap) ─────────────────
 export const cancelSubscription = async ({ subscriptionId, userId, reason }) => {
     const sub = await DMBSubscription.findOneAndUpdate(
-        { subscriptionId, userId, status: { $in: ['active', 'paused'] } },
+        findSubQuery(subscriptionId, { userId, status: { $in: ['active', 'paused'] } }),
         { status: 'cancelled', cancelledAt: new Date(), cancellationReason: reason || '', autoRenew: false },
         { new: true }
     );
@@ -640,7 +648,7 @@ export const getUserSubscriptions = async (userId, status) => {
     const filter = { userId };
     if (status) filter.status = status;
     return DMBSubscription.find(filter)
-        .populate('vendorId', 'restaurantName profileImage rating city')
+        .populate('vendorId', 'restaurantName profileImage rating city location phone ownerPhone')
         .populate('mealPlanId', 'name photos pricePerDay nutrition allergens')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition allergens')
         .sort({ createdAt: -1 });

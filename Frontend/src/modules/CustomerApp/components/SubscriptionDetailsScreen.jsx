@@ -4,6 +4,7 @@ import { ClipboardList, PauseCircle, XCircle, PlayCircle, AlertTriangle, Loader2
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
   const { t } = useTranslation("customer");
@@ -113,7 +114,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
   // Helper to calculate Expiry Date based on startDate and duration
   const getExpiryDate = (sub) => {
     if (sub.endDate) {
-      return new Date(sub.endDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      return new Date(sub.endDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short", year: "numeric" });
     }
     if (!sub.startDate) return "N/A";
     const start = new Date(sub.startDate);
@@ -128,12 +129,12 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
     } else {
       end.setDate(start.getDate() + 7);
     }
-    return end.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    return end.toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    return new Date(dateStr).toLocaleDateString(getCurrentLanguage(), { day: "numeric", month: "short", year: "numeric" });
   };
 
   // Compute how many calendar days remain in the subscription

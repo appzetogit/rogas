@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Search, Receipt, Loader2, Package } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -9,13 +10,13 @@ const debugError = (...args) => {}
 
 const formatCurrency = (amount) => {
   if (amount == null) return "\u20B90.00"
-  return `\u20B9${Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `\u20B9${Number(amount).toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 const formatDate = (d) => {
   if (!d) return "—"
   try {
-    return new Date(d).toLocaleString("en-IN", {
+    return new Date(d).toLocaleString(getCurrentLanguage(), {
       day: "2-digit",
       month: "short",
       year: "numeric",

@@ -1,3 +1,4 @@
+import { getCurrentLanguage } from "@/shared/i18n";
 // Export utility functions for transaction management
 
 export const exportTransactionsToCSV = (transactions, headers, filename = "transactions") => {
@@ -83,7 +84,7 @@ export const exportTransactionsToPDF = async (transactions, headers, filename = 
     format: 'a4'
   })
 
-  const reportDate = new Date().toLocaleString('en-IN', {
+  const reportDate = new Date().toLocaleString(getCurrentLanguage(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

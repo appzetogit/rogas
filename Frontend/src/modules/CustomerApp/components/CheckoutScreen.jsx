@@ -8,6 +8,7 @@ import useMoney from "../../../shared/payments/money";
 import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
 import PaymentMethodPicker from "../../../shared/payments/PaymentMethodPicker";
 import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
 
@@ -227,7 +228,7 @@ export function CheckoutScreen({
                 <div className="flex justify-between text-[14px]">
                   <span className="text-[#6e7a74] font-medium">{t("🗓️ Start Date")}</span>
                   <span className="font-bold text-primary">
-                    {new Date(plan.startDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                    {new Date(plan.startDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                   </span>
                 </div>
               )}
@@ -305,7 +306,7 @@ export function CheckoutScreen({
               {invoicePrefs?.receiptType === "vat" && (
                 <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
               )}
-              <span>{t("GST Invoice (B2B)")}</span>
+              <span>{t("VAT Invoice (B2B)")}</span>
             </button>
           </div>
         </section>

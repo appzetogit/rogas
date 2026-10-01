@@ -12,6 +12,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 /**
  * PocketStatementV2 - 1:1 Match with Old PocketStatement UI.
@@ -189,7 +190,7 @@ export const PocketStatementV2 = () => {
                    const amounts = getOrderAmounts(trip);
                    const createdAt = trip.deliveredAt || trip.completedAt || trip.createdAt || trip.orderTime;
                    const dateText = createdAt
-                      ? new Date(createdAt).toLocaleString('en-IN', {
+                      ? new Date(createdAt).toLocaleString(getCurrentLanguage(), {
                            day: '2-digit',
                            month: 'short',
                            hour: '2-digit',

@@ -9,11 +9,12 @@ import {
 import useNotificationInbox from "@food/hooks/useNotificationInbox";
 import { useTranslation } from "react-i18next";
 import i18n from "../../../shared/i18n";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const toTimeLabel = (value) => {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return i18n.t("Just now");
-  return date.toLocaleString("en-IN", {
+  return date.toLocaleString(getCurrentLanguage(), {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

@@ -4,6 +4,7 @@ import { adminClient } from "@food/api/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import io from "socket.io-client";
+import { BACKEND_ORIGIN } from "@/services/api/axios";
 
 const STATUS_CONFIG = {
   open:       { label: "Open",       color: "#dc2626", bg: "#fef2f2", icon: AlertTriangle },
@@ -66,8 +67,7 @@ export default function ComplaintInbox() {
   useEffect(() => { searchRef.current = search; }, [search]);
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
-    const socket = io(backendUrl, {
+    const socket = io(BACKEND_ORIGIN, {
       transports: ["websocket", "polling"],
       auth: { token: localStorage.getItem("admin_accessToken") || localStorage.getItem("token") }
     });

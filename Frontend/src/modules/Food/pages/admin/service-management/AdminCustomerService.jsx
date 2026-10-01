@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { serviceManagementAPI } from '@food/api';
 import { toast } from 'sonner';
 import { Users, Check, X, Filter, Loader2, AlertTriangle, RefreshCw, Calendar, Clock, Wallet, IndianRupee, Eye } from 'lucide-react';
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -58,7 +59,7 @@ export default function AdminCustomerService() {
     }
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   return (
     <div className="p-6 space-y-6">

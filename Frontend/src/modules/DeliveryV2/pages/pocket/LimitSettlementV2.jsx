@@ -11,6 +11,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 /**
  * LimitSettlementV2 - 1:1 Match with Old LimitSettlement UI.
@@ -41,7 +42,7 @@ export const LimitSettlementV2 = () => {
             amount: t.amount || 0,
             status: t.status || 'Pending',
             description: t.description || 'Available limit settlement',
-            date: new Date(t.date || t.createdAt).toLocaleDateString('en-IN', {
+            date: new Date(t.date || t.createdAt).toLocaleDateString(getCurrentLanguage(), {
               day: '2-digit',
               month: 'short',
               year: 'numeric',

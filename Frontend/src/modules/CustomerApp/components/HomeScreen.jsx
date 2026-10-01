@@ -5,6 +5,7 @@ import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 
 const STATUS_COLORS = {
@@ -278,8 +279,10 @@ export function HomeScreen({
     hour < 12 ? t("Good morning") : hour < 17 ? t("Good afternoon") : t("Good evening");
   const pointsPercent = Math.min((points / 300) * 100, 100);
 
-  const filteredTodayMeal = todayMeal?.meals?.[0]?.name === "No meal set" ? null : todayMeal;
-  const filteredTomorrowMealData = tomorrowMealData?.meals?.[0]?.name === "No meal set" ? null : tomorrowMealData;
+  // A delivery whose vendor hasn't picked the day's dish yet ("No meal set") is still a real, paid delivery:
+  // hiding it told subscribers they had nothing coming. The cards fall back to the plan name.
+  const filteredTodayMeal = todayMeal;
+  const filteredTomorrowMealData = tomorrowMealData;
 
   // ─── Render helpers ───────────────────────────────────────────────────────
   const renderTomorrowMealPreviewCard = (meal) => {
@@ -337,11 +340,11 @@ export function HomeScreen({
     if (!meal) return null;
     const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
     const vendorName = meal.vendor?.name || "";
-    const slot = SLOT_LABELS[meal.deliverySlot] || meal.deliverySlot;
+    const slot = slotLabel(meal.deliverySlot) || meal.deliverySlot;
     const status = meal.status || "scheduled";
     const statusColor = STATUS_COLORS[status] ?? STATUS_COLORS.scheduled;
     const statusLabel = STATUS_LABELS[status] ?? status;
-    const dateStr = new Date(meal.deliveryDate).toLocaleDateString("en-IN", {
+    const dateStr = new Date(meal.deliveryDate).toLocaleDateString(getCurrentLanguage(), {
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -416,7 +419,7 @@ export function HomeScreen({
             </h1>
             <p className="text-[14px] opacity-90 font-medium">
               {filteredTomorrowMealData
-                ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString("en-IN", { weekday: "long" }) })
+                ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "long" }) })
                 : t("No upcoming deliveries")}
             </p>
           </div>
@@ -464,7 +467,8 @@ export function HomeScreen({
           </div>
         ) : (
           <>
-            {filteredTomorrowMealData && renderMealCard(filteredTomorrowMealData, "Tomorrow's Delivery")}
+            {filteredTodayMeal && renderMealCard(filteredTodayMeal, t("Today's Delivery"), true)}
+            {filteredTomorrowMealData && renderMealCard(filteredTomorrowMealData, t("Tomorrow's Delivery"), false)}
 
             {!filteredTodayMeal && !filteredTomorrowMealData && (
               <section
@@ -543,7 +547,7 @@ export function HomeScreen({
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Skip This Delivery?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  {t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) })}
+                  {t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })}
                 </p>
                 <div className="flex gap-3">
                   <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">{t("Cancel")}</button>

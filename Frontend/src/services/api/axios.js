@@ -12,6 +12,12 @@ const baseURL =
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
     : "/api/v1";
 
+export const API_BASE_URL = baseURL;
+/** Scheme+host+port of the backend, for Socket.IO and plain fetch(); the page's own origin when the API is proxied. */
+export const BACKEND_ORIGIN = /^https?:\/\//i.test(baseURL)
+  ? new URL(baseURL).origin
+  : (typeof window !== "undefined" ? window.location.origin : "");
+
 /** 
  * Common Helpers 
  */

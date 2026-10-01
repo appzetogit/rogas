@@ -235,7 +235,7 @@ export default function FeeSettings() {
           <h1 className="text-2xl font-bold text-slate-900">Delivery & Platform Fee</h1>
         </div>
         <p className="text-sm text-slate-600">
-          Configure delivery fee, platform fee, and GST settings for orders
+          Configure delivery fee, platform fee, and VAT settings for orders
         </p>
       </div>
 
@@ -511,10 +511,10 @@ export default function FeeSettings() {
                   </p>
                 </div>
 
-                {/* GST Rate */}
+                {/* VAT Rate */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    GST Rate (%)
+                    VAT Rate (%)
                   </label>
                   <input
                     type="number"
@@ -527,7 +527,7 @@ export default function FeeSettings() {
                     placeholder="5"
                   />
                   <p className="text-xs text-slate-500">
-                    GST percentage applied on order subtotal
+                    VAT percentage applied on order subtotal
                   </p>
                 </div>
 

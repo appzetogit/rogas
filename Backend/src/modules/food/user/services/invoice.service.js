@@ -80,31 +80,34 @@ export async function generateInvoicePdf(subscriptionId, user) {
     // Financials
     doc.fontSize(14).text('Billing Details', { underline: true });
     
-    // We try to pull billing info from the subscription object
-    const amount = subscription.totalPrice || subscription.planPrice || 0;
-    const deliveryFee = subscription.deliveryFee || 0;
-    const platformFee = subscription.platformFee || 0;
+    // We try to pull billing info from subscription.pricing if available, else fallback
+    const pricing = subscription.pricing || {};
+    const currency = pricing.currency || subscription.currency || 'PLN';
+    const total = pricing.totalPrice ?? subscription.totalPrice ?? subscription.planPrice ?? 0;
+    const foodVat = pricing.foodVatAmount || 0;
+    const deliveryVat = pricing.deliveryVatAmount || 0;
+    const totalVat = foodVat + deliveryVat;
+    const subtotal = total > 0 ? Math.max(0, total - totalVat) : 0;
+    const basePrice = pricing.basePricePerDay ? (pricing.basePricePerDay * (validDays || 7)) : subtotal;
+    const deliveryFee = pricing.deliveryFeePerDay ? (pricing.deliveryFeePerDay * (validDays || 7)) : (subscription.deliveryFee || 0);
+    const platformFee = pricing.platformFeeAmount ?? pricing.platformFee ?? subscription.platformFee ?? 0;
     const discount = subscription.discountAmount || 0;
-    
-    // Calculate total
-    const subtotal = amount + deliveryFee + platformFee - discount;
-    const taxRate = 0.23; // 23% VAT standard (or from system settings)
-    const taxAmount = isVat ? subtotal * taxRate : 0;
-    const total = isVat ? subtotal + taxAmount : subtotal;
 
-    doc.fontSize(12).text(`Subscription Amount: PLN ${amount.toFixed(2)}`);
-    if (deliveryFee > 0) doc.text(`Delivery Fee: PLN ${deliveryFee.toFixed(2)}`);
-    if (platformFee > 0) doc.text(`Platform Fee: PLN ${platformFee.toFixed(2)}`);
-    if (discount > 0) doc.text(`Discount: PLN ${discount.toFixed(2)}`);
+    doc.fontSize(12).text(`Subscription Amount: ${currency} ${basePrice.toFixed(2)}`);
+    if (deliveryFee > 0) doc.text(`Delivery Fee: ${currency} ${deliveryFee.toFixed(2)}`);
+    if (platformFee > 0) doc.text(`Platform Fee: ${currency} ${platformFee.toFixed(2)}`);
+    if (discount > 0) doc.text(`Discount: -${currency} ${discount.toFixed(2)}`);
     
     if (isVat) {
         doc.moveDown();
-        doc.text(`Tax Summary (VAT 23%): PLN ${taxAmount.toFixed(2)}`);
-        doc.text(`Total Excluding Tax: PLN ${subtotal.toFixed(2)}`);
+        if (foodVat > 0) doc.text(`Food VAT: ${currency} ${foodVat.toFixed(2)}`);
+        if (deliveryVat > 0) doc.text(`Delivery VAT: ${currency} ${deliveryVat.toFixed(2)}`);
+        if (totalVat > 0) doc.text(`Total VAT: ${currency} ${totalVat.toFixed(2)}`);
+        doc.text(`Total Excluding Tax: ${currency} ${subtotal.toFixed(2)}`);
     }
 
     doc.moveDown();
-    doc.fontSize(14).text(`Total Paid Amount: PLN ${total.toFixed(2)}`, { bold: true });
+    doc.fontSize(14).text(`Total Paid Amount: ${currency} ${total.toFixed(2)}`, { bold: true });
     
     const paymentMethod = subscription.paymentMode || 'Prepaid/Wallet';
     const paymentStatus = subscription.paymentStatus || 'Paid';

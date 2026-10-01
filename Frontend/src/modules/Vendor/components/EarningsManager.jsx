@@ -8,11 +8,12 @@ import { dmbVendorAPI } from '../../../services/api/index';
 import { AlertCircle, Wallet, Receipt, Info, Inbox, Truck, CheckCircle, ShoppingBag, Coins, Landmark } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import useMoney from "@/shared/payments/money";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 function formatDate(d) {
   if (!d) return '—';
   const date = new Date(d);
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(getCurrentLanguage(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function EarningsManager({ transactions, onAddTransaction }) {

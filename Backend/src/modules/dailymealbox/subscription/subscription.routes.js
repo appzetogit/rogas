@@ -17,6 +17,8 @@ import {
 } from './dmb.dailyOrder.service.js';
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
+import { DMBSubscription } from './subscription.model.js';
+import { refundWalletBalance, deductWalletBalance } from '../../food/user/services/userWallet.service.js';
 import { listSlots } from '../deliverySlot/deliverySlot.service.js';
 import { VendorTimingSettings } from '../../food/admin/models/vendorTimingSettings.model.js';
 
@@ -141,6 +143,28 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
         order.status = 'skipped';
         await order.save();
 
+        // Increment monthly skip count and credit wallet
+        let creditAmount = 0;
+        const sub = await DMBSubscription.findById(order.subscriptionId);
+        if (sub) {
+            const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            if (sub.skipsMonthKey !== currentMonthKey) {
+                sub.skipsMonthKey = currentMonthKey;
+                sub.skipsUsedThisMonth = 0;
+            }
+            sub.skipsUsedThisMonth = (sub.skipsUsedThisMonth || 0) + 1;
+            await sub.save();
+
+            const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
+            creditAmount = (sub.pricing?.basePricePerDay || order.pricing?.foodCost || 0) * slotCount;
+            if (creditAmount > 0) {
+                await refundWalletBalance(userId, creditAmount, `Meal skipped on ${orderDateStr}`, {
+                    orderId: order._id,
+                    subscriptionId: sub._id
+                }).catch(err => console.error('Failed to credit wallet on skip:', err));
+            }
+        }
+
         // Broadcast skip update via socket
         const io = getIO();
         if (io) {
@@ -156,7 +180,7 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
             io.to(`vendor_${order.vendorId}`).emit('order_status_update', payload);
         }
 
-        res.json({ success: true, message: 'Order skipped successfully', order });
+        res.json({ success: true, message: 'Order skipped successfully', order, creditAmount });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -208,6 +232,22 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
         }
         order.status = 'scheduled';
         await order.save();
+
+        const sub = await DMBSubscription.findById(order.subscriptionId);
+        if (sub) {
+            if (sub.skipsUsedThisMonth > 0) {
+                sub.skipsUsedThisMonth -= 1;
+                await sub.save();
+            }
+            const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
+            const debitAmount = (sub.pricing?.basePricePerDay || order.pricing?.foodCost || 0) * slotCount;
+            if (debitAmount > 0) {
+                await deductWalletBalance(userId, debitAmount, `Undo meal skip on ${orderDateStr}`, {
+                    orderId: order._id,
+                    subscriptionId: sub._id
+                }).catch(err => console.error('Failed to debit wallet on undo-skip:', err));
+            }
+        }
 
         // Broadcast undo skip update via socket
         const io = getIO();

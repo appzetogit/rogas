@@ -58,8 +58,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [skipTarget, setSkipTarget] = useState(null); // legacy skip target (can be removed later if we fully migrate, but keep for now)
   const [hasFullWeekSub, setHasFullWeekSub] = useState(false);
+  const [hasActiveSub, setHasActiveSub] = useState(false);
 
   // Manage Order States
   const [activeDropdown, setActiveDropdown] = useState(null); // Tracks which order's 3-dot menu is open
@@ -133,6 +133,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         const subsRes = results[2];
         if (subsRes.data?.success) {
           const activeSubs = subsRes.data?.subscriptions || [];
+          setHasActiveSub(activeSubs.length > 0);
           const hasFullWeek = activeSubs.some(sub => sub.deliveryDays === 'full_week');
           setHasFullWeekSub(hasFullWeek);
         }
@@ -478,10 +479,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
     const dateKeyStr = getISTFormatDateStr(date);
     const isYesterday = dateKeyStr === getISTFormatDateStr(yesterday);
     const isToday = dateKeyStr === getISTFormatDateStr(today);
-    const dayOrders = (orderMap[dateKeyStr] || []).filter(order => {
-      const firstMealName = order.meals?.[0]?.name;
-      return firstMealName !== "No meal set";
-    });
+    const dayOrders = orderMap[dateKeyStr] || [];
 
     return {
       date,
@@ -791,7 +789,7 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
         </section>
 
         {/* Empty state banner when no active subscriptions exist */}
-        {orders.length === 0 && (
+        {!hasActiveSub && orders.length === 0 && (
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col items-center text-center gap-3">
             <Sandwich className="text-4xl text-primary" />
             <h3 className="text-base font-bold text-on-surface">{t("No Active Subscription")}</h3>

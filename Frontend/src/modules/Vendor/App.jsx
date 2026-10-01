@@ -125,7 +125,7 @@ export default function App() {
             }
             setProfile({
               ...userObj,
-              city: userObj.location?.city || userObj.city || 'indore',
+              city: userObj.location?.city || userObj.city || '',
               name: userObj.restaurantName || userObj.name || 'Vendor Partner',
               partner: userObj.kitchenPartnerId?.companyName || userObj.kitchenPartnerName || 'Independent Vendor',
               rating: typeof userObj.rating === 'number' ? userObj.rating : 4.9,
@@ -269,7 +269,7 @@ export default function App() {
   const handleCompleteRegistration = (userData) => {
     setProfile({
       ...userData,
-      city: userData.location?.city || userData.city || 'indore',
+      city: userData.location?.city || userData.city || '',
       name: userData.restaurantName || userData.name || 'Vendor Partner',
       partner: userData.kitchenPartnerId?.companyName || userData.kitchenPartnerName || 'Independent Vendor',
       isRegistered: true,

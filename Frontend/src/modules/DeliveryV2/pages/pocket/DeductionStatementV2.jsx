@@ -10,6 +10,7 @@ import { formatCurrency } from '@food/utils/currency';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 /**
  * DeductionStatementV2 - 1:1 Match with Old DeductionStatement UI.
@@ -115,7 +116,7 @@ export const DeductionStatementV2 = () => {
                             <div>
                                <p className="text-[#2B2B2B] text-sm font-bold leading-tight">{item.description || tr("System Deduction")}</p>
                                <p className="text-gray-400 text-[10px] font-bold mt-1 uppercase tracking-tight">
-                                  {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  {new Date(item.createdAt).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                </p>
                             </div>
                          </div>

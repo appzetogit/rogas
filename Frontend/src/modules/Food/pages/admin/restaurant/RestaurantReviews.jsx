@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportReviewsToCSV, exportReviewsToExcel, exportReviewsToPDF, exportReviewsToJSON } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -108,7 +109,7 @@ export default function RestaurantReviews() {
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A"
-    return new Date(dateString).toLocaleDateString("en-IN", {
+    return new Date(dateString).toLocaleDateString(getCurrentLanguage(), {
       year: "numeric",
       month: "short",
       day: "numeric",

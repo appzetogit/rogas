@@ -8,9 +8,9 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
   const [arrivingMin, setArrivingMin] = useState(8);
   const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
 
-  const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || "Jan W.";
+  const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || t("Delivery Partner");
   const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto;
-  const driverVehicle = trackedOrder?.dispatch?.deliveryPartner?.vehicleType || "E-bike";
+  const driverVehicle = trackedOrder?.dispatch?.deliveryPartner?.vehicleType || "";
   const driverPhone = trackedOrder?.dispatch?.deliveryPartner?.phone || "";
 
   // Subscribe to real-time status updates via Socket
@@ -160,7 +160,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                 <div>
                   <h2 className="text-lg font-extrabold text-slate-900">{t("🚴 Driver on the way!")}</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: trackedOrder?.vendor?.restaurantName || t("Maria K.") })}
+                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: trackedOrder?.vendor?.name || trackedOrder?.vendor?.restaurantName || trackedOrder?.vendorId?.restaurantName || t("Kitchen Partner") })}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-[#1F7A63]/10 rounded-2xl flex items-center justify-center text-[#1F7A63]">
@@ -174,7 +174,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                   {t("Your Delivery PIN")}
                 </span>
                 <span className="text-3xl sm:text-4xl font-extrabold tracking-[0.3em] pl-3 text-[#1F7A63] font-mono block">
-                  {trackedOrder?.deliveryPin || trackedOrder?.pin || "8323"}
+                  {trackedOrder?.deliveryPin || trackedOrder?.pin || "----"}
                 </span>
                 <span className="text-xs text-slate-500 font-medium block">
                   {t("Share this PIN with your driver upon arrival")}

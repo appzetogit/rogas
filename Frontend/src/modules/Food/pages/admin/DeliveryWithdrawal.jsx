@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@food/components/ui/dialog"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -140,7 +141,7 @@ export default function DeliveryWithdrawal() {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
     try {
-      return new Date(dateString).toLocaleString("en-IN", {
+      return new Date(dateString).toLocaleString(getCurrentLanguage(), {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -155,7 +156,7 @@ export default function DeliveryWithdrawal() {
 
   const formatCurrency = (amount) => {
     if (amount == null) return "\u20B90.00"
-    return `\u20B9${Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `\u20B9${Number(amount).toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   return (

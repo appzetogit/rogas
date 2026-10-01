@@ -4,11 +4,12 @@ import { Info, Gift, CalendarDays, ShieldCheck, Coins } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 import { toast } from "sonner";
 import { Trans, useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleString("en-IN", {
+  return d.toLocaleString(getCurrentLanguage(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -448,7 +449,7 @@ const EarningsView = ({ stats }) => {
                   <div className="space-y-0.5">
                     <span className="font-bold text-gray-700">{t("Order #{{orderId}}", { orderId: item.orderId })}</span>
                     <span className="text-[10px] text-gray-400 block">
-                      {new Date(item.date).toLocaleDateString("en-IN", {
+                      {new Date(item.date).toLocaleDateString(getCurrentLanguage(), {
                         day: "numeric",
                         month: "short",
                         hour: "2-digit",

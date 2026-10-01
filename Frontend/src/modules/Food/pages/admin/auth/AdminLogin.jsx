@@ -6,6 +6,7 @@ import { setAuthData } from "@food/utils/auth"
 import { ShieldCheck, UserCog, Star, Heart, ArrowRight, Loader2, Mail, Lock, Eye, EyeOff, ShieldQuestion } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/services/api/axios"
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -19,7 +20,7 @@ export default function AdminLogin() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/v1/app-config/admin_app")
+        const response = await fetch(`${API_BASE_URL}/app-config/admin_app`)
         const data = await response.json()
         if (data.success && data.data?.logoUrl) {
           setLogoUrl(data.data.logoUrl)

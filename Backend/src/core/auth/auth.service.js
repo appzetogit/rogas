@@ -96,16 +96,8 @@ const sanitizeDeliveryForAuthResponse = (deliveryDoc = {}) => {
   };
 };
 
-const validatePhoneCountryAndLength = (phone) => {
-  if (!phone) {
-    throw new ValidationError("Phone is required");
-  }
-
-  // Strip all non-digits
-  const digits = String(phone).replace(/\D/g, "");
-
-  // Comprehensive map of major country codes to expected local phone number lengths
-  const dialCodeLengthMap = {
+// Major country dial codes -> expected local phone number length.
+const DIAL_CODE_LENGTHS = {
     "1": 10, "7": 10, "20": 10, "27": 9, "30": 10, "31": 9, "32": 9, "33": 9, "34": 9, "351": 9,
     "352": 9, "353": 9, "354": 7, "355": 9, "356": 8, "357": 8, "358": 9, "359": 9, "36": 9,
     "370": 8, "371": 8, "372": 7, "374": 8, "375": 9, "376": 6, "377": 8, "380": 9, "381": 9,
@@ -122,14 +114,28 @@ const validatePhoneCountryAndLength = (phone) => {
     "880": 10, "886": 9, "960": 7, "961": 8, "962": 9, "964": 10, "965": 8, "966": 9, "967": 9,
     "968": 8, "971": 9, "972": 9, "973": 8, "975": 8, "976": 8, "977": 10, "992": 9, "993": 8,
     "994": 9, "995": 9, "996": 9, "998": 9
-  };
+};
+const DIAL_CODES_LONGEST_FIRST = Object.keys(DIAL_CODE_LENGTHS).sort((a, b) => b.length - a.length);
 
-  const sortedCodes = Object.keys(dialCodeLengthMap).sort((a, b) => b.length - a.length);
+/** "+48" for "48600100201" / "+48 600 100 201"; null when the number carries no recognisable country code. */
+export const dialCodeFromPhone = (phone) => {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const code = DIAL_CODES_LONGEST_FIRST.find((c) => digits.startsWith(c) && digits.length - c.length === DIAL_CODE_LENGTHS[c]);
+  return code ? `+${code}` : null;
+};
 
-  for (const code of sortedCodes) {
+const validatePhoneCountryAndLength = (phone) => {
+  if (!phone) {
+    throw new ValidationError("Phone is required");
+  }
+
+  // Strip all non-digits
+  const digits = String(phone).replace(/\D/g, "");
+
+  for (const code of DIAL_CODES_LONGEST_FIRST) {
     if (digits.startsWith(code)) {
       const localPart = digits.slice(code.length);
-      const expectedLength = dialCodeLengthMap[code];
+      const expectedLength = DIAL_CODE_LENGTHS[code];
       if (localPart.length === expectedLength) {
         return; // Valid!
       }
@@ -255,16 +261,23 @@ export const verifyUserOtpAndLogin = async (
   const needsNamePrompt = !finalName || finalName === "" || finalName.toLowerCase() === "null";
   const isNewUser = needsNamePrompt;
 
+  // The stored dial code drives payment-currency fallbacks, so it must match the phone (the schema default is +91).
+  const dialCode = dialCodeFromPhone(phone);
   if (!userDoc) {
     userDoc = await FoodUser.create({
       phone,
       isVerified: true,
       name: trimmedName,
+      ...(dialCode ? { countryCode: dialCode } : {}),
     });
   } else {
     let needsSave = false;
     if (!userDoc.isVerified) {
       userDoc.isVerified = true;
+      needsSave = true;
+    }
+    if (dialCode && userDoc.countryCode !== dialCode) {
+      userDoc.countryCode = dialCode;
       needsSave = true;
     }
     if (trimmedName && !userDoc.name) {

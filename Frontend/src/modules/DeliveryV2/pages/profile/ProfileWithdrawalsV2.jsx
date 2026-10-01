@@ -4,6 +4,7 @@ import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 export const ProfileWithdrawalsV2 = () => {
   const { t } = useTranslation("driver");
@@ -30,7 +31,7 @@ export const ProfileWithdrawalsV2 = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return d.toLocaleString("en-IN", {
+    return d.toLocaleString(getCurrentLanguage(), {
       day: "numeric",
       month: "short",
       year: "numeric",

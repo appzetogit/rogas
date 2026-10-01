@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { Can } from "@food/hooks/usePermissions"
+import { getCurrentLanguage } from "@/shared/i18n";
 
 // Import icons from Dashboard-icons
 const debugLog = (...args) => {}
@@ -1917,7 +1918,7 @@ export default function RestaurantsList() {
                             <div>
                               <p className="text-xs text-slate-500 mb-1">Registration Date & Time</p>
                               <p className="font-medium text-slate-900">
-                                {new Date(r.createdAt).toLocaleString('en-IN', {
+                                {new Date(r.createdAt).toLocaleString(getCurrentLanguage(), {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric',
@@ -1934,7 +1935,7 @@ export default function RestaurantsList() {
                             <div>
                               <p className="text-xs text-slate-500 mb-1">Last Updated</p>
                               <p className="font-medium text-slate-900">
-                                {new Date(r.updatedAt).toLocaleString('en-IN', {
+                                {new Date(r.updatedAt).toLocaleString(getCurrentLanguage(), {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric',
@@ -2071,7 +2072,7 @@ export default function RestaurantsList() {
                                 <div>
                                   <p className="text-xs text-slate-500 mb-1">EU Food Licence Expiry Date</p>
                                   <p className="font-medium text-slate-900">
-                                    {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString(getCurrentLanguage(), { year: 'numeric', month: 'long', day: 'numeric' })}
                                   </p>
                                 </div>
                               )}

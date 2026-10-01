@@ -95,8 +95,8 @@ export function PantryCheckoutScreen() {
 
   // Map state
   const [showMap, setShowMap] = useState(false);
-  const [lat, setLat] = useState(28.6139);
-  const [lng, setLng] = useState(77.2090);
+  const [lat, setLat] = useState(52.2297); // default: Warsaw
+  const [lng, setLng] = useState(21.0122);
   const [tempAddress, setTempAddress] = useState('');
 
   const { isLoaded } = useJsApiLoader({

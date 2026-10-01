@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { supportAPI } from "@food/api"
 import { toast } from "sonner"
 import io from "socket.io-client"
+import { BACKEND_ORIGIN } from "@/services/api/axios"
 
 export default function SupportTickets() {
   const [tickets, setTickets] = useState([])
@@ -57,8 +58,7 @@ export default function SupportTickets() {
   }, [filters.status, filters.type, filters.source])
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"
-    const socket = io(backendUrl, {
+    const socket = io(BACKEND_ORIGIN, {
       transports: ["websocket", "polling"],
       auth: { token: localStorage.getItem("admin_accessToken") || localStorage.getItem("token") }
     })

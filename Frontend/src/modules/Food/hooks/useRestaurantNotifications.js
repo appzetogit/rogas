@@ -278,6 +278,8 @@ export const useRestaurantNotifications = () => {
   // Get restaurant ID from API
   useEffect(() => {
     const fetchRestaurantId = async () => {
+      // Mounted app-wide: only a signed-in vendor has a restaurant to look up.
+      if (!localStorage.getItem('restaurant_accessToken')) return;
       try {
         const response = await restaurantAPI.getCurrentRestaurant();
         if (response.data?.success && response.data.data?.restaurant) {

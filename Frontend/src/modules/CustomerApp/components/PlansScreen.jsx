@@ -153,6 +153,7 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
     if (!liveSlots.length) return;
     setSelectedSlots((prev) => {
       const valid = prev.filter((k) => liveSlots.some((s) => s.key === k));
+      if (valid.length === prev.length && valid.length) return prev;
       if (valid.length) return valid;
       return [liveSlots[0].key];
     });
@@ -168,8 +169,8 @@ function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToChe
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState("");
   const { money } = useMoney(selectedZone ? { zoneId: selectedZone } : { vendorId });
-  const [lat, setLat] = useState(28.6139); // default
-  const [lng, setLng] = useState(77.2090);
+  const [lat, setLat] = useState(52.2297); // default: Warsaw
+  const [lng, setLng] = useState(21.0122);
   const [showMap, setShowMap] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
@@ -808,19 +809,16 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
       tags = ["Fresh Meals", "Daily Delivery"];
     }
 
-    const num = (vendor._id || vendor.id || "").toString().split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const matchPct = 85 + (num % 15);
+    const realRating = Number(vendor.ratings?.average || vendor.rating) || 0;
 
     return {
       id: vendor._id || vendor.id,
       name: vendor.restaurantName || vendor.name || "Meal Vendor",
       chefName: vendor.ownerName || "Chef",
       location: vendor.city || vendor.zone || "Local",
-      rating: (vendor.ratings?.average || vendor.rating || 4.5).toFixed(1),
+      rating: realRating > 0 ? realRating.toFixed(1) : null,
       tags,
       image: getPrimaryImage(vendor),
-      isBestMatch: matchPct >= 97,
-      matchPct,
       vendorData: vendor,
     };
   });
@@ -968,22 +966,10 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-                    {/* Badges */}
-                    <div className="absolute top-3 left-3 flex gap-1.5">
-                      {plan.isBestMatch && (
-                        <span className="bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide shadow">
-                          {t("⭐ Best Match")}
-                        </span>
-                      )}
-                      <span className="bg-white/95 backdrop-blur-sm text-primary text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow">
-                        {t("{{matchPct}}% match", { matchPct: plan.matchPct })}
-                      </span>
-                    </div>
-
-                    {/* Rating badge */}
+                    {/* Rating badge (a vendor with no reviews yet is shown as New, never a made-up score) */}
                     <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow">
                       <Star className="text-amber-400 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-                      <span className="text-[12px] font-extrabold text-[#1b1c1c]">{plan.rating}</span>
+                      <span className="text-[12px] font-extrabold text-[#1b1c1c]">{plan.rating ?? t("New")}</span>
                     </div>
 
                     {/* Vendor name on image */}

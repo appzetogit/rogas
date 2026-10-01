@@ -3,18 +3,19 @@ import { Search, Download, ChevronDown, DollarSign, Calendar, Filter, Loader2, F
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 const formatCurrency = (amount) => {
-  return `\u20B9${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `\u20B9${Number(amount || 0).toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-IN', { 
+  return date.toLocaleDateString(getCurrentLanguage(), { 
     day: '2-digit', 
     month: 'short', 
     year: 'numeric',

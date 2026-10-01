@@ -16,6 +16,7 @@ import deliverymanEarningIcon from "@food/assets/Transaction-report-icons/delive
 // Import search and export icons from Dashboard-icons
 import searchIcon from "@food/assets/Dashboard-icons/image8.png"
 import exportIcon from "@food/assets/Dashboard-icons/image9.png"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -166,7 +167,7 @@ export default function TransactionReport() {
   }
 
   const formatFullCurrency = (amount) => {
-    return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `\u20B9 ${amount.toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const getStatusBadgeClasses = (status) => {

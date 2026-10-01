@@ -4,6 +4,7 @@ import {
   FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock, Map
 } from "lucide-react"
 import { adminAPI, restaurantAPI } from "@food/api"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -1070,7 +1071,7 @@ export default function JoiningRequest() {
                                 <div>
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Expiry Date</p>
                                   <p className="font-medium text-slate-900">
-                                    {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString('en-IN', {
+                                    {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString(getCurrentLanguage(), {
                                       year: 'numeric',
                                       month: 'long',
                                       day: 'numeric'
@@ -1177,7 +1178,7 @@ export default function JoiningRequest() {
                             <div>
                               <p className="text-xs text-slate-500 mb-1">Registration Date & Time</p>
                               <p className="font-medium text-slate-900">
-                                {new Date(r.createdAt).toLocaleString('en-IN', {
+                                {new Date(r.createdAt).toLocaleString(getCurrentLanguage(), {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric',
@@ -1197,7 +1198,7 @@ export default function JoiningRequest() {
                         {r.approvedAt != null && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Approved At</p>
-                            <p className="font-medium text-slate-900">{new Date(r.approvedAt).toLocaleString('en-IN')}</p>
+                            <p className="font-medium text-slate-900">{new Date(r.approvedAt).toLocaleString(getCurrentLanguage())}</p>
                           </div>
                         )}
                         {r.businessModel && (
@@ -1236,7 +1237,7 @@ export default function JoiningRequest() {
                         <p className="text-sm text-red-800">{r.rejectionReason}</p>
                         {r.rejectedAt && (
                           <p className="text-xs text-red-600 mt-2">
-                            Rejected on: {new Date(r.rejectedAt).toLocaleString('en-IN')}
+                            Rejected on: {new Date(r.rejectedAt).toLocaleString(getCurrentLanguage())}
                           </p>
                         )}
                       </div>

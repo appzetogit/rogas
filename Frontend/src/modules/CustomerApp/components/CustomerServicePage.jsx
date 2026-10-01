@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import { tKey } from "../../../shared/i18n";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const STATUS_CONFIG = {
   pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50/80 border-amber-200/80', label: tKey("Pending") },
@@ -89,7 +90,7 @@ export default function CustomerServicePage() {
     }
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
   return (
     <div className="bg-[#F5F5F0] text-[#1b1c1c] min-h-screen pb-32 font-sans">

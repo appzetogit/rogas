@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/componen
 import { exportBonusToExcel, exportBonusToPDF } from "@food/components/admin/deliveryman/deliverymanExportUtils"
 import { adminAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -85,7 +86,7 @@ export default function DeliverymanBonus() {
           // Format transactions for display
           const formatted = response.data.data.transactions.map((t, index) => ({
             ...t,
-            createdAt: new Date(t.createdAt).toLocaleString('en-IN', {
+            createdAt: new Date(t.createdAt).toLocaleString(getCurrentLanguage(), {
               day: '2-digit',
               month: 'short',
               year: 'numeric',
@@ -168,7 +169,7 @@ export default function DeliverymanBonus() {
         if (transactionsResponse?.data?.data?.transactions) {
           const formatted = transactionsResponse.data.data.transactions.map((t, index) => ({
             ...t,
-            createdAt: new Date(t.createdAt).toLocaleString('en-IN', {
+            createdAt: new Date(t.createdAt).toLocaleString(getCurrentLanguage(), {
               day: '2-digit',
               month: 'short',
               year: 'numeric',

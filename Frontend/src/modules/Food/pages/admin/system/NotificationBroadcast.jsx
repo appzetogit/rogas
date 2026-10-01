@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BellRing, Loader2, Search, Send, Trash2 } from "lucide-react";
 import { adminAPI } from "@food/api";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const TARGET_OPTIONS = [
   { value: "ALL", label: "All" },
@@ -33,7 +34,7 @@ const normalizeRecipients = (response, ownerType, mapper) =>
 const toDateLabel = (value) => {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleString("en-IN", {
+  return date.toLocaleString(getCurrentLanguage(), {
     day: "2-digit",
     month: "short",
     year: "numeric",

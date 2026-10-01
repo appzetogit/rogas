@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { uploadDocumentApi, deactivateCompanyAccountApi } from '../services/officeApi';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const mapContainerStyle = {
   width: '100%',
@@ -152,7 +153,7 @@ export default function CompanyDetailsTab({
   };
 
   // Helper to render budget cap nicely
-  const formattedBudgetCap = new Intl.NumberFormat('en-IN', {
+  const formattedBudgetCap = new Intl.NumberFormat(getCurrentLanguage(), {
     style: 'currency',
     currency: 'INR',
     minimumFractionDigits: 2,
@@ -273,7 +274,7 @@ export default function CompanyDetailsTab({
                     {t("{{utilPercent}}% of budget utilized this month", { utilPercent })}
                   </p>
                   <p className="text-[10px] font-bold text-brand-primary">
-                    {new Intl.NumberFormat('en-IN', {
+                    {new Intl.NumberFormat(getCurrentLanguage(), {
                       style: 'currency',
                       currency: 'INR',
                       minimumFractionDigits: 2,

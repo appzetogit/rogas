@@ -464,7 +464,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order, onAssignD
               </div>
               {order.vatTax !== undefined && order.vatTax > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Tax (GST)</span>
+                  <span className="text-slate-600">Tax (VAT)</span>
                   <span className="font-medium text-slate-900">{formatCurrency(order.vatTax, order.currency)}</span>
                 </div>
               )}

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportTransactionsToExcel, exportTransactionsToPDF } from "@food/components/admin/transactions/transactionsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -150,7 +151,7 @@ export default function RestaurantWithdraws() {
     if (!dateString) return 'N/A'
     try {
       const date = new Date(dateString)
-      return date.toLocaleString('en-IN', {
+      return date.toLocaleString(getCurrentLanguage(), {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -165,7 +166,7 @@ export default function RestaurantWithdraws() {
 
   const formatCurrency = (amount) => {
     if (!amount) return '\u20B90.00'
-    return `\u20B9${parseFloat(amount).toLocaleString('en-IN', {
+    return `\u20B9${parseFloat(amount).toLocaleString(getCurrentLanguage(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })}`

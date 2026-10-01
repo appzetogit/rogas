@@ -30,11 +30,13 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
 
     // Try to fetch actual active subscription if selectedPlanDetails is missing (e.g. accessed from Profile)
     let planData = selectedPlanDetails;
+    let vendorData = selectedPlanDetails?.vendor || null;
     if (!planData) {
       try {
         const res = await dmbCustomerAPI.getMySubscriptions();
         if (res.data?.success && res.data.subscriptions?.length > 0) {
           const activeSub = res.data.subscriptions.find(s => s.status === 'active') || res.data.subscriptions[0];
+          vendorData = activeSub.vendorId;
           // Map it to match the expected structure
           planData = {
             mealPlan: {
@@ -42,10 +44,10 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               type: activeSub.duration || "Weekly"
             },
             startDate: activeSub.startDate,
-            endDate: activeSub.expiryDate,
+            endDate: activeSub.expiryDate || activeSub.endDate,
             days: activeSub.deliveryDays === 'full_week' ? 7 : 5,
             pricing: {
-              totalPrice: activeSub.amountPaid || activeSub.pricing?.totalPrice || 150.00
+              totalPrice: activeSub.pricing?.totalPrice ?? activeSub.amountPaid ?? 0
             }
           };
         }
@@ -88,12 +90,21 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
       ];
     }
 
+    const vendorName = vendorData?.restaurantName || vendorData?.name || "DailyMealBox Kitchen Partner";
+    const vendorContact = vendorData?.ownerPhone || vendorData?.phone || "";
+    const vendorAddress = vendorData?.location?.address || vendorData?.address || vendorData?.city || "Warsaw, Poland";
+    const vendorLines = [
+      vendorName,
+      vendorContact ? `Contact: ${vendorContact}` : null,
+      `Address: ${vendorAddress}`
+    ].filter(Boolean).join('\n');
+
     autoTable(doc, {
       startY: 45,
       theme: 'plain',
       head: [['Vendor Details', receiptType === 'vat' ? 'Company Details' : 'Customer Details']],
       body: [[
-        "Test home6\nContact: +48987654321\nAddress: Corporate House, 103,\nFilm Colony Rd, Flim Colony,\nChhoti Gwaltoli, Indore,\nMadhya Pradesh 452001, India",
+        vendorLines,
         customerLines.join('\n')
       ]],
       headStyles: { fillColor: false, textColor: [40, 121, 101], fontStyle: 'bold', fontSize: 12 },
@@ -107,7 +118,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
     const startDate = planData?.startDate ? new Date(planData.startDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
     const endDate = planData?.endDate ? new Date(planData.endDate).toLocaleDateString('en-GB') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB');
     const validityDays = planData?.days || 7;
-    const totalPrice = planData?.pricing?.totalPrice || 150.00;
+    const totalPrice = planData?.pricing?.totalPrice ?? 0;
 
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 15,

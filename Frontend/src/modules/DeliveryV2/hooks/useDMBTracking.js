@@ -5,9 +5,7 @@ import { dmbDeliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { useTranslation } from "react-i18next";
 
-const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL.replace(/\/v1$/, '')
-    : 'http://localhost:5000/api');
+import { API_BASE_URL } from '@/services/api/axios';
 const GPS_UPDATE_INTERVAL = 5000; // 5 seconds — matches admin panel refresh
 
 // Parse driver MongoDB _id from JWT token (same key used in Firebase delivery_boys/<id>)
@@ -138,7 +136,7 @@ export const useDMBTracking = () => {
     // ─── Go Online (API call) ──────────────────────────────────────────────────
     const goOnline = useCallback(async () => {
         try {
-            const res = await fetch(`${BACKEND_URL}/v1/dmb/driver/go-online`, {
+            const res = await fetch(`${API_BASE_URL}/dmb/driver/go-online`, {
                 method: 'PATCH',
                 headers: getAuthHeaders()
             });
@@ -162,7 +160,7 @@ export const useDMBTracking = () => {
     const goOffline = useCallback(async () => {
         try {
             stopTracking();
-            await fetch(`${BACKEND_URL}/v1/dmb/driver/go-offline`, {
+            await fetch(`${API_BASE_URL}/dmb/driver/go-offline`, {
                 method: 'PATCH',
                 headers: getAuthHeaders()
             });
@@ -211,14 +209,7 @@ export const useDMBTracking = () => {
                             t("Location Access Required: Please enable your device's GPS / Location services and allow location permission."),
                             { id: "gps-location-denied", duration: 8000 }
                         );
-
-                        // Fallback to Indore (for development/testing) so coordinates are not null
-                        const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0, speed: 0 };
-                        const { riderLocation } = useDeliveryStore.getState();
-                        if (!riderLocation) {
-                            useDeliveryStore.getState().setRiderLocation(fallbackPos);
-                            console.log("[DMBTracking] Geolocation failed/denied, falling back to Indore:", fallbackPos);
-                        }
+                        // No made-up fallback position: customers and admins would see the driver somewhere they are not.
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
                 );
@@ -226,9 +217,6 @@ export const useDMBTracking = () => {
             } else {
                 console.warn('[DMBTracking] Geolocation not supported');
                 alert(t("Geolocation is not supported by your device/browser."));
-                // Fallback to Indore (for development/testing)
-                const fallbackPos = { lat: 22.7196, lng: 75.8577, heading: 0, speed: 0 };
-                useDeliveryStore.getState().setRiderLocation(fallbackPos);
             }
         } else {
             stopTracking();

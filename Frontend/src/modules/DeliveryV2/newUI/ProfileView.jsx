@@ -4,6 +4,7 @@ import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, Chevro
 import { deliveryAPI } from "@food/api";
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const ProfileView = ({
   stats,
@@ -491,7 +492,7 @@ const ProfileView = ({
                     <p className="text-xs text-gray-600 leading-relaxed font-medium">"{item.comment}"</p>
                     {item.date && (
                       <span className="text-[9px] text-gray-400 block font-sans">
-                        {new Date(item.date).toLocaleDateString("en-IN", {
+                        {new Date(item.date).toLocaleDateString(getCurrentLanguage(), {
                           day: "numeric",
                           month: "short",
                           year: "numeric"

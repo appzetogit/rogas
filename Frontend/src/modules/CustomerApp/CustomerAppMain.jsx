@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
+import { API_BASE_URL, BACKEND_ORIGIN } from "@/services/api/axios";
 import { Home, ClipboardList, Calendar, ShoppingBag, User, LogOut } from "lucide-react";
 
 import { WelcomeScreen, GoalsScreen, DietPrefsScreen, LocationScreen, ManualLocationScreen } from "./components/OnboardingScreens";
@@ -50,8 +51,7 @@ export default function CustomerAppMain() {
 
   // Fetch App Config for Logo
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
-    fetch(`${backendUrl}/api/v1/app-config/user_app`)
+    fetch(`${API_BASE_URL}/app-config/user_app`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -64,8 +64,7 @@ export default function CustomerAppMain() {
   // Connect socket when user logs in; join subscription rooms
   useEffect(() => {
     if (!isLoggedIn) return;
-    const backendUrl = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
-    const sock = io(backendUrl, {
+    const sock = io(BACKEND_ORIGIN, {
       auth: { token: localStorage.getItem("user_accessToken") },
       transports: ["websocket", "polling"]
     });
@@ -212,7 +211,7 @@ export default function CustomerAppMain() {
   };
 
   // ─── App State ───────────────────────────────────────────────────────────────
-  const [points, setPoints] = useState(120);
+  const points = Number(currentUser?.loyaltyPoints) || 0;
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
 
@@ -346,7 +345,6 @@ export default function CustomerAppMain() {
   };
 
   const handleConfirmSubscription = () => {
-    setPoints((p) => p + 50);
     setTomorrowMeal((prev) => ({
       ...prev,
       name: selectedPlanDetails?.mealPlanName || prev.name,

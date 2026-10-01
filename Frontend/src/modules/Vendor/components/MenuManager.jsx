@@ -8,6 +8,7 @@ import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
 import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle } from 'lucide-react';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { Trans, useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const toLocalDateStr = (d) => {
   if (!d) return "";
@@ -168,7 +169,7 @@ export default function MenuManager({
 
       const res = await dmbVendorAPI.saveDailyMenu(payload);
       if (res.data?.success) {
-        triggerToast(t("Scheduled \"{{name}}\" for {{targetDate}} [{{slot}}]! ✓", { name: selectedMeal.name, targetDate: targetDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), slot }));
+        triggerToast(t("Scheduled \"{{name}}\" for {{targetDate}} [{{slot}}]! ✓", { name: selectedMeal.name, targetDate: targetDate.toLocaleDateString(getCurrentLanguage(), { day: 'numeric', month: 'short' }), slot }));
         await fetchDailyMenus();
         setMealSelectorOpenPlan(null);
       } else {
@@ -640,7 +641,7 @@ export default function MenuManager({
                     {/* Header row */}
                     <div className="flex justify-between items-center pt-2">
                       <h2 className="text-[15px] font-extrabold text-on-surface">
-                        {activeDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+                        {activeDate.toLocaleDateString(getCurrentLanguage(), { weekday: 'long', day: 'numeric', month: 'short' })}
                       </h2>
                     </div>
 
@@ -1217,7 +1218,7 @@ export default function MenuManager({
               <ArrowLeft />
             </button>
             <h2 className="text-[15px] font-semibold truncate max-w-[240px]">
-              {t("Schedule: {{selectedDateForSchedule}}", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) })}
+              {t("Schedule: {{selectedDateForSchedule}}", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString(getCurrentLanguage(), { day: 'numeric', month: 'short' }) })}
             </h2>
             <div className="w-6"></div>
           </div>
@@ -1227,7 +1228,7 @@ export default function MenuManager({
               <h3 className="text-[12px] text-outline uppercase font-bold tracking-wider">{t("Meal Plan")}</h3>
               <p className="text-[14px] font-extrabold text-primary mt-0.5">{selectedMealForSchedule.name}</p>
               <p className="text-[11px] text-on-surface-variant font-medium mt-1">
-                {t("Customize what you are cooking for this plan on {{selectedDateForSchedule}}.", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) })}
+                {t("Customize what you are cooking for this plan on {{selectedDateForSchedule}}.", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString(getCurrentLanguage(), { weekday: 'long', day: 'numeric', month: 'long' }) })}
               </p>
             </div>
 
@@ -1425,7 +1426,7 @@ export default function MenuManager({
               <div>
                 <h3 className="font-extrabold text-[16px] text-on-surface">{t("Select Meal")}</h3>
                 <p className="text-[11px] text-outline mt-0.5 font-medium">
-                  {t("For {{selectedDateForSchedule}} [{{selectedSlotForSchedule}}]", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }), selectedSlotForSchedule })}
+                  {t("For {{selectedDateForSchedule}} [{{selectedSlotForSchedule}}]", { selectedDateForSchedule: selectedDateForSchedule?.toLocaleDateString(getCurrentLanguage(), { weekday: 'long', day: 'numeric', month: 'short' }), selectedSlotForSchedule })}
                 </p>
               </div>
               <button

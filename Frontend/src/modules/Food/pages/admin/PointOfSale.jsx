@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, TrendingUp, TrendingDown, DollarSign, ShoppingCart, XCircle, Star, Calendar, BarChart3, Users, Award, Package } from 'lucide-react'
 import { adminAPI } from '@food/api'
+import { getCurrentLanguage } from "@/shared/i18n";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -317,11 +318,11 @@ export default function PointOfSale() {
   }
 
   const formatCurrency = (amount) => {
-    return `\u20B9 ${amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+    return `\u20B9 ${amount?.toLocaleString(getCurrentLanguage(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
   }
 
   const formatNumber = (num) => {
-    return num?.toLocaleString('en-IN') || '0'
+    return num?.toLocaleString(getCurrentLanguage()) || '0'
   }
 
   const getSelectedRestaurantName = () => {
@@ -717,7 +718,7 @@ export default function PointOfSale() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-[#8a94aa]">Join Date</span>
                     <span className="text-sm font-semibold text-[#334257]">
-                      {new Date(analyticsData.joinDate).toLocaleDateString('en-IN', {
+                      {new Date(analyticsData.joinDate).toLocaleDateString(getCurrentLanguage(), {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'

@@ -49,7 +49,7 @@ function NewDeliveryDashboard({ children }) {
   useEffect(() => {
     const fetchAppConfig = async () => {
       try {
-        const response = await apiClient.get("/api/v1/app-config/delivery_app");
+        const response = await apiClient.get("/app-config/delivery_app");
         if (response.data?.success && response.data?.data?.logoUrl) {
           setAppLogo(response.data.data.logoUrl);
         }

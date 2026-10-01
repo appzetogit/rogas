@@ -13,10 +13,8 @@ export const getAppConfigByName = async (req, res) => {
     try {
         const { appName } = req.params;
         const config = await AppConfig.findOne({ appName });
-        if (!config) {
-            return res.status(404).json({ success: false, message: 'Config not found' });
-        }
-        res.status(200).json({ success: true, data: config });
+        // An app nobody has branded yet is a normal state, not an error: the apps fall back to their defaults.
+        res.status(200).json({ success: true, data: config || null });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server Error', error: error.message });
     }

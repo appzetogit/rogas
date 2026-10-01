@@ -3,6 +3,7 @@ import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
 import { Receipt } from 'lucide-react';
 import { formatCurrency } from '@food/utils/currency';
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const STATUS_COLORS = {
   paid:     { bg: '#dcfce7', text: '#15803d', dot: '#16a34a', label: 'Paid' },
@@ -15,7 +16,7 @@ const DURATION_MAP = { week: 'Weekly', month: 'Monthly', day: 'Daily' };
 
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export default function OfficePayments() {
@@ -157,7 +158,7 @@ export default function OfficePayments() {
                       {sc.label}
                     </span>
                   </div>
-                  <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, alignSelf: 'center' }}>{new Date(p.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}</p>
+                  <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, alignSelf: 'center' }}>{new Date(p.createdAt).toLocaleDateString(getCurrentLanguage(), { day:'2-digit', month:'short' })}</p>
                 </div>
               );
             })}

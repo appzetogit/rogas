@@ -7,6 +7,7 @@ import useDeliverySlots, { fetchDeliverySlots, to12h } from "../../../shared/hoo
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import { tKey } from "../../../shared/i18n";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 // ─── Constants (module-level, never re-created) ───────────────────────────────
 // Slot labels/timings come from admin-configured delivery slots (see useDeliverySlots)
@@ -222,10 +223,12 @@ const OrderCard = memo(function OrderCard({
         )}
       </h4>
 
-      {/* Customer Name */}
+      {/* Vendor Name */}
       <div className="flex items-center gap-1.5 mb-4">
-        <User className="text-[16px] text-[#5c6e68]" />
-        <span className="text-[14px] text-[#5c6e68]">{order.userId?.name || tr("Maria K.")}</span>
+        <UtensilsCrossed className="text-[16px] text-[#5c6e68]" />
+        <span className="text-[14px] text-[#5c6e68]">
+          {order.vendor?.name || order.vendorId?.restaurantName || tr("Kitchen Partner")}
+        </span>
       </div>
 
       <div className="h-[1px] bg-[#f0eded] w-full mb-3" />
@@ -597,7 +600,7 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
 
   // ─── Stable date formatters ───────────────────────────────────────────────
   const formatDate = useCallback((date) =>
-    new Date(date).toLocaleDateString("en-IN", {
+    new Date(date).toLocaleDateString(getCurrentLanguage(), {
       weekday: "short", day: "numeric", month: "short",
     }), []);
 

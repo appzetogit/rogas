@@ -147,8 +147,8 @@ export const RoutesMap = ({ stops = [] }) => {
     }, 50);
   };
 
-  // Default center: Indore, India
-  const defaultCenter = { lat: 22.7196, lng: 75.8577 };
+  // Default center: Warsaw
+  const defaultCenter = { lat: 52.2297, lng: 21.0122 };
 
   // Parse stops coordinates and offset duplicates slightly so they don't overlap completely
   const stopsData = useMemo(() => {

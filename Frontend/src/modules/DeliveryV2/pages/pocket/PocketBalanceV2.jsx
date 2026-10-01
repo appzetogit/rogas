@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { formatCurrency } from '@food/utils/currency';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 /**
  * PocketBalanceV2 - 1:1 Match with Old PocketBalance Page.
@@ -83,7 +84,7 @@ export const PocketBalanceV2 = () => {
                const updatedAt = withdrawalTx.processedAt || withdrawalTx.updatedAt || withdrawalTx.createdAt || null;
                setWithdrawalStatus({
                   status: statusLabel,
-                  updatedAt: updatedAt ? new Date(updatedAt).toLocaleString('en-IN', {
+                  updatedAt: updatedAt ? new Date(updatedAt).toLocaleString(getCurrentLanguage(), {
                      day: '2-digit',
                      month: 'short',
                      year: 'numeric',

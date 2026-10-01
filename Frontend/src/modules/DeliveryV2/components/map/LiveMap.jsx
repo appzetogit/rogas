@@ -263,7 +263,7 @@ export const LiveMap = ({ onMapClick, onMapLoad, onPathReceived, onPolylineRecei
     travelMode: 'DRIVING',
   } : null;
 
-  const defaultCenter = { lat: 22.7196, lng: 75.8577 }; // Center on Indore as fallback
+  const defaultCenter = { lat: 52.2297, lng: 21.0122 }; // Warsaw until the driver's GPS fix arrives
 
   return (
     <div className="absolute inset-0 z-0 text-gray-900 overflow-hidden flex flex-col">

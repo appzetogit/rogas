@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Calendar, Clock, MapPin, Package, Check, X, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 export default function DeliveryRidesPage() {
   const { t } = useTranslation("driver");
@@ -39,7 +40,7 @@ export default function DeliveryRidesPage() {
     }
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   return (
     <div className="min-h-screen bg-slate-50/50">

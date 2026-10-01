@@ -16,6 +16,7 @@ import { deliveryAPI } from "@food/api";
 import { motion, AnimatePresence } from "framer-motion";
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation";
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 export const PocketDetailsV2 = () => {
   const { t } = useTranslation("driver");
@@ -187,7 +188,7 @@ export const PocketDetailsV2 = () => {
                        <div>
                           <div className="flex items-center gap-2 mb-0.5">
                              <h4 className="text-sm font-black text-[#2B2B2B] uppercase tracking-tight">#{oid.toString().slice(-6)}</h4>
-                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">• {new Date(order.deliveredAt || order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">• {new Date(order.deliveredAt || order.createdAt).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short' })}</span>
                           </div>
                           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate max-w-[140px]">
                             {order.restaurantName || order.restaurantId?.name || t("Premium Restaurant")}

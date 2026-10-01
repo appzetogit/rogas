@@ -138,7 +138,8 @@ export const applyDynamicTheme = async (forceRefetch = false) => {
     const fetchedConfigs = {};
 
     results.forEach((response, index) => {
-      const activeConfig = response?.data?.data || response?.data;
+      const body = response?.data;
+      const activeConfig = body && typeof body === 'object' && 'success' in body ? body.data : body;
       if (activeConfig) {
         fetchedConfigs[apps[index]] = activeConfig;
       }

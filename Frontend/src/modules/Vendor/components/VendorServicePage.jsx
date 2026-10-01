@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { useTranslation } from "react-i18next";
 import { tKey } from "../../../shared/i18n";
+import { getCurrentLanguage } from "@/shared/i18n";
 
 const STATUS_CONFIG = {
   pending: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: tKey("Pending") },
@@ -76,7 +77,7 @@ export default function VendorServicePage() {
     }
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString(getCurrentLanguage(), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   return (
     <div className="min-h-screen bg-slate-50/50">
