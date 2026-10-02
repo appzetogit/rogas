@@ -113,6 +113,13 @@ const RouteView = ({
 
     return (
         <div className="space-y-4 pb-12 animate-fadeIn text-left">
+            {/* Gap AL: cold meals on this route → insulated bag (shown once per route) */}
+            {routeMetadata?.hasColdMeals && (
+                <div className="flex items-center gap-3 rounded-2xl border border-sky-300 bg-sky-50 px-4 py-3 text-sky-900">
+                    <span className="text-xl">❄️</span>
+                    <p className="text-[13px] font-bold">{t("Cold meals in today's route — use insulated bag")}</p>
+                </div>
+            )}
             {/* Route Info Bento Grid */}
             <div className="grid grid-cols-2 gap-3">
                 {/* Vendor and Slot details */}
@@ -181,6 +188,7 @@ const RouteView = ({
                                 </span>
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 leading-tight">{currentStop?.name || t("No Name")}</h2>
+                            {currentStop?.isFamilyBox && <p className="text-[11px] font-bold text-violet-700 mt-0.5">{t("Family Box × {{n}} sets", { n: currentStop.setCount || 1 })}</p>}
                             <p className="text-xs text-[#5d5f5b] mt-0.5">{currentStop?.address || t("No Address")}</p>
                         </div>
 
@@ -293,6 +301,12 @@ const RouteView = ({
                                         </span>
                                     </div>
                                     <p className="text-xs text-[#3e4945] mt-0.5">{stop.address}</p>
+                                    {(stop.isFamilyBox || stop.hasColdMeal) && (
+                                        <div className="flex gap-1.5 mt-1">
+                                            {stop.isFamilyBox && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">{t("Family Box × {{n}} sets", { n: stop.setCount || 1 })}</span>}
+                                            {stop.hasColdMeal && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">{t("❄️ Cold")}</span>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <ChevronRight className="w-5 h-5 text-[#bec9c3]" />

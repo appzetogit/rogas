@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CalendarCheck, Clock, Loader2 } from 'lucide-react';
-import { dmbDeliveryAPI } from '@food/api';
+import { dmbDeliveryAPI, dmbExtraDriverAPI } from '@food/api';
 import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../hooks/useDeliveryBackNavigation';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,8 @@ const STATUS_STYLE = {
   scheduled: { dot: 'bg-gray-300', text: 'text-gray-600', bg: 'bg-gray-50' },
   confirmed: { dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' },
   completed: { dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50' },
-  no_show: { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' }
+  no_show: { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' },
+  holiday: { dot: 'bg-rose-400', text: 'text-rose-700', bg: 'bg-rose-50' }
 };
 
 const formatDate = (d) => new Date(d).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
@@ -24,6 +25,7 @@ export const ShiftsV2 = () => {
   const [loading, setLoading] = useState(true);
   const [shifts, setShifts] = useState([]);
   const [confirmingId, setConfirmingId] = useState(null);
+  const [settings, setSettings] = useState({ confirmationRequired: false, unconfirmLockHours: 2 });
 
   const load = async () => {
     try {
@@ -38,6 +40,24 @@ export const ShiftsV2 = () => {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    dmbExtraDriverAPI.shiftSettings().then((res) => setSettings(res.data)).catch(() => {});
+  }, []);
+
+  // GAP Z: a confirmed shift can be released until 2 hours before it starts; later the driver must call support.
+  const handleUnconfirm = async (shift) => {
+    if (!window.confirm(t('Release this shift? Dispatch will look for another driver.'))) return;
+    try {
+      setConfirmingId(shift._id);
+      await dmbExtraDriverAPI.unconfirmShift(shift._id);
+      setShifts((prev) => prev.map((s) => (s._id === shift._id ? { ...s, status: 'scheduled', confirmedAt: null } : s)));
+      toast.success(t('Shift released'));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || t('Could not release this shift'));
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const handleConfirm = async (shift) => {
     try {
@@ -53,7 +73,7 @@ export const ShiftsV2 = () => {
   };
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const upcoming = shifts.filter((s) => new Date(s.date) >= today && (s.status === 'scheduled' || s.status === 'confirmed'));
+  const upcoming = shifts.filter((s) => new Date(s.date) >= today && ['scheduled', 'confirmed', 'holiday'].includes(s.status));
   const history = shifts.filter((s) => s.status === 'completed' || s.status === 'no_show');
 
   const statusLabel = (status) => {
@@ -61,6 +81,7 @@ export const ShiftsV2 = () => {
       case 'confirmed': return t('Confirmed');
       case 'completed': return t('Completed');
       case 'no_show': return t('No-show');
+      case 'holiday': return t('Holiday');
       default: return t('Upcoming');
     }
   };
@@ -76,6 +97,9 @@ export const ShiftsV2 = () => {
             <p className="text-xs text-gray-500 font-medium">
               {formatDate(shift.date)}{shift.slot?.startTime ? ` • ${shift.slot.startTime}-${shift.slot.endTime}` : ''}
             </p>
+            {shift.status === 'holiday' && <p className="text-[11px] text-rose-700 font-bold">{t('Platform holiday: {{name}} — no deliveries', { name: shift.holidayName || '' })}</p>}
+            {shift.status === 'confirmed' && showConfirm && !shift.canUnconfirm && <p className="text-[11px] text-gray-500">{t('Less than {{h}} hours to start — call support if you cannot come', { h: settings.unconfirmLockHours || 2 })}</p>}
+            {shift.status === 'completed' && shift.minGuaranteeEligible && <p className="text-[11px] text-emerald-700 font-bold">{t('Counts for the minimum guarantee')}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -83,6 +107,15 @@ export const ShiftsV2 = () => {
             <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
             {statusLabel(shift.status)}
           </span>
+          {showConfirm && shift.status === 'confirmed' && shift.canUnconfirm && (
+            <button
+              onClick={() => handleUnconfirm(shift)}
+              disabled={confirmingId === shift._id}
+              className="border border-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-60"
+            >
+              {t("Can't make it")}
+            </button>
+          )}
           {showConfirm && shift.status === 'scheduled' && (
             <button
               onClick={() => handleConfirm(shift)}
@@ -113,6 +146,11 @@ export const ShiftsV2 = () => {
         </div>
       ) : (
         <div className="px-4 py-6 space-y-6">
+          {settings.confirmationRequired && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
+              {t('Please confirm each shift at least 24 hours before it starts. Unconfirmed shifts may be given to another driver.')}
+            </div>
+          )}
           <div>
             <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1 flex items-center gap-1.5">
               <CalendarCheck className="w-3.5 h-3.5" /> {t('Upcoming')}

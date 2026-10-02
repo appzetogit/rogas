@@ -26,6 +26,7 @@ import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
 import { fetchDeliverySlots, getCachedSlots } from "../../../shared/hooks/useDeliverySlots";
 import { useTranslation } from "react-i18next";
+import LegalAcceptanceGate from "../../../shared/components/LegalAcceptanceGate";
 
 const dropBeforeFor = (slotKey) => {
   const def = getCachedSlots().find((x) => x.key === slotKey);
@@ -228,7 +229,13 @@ function NewDeliveryDashboard({ children }) {
             dropTimeStr: dropBeforeFor(o.deliverySlot),
             pickedUpAt: o.pickedUpAt,
             vendorId: o.vendorId?._id || o.vendorId || null,
-            slot: o.deliverySlot || null
+            slot: o.deliverySlot || null,
+            // Amendment v2 Extra: order number, Pantry vs meal box (Gap P), Family Box set count (AF), cold meal (AL)
+            orderNumber: o.orderId || '',
+            type: o.type === 'pantry' ? 'pantry' : 'dmb',
+            isFamilyBox: Boolean(o.isFamilyBox),
+            setCount: o.setCount || 1,
+            hasColdMeal: Boolean(o.hasColdMeal)
           }));
           setOrders(prev => {
             const lockedId = selectedOrderIdRef.current;
@@ -250,7 +257,9 @@ function NewDeliveryDashboard({ children }) {
             slotType: res.data.slotType || '',
             totalMealBoxCount: res.data.totalMealBoxCount || 0,
             stopsCount: res.data.stopsCount || 0,
-            deliveryDeadline: res.data.deliveryDeadline || null
+            deliveryDeadline: res.data.deliveryDeadline || null,
+            hasColdMeals: Boolean(res.data.hasColdMeals),
+            coldBagNotice: res.data.coldBagNotice || null
           });
         } else {
           setOrders(prev => {
@@ -587,6 +596,7 @@ function NewDeliveryDashboard({ children }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F5F0] font-sans relative">
+      <LegalAcceptanceGate panel="driver" />
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-[260px] bg-[#006a5c] text-white h-full flex-shrink-0 shadow-xl z-50">
         <div className="px-6 py-6 flex justify-start pl-8">
