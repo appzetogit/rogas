@@ -95,7 +95,7 @@ export function QuoteSummary({ quote, loading, error, compact = false }) {
     <div className={`bg-[#1F7A63]/5 rounded-2xl p-4 border border-primary/20 space-y-2 text-[13px] ${loading ? "opacity-60" : ""}`}>
       {!compact && (
         <div className="flex justify-between text-[#6e7a74]">
-          <span>{t("{{cycle}} plan · {{count}} delivery days", { cycle: cycleLabel, count: quote.deliveryDates })}</span>
+          <span>{t("{{cycle}} plan · {{n}} delivery days", { cycle: cycleLabel, n: quote.deliveryDates })}</span>
           <span className="font-semibold">{fmtDate(quote.startDate)} – {fmtDate(quote.endDate)}</span>
         </div>
       )}
