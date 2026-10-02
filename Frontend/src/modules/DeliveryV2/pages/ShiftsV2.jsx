@@ -73,7 +73,10 @@ export const ShiftsV2 = () => {
   };
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const upcoming = shifts.filter((s) => new Date(s.date) >= today && ['scheduled', 'confirmed', 'holiday'].includes(s.status));
+  // Soonest first (the server lists newest first, which suits the history below but not what's coming up).
+  const upcoming = shifts
+    .filter((s) => new Date(s.date) >= today && ['scheduled', 'confirmed', 'holiday'].includes(s.status))
+    .sort((a, b) => new Date(a.date) - new Date(b.date) || String(a.slot?.startTime || '').localeCompare(String(b.slot?.startTime || '')));
   const history = shifts.filter((s) => s.status === 'completed' || s.status === 'no_show');
 
   const statusLabel = (status) => {

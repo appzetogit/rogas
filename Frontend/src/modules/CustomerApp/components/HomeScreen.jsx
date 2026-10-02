@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { IMAGES } from "../types";
-import { dmbCustomerAPI } from "@food/api";
+import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
 import { useTranslation } from "react-i18next";
@@ -84,6 +84,10 @@ export function HomeScreen({
   const [selectedMealIds, setSelectedMealIds] = useState([]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [pauseDays, setPauseDays] = useState(1);
+  // Subscribers whose next delivery is further out than tomorrow (weekend, a start date next week): the
+  // today/tomorrow cards are empty, so the header and card come from the delivery calendar instead.
+  // undefined = still checking, so the "Start Your Meal Plan" card doesn't flash for subscribers.
+  const [upcoming, setUpcoming] = useState(undefined);
 
   // ─── Fetch meals from API ────────────────────────────────────────────────
   const loadTodayMeals = useCallback(async ({ bustCache = false } = {}) => {
@@ -284,6 +288,33 @@ export function HomeScreen({
   const filteredTodayMeal = todayMeal;
   const filteredTomorrowMealData = tomorrowMealData;
 
+  useEffect(() => {
+    if (loading || todayMeal || tomorrowMealData) {
+      setUpcoming(null);
+      return undefined;
+    }
+    let alive = true;
+    dmbExtraCustomerAPI
+      .calendar()
+      .then((res) => {
+        if (!alive) return;
+        const subs = res.data?.subscriptions || [];
+        const next = subs
+          .flatMap((s) => (s.days || []).filter((d) => d.slots?.length).map((d) => ({ date: d.date, slot: d.slots[0] })))
+          .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+        setUpcoming({ hasSubscription: subs.length > 0, paused: subs.length > 0 && subs.every((s) => s.status === "paused"), next });
+      })
+      .catch(() => {
+        if (alive) setUpcoming({ hasSubscription: false, paused: false, next: null });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [loading, todayMeal, tomorrowMealData]);
+
+  const nextDayLabel = (date) =>
+    new Date(`${date}T12:00:00`).toLocaleDateString(getCurrentLanguage(), { weekday: "long", day: "numeric", month: "short" });
+
   // ─── Render helpers ───────────────────────────────────────────────────────
   const renderTomorrowMealPreviewCard = (meal) => {
     if (!meal) return null;
@@ -420,7 +451,9 @@ export function HomeScreen({
             <p className="text-[14px] opacity-90 font-medium">
               {filteredTomorrowMealData
                 ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "long" }) })
-                : t("No upcoming deliveries")}
+                : upcoming?.next
+                  ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName, date: nextDayLabel(upcoming.next.date) })
+                  : t("No upcoming deliveries")}
             </p>
           </div>
           <button
@@ -470,7 +503,30 @@ export function HomeScreen({
             {filteredTodayMeal && renderMealCard(filteredTodayMeal, t("Today's Delivery"), true)}
             {filteredTomorrowMealData && renderMealCard(filteredTomorrowMealData, t("Tomorrow's Delivery"), false)}
 
-            {!filteredTodayMeal && !filteredTomorrowMealData && (
+            {!filteredTodayMeal && !filteredTomorrowMealData && upcoming?.hasSubscription && (
+              <section
+                onClick={onGoToCalendar}
+                className="bg-white rounded-2xl p-5 border-l-4 border-primary-container shadow-md cursor-pointer hover:shadow-lg transition-all"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl">📅</span>
+                  <h2 className="text-[17px] font-extrabold text-on-surface">{t("Your meal plan is all set")}</h2>
+                </div>
+                <p className="text-[14px] text-on-surface-variant font-medium mb-4">
+                  {upcoming.paused
+                    ? t("This subscription is paused — no deliveries until you resume it.")
+                    : upcoming.next
+                      ? t("Next delivery: {{date}} · {{slot}} · {{vendor}}", { date: nextDayLabel(upcoming.next.date), slot: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName, vendor: upcoming.next.slot.vendorName })
+                      : t("No upcoming deliveries")}
+                </p>
+                <div className="flex items-center gap-2 text-primary font-bold text-[14px]">
+                  <span>{t("Open calendar")}</span>
+                  <ArrowRight className="text-[18px]" />
+                </div>
+              </section>
+            )}
+
+            {!filteredTodayMeal && !filteredTomorrowMealData && upcoming !== undefined && !upcoming?.hasSubscription && (
               <section
                 onClick={onGoToPlans}
                 className="bg-white rounded-2xl p-5 border-l-4 border-primary-container shadow-md cursor-pointer hover:shadow-lg transition-all"

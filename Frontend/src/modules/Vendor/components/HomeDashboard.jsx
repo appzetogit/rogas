@@ -9,6 +9,7 @@ import { dmbVendorAPI } from '../../../services/api';
 import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPin, ArrowRight, CheckCircle, BarChart, ChefHat } from 'lucide-react';
 import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "../../../shared/i18n";
 
 export default function HomeDashboard({
   profile,
@@ -169,7 +170,7 @@ export default function HomeDashboard({
               </span>
               <div>
                 <h1 className="text-xl md:text-2xl font-black tracking-tight">{t("Good morning,")} {profile.name.split(' ')[0]}</h1>
-                <p className="text-xs text-white/80 font-medium">{t("Monday · 22 May 2026")}</p>
+                <p className="text-xs text-white/80 font-medium">{new Date().toLocaleDateString(getCurrentLanguage(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
               </div>
             </div>
 

@@ -211,7 +211,7 @@ export function SecurityPage() {
           <Card title="In transit">
             <Row okv={data.inTransit.httpsRedirect} label="HTTP → HTTPS redirect" detail={data.inTransit.note} />
             <Row okv={data.inTransit.hsts} label="HSTS header" detail="max-age 1 year, includeSubDomains, preload (production)" />
-            <Row okv={data.inTransit.apiPublicUrlHttps !== false} label="Public API URL uses https" detail={data.inTransit.apiPublicUrlHttps === null ? "API_PUBLIC_URL not set" : ""} />
+            <Row okv={data.inTransit.apiPublicUrlHttps === true} label="Public API URL uses https" detail={data.inTransit.apiPublicUrlHttps === null ? "API_PUBLIC_URL not set — invoice PDF links are left out of emails until it is" : data.inTransit.apiPublicUrlHttps ? "" : "API_PUBLIC_URL must start with https://"} />
             <Row okv={data.inTransit.httpsRedirect} label="WebSockets" detail={data.inTransit.websocket} />
           </Card>
           <Card title="At rest">

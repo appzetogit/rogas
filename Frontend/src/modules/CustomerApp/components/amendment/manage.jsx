@@ -326,7 +326,7 @@ export function SubscriptionActions({ subscription, onNavigate, onShowToast, onC
       )}
       {detail?.cancelAt && <Notice tone="warn">{t("This subscription ends on {{date}}.", { date: fmtDay(detail.cancelAt, { day: "numeric", month: "long" }) })}</Notice>}
       {pending && <Notice tone="info">{t("A change is scheduled from {{date}}.", { date: fmtDay(detail.planChangePending.effectiveDate, { day: "numeric", month: "long" }) })}</Notice>}
-      {detail?.zoneMismatch && <Notice tone="warn">{t("Your maker doesn't deliver to your new address. Switch maker to keep your deliveries.")}</Notice>}
+      {detail?.zoneMismatch?.detected && <Notice tone="warn">{t("Your maker doesn't deliver to your new address. Switch maker to keep your deliveries.")}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
       <div className="grid grid-cols-2 gap-2">
         <ActionButton icon={ArrowUpDown} label={t("Change plan")} disabled={Boolean(pending)} onClick={() => onNavigate(`/user/subscription/${id}/change?type=change_plan`)} />
