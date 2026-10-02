@@ -8,11 +8,12 @@ import { config } from '../../../config/env.js';
  */
 
 export const ENCRYPTED_FIELDS = [
-    { model: 'FoodUser', collection: 'food_users', paths: ['addresses.street', 'addresses.additionalDetails', 'addresses.zipCode', 'addresses.phone'], label: 'Customer addresses' },
+    { model: 'FoodUser', collection: 'food_users', paths: ['addresses.street', 'addresses.additionalDetails', 'addresses.zipCode', 'addresses.phone', 'whatsappNumber'], label: 'Customer addresses & WhatsApp number' },
     { model: 'FoodDeliveryPartner', collection: 'food_delivery_partners', paths: ['bankAccountNumber', 'bankIban'], label: 'Driver bank details' },
     { model: 'FoodRestaurant', collection: 'food_restaurants', paths: ['accountNumber'], label: 'Vendor bank account' },
     { model: 'FleetPartner', collection: 'fleet_partners', paths: ['bankIban'], label: 'Fleet partner bank details' },
-    { model: 'KitchenPartner', collection: null, paths: ['bankDetails'], label: 'Kitchen partner bank details' }
+    { model: 'KitchenPartner', collection: null, paths: ['bankDetails'], label: 'Kitchen partner bank details' },
+    { model: 'DMBWhatsAppLog', collection: 'dmb_whatsapp_logs', paths: ['to'], label: 'WhatsApp invoice recipients' }
 ];
 
 const keyStatus = () => {

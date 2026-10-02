@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { encryptField, safeDecrypt, isEncrypted } from './fieldCrypto.js';
+import { encryptField, safeDecrypt, isEncrypted, decryptField, needsReencryption, activeKeyId } from './fieldCrypto.js';
 
 /**
  * Mongoose plugin: application-level AES-256-GCM encryption of individual string fields (GDPR Art. 32, Gap N).
@@ -73,39 +73,56 @@ export const encryptedSubFields = (subSchema, { paths = [] } = {}) => {
     subSchema.set('toObject', { ...(subSchema.get('toObject') || {}), getters: true, virtuals: false });
 };
 
-/** One-off migration: encrypts plaintext values already stored (raw collection writes, idempotent). */
+/**
+ * Start-up migration (raw collection writes, idempotent, safe with several instances): encrypts plaintext values
+ * already stored, and re-encrypts values written with an older key after PII_ENCRYPTION_KEY was rotated. A value no
+ * configured key can decrypt is left alone (and logged by the readers).
+ */
 export const encryptExistingValues = async (Model, paths, { batch = 500 } = {}) => {
     const coll = Model.collection;
     let updated = 0;
     const topLevel = paths.filter((p) => !p.includes('.'));
     const nested = paths.filter((p) => p.includes('.'));
+    // Plaintext, or encrypted under any key id other than the current one.
+    const stale = new RegExp(`^enc:v1:${activeKeyId()}:`);
+    const pending = { $type: 'string', $nin: ['', null], $not: stale };
     const or = [
-        ...topLevel.map((p) => ({ [p]: { $type: 'string', $nin: ['', null], $not: /^enc:v1:/ } })),
+        ...topLevel.map((p) => ({ [p]: pending })),
         ...nested.map((p) => {
             const [arr, field] = p.split('.');
-            return { [arr]: { $elemMatch: { [field]: { $type: 'string', $ne: '', $not: /^enc:v1:/ } } } };
+            return { [arr]: { $elemMatch: { [field]: { $type: 'string', $ne: '', $not: stale } } } };
         })
     ];
     if (!or.length) return { updated };
+    const next = (v) => {
+        if (typeof v !== 'string' || !v) return null;
+        if (!isEncrypted(v)) return encryptField(v);
+        if (!needsReencryption(v)) return null;
+        try {
+            return encryptField(decryptField(v));
+        } catch {
+            return null;
+        }
+    };
     const cursor = coll.find({ $or: or }).batchSize(batch);
     for await (const doc of cursor) {
         const set = {};
         const unchanged = { _id: doc._id };
         for (const p of topLevel) {
-            const v = doc[p];
-            if (typeof v === 'string' && v && !isEncrypted(v)) {
-                set[p] = encryptField(v);
-                unchanged[p] = v;
+            const enc = next(doc[p]);
+            if (enc) {
+                set[p] = enc;
+                unchanged[p] = doc[p];
             }
         }
         for (const p of nested) {
             const [arr, field] = p.split('.');
             if (!Array.isArray(doc[arr])) continue;
             doc[arr].forEach((item, i) => {
-                const v = item?.[field];
-                if (typeof v === 'string' && v && !isEncrypted(v)) {
-                    set[`${arr}.${i}.${field}`] = encryptField(v);
-                    unchanged[`${arr}.${i}.${field}`] = v;
+                const enc = next(item?.[field]);
+                if (enc) {
+                    set[`${arr}.${i}.${field}`] = enc;
+                    unchanged[`${arr}.${i}.${field}`] = item[field];
                 }
             });
         }

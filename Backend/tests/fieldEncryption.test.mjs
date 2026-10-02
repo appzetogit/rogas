@@ -107,3 +107,42 @@ test('security status reports coverage without leaking values', async () => {
     assert.ok(street.encrypted >= 4);
     assert.ok(!JSON.stringify(status).includes(process.env.PII_ENCRYPTION_KEY));
 });
+
+test('key rotation: old values stay readable with PII_ENCRYPTION_KEY_PREVIOUS and the migration moves them to the new key', async () => {
+    const { encryptExistingValues } = await import('../src/utils/encryptedFields.plugin.js');
+    const { activeKeyId, encryptField } = await import('../src/utils/fieldCrypto.js');
+    const coll = mongoose.connection.collection('food_users');
+    const paths = ['addresses.street', 'addresses.additionalDetails', 'addresses.zipCode', 'addresses.phone', 'whatsappNumber'];
+    const keyA = process.env.PII_ENCRYPTION_KEY;
+    const keyB = Buffer.alloc(32, 9).toString('base64');
+    const kidA = activeKeyId();
+    try {
+        const user = await FoodUser.create({ phone: '+48500000005', name: 'Rota', addresses: [address('Rotacyjna 5')] });
+        // A value written before key fingerprints existed carried the id "p" whatever the primary key was.
+        const legacy = encryptField('+48600111222').replace(`enc:v1:${kidA}:`, 'enc:v1:p:');
+        await coll.updateOne({ _id: user._id }, { $set: { whatsappNumber: legacy } });
+        assert.match((await coll.findOne({ _id: user._id })).addresses[0].street, new RegExp(`^enc:v1:${kidA}:`));
+
+        process.env.PII_ENCRYPTION_KEY = keyB;
+        process.env.PII_ENCRYPTION_KEY_PREVIOUS = keyA;
+        const kidB = activeKeyId();
+        assert.notEqual(kidB, kidA);
+        assert.equal((await FoodUser.findById(user._id).lean()).addresses[0].street, 'Rotacyjna 5', 'readable during rotation');
+        const { safeDecrypt } = await import('../src/utils/fieldCrypto.js');
+        assert.equal(safeDecrypt((await coll.findOne({ _id: user._id })).whatsappNumber), '+48600111222', 'legacy "p" value still decrypts');
+
+        const res = await encryptExistingValues(FoodUser, paths);
+        assert.ok(res.updated >= 1);
+        const raw = await coll.findOne({ _id: user._id });
+        assert.match(raw.addresses[0].street, new RegExp(`^enc:v1:${kidB}:`));
+        assert.match(raw.whatsappNumber, new RegExp(`^enc:v1:${kidB}:`));
+
+        delete process.env.PII_ENCRYPTION_KEY_PREVIOUS;
+        assert.equal((await FoodUser.findById(user._id).lean()).addresses[0].street, 'Rotacyjna 5', 'readable without the old key');
+        assert.equal(safeDecrypt((await coll.findOne({ _id: user._id })).whatsappNumber), '+48600111222');
+        assert.equal((await encryptExistingValues(FoodUser, paths)).updated, 0, 'idempotent after rotation');
+    } finally {
+        process.env.PII_ENCRYPTION_KEY = keyA;
+        delete process.env.PII_ENCRYPTION_KEY_PREVIOUS;
+    }
+});

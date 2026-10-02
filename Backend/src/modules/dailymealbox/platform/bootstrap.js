@@ -126,7 +126,8 @@ export const runAmendmentBootstrap = async () => {
             import('../../food/delivery/models/deliveryPartner.model.js'),
             import('../../food/restaurant/models/restaurant.model.js'),
             import('../vendor/fleetPartner.model.js'),
-            import('../../../models/KitchenPartner.js')
+            import('../../../models/KitchenPartner.js'),
+            import('../integrations/whatsapp.service.js')
         ]);
         const out = {};
         for (const entry of ENCRYPTED_FIELDS) {
