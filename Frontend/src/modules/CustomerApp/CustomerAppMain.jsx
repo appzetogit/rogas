@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
 import { API_BASE_URL, BACKEND_ORIGIN } from "@/services/api/axios";
@@ -25,7 +25,15 @@ import { PantryCartProvider } from "./components/PantryCartContext";
 import PaymentResultHandler from "./components/PaymentResultHandler";
 import { CustomerLegalPage } from "./components/CustomerLegalPage";
 import CustomerServicePage from "./components/CustomerServicePage";
-import { authAPI, userAPI, dmbCustomerAPI } from "@food/api";
+import { authAPI, userAPI, dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
+import { AddressBookScreen } from "./components/amendment/addresses";
+import { NotificationSettingsScreen } from "./components/amendment/settings";
+import { SelectModeScreen, OneTimeOrdersScreen } from "./components/amendment/oneTime";
+import { RotationScreen } from "./components/amendment/RotationScreen";
+import { ChangeSubscriptionScreen, SlotChangeBanner } from "./components/amendment/manage";
+import LegalAcceptanceGate from "@/shared/components/LegalAcceptanceGate";
+import AnalyticsConsent from "@/shared/components/AnalyticsConsent";
+import { trackEvent } from "@/shared/analytics/ga4";
 import { useTranslation } from "react-i18next";
 
 export default function CustomerAppMain() {
@@ -345,6 +353,7 @@ export default function CustomerAppMain() {
   };
 
   const handleConfirmSubscription = () => {
+    trackEvent("subscription_started", { vendor_id: selectedPlanDetails?.vendorId, value: selectedPlanDetails?.expectedTotal });
     setTomorrowMeal((prev) => ({
       ...prev,
       name: selectedPlanDetails?.mealPlanName || prev.name,
@@ -429,6 +438,7 @@ export default function CustomerAppMain() {
 
         {/* Screen Routes */}
         <div className={`flex-1 w-full relative ${showDesktopNav ? 'md:ml-64' : ''}`}>
+          {isLoggedIn && currentPath === "/user/home" && <SlotChangeBanner onShowToast={showToast} />}
           <Routes>
             <Route path="welcome" element={
             <WelcomeScreen
@@ -734,6 +744,15 @@ export default function CustomerAppMain() {
             <CustomerServicePage />
           } />
 
+          {/* ── Amendment v2 Extra ── */}
+          <Route path="addresses" element={<AddressBookScreen onGoBack={() => navigate(-1)} onShowToast={showToast} />} />
+          <Route path="notification-settings" element={<NotificationSettingsScreen onGoBack={() => navigate("/user/profile")} onShowToast={showToast} currentUser={currentUser} />} />
+          <Route path="select" element={<SelectModeScreen onGoBack={() => navigate(-1)} onGoToPlans={() => navigate("/user/plans")} />} />
+          <Route path="one-time-orders" element={<OneTimeOrdersScreen onGoBack={() => navigate("/user/profile")} />} />
+          <Route path="rotation" element={<RotationScreen onGoBack={() => navigate("/user/plans")} onProceedToCheckout={handlePlanSelectionFlow} />} />
+          <Route path="subscription/:id/change" element={<ChangeSubscriptionRoute onGoBack={() => navigate("/user/subscription")} />} />
+          <Route path="subscription/:id/rotation" element={<EditRotationRoute onDone={() => { showToast(t("Your rotation is saved for the next cycle")); navigate("/user/subscription"); }} onGoBack={() => navigate("/user/subscription")} />} />
+
           <Route path="termsandcondition" element={<CustomerLegalPage pageType="terms" />} />
           <Route path="privacy" element={<CustomerLegalPage pageType="privacy" />} />
           <Route path="about" element={<CustomerLegalPage pageType="about" />} />
@@ -744,6 +763,9 @@ export default function CustomerAppMain() {
           <Route path="*" element={<Navigate to={isLoggedIn ? "home" : "welcome"} replace />} />
         </Routes>
       </div>
+
+      <LegalAcceptanceGate panel="user" enabled={isLoggedIn && !isAuthScreen} />
+      <AnalyticsConsent />
 
       {/* Bottom Navigation (Mobile Only) */}
       {showBottomNav && (
@@ -776,3 +798,20 @@ export default function CustomerAppMain() {
   );
 }
 
+
+function ChangeSubscriptionRoute({ onGoBack }) {
+  const { id } = useParams();
+  const [params] = useSearchParams();
+  return <ChangeSubscriptionScreen subscriptionId={id} initialType={params.get("type") || "change_plan"} onGoBack={onGoBack} />;
+}
+
+function EditRotationRoute({ onGoBack, onDone }) {
+  const { id } = useParams();
+  const [sub, setSub] = useState(null);
+  useEffect(() => {
+    dmbExtraCustomerAPI.subscriptionDetail(id).then((res) => setSub(res.data.subscription)).catch(() => setSub({}));
+  }, [id]);
+  if (!sub) return null;
+  const rotation = sub.pendingRotation?.length ? sub.pendingRotation : sub.rotation || [];
+  return <RotationScreen editSubscriptionId={id} initialRotation={rotation} subscriptionZoneId={sub.zoneId} onGoBack={onGoBack} onSaved={onDone} />;
+}

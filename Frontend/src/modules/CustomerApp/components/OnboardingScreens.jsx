@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { IMAGES } from "../types";
-import { MapPin, ShoppingBag, Check, ArrowLeft, CheckCircle, Leaf, UtensilsCrossed, Navigation, Search } from 'lucide-react';
+import { MapPin, ShoppingBag, Check, ArrowLeft, CheckCircle, Leaf, UtensilsCrossed, Navigation } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import { dmbExtraCustomerAPI } from "@food/api";
+import { AddressForm } from "./amendment/addresses";
 
 export function WelcomeScreen({ onSignup, onLogin }) {
   const { t } = useTranslation("customer");
@@ -274,11 +276,46 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
 export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
   const { t } = useTranslation("customer");
   const [detecting, setDetecting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  // CA-02 (Gap U): the detected position must fall inside a delivery zone, otherwise onboarding stops here.
   const handleLocation = () => {
+    setError("");
+    if (!navigator.geolocation) {
+      setError(t("Location is not available in this browser. Choose your address manually."));
+      return;
+    }
     setDetecting(true);
-    setTimeout(() => {
-      onAllowLocation();
-    }, 1500);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const res = await dmbExtraCustomerAPI.zoneCheck({ lat, lng, source: "onboarding" });
+          const r = res.data?.result || {};
+          setResult(r);
+          if (r.inZone) {
+            try {
+              localStorage.setItem("userZoneId", r.zoneId);
+              localStorage.setItem("userLat", String(lat));
+              localStorage.setItem("userLng", String(lng));
+            } catch {
+              /* storage blocked: the zone is detected again later */
+            }
+            setTimeout(() => onAllowLocation(r), 600);
+          }
+        } catch {
+          setError(t("Could not check your location. Please try again."));
+        } finally {
+          setDetecting(false);
+        }
+      },
+      () => {
+        setDetecting(false);
+        setError(t("Allow location access, or choose your address manually."));
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
   };
   return (<div className="relative w-full h-screen flex flex-col overflow-hidden bg-gradient-to-b from-[#1f7a63] via-[#00604c] to-[#fcf9f8]">
     {/* status bar emulator */}
@@ -326,11 +363,20 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
           </p>
         </div>
 
-        {/* Detected location label badge */}
-        <div className="inline-flex items-center gap-2 bg-[#9ef3d7] px-4 py-2 rounded-full border border-primary/10 shadow-sm animate-pulse-subtle">
-          <MapPin className="text-[18px] text-[#002018]" style={{ fontVariationSettings: "'FILL' 1" }} />
-          <span className="text-[13px] font-bold text-[#002018]">{t("Mokotów, Warsaw detected")}</span>
-        </div>
+        {/* Detected location / zone result */}
+        {result?.inZone && (
+          <div className="inline-flex items-center gap-2 bg-[#9ef3d7] px-4 py-2 rounded-full border border-primary/10 shadow-sm">
+            <MapPin className="text-[18px] text-[#002018]" style={{ fontVariationSettings: "'FILL' 1" }} />
+            <span className="text-[13px] font-bold text-[#002018]">{t("{{zone}} — we deliver here!", { zone: result.zoneName || "" })}</span>
+          </div>
+        )}
+        {result && !result.inZone && (
+          <div className="w-full rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900 text-left">
+            <p className="font-bold">{t("We don't deliver to your area yet. Deliveries coming soon.")}</p>
+            {result.nearest?.zoneName && <p className="mt-1">{t("Nearest delivery area: {{zone}} ({{km}} km).", { zone: result.nearest.zoneName, km: Number(result.nearest.distanceKm || 0).toFixed(1) })}</p>}
+          </div>
+        )}
+        {error && <p className="text-[13px] text-red-600">{error}</p>}
 
         {/* Actions */}
         <div className="w-full pt-4 space-y-3">
@@ -354,8 +400,6 @@ export function LocationScreen({ onBack, onAllowLocation, onChooseManually }) {
 
 export function ManualLocationScreen({ onBack, onConfirm }) {
   const { t } = useTranslation("customer");
-  const [address, setAddress] = useState("");
-
   return (
     <div className="min-h-screen flex flex-col bg-[#F5F5F0] text-[#1b1c1c]">
       <header className="flex justify-between items-center w-full px-[20px] h-14 mt-1">
@@ -365,35 +409,21 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
         <div className="flex-1 px-4"></div>
         <div className="w-10"></div>
       </header>
-
-      <main className="px-[20px] flex-1">
+      <main className="px-[20px] flex-1 pb-10 max-w-xl w-full mx-auto">
         <h1 className="text-[24px] font-extrabold mt-6 text-[#1b1c1c]">{t("Enter your address")}</h1>
-        <p className="text-on-surface-variant text-[14px] mt-2 text-[#3e4945]">
-          {t("We need your address to find the best meal makers near you.")}
-        </p>
-
-        <div className="mt-8 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7a74]" />
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={t("Search your street or building...")}
-            className="w-full bg-white h-14 rounded-2xl pl-12 pr-4 text-[15px] shadow-sm border border-[#bec9c3]/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            autoFocus
-          />
-        </div>
+        <p className="text-[14px] mt-2 mb-6 text-[#3e4945]">{t("We need your address to find the best meal makers near you.")}</p>
+        {/* Saved to the address book and checked against the delivery zones (Gap U) */}
+        <AddressForm
+          onSaved={(address) => {
+            try {
+              if (address?.zoneId) localStorage.setItem("userZoneId", String(address.zoneId));
+            } catch {
+              /* ignore */
+            }
+            onConfirm([address?.street, address?.city].filter(Boolean).join(", "));
+          }}
+        />
       </main>
-
-      <footer className="mt-auto bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
-        <button
-          onClick={() => onConfirm(address)}
-          disabled={!address.trim()}
-          className="w-full bg-primary-container disabled:opacity-50 disabled:active:scale-100 text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all"
-        >
-          {t("Confirm Location")}
-        </button>
-      </footer>
     </div>
   );
 }

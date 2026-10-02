@@ -2233,3 +2233,193 @@ export const serviceManagementAPI = {
   approveCustomerRefund: (id) => adminClient.patch(`/dmb/service/admin/customer-requests/${id}/approve-refund`),
   rejectCustomerRefund: (id, notes) => adminClient.patch(`/dmb/service/admin/customer-requests/${id}/reject-refund`, { notes }),
 };
+
+// ─── Amendment v2 Extra (gaps A–Z, AA–AL) ────────────────────────────────────────────────────────────────────
+/** Customer app. Every call returns axios's response; bodies are { success, ... }. */
+export const dmbExtraCustomerAPI = {
+  // Pricing & checkout (server quote is authoritative; checkout sends the total the customer saw as expectedTotal)
+  quote: (body) => userClient.post("/dmb/payments/quote", body),
+  plans: (zoneId) => userClient.get("/dmb/subscriptions/plans", { params: zoneId ? { zoneId } : {} }),
+  previewChange: (subscriptionId, type, input = {}) => userClient.post("/dmb/payments/change/preview", { subscriptionId, type, input }),
+  applyChange: (body) => userClient.post("/dmb/payments/change", body),
+  // Browse (Gap X / AI / AJ / AH / AL / AK)
+  browseVendors: (params) => userClient.get("/dmb/browse/vendors", { params }),
+  vendorMeals: (vendorId, params) => userClient.get(`/dmb/browse/vendors/${vendorId}/meals`, { params }),
+  rotationVendors: (params) => userClient.get("/dmb/rotation/vendors", { params }),
+  // Select mode (AG) and pre-orders (M)
+  selectMeals: (params) => userClient.get("/dmb/select/meals", { params }),
+  createSelectOrder: (body) => userClient.post("/dmb/select/orders", body),
+  reservePreOrder: (body) => userClient.post("/dmb/preorders", body),
+  cancelPreOrder: (id) => userClient.delete(`/dmb/preorders/${id}`),
+  payPreOrder: (id, body) => userClient.post(`/dmb/preorders/${id}/pay`, body),
+  myOneTimeOrders: (type) => userClient.get("/dmb/customer/one-time-orders", { params: type ? { type } : {} }),
+  // Subscription management
+  subscriptionDetail: (id) => userClient.get(`/dmb/subscriptions/${id}/detail`),
+  upcoming: (id, days) => userClient.get(`/dmb/subscriptions/${id}/upcoming`, { params: days ? { days } : {} }),
+  calendar: (days) => userClient.get("/dmb/customer/calendar", { params: days ? { days } : {} }),
+  slotChanges: () => userClient.get("/dmb/customer/slot-changes"),
+  replaceSlot: (id, fromSlot, toSlot) => userClient.patch(`/dmb/subscriptions/${id}/slot`, { fromSlot, toSlot }),
+  changeSubscriptionAddress: (id, addressId, days) => userClient.patch(`/dmb/subscriptions/${id}/address`, { addressId, days }),
+  overrideOrderAddress: (orderId, addressId) => userClient.patch(`/dmb/daily-orders/${orderId}/address`, { addressId }),
+  updateRotation: (id, rotation) => userClient.patch(`/dmb/subscriptions/${id}/rotation`, { rotation }),
+  // Settings
+  getNotificationPreferences: () => userClient.get("/dmb/customer/notification-preferences"),
+  saveNotificationPreferences: (body) => userClient.put("/dmb/customer/notification-preferences", body),
+  getInvoiceDelivery: () => userClient.get("/dmb/customer/invoice-delivery"),
+  saveInvoiceDelivery: (body) => userClient.put("/dmb/customer/invoice-delivery", body),
+  setEcoPreference: (ecoPreference) => userClient.put("/dmb/customer/eco-preference", { ecoPreference }),
+  zoneCheck: (body) => userClient.post("/dmb/customer/zone-check", body),
+  // Addresses (zone-validated on the server, Gap U/V)
+  getAddresses: () => userClient.get("/food/user/addresses"),
+  addAddress: (body) => userClient.post("/food/user/addresses", body),
+  updateAddress: (id, body) => userClient.patch(`/food/user/addresses/${id}`, body),
+  deleteAddress: (id) => userClient.delete(`/food/user/addresses/${id}`),
+  setDefaultAddress: (id) => userClient.patch(`/food/user/addresses/${id}/default`),
+};
+
+/** Legal documents & re-acceptance (Gap AC) — every app uses the client of its own panel. */
+const legalFor = (client) => ({
+  pending: (lang) => client.get("/dmb/legal/pending", { params: lang ? { lang } : {} }),
+  accept: (body) => client.post("/dmb/legal/accept", body),
+  document: (docType, lang) => client.get(`/dmb/legal/documents/${docType}`, { params: lang ? { lang } : {} }),
+});
+export const dmbLegalAPI = { user: legalFor(userClient), vendor: legalFor(restaurantClient), driver: legalFor(deliveryClient) };
+
+/** Vendor app. */
+export const dmbExtraVendorAPI = {
+  config: () => restaurantClient.get("/dmb/vendor/amendment-config"),
+  reviews: (params) => restaurantClient.get("/dmb/vendor/reviews", { params }),
+  respondToReview: (orderId, text) => restaurantClient.post(`/dmb/vendor/reviews/${orderId}/response`, { text }),
+  stock: (params) => restaurantClient.get("/dmb/vendor/stock", { params }),
+  setStock: (mealPlanId, body) => restaurantClient.put(`/dmb/vendor/stock/${mealPlanId}`, body),
+  recordPrepared: (mealPlanId, body) => restaurantClient.post(`/dmb/vendor/stock/${mealPlanId}/prepared`, body),
+  preorderDemand: () => restaurantClient.get("/dmb/vendor/preorder-demand"),
+  cookTrack: () => restaurantClient.get("/dmb/vendor/cook-track"),
+  selectTrack: (body) => restaurantClient.post("/dmb/vendor/cook-track", body),
+  saveKitchenPhotos: (photos) => restaurantClient.put("/dmb/vendor/cook-track/kitchen-photos", { photos }),
+  saveSanepid: (documentUrl) => restaurantClient.put("/dmb/vendor/cook-track/sanepid", { documentUrl }),
+  settlements: () => restaurantClient.get("/dmb/vendor/settlements"),
+  settlementPdf: (period) => restaurantClient.get(`/dmb/vendor/settlements/${period}/pdf`, { responseType: "blob" }),
+  annualPdf: (year) => restaurantClient.get(`/dmb/vendor/settlements/annual/${year}/pdf`, { responseType: "blob" }),
+  deliveryPartner: () => restaurantClient.get("/dmb/vendor/delivery-partner"),
+  requestDeliveryPartner: (body) => restaurantClient.post("/dmb/vendor/delivery-partner", body),
+  withdrawDeliveryPartner: () => restaurantClient.delete("/dmb/vendor/delivery-partner/request"),
+  ecoPackaging: () => restaurantClient.get("/dmb/vendor/eco-packaging"),
+  saveEcoPackaging: (body) => restaurantClient.put("/dmb/vendor/eco-packaging", body),
+  deliveryDays: () => restaurantClient.get("/dmb/vendor/delivery-days"),
+  saveDeliveryDays: (days) => restaurantClient.put("/dmb/vendor/delivery-days", { days }),
+  specialisms: () => restaurantClient.get("/dmb/vendor/specialisms"),
+  applySpecialism: (body) => restaurantClient.post("/dmb/vendor/specialisms", body),
+  menuCoverage: (params) => restaurantClient.get("/dmb/vendor/menu-coverage", { params }),
+  pantryReturns: (params) => restaurantClient.get("/dmb/vendor/pantry-returns", { params }),
+  restockReturn: (deliveryId) => restaurantClient.patch(`/dmb/vendor/pantry-returns/${deliveryId}/restock`),
+  uploadImage: (file, folder = "vendor") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", folder);
+    return restaurantClient.post("/uploads/image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+  },
+  uploadFile: (file, folder = "vendor") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", folder);
+    return restaurantClient.post("/uploads/file", fd, { headers: { "Content-Type": "multipart/form-data" } });
+  },
+};
+
+/** Driver app. */
+export const dmbExtraDriverAPI = {
+  shiftSettings: () => deliveryClient.get("/dmb/driver/shift-settings"),
+  unconfirmShift: (id) => deliveryClient.post(`/dmb/driver/shifts/${id}/unconfirm`),
+  failedDeliveryOptions: () => deliveryClient.get("/dmb/driver/failed-delivery-options"),
+  reportFailedDelivery: (id, body) => deliveryClient.post(`/dmb/driver/stops/${id}/fail`, body),
+  uploadPhoto: (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", "failed-deliveries");
+    return deliveryClient.post("/uploads/image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+  },
+};
+
+/** Admin panel. Mounted at /food/admin/dmb (platform controls, alerts, jobs and the amendment admin screens). */
+const dmbAdmin = (p) => `/food/admin/dmb${p}`;
+export const dmbExtraAdminAPI = {
+  // ACM controls (web Remote Config), alerts, jobs
+  controls: (cityId) => adminClient.get(dmbAdmin("/controls"), { params: cityId ? { cityId } : {} }),
+  setControl: (key, value, cityId) => adminClient.put(dmbAdmin(`/controls/${key}`), { value, cityId: cityId || undefined }),
+  clearCityOverride: (key, cityId) => adminClient.delete(dmbAdmin(`/controls/${key}/city/${cityId}`)),
+  alerts: (params) => adminClient.get(dmbAdmin("/alerts"), { params }),
+  updateAlert: (id, status) => adminClient.patch(dmbAdmin(`/alerts/${id}`), { status }),
+  jobs: () => adminClient.get(dmbAdmin("/jobs")),
+  runJob: (name) => adminClient.post(dmbAdmin(`/jobs/${name}/run`)),
+  // Delivery slot lifecycle (Gap A)
+  slotCoverage: (id) => adminClient.get(`/food/admin/delivery-slots/${id}/coverage`),
+  activateSlot: (id) => adminClient.post(`/food/admin/delivery-slots/${id}/activate`),
+  deactivateSlot: (id, body) => adminClient.post(`/food/admin/delivery-slots/${id}/deactivate`, body),
+  // Holidays (G), zone fees (K), expansion demand (U)
+  holidays: (params) => adminClient.get(dmbAdmin("/holidays"), { params }),
+  createHoliday: (body) => adminClient.post(dmbAdmin("/holidays"), body),
+  importPolishHolidays: (year) => adminClient.post(dmbAdmin("/holidays/import-polish"), { year }),
+  confirmHoliday: (id) => adminClient.post(dmbAdmin(`/holidays/${id}/confirm`)),
+  rejectHoliday: (id) => adminClient.post(dmbAdmin(`/holidays/${id}/reject`)),
+  deleteHoliday: (id) => adminClient.delete(dmbAdmin(`/holidays/${id}`)),
+  zoneFees: () => adminClient.get(dmbAdmin("/zone-fees")),
+  setZoneFee: (zoneId, body) => adminClient.put(dmbAdmin(`/zone-fees/${zoneId}`), body),
+  removeZoneFee: (zoneId) => adminClient.delete(dmbAdmin(`/zone-fees/${zoneId}`)),
+  expansionDemand: (params) => adminClient.get(dmbAdmin("/reports/expansion-demand"), { params }),
+  // Reviews moderation (T)
+  vendorReviews: (vendorId, params) => adminClient.get(dmbAdmin(`/vendors/${vendorId}/reviews`), { params }),
+  moderateReview: (orderId, action, reason) => adminClient.post(dmbAdmin(`/reviews/${orderId}/moderate`), { action, reason }),
+  // Integrations (H / I / J)
+  integrations: () => adminClient.get(dmbAdmin("/integrations")),
+  saveWhatsApp: (body) => adminClient.put(dmbAdmin("/integrations/whatsapp"), body),
+  saveMailchimp: (body) => adminClient.put(dmbAdmin("/integrations/mailchimp"), body),
+  testMailchimp: () => adminClient.post(dmbAdmin("/integrations/mailchimp/test")),
+  syncMailchimp: () => adminClient.post(dmbAdmin("/integrations/mailchimp/sync")),
+  testWhatsApp: (to) => adminClient.post(dmbAdmin("/integrations/whatsapp/test"), { to }),
+  whatsAppLogs: () => adminClient.get(dmbAdmin("/integrations/whatsapp/logs")),
+  // Bad debt (F) and segments (Y)
+  badDebt: (params) => adminClient.get(dmbAdmin("/bad-debt"), { params }),
+  runBadDebt: () => adminClient.post(dmbAdmin("/bad-debt/run")),
+  badDebtAction: (userId, body) => adminClient.post(dmbAdmin(`/bad-debt/${userId}/action`), body),
+  segments: () => adminClient.get(dmbAdmin("/segments")),
+  createSegment: (body) => adminClient.post(dmbAdmin("/segments"), body),
+  updateSegment: (id, body) => adminClient.patch(dmbAdmin(`/segments/${id}`), body),
+  deleteSegment: (id) => adminClient.delete(dmbAdmin(`/segments/${id}`)),
+  segmentMembers: (id, params) => adminClient.get(dmbAdmin(`/segments/${id}/members`), { params }),
+  editSegmentMembers: (id, body) => adminClient.post(dmbAdmin(`/segments/${id}/members`), body),
+  pushSegment: (id, body) => adminClient.post(dmbAdmin(`/segments/${id}/push`), body),
+  // Legal CMS (AC)
+  legal: () => adminClient.get(dmbAdmin("/legal")),
+  legalHistory: (docType) => adminClient.get(dmbAdmin(`/legal/${docType}/history`)),
+  saveLegalDraft: (docType, body) => adminClient.post(dmbAdmin(`/legal/${docType}/draft`), body),
+  publishLegal: (id) => adminClient.post(dmbAdmin(`/legal/documents/${id}/publish`)),
+  discardLegal: (id) => adminClient.delete(dmbAdmin(`/legal/documents/${id}`)),
+  // Home cooks (AA), settlements (AB), fleet partners (AD)
+  homeCooks: (params) => adminClient.get(dmbAdmin("/home-cooks"), { params }),
+  reviewKitchen: (id, body) => adminClient.post(dmbAdmin(`/home-cooks/${id}/kitchen-review`), body),
+  sendUpgradeNotice: (id) => adminClient.post(dmbAdmin(`/home-cooks/${id}/upgrade-notice`)),
+  settlements: (params) => adminClient.get(dmbAdmin("/settlements"), { params }),
+  generateSettlements: (period) => adminClient.post(dmbAdmin("/settlements/generate"), { period }),
+  settlementPdf: (id) => adminClient.get(dmbAdmin(`/settlements/${id}/pdf`), { responseType: "blob" }),
+  fleetRequests: (params) => adminClient.get(dmbAdmin("/fleet-requests"), { params }),
+  approveFleetRequest: (id) => adminClient.post(dmbAdmin(`/fleet-requests/${id}/approve`)),
+  rejectFleetRequest: (id, reason) => adminClient.post(dmbAdmin(`/fleet-requests/${id}/reject`), { reason }),
+  linkPreferredPartner: (vendorId, fleetPartnerId) => adminClient.post(dmbAdmin(`/vendors/${vendorId}/preferred-partner`), { fleetPartnerId }),
+  unlinkPreferredPartner: (vendorId) => adminClient.delete(dmbAdmin(`/vendors/${vendorId}/preferred-partner`)),
+  setFleetEntityType: (id, entityType) => adminClient.patch(dmbAdmin(`/fleet/partners/${id}/entity-type`), { entityType }),
+  // Eco (AI), specialisms (AH), temperature (AL), stock (E), pantry returns (P), growth
+  ecoVendors: (params) => adminClient.get(dmbAdmin("/eco-vendors"), { params }),
+  verifyEco: (vendorId, body) => adminClient.post(dmbAdmin(`/vendors/${vendorId}/eco-verify`), body),
+  specialisms: (params) => adminClient.get(dmbAdmin("/specialisms"), { params }),
+  reviewSpecialism: (vendorId, id, body) => adminClient.post(dmbAdmin(`/vendors/${vendorId}/specialisms/${id}/review`), body),
+  temperatureCoverage: () => adminClient.get(dmbAdmin("/meals/temperature-coverage")),
+  temperatureReminder: () => adminClient.post(dmbAdmin("/meals/temperature-reminder")),
+  stock: (params) => adminClient.get(dmbAdmin("/stock"), { params }),
+  pantryReturns: (params) => adminClient.get(dmbAdmin("/reports/pantry-returns"), { params }),
+  pantryReturnsCsv: (params) => adminClient.get(dmbAdmin("/reports/pantry-returns"), { params: { ...params, format: "csv" }, responseType: "blob" }),
+  growth: (params) => adminClient.get(dmbAdmin("/reports/growth"), { params }),
+  securityStatus: () => adminClient.get(dmbAdmin("/security/status")),
+  // Driver attendance (B/Z)
+  attendanceOverview: (params) => adminClient.get("/food/admin/attendance/overview", { params }),
+};

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
@@ -9,6 +9,8 @@ import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
 import PaymentMethodPicker from "../../../shared/payments/PaymentMethodPicker";
 import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 import { getCurrentLanguage } from "@/shared/i18n";
+import { useQuote, QuoteSummary } from "./amendment/quote";
+import { trackEvent } from "../../../shared/analytics/ga4";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
 
@@ -38,21 +40,37 @@ export function CheckoutScreen({
   const plan = selectedPlanDetails || {};
   const methods = usePaymentMethods({ zoneId: plan.zoneId });
   const { money } = useMoney({ zoneId: plan.zoneId });
-  const pricing = plan.pricing || {};
   const meals = plan.meals || [];
   const durationLabel = plan.durationLabel || "Weekly";
 
-  const basePricePerDay = pricing.basePricePerDay || 0;
-  const totalPrice = pricing.totalPrice || 0;
-  const deliveryDays = plan.deliveryDays === "full_week" ? "Full Week" : "Mon – Fri";
+  // The server quote is the only price shown and charged (Amendment v2 Extra). Older drafts without a quoteInput are
+  // converted so a checkout restored from sessionStorage still works.
+  const quoteInput = useMemo(() => {
+    if (!plan.vendorId) return null;
+    if (plan.quoteInput) return plan.quoteInput;
+    return {
+      subscriptionPlanId: plan.subscriptionPlanId,
+      vendorId: plan.vendorId,
+      zoneId: plan.zoneId,
+      meals: (plan.meals || []).map((m) => ({ mealPlanId: m.mealPlanId, quantity: m.quantity || 1 })),
+      deliverySlots: plan.deliverySlots?.length ? plan.deliverySlots : plan.deliverySlot ? [plan.deliverySlot] : [],
+      deliveryDays: plan.deliveryDays,
+      startDate: plan.startDate || undefined,
+    };
+  }, [plan]);
+  const { quote, loading: quoting, error: quoteError, refresh: refreshQuote } = useQuote(quoteInput);
+  useEffect(() => {
+    if (plan.vendorId) trackEvent("checkout_began", { vendor_id: plan.vendorId, value: plan.expectedTotal || undefined });
+  }, [plan.vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalPrice = quote?.totals?.total ?? 0;
+  const deliveryDays = plan.quoteInput?.deliveryDays === "custom" ? t("Custom days") : plan.deliveryDays === "full_week" || plan.quoteInput?.deliveryDays === "full_week" ? t("Full Week") : t("Mon – Fri");
   const describeSlot = (key) => {
     if (!key) return "";
     const win = slotWindow(key);
     return `${slotIcon(key)} ${slotName(key)}${win ? ` (${win})` : ""}`;
   };
-  const slotLabel = plan.deliverySlots && plan.deliverySlots.length > 0
-    ? plan.deliverySlots.map(describeSlot).join(" + ")
-    : describeSlot(plan.deliverySlot);
+  const slotKeys = plan.quoteInput?.deliverySlots || plan.deliverySlots || (plan.deliverySlot ? [plan.deliverySlot] : []);
+  const slotLabel = slotKeys.map(describeSlot).join(" + ");
 
   const handlePayment = async () => {
     if (paying) return;
@@ -66,19 +84,18 @@ export function CheckoutScreen({
     try {
       // Step 1: Create the order on the backend. The server picks the payment provider for the customer's country
       // (or uses the one they chose) and returns what to do next.
+      if (!quote) {
+        setPaying(false);
+        return;
+      }
       const orderRes = await dmbCustomerAPI.createSubscriptionOrder({
-        vendorId: plan.vendorId,
-        zoneId: plan.zoneId,
-        meals: plan.meals, // array of { mealPlanId, quantity }
-        duration: plan.duration,
-        deliveryDays: plan.deliveryDays,
-        deliverySlot: plan.deliverySlot,
-        deliverySlots: plan.deliverySlots,
-        deliveryAddress: plan.deliveryAddress,
-        pricing: plan.pricing, // containing totalPrice and basePricePerDay
-        subscriptionPlanId: plan.subscriptionPlanId,
-        startDate: plan.startDate || null,
-        invoiceType: invoicePrefs?.receiptType || "receipt",
+        ...quoteInput,
+        ...(plan.addressId ? { addressId: plan.addressId } : { deliveryAddress: plan.deliveryAddress }),
+        expectedTotal: quote.totals.total, // the server refuses a different price (409 PRICE_CHANGED)
+        invoiceType: invoicePrefs?.receiptType === "vat" ? "b2b_vat" : "receipt",
+        companyNip: invoicePrefs?.nipVat || undefined,
+        companyName: invoicePrefs?.companyName || undefined,
+        billingEmail: invoicePrefs?.billingEmail || undefined,
         ...paymentRequestExtras({ provider: methods.selected, zoneId: plan.zoneId, returnPath: "/user/home", cancelPath: "/user/checkout" }),
       });
 
@@ -140,8 +157,13 @@ export function CheckoutScreen({
       });
       rzp.open();
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || t("Failed to initiate payment");
-      onShowNotificationToast(" " + msg);
+      if (err?.response?.data?.code === "PRICE_CHANGED") {
+        await refreshQuote();
+        onShowNotificationToast(t("The price has changed. Please review the new total and pay again."));
+      } else {
+        const msg = err?.response?.data?.message || err.message || t("Failed to initiate payment");
+        onShowNotificationToast(" " + msg);
+      }
       setPaying(false);
     }
   };
@@ -197,7 +219,7 @@ export function CheckoutScreen({
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4e2e1]/30 space-y-3">
 
             {/* Selected Meals List */}
-            <div className="space-y-2">
+            {meals.length > 0 && <div className="space-y-2">
               <p className="text-[12px] font-bold text-[#6e7a74] uppercase tracking-wider mb-1">{t("Selected Meals")}</p>
               {meals.map((item, idx) => (
                 <div key={item.mealPlanId || idx} className="flex justify-between text-[14px]">
@@ -205,13 +227,19 @@ export function CheckoutScreen({
                   <span className="font-semibold text-[#6e7a74]">{t("{{price}}/day", { price: money(item.pricePerDay, { compact: true }) })}</span>
                 </div>
               ))}
-            </div>
+            </div>}
+            {quote?.familyBox?.members?.length > 0 && (
+              <p className="text-[13px] text-[#1b1c1c] font-medium">{t("Family Box · {{n}} people", { n: quote.familyBox.members.length })}</p>
+            )}
+            {quote?.rotation?.length > 0 && (
+              <div className="space-y-1">
+                {quote.rotation.map((r) => (
+                  <p key={r.vendorId} className="text-[13px] flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: r.color }} />{r.vendorName}</p>
+                ))}
+              </div>
+            )}
 
             <div className="border-t border-[#f0eded] pt-3 space-y-2">
-              <div className="flex justify-between text-[14px]">
-                <span className="text-[#6e7a74] font-medium">{t("Daily Base Rate")}</span>
-                <span className="font-bold">{t("{{price}}/day", { price: money(basePricePerDay, { compact: true }) })}</span>
-              </div>
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">{t("Duration")}</span>
                 <span className="font-bold">{durationLabel}</span>
@@ -235,44 +263,13 @@ export function CheckoutScreen({
               <div className="flex justify-between text-[14px]">
                 <span className="text-[#6e7a74] font-medium">{t("Delivery Address")}</span>
                 <span className="font-bold text-right max-w-[180px] text-[12px] leading-snug">
-                  {typeof plan.deliveryAddress === 'object' ? (plan.deliveryAddress.street || plan.deliveryAddress.address) : (plan.deliveryAddress || "—")}
+                  {plan.addressText || (typeof plan.deliveryAddress === 'object' ? (plan.deliveryAddress?.street || plan.deliveryAddress?.address) : (plan.deliveryAddress || "—"))}
                 </span>
               </div>
 
-              <div className="border-t border-[#f0eded] pt-2 flex justify-between text-[14px] text-[#6e7a74]">
-                <span>{t("Food Total")}</span>
-                <span className="font-semibold">{money(pricing.subtotal !== undefined ? pricing.subtotal : totalPrice)}</span>
-              </div>
-              {pricing.foodVatAmount > 0 && (
-                <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>{pricing.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on {{amount}} Menu)", { foodVat: pricing.foodVat || 0, amount: money(pricing.foodVatBaseAmount || 0) }) : t("Food VAT ({{foodVat}}%)", { foodVat: pricing.foodVat || 0 })}</span>
-                  <span className="font-semibold">{money(pricing.foodVatAmount)}</span>
-                </div>
-              )}
-              {pricing.deliveryCharge > 0 && (
-                <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>{t("Delivery Charge")}</span>
-                  <span className="font-semibold">{money(pricing.deliveryCharge)}</span>
-                </div>
-              )}
-              {pricing.deliveryVatAmount > 0 && (
-                <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat: pricing.deliveryVat || 0 })}</span>
-                  <span className="font-semibold">{money(pricing.deliveryVatAmount)}</span>
-                </div>
-              )}
-              {pricing.platformFeeAmount > 0 && (
-                <div className="flex justify-between text-[14px] text-[#6e7a74]">
-                  <span>{t("Platform Fee")}</span>
-                  <span className="font-semibold">{money(pricing.platformFeeAmount)}</span>
-                </div>
-              )}
             </div>
 
-            <div className="border-t border-[#f0eded] pt-3 flex justify-between items-center">
-              <span className="text-[15px] font-extrabold text-[#1b1c1c]">{t("Total Amount")}</span>
-              <span className="text-[20px] font-extrabold text-primary">{money(totalPrice)}</span>
-            </div>
+            <QuoteSummary quote={quote} loading={quoting} error={quoteError} />
           </div>
         </section>
 
@@ -327,7 +324,7 @@ export function CheckoutScreen({
         <div className="pt-2 space-y-4">
           <button
             onClick={handlePayment}
-            disabled={paying || !plan.vendorId || methods.loading || !methods.providers.length}
+            disabled={paying || !plan.vendorId || methods.loading || !methods.providers.length || !quote || quoting || Boolean(quoteError)}
             className="w-full bg-[#1F7A63] disabled:opacity-60 hover:bg-[#155a49] text-white py-4 rounded-2xl font-extrabold text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {paying ? (

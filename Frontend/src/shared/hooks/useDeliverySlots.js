@@ -69,8 +69,11 @@ export default function useDeliverySlots() {
 
   // Stable identity: screens use this as an effect dependency, and a fresh array each render loops them.
   const enabledSlots = useMemo(() => slots.filter((s) => s.isEnabled), [slots]);
+  // Slots a NEW subscription may pick: active (not draft / being discontinued) and offered in the customer's area
+  // (Gap A). A slot being discontinued still renders for existing orders through `slots`/`enabledSlots`.
+  const offeredSlots = useMemo(() => slots.filter((s) => s.isEnabled && s.offered !== false && (!s.status || s.status === "active")), [slots]);
 
-  return { slots, enabledSlots, loading, error, getSlot, label, icon, window, refresh: () => fetchDeliverySlots(true) };
+  return { slots, enabledSlots, offeredSlots, loading, error, getSlot, label, icon, window, refresh: () => fetchDeliverySlots(true) };
 }
 
 const toMins = (str) => {

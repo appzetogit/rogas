@@ -5,6 +5,7 @@ import { AlertCircle, Soup, CheckCircle, Truck, CheckCheck, Lock, Info, Sandwich
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
+import { UpcomingDeliveries } from "./amendment/manage";
 
 // Get today's date in Asia/Kolkata timezone represented as a Date object at local midnight
 const getISTToday = () => {
@@ -49,6 +50,7 @@ const formatCutoffTime = (time) => {
 };
 
 export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPlans, socket }) {
+  const [previewMode, setPreviewMode] = useState(false);
   const { t } = useTranslation("customer");
   const { money } = useMoney();
   const [selectedDateStr, setSelectedDateStr] = useState(() => getISTFormatDateStr(getISTToday()));
@@ -561,6 +563,15 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
       </header>
 
       <main className="pt-20 px-5 space-y-6">
+        {/* Gap AE: switch between the day view and the multi-day preview (ACM-171) */}
+        <div className="flex bg-[#e4e8e5] p-1 rounded-full">
+          <button type="button" onClick={() => setPreviewMode(false)} className={`flex-1 py-2 rounded-full text-[13px] font-bold ${!previewMode ? "bg-[#1F7A63] text-white shadow" : "text-[#1b1c1c]"}`}>{t("Day view")}</button>
+          <button type="button" onClick={() => setPreviewMode(true)} className={`flex-1 py-2 rounded-full text-[13px] font-bold ${previewMode ? "bg-[#1F7A63] text-white shadow" : "text-[#1b1c1c]"}`}>{t("Upcoming days")}</button>
+        </div>
+        {previewMode ? (
+          <UpcomingDeliveries onShowToast={onShowToast} />
+        ) : (
+        <>
         {/* Horizontal strip */}
         <section>
           <div className="flex justify-between items-center bg-white rounded-2xl p-4 shadow-sm border border-[#e4e2e1]/30">
@@ -842,6 +853,8 @@ export function CalendarScreen({ onGoBack, onGoToProfile, onShowToast, onGoToPla
             <Trans t={t} i18nKey={"💡 <0>Pro-Tip:</0> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <1>{{cutoff}}</1> on the day prior to delivery."} defaults={"💡 <0>Pro-Tip:</0> Locked meals are already cooked by our neighborhood chefs. You can change or skip any future delivery before <1>{{cutoff}}</1> on the day prior to delivery."} values={{ cutoff: formatCutoffTime(cutoffTime) }} components={[<strong />, <strong />]} />
           </p>
         </section>
+        </>
+        )}
       </main>
 
       {/* Manage Order Bottom Sheet */}

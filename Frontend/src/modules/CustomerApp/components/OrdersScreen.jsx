@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
+import { RatingDialog } from "./amendment/ratings";
 import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
 import { initRazorpayPayment } from "../../Food/utils/razorpay";
@@ -272,7 +273,8 @@ const OrderCard = memo(function OrderCard({
                 }`}
             >
               <Star className={`w-3.5 h-3.5 ${order.isRated ? "fill-[#006a5c] text-[#006a5c]" : "text-gray-400"}`} />
-              <span>{order.isRated ? tr("Rated ({{deliveryRating}})", { deliveryRating: order.deliveryRating }) : tr("Rate")}</span>
+              <span>{order.isRated ? tr("Rated ({{deliveryRating}})", { deliveryRating: order.ratings?.overall ?? order.ratings?.mealQuality ?? order.deliveryRating }) : tr("Rate")}</span>
+              {order.vendorResponse?.text && <span className="text-[10px] font-bold text-[#006a5c]" title={tr("The maker replied")}>💬</span>}
             </button>
             <button
               onClick={() => onTip(order)}
@@ -623,32 +625,6 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
       loading: false
     });
   }, []);
-
-  const submitRating = async () => {
-    const { order, rating, comment } = ratingModal;
-    if (!order) return;
-    if (rating < 1 || rating > 5) {
-      onShowNotificationToast?.(tr("Please select a rating between 1 and 5 stars"));
-      return;
-    }
-    setRatingModal(prev => ({ ...prev, loading: true }));
-    try {
-      await dmbCustomerAPI.rateOrder(order._id, { rating, comment });
-      onShowNotificationToast?.(tr("Rating submitted successfully!"));
-      const patch = (list) =>
-        list.map(o =>
-          o._id === order._id
-            ? { ...o, isRated: true, deliveryRating: rating, ratingFeedback: comment }
-            : o
-        );
-      setOrders(prev => patch(prev));
-      patchCache("past", patch);
-      setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false });
-    } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || tr("Failed to submit rating"));
-      setRatingModal(prev => ({ ...prev, loading: false }));
-    }
-  };
 
   const submitTip = async () => {
     const { order, amount } = tipModal;
@@ -1086,81 +1062,19 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
         </div>
       )}
 
-      {/* ─── Rating Modal ─────────────────────────────────────────────────── */}
+      {/* ─── Rating Modal (split ratings + maker reply, Amendment v2 Extra Gap T) ─── */}
       {ratingModal.show && ratingModal.order && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false })}>
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
-          <div
-            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[360px] p-6"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false })}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-                <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
-              </div>
-
-              <h3 className="text-lg font-bold text-gray-900 mb-1">{tr("Rate Delivery Partner")}</h3>
-              <p className="text-xs text-gray-500 mb-6 font-medium">
-                {tr("For order #{{orderId}}", { orderId: ratingModal.order.orderId })}
-              </p>
-
-              {/* Star Selector */}
-              <div className="flex gap-2.5 mb-6">
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const isHighlighted = star <= ratingModal.rating;
-                  return (
-                    <button
-                      key={star}
-                      type="button"
-                      disabled={ratingModal.order.isRated}
-                      onClick={() => setRatingModal(prev => ({ ...prev, rating: star }))}
-                      className="transition-transform active:scale-90 hover:scale-110"
-                    >
-                      <Star
-                        className={`w-8 h-8 ${isHighlighted
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-gray-300"
-                          }`}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Comment Input */}
-              <textarea
-                value={ratingModal.comment}
-                disabled={ratingModal.order.isRated || ratingModal.loading}
-                onChange={(e) => setRatingModal(prev => ({ ...prev, comment: e.target.value }))}
-                placeholder={tr("Write optional feedback about the delivery...")}
-                className="w-full min-h-[80px] p-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#006a5c] focus:border-[#006a5c] mb-6 resize-none placeholder:text-gray-400"
-              />
-
-              {/* Submit Button */}
-              {!ratingModal.order.isRated ? (
-                <button
-                  onClick={submitRating}
-                  disabled={ratingModal.loading || ratingModal.rating === 0}
-                  className="w-full bg-[#006a5c] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#00554a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {ratingModal.loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {tr("Submit Rating")}
-                </button>
-              ) : (
-                <div className="w-full bg-slate-50 border border-gray-200 py-3 rounded-2xl text-center text-sm font-semibold text-gray-500">
-                  {tr("Rating Submitted")}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <RatingDialog
+          order={ratingModal.order}
+          onClose={() => setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false })}
+          onRated={(updated) => {
+            onShowNotificationToast?.(tr("Rating submitted successfully!"));
+            const patch = (list) => list.map((o) => (o._id === updated._id ? { ...o, ...updated } : o));
+            setOrders((prev) => patch(prev));
+            patchCache("past", patch);
+            setRatingModal({ show: false, order: null, rating: 0, comment: "", loading: false });
+          }}
+        />
       )}
 
       {/* ─── Tip Modal ────────────────────────────────────────────────────── */}

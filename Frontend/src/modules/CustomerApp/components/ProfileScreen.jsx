@@ -5,7 +5,8 @@ import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck, MapPin, Bell, ShoppingBag } from 'lucide-react';
+import { InvoiceDeliveryCard } from "./amendment/settings";
 
 export function ProfileScreen({
   onGoBack,
@@ -488,7 +489,7 @@ export function ProfileScreen({
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("My Subscription")}</h3>
-                <p className="text-xs text-on-surface-variant font-medium">{t("Standard Box · Next billing Feb 14")}</p>
+                <p className="text-xs text-on-surface-variant font-medium">{t("Change plan, maker, slots or address")}</p>
               </div>
             </div>
             <button className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
@@ -555,6 +556,27 @@ export function ProfileScreen({
             </button>
           </div>
 
+
+          {/* Amendment v2 Extra: addresses (U/V), notifications & privacy (W/I/H/AI), one-time orders (AG/M), invoices (J) */}
+          <InvoiceDeliveryCard onShowToast={onShowNotificationToast} />
+          {[
+            { to: "/user/addresses", icon: MapPin, title: t("My addresses"), hint: t("Home, office and up to 3 more"), tone: "bg-[#1f7a63]/10 text-primary" },
+            { to: "/user/notification-settings", icon: Bell, title: t("Notifications & privacy"), hint: t("Choose what we send you"), tone: "bg-sky-50 text-sky-600" },
+            { to: "/user/one-time-orders", icon: ShoppingBag, title: t("Single meals & pre-orders"), hint: t("Orders outside your subscription"), tone: "bg-amber-50 text-amber-600" },
+          ].map(({ to, icon: Icon, title, hint, tone }) => (
+            <div key={to} onClick={() => navigate(to)} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl flex items-center justify-center ${tone}`}>
+                  <Icon className="text-[22px]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{title}</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">{hint}</p>
+                </div>
+              </div>
+              <ArrowRight className="text-sm text-primary" />
+            </div>
+          ))}
 
           <div onClick={onGoToSupport} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all cursor-pointer">
             <div className="flex items-center gap-3">

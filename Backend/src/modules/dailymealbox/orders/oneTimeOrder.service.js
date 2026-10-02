@@ -290,7 +290,7 @@ export const processLaunches = async (now = new Date()) => {
             await deductWalletBalance(res.userId, res.pricing.totalPrice, `Pre-order ${res.ref}`, { oneTimeOrderId: res._id });
             await fulfilOneTimeOrder(res._id, { paidWith: 'wallet' });
             charged++;
-            await notify({ to: 'customer', id: res.userId, event: 'preorder_launch', title: msg('Your pre-order is confirmed'), body: msg('We charged your wallet for your pre-ordered meal. Enjoy!'), link: '/user/orders' });
+            await notify({ to: 'customer', id: res.userId, event: 'preorder_launch', title: msg('Your pre-order is confirmed'), body: msg('We charged your wallet for your pre-ordered meal. Enjoy!'), link: '/user/one-time-orders' });
         } catch {
             res.status = 'payment_pending';
             res.launchProcessedAt = now;
@@ -300,7 +300,7 @@ export const processLaunches = async (now = new Date()) => {
                 to: 'customer', id: res.userId, event: 'payment_failed',
                 title: msg('Complete your pre-order payment'),
                 body: msg('Your reserved meal launches today. Pay now in the app to confirm it.'),
-                link: '/user/orders?tab=preorders'
+                link: '/user/one-time-orders'
             });
         }
     }

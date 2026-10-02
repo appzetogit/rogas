@@ -5,11 +5,15 @@ import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import { getCurrentLanguage } from "@/shared/i18n";
+import { useNavigate } from "react-router-dom";
+import { SubscriptionActions, UpcomingDeliveries } from "./amendment/manage";
 
 export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotificationToast }) {
   const { t } = useTranslation("customer");
   const { money } = useMoney();
   const { label: slotName } = useDeliverySlots();
+  const navigate = useNavigate();
+  const [openUpcoming, setOpenUpcoming] = useState(null);
   const [subscriptions, setSubscriptions] = useState([]);
   const [pantryOrders, setPantryOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("meals");
@@ -403,6 +407,16 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                         )}
                       </>
                     )}
+                    {/* Amendment v2 Extra: change plan / maker / slot / renew, address, rotation, 10-day view */}
+                    <div className="w-full mt-2 space-y-3">
+                      <SubscriptionActions subscription={sub} onNavigate={navigate} onShowToast={onShowNotificationToast} onChanged={fetchSubscriptions} />
+                      {["active", "paused"].includes(sub.status) && (
+                        <button type="button" onClick={() => setOpenUpcoming(openUpcoming === sub._id ? null : sub._id)} className="w-full py-2.5 rounded-xl border border-primary/40 text-primary text-xs font-bold">
+                          {openUpcoming === sub._id ? t("Hide upcoming deliveries") : t("Show upcoming deliveries")}
+                        </button>
+                      )}
+                      {openUpcoming === sub._id && <UpcomingDeliveries subscriptionId={sub._id} onShowToast={onShowNotificationToast} />}
+                    </div>
                     <button
                       onClick={() => handleDownloadInvoice(sub)}
                       disabled={downloadingId === sub._id}

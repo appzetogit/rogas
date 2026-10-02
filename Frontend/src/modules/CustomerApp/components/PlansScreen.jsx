@@ -1,17 +1,14 @@
 import { useState, useEffect } from "react";
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { IMAGES } from "../types";
+import { useNavigate } from "react-router-dom";
 import { PantryItemsList } from "./PantryItemsList";
-import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
-
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-};
-import { restaurantAPI, dmbCustomerAPI } from "@food/api";
+import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
-import { X, CheckCircle, CheckSquare, Calendar, MapPin, Locate, ShoppingCart, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft } from 'lucide-react';
-import { Trans, useTranslation } from "react-i18next";
+import { X, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft, Leaf, Shuffle, ShoppingBag, MapPin, Stethoscope } from 'lucide-react';
+import { useTranslation } from "react-i18next";
+import { SubscribeSheet } from "./amendment/SubscribeSheet";
+import { useAddresses } from "./amendment/addresses";
+import usePlatformConfig from "../../../shared/platform/usePlatformConfig";
+import { tKey } from "@/shared/i18n";
 import useMoney from "../../../shared/payments/money";
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -129,706 +126,105 @@ function MenuModal({ vendorId, vendorName, onClose }) {
   );
 }
 
-// ─── Plans Selection Modal ─────────────────────────────────────────────────────
-// ─── Helper: get tomorrow's date as YYYY-MM-DD in local time ───────────────
-const getTomorrowDateStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
-
-function PlansModal({ vendorId, vendorName, vendorImage, onClose, onProceedToCheckout, hasActiveSub, matchDietary, dietaryPrefs }) {
-  const { t } = useTranslation("customer");
-  const [mealPlans, setMealPlans] = useState([]);
-  const [selectedMealPlan, setSelectedMealPlan] = useState(null);
-  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const { enabledSlots: liveSlots, window: slotWindow } = useDeliverySlots();
-  const DELIVERY_SLOTS = liveSlots.map((s) => ({ id: s.key, label: s.name, time: slotWindow(s.key), icon: s.icon, description: s.description }));
-  const [selectedSlots, setSelectedSlots] = useState([]);
-  useEffect(() => {
-    if (!liveSlots.length) return;
-    setSelectedSlots((prev) => {
-      const valid = prev.filter((k) => liveSlots.some((s) => s.key === k));
-      if (valid.length === prev.length && valid.length) return prev;
-      if (valid.length) return valid;
-      return [liveSlots[0].key];
-    });
-  }, [liveSlots]);
-  const [address, setAddress] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [showActiveSubWarning, setShowActiveSubWarning] = useState(false);
-  const [feePerOrder, setFeePerOrder] = useState(0);
-  // Start date — default to tomorrow, only future dates allowed
-  const [selectedStartDate, setSelectedStartDate] = useState(getTomorrowDateStr);
-
-  // Map & Zone state
-  const [zones, setZones] = useState([]);
-  const [selectedZone, setSelectedZone] = useState("");
-  const { money } = useMoney(selectedZone ? { zoneId: selectedZone } : { vendorId });
-  const [lat, setLat] = useState(52.2297); // default: Warsaw
-  const [lng, setLng] = useState(21.0122);
-  const [showMap, setShowMap] = useState(false);
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places", "drawing", "geometry"]
-  });
-
-  const fetchAddressFromCoordinates = (latitude, longitude) => {
-    if (window.google && window.google.maps) {
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-        if (status === 'OK' && results[0]) {
-          setAddress(results[0].formatted_address);
-        }
-      });
-    }
-  };
-
-  const handleLiveLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        setLat(latitude);
-        setLng(longitude);
-        fetchAddressFromCoordinates(latitude, longitude);
-        setShowMap(true);
-      }, (error) => {
-        alert(t("Failed to get live location. Please allow location permissions."));
-      });
-    } else {
-      alert(t("Geolocation is not supported by your browser"));
-    }
-  };
-
-  const onMapClick = (e) => {
-    const latitude = e.latLng.lat();
-    const longitude = e.latLng.lng();
-    setLat(latitude);
-    setLng(longitude);
-    fetchAddressFromCoordinates(latitude, longitude);
-  };
-
-  useEffect(() => {
-    const fetchPlansAndDurations = async () => {
-      try {
-        setLoading(true);
-        const params = {};
-        if (matchDietary && dietaryPrefs) {
-          if (dietaryPrefs.dietType && dietaryPrefs.dietType !== 'No preference') {
-            params.dietType = dietaryPrefs.dietType;
-          }
-          if (dietaryPrefs.allergies && dietaryPrefs.allergies.length > 0) {
-            params.excludeAllergies = dietaryPrefs.allergies.join(',');
-          }
-        }
-        const [plansRes, zonesRes, subPlansRes] = await Promise.all([
-          dmbCustomerAPI.getVendorPlans(vendorId, params),
-          dmbCustomerAPI.getPublicZones(),
-          dmbCustomerAPI.getSubscriptionPlans()
-        ]);
-
-        const plans = plansRes.data?.mealPlans || [];
-        setMealPlans(plans);
-        if (plans.length > 0) {
-          setSelectedMealPlan(plans[0]);
-        }
-
-        const activeZones = zonesRes.data?.data?.zones || zonesRes.data?.zones || [];
-        setZones(activeZones);
-
-        const subPlans = subPlansRes.data?.plans || [];
-        setSubscriptionPlans(subPlans);
-        setFeePerOrder(subPlansRes.data?.feePerOrder || 0);
-
-        if (subPlans.length > 0) {
-          setSelectedPlan(subPlans[0]);
-        }
-      } catch (e) {
-        console.error("Plans fetch error:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPlansAndDurations();
-  }, [vendorId]);
-
-  const activeMeal = selectedMealPlan || mealPlans[0];
-  const selectedMealsList = activeMeal ? [{
-    mealPlanId: activeMeal._id,
-    quantity: 1,
-    name: activeMeal.name,
-    pricePerDay: activeMeal.pricePerDay
-  }] : [];
-
-  const toggleSlotSelection = (slotId) => {
-    setSelectedSlots((prev) => {
-      if (prev.includes(slotId)) {
-        if (prev.length === 1) {
-          return prev;
-        }
-        return prev.filter((id) => id !== slotId);
-      } else {
-        return [...prev, slotId];
-      }
-    });
-  };
-
-  const getDaysCount = (plan) => {
-    if (!plan) return 0;
-    const isMonFri = plan.deliveryDays === "mon_fri";
-    if (plan.duration === "day") return 1;
-    if (plan.duration === "week") return isMonFri ? 5 : 7;
-    if (plan.duration === "month") return isMonFri ? 20 : 30;
-    return 0;
-  };
-
-  const daysCount = getDaysCount(selectedPlan);
-  const sumActiveMenuPrices = mealPlans.reduce((acc, p) => acc + (p.pricePerDay || 0), 0);
-  const activeMenuCount = mealPlans.length;
-  const avgMenuPrice = activeMenuCount > 0 ? (sumActiveMenuPrices / activeMenuCount) : 0;
-
-  // The food price is the vendor's own meal price (set in their Menu Management), never the admin's. The
-  // subscription plan only supplies the duration (day count) and the VAT/platform-fee policy.
-  const basePricePerDay = selectedMealsList.reduce((sum, m) => sum + (m.pricePerDay || 0), 0);
-  const foodTotal = basePricePerDay * selectedSlots.length * daysCount;
-
-  const foodVat = selectedPlan ? (selectedPlan.foodVat || 0) : 0;
-  const deliveryVat = selectedPlan ? (selectedPlan.deliveryVat || 0) : 0;
-  const platformFee = selectedPlan ? (selectedPlan.platformFee || 0) : 0;
-
-  const foodVatBaseAmount = selectedPlan?.applyFoodVatOnMenu
-    ? (avgMenuPrice * selectedSlots.length * daysCount)
-    : foodTotal;
-
-  const foodVatAmount = Math.round((foodVatBaseAmount * (foodVat / 100)) * 100) / 100;
-  const deliveryCharge = daysCount * selectedSlots.length * feePerOrder;
-  const deliveryVatAmount = Math.round((deliveryCharge * (deliveryVat / 100)) * 100) / 100;
-  const platformFeeAmount = platformFee; // charged only once per subscription
-
-  const totalPrice = Math.round((foodTotal + foodVatAmount + deliveryCharge + deliveryVatAmount + platformFeeAmount) * 100) / 100;
-
-  const durationCodeMap = {
-    day: "one_day",
-    week: "weekly",
-    month: "monthly"
-  };
-
-  const durationLabelMap = {
-    day: "One Day",
-    week: "Weekly",
-    month: "Monthly"
-  };
-
-  const handleProceed = () => {
-    if (!selectedPlan) {
-      alert(t("Please select a subscription plan"));
-      return;
-    }
-    if (selectedMealsList.length === 0) {
-      alert(t("No active meal plans found for this vendor"));
-      return;
-    }
-    if (!selectedZone) {
-      alert(t("Please select a delivery zone"));
-      return;
-    }
-    if (address.trim() === "") {
-      alert(t("Please enter a delivery address"));
-      return;
-    }
-    if (hasActiveSub) {
-      setShowActiveSubWarning(true);
-      return;
-    }
-    onProceedToCheckout({
-      vendorId,
-      vendorName,
-      zoneId: selectedZone,
-      subscriptionPlanId: selectedPlan._id,
-      meals: selectedMealsList,
-      duration: durationCodeMap[selectedPlan.duration] || "weekly",
-      durationLabel: durationLabelMap[selectedPlan.duration] || "Weekly",
-      deliverySlot: selectedSlots[0] || DELIVERY_SLOTS[0]?.id,
-      deliverySlots: selectedSlots,
-      deliveryDays: selectedPlan.deliveryDays || "full_week",
-      startDate: selectedStartDate,
-      deliveryAddress: {
-        street: address,
-        city: "Local",
-        state: "Local",
-        label: "Home",
-        location: {
-          type: "Point",
-          coordinates: [lng, lat]
-        }
-      },
-      pricing: {
-        basePricePerDay,
-        deliveryFeePerDay: feePerOrder,
-        subtotal: foodTotal,
-        foodVat,
-        deliveryVat,
-        platformFee,
-        foodVatAmount,
-        foodVatBaseAmount,
-        deliveryVatAmount,
-        deliveryCharge,
-        platformFeeAmount,
-        totalPrice,
-        applyFoodVatOnMenu: selectedPlan.applyFoodVatOnMenu
-      },
-      vendorImage
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md md:max-w-xl bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-12 h-1.5 bg-[#e4e2e1] rounded-full" />
-        </div>
-
-        {/* Header */}
-        <div className="px-5 py-3 flex items-center justify-between border-b border-[#f0eded]">
-          <div>
-            <h2 className="text-[17px] font-extrabold text-[#1b1c1c]">{t("📋 Subscription Plans")}</h2>
-            <p className="text-[12px] text-[#6e7a74]">{vendorName}</p>
-          </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f5f5f0] flex items-center justify-center active:scale-90 transition-transform">
-            <X className="text-[20px]" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-4 py-4">
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-[13px] text-[#6e7a74]">{t("Loading plans...")}</p>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {/* Select Meal Box / Plan */}
-              {mealPlans.length > 0 && (
-                <section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Select Meal Box / Plan")}</h3>
-                    <span className="text-[11px] text-primary font-bold">{t("{{count}} option", { count: mealPlans.length })}</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {mealPlans.map((mp) => {
-                      const isSelected = activeMeal?._id === mp._id;
-                      return (
-                        <button
-                          key={mp._id}
-                          type="button"
-                          onClick={() => setSelectedMealPlan(mp)}
-                          className={`p-3 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${
-                            isSelected
-                              ? "border-primary bg-primary/5 shadow-xs"
-                              : "border-[#e4e2e1] bg-[#f9f9f7] hover:border-primary/20"
-                          }`}
-                        >
-                          {mp.photos?.[0] ? (
-                            <img
-                              src={normalizeImageUrl(mp.photos[0])}
-                              alt={mp.name}
-                              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-xl flex-shrink-0">
-                              🍲
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-extrabold text-[14px] text-[#1b1c1c] truncate">{mp.name}</p>
-                            <p className="text-[11px] text-[#6e7a74] font-medium mt-0.5">{t("{{price}}/day", { price: money(mp.pricePerDay, { compact: true }) })}</p>
-                          </div>
-                          {isSelected && (
-                            <CheckCircle className="text-primary w-5 h-5 flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }} />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {/* Select Subscription Plan */}
-              <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Select Subscription Plan")}</h3>
-                {subscriptionPlans.length === 0 ? (
-                  <div className="bg-[#f9f9f7] rounded-xl p-4 text-center">
-                    <span className="text-2xl">📋</span>
-                    <p className="text-[13px] text-[#6e7a74] mt-1">{t("No active plans configured by admin")}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {subscriptionPlans.map((plan) => {
-                      const isSelected = selectedPlan?._id === plan._id;
-                      const planDays = getDaysCount(plan);
-                      const planPrice = activeMeal ? basePricePerDay * planDays : null;
-                      const displayDuration = plan.duration === "day" ? "Daily" : plan.duration === "week" ? "Weekly" : "Monthly";
-                      const displaySchedule = plan.deliveryDays === "mon_fri" ? "Monday–Friday" : "Full Week";
-
-                      return (
-                        <button
-                          key={plan._id}
-                          type="button"
-                          disabled={!activeMeal}
-                          onClick={() => setSelectedPlan(plan)}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex justify-between items-start gap-3 ${!activeMeal ? "opacity-60 cursor-not-allowed" : ""} ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-[#e4e2e1] bg-[#f9f9f7] hover:border-primary/20"}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-extrabold text-[15px] text-[#1b1c1c]">{plan.name}</p>
-                            <p className="text-[12px] font-medium text-[#6e7a74] mt-1">
-                              {t("{{displayDuration}} plan • {{displaySchedule}} ({{planDays}} Delivery Days)", { displayDuration, displaySchedule, planDays })}
-                            </p>
-                            {plan.description && (
-                              <p className="text-[12px] text-[#6e7a74] mt-1.5 line-clamp-2">{plan.description}</p>
-                            )}
-                            {plan.features?.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                                {plan.features.map((f, i) => (
-                                  <span key={i} className="text-[10px] bg-white border border-[#e4e2e1] text-[#6e7a74] px-2 py-0.5 rounded-full font-semibold">
-                                    ✓ {f}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-[17px] font-extrabold text-primary">{planPrice !== null ? money(planPrice, { compact: true }) : "—"}</p>
-                            {isSelected && (
-                              <div className="mt-2.5 flex items-center justify-end gap-1 text-primary">
-                                <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                <span className="text-[12px] font-bold">{t("Selected")}</span>
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-
-              {/* Step 4: Delivery Slots (admin-configured) */}
-              <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Delivery Time Slots")}</h3>
-                <div className="space-y-2">
-                  {DELIVERY_SLOTS.length === 0 && (
-                    <p className="text-[12px] text-[#6e7a74] py-3">{t("No delivery slots are available right now.")}</p>
-                  )}
-                  {DELIVERY_SLOTS.map((slot) => {
-                    const isSlotSelected = selectedSlots.includes(slot.id);
-                    return (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        onClick={() => toggleSlotSelection(slot.id)}
-                        className={`w-full flex items-center justify-between p-3.5 rounded-xl border-2 transition-all ${isSlotSelected ? "border-primary bg-primary/5" : "border-[#e4e2e1] bg-[#f9f9f7]"}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSlotSelected}
-                            readOnly
-                            className="w-5 h-5 rounded border-[#bec9c3] text-[#1F7A63] focus:ring-[#1F7A63] cursor-pointer mr-1"
-                          />
-                          <span className="text-xl">{slot.icon}</span>
-                          <div className="text-left">
-                            <p className="font-extrabold text-[13px] text-[#1b1c1c]">{slot.label}</p>
-                            <p className="text-[11px] text-[#6e7a74]">{slot.time}</p>
-                          </div>
-                        </div>
-                        {isSlotSelected && (
-                          <CheckSquare className="text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Start Date Picker */}
-              <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Subscription Start Date")}</h3>
-                <div className="relative">
-                  <div className="flex items-center gap-3 bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-3 focus-within:border-primary transition-colors">
-                    <Calendar className="text-primary text-[20px]" />
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider mb-0.5">{t("First Delivery Date")}</p>
-                      <input
-                        type="date"
-                        value={selectedStartDate}
-                        min={getTomorrowDateStr()}
-                        onChange={(e) => setSelectedStartDate(e.target.value)}
-                        className="w-full bg-transparent text-[14px] font-extrabold text-[#1b1c1c] outline-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-[#6e7a74] mt-1.5 ml-1">
-                    {t("📅 Today & past dates cannot be selected. Default is tomorrow.")}
-                  </p>
-                </div>
-              </section>
-
-              {/* Step 5: Delivery Address & Zone */}
-              <section>
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Service Zone")}</h3>
-                <div className="bg-white rounded-xl border-2 border-[#e4e2e1] overflow-hidden mb-4">
-                  <select
-                    value={selectedZone}
-                    onChange={(e) => setSelectedZone(e.target.value)}
-                    className="w-full bg-transparent px-4 py-3 text-[13px] text-[#1b1c1c] font-medium outline-none"
-                  >
-                    <option value="">{t("Select your Zone")}</option>
-                    {zones.map(z => (
-                      <option key={z._id} value={z._id}>{z.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Delivery Address")}</h3>
-                <div className="bg-white rounded-xl p-3 border-2 border-[#e4e2e1] space-y-3">
-                  <textarea
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder={t("Enter full address or select on map")}
-                    rows={2}
-                    className="w-full bg-[#f9f9f7] rounded-lg px-3 py-2 text-[13px] font-medium text-[#1b1c1c] resize-none focus:outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowMap(!showMap)}
-                      className="flex-1 py-2 rounded-lg text-[12px] font-bold border border-primary text-primary flex items-center justify-center gap-1.5 transition-colors active:bg-primary/5"
-                    >
-                      <MapPin className="text-[16px]" />
-                      {showMap ? t("Hide Map") : t("Set on Map")}
-                    </button>
-                    <button
-                      onClick={handleLiveLocation}
-                      className="flex-1 py-2 rounded-lg text-[12px] font-bold bg-[#1F7A63]/10 text-[#1F7A63] flex items-center justify-center gap-1.5 transition-colors active:bg-[#1F7A63]/20"
-                    >
-                      <Locate className="text-[16px]" />
-                      {t("Live Location")}
-                    </button>
-                  </div>
-
-                  {showMap && (
-                    <div className="h-[200px] w-full rounded-lg overflow-hidden border border-[#e4e2e1] relative z-0">
-                      {isLoaded ? (
-                        <GoogleMap
-                          mapContainerStyle={mapContainerStyle}
-                          center={{ lat, lng }}
-                          zoom={14}
-                          onClick={onMapClick}
-                          options={{ disableDefaultUI: true, zoomControl: true }}
-                        >
-                          <Marker position={{ lat, lng }} />
-                        </GoogleMap>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-[#6e7a74] text-[12px] bg-[#f9f9f7]">{t("Loading Map...")}</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* Price Summary */}
-              {selectedPlan && (
-                <section className="bg-[#1F7A63]/5 rounded-2xl p-4 border border-primary/20">
-                  <h3 className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-widest mb-3">{t("Price Summary")}</h3>
-                  <div className="space-y-2 text-[13px]">
-                    <div className="space-y-1">
-                      {activeMeal ? (
-                        <div className="flex justify-between text-[#6e7a74]">
-                          <span><Trans t={t} i18nKey={"Selected Meal Box: <0>{{name}}</0>"} defaults={"Selected Meal Box: <0>{{name}}</0>"} values={{ name: activeMeal.name }} components={[<strong className="text-[#1b1c1c]" />]} /></span>
-                          <span className="font-bold text-primary">{t("{{price}}/day", { price: money(activeMeal.pricePerDay, { compact: true }) })}</span>
-                        </div>
-                      ) : (
-                        <div className="text-[#ea4335] text-[12px] font-bold">
-                          {t("⚠️ No active meal plans found for this vendor.")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>{t("Duration")}</span>
-                      <span className="font-bold">
-                        {selectedPlan.duration === "day" ? t("Daily") : selectedPlan.duration === "week" ? t("Weekly") : t("Monthly")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[#6e7a74]">
-                      <span>{t("Selected Slots Count")}</span>
-                      <span className="font-bold">{t("× {{count}} slot", { count: selectedSlots.length })}</span>
-                    </div>
-                    <div className="flex justify-between text-[#6e7a74]">
-                      <span>{t("Delivery Slots")}</span>
-                      <span className="font-bold text-right">
-                        {selectedSlots.map(id => DELIVERY_SLOTS.find(s => s.id === id)).map(s => s ? `${s.icon} ${s.label}` : "").join(" + ")}
-                      </span>
-                    </div>
-                    <div className="border-t border-[#e4e2e1] pt-2 flex justify-between text-[#6e7a74]">
-                      <span>{t("Food Total")}</span>
-                      <span className="font-bold">{money(foodTotal)}</span>
-                    </div>
-                    {foodVat > 0 && (
-                      <div className="flex justify-between text-[#6e7a74]">
-                        <span>{selectedPlan.applyFoodVatOnMenu ? t("Food VAT ({{foodVat}}% on {{foodVatBaseAmount}} Menu Total)", { foodVat, foodVatBaseAmount: money(foodVatBaseAmount) }) : t("Food VAT ({{foodVat}}%)", { foodVat })}</span>
-                        <span className="font-bold">{money(foodVatAmount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-[#6e7a74]">
-                      <span>{t("Delivery Charge")}</span>
-                      <span className="font-bold">{money(deliveryCharge)}</span>
-                    </div>
-                    {deliveryVat > 0 && (
-                      <div className="flex justify-between text-[#6e7a74]">
-                        <span>{t("Delivery VAT ({{deliveryVat}}%)", { deliveryVat })}</span>
-                        <span className="font-bold">{money(deliveryVatAmount)}</span>
-                      </div>
-                    )}
-                    {platformFee > 0 && (
-                      <div className="flex justify-between text-[#6e7a74]">
-                        <span>{t("Platform Fee (One-time)")}</span>
-                        <span className="font-bold">{money(platformFeeAmount)}</span>
-                      </div>
-                    )}
-                    <div className="border-t border-primary/20 pt-2 mt-2 flex justify-between">
-                      <span className="font-extrabold text-[#1b1c1c]">{t("Total Price")}</span>
-                      <span className="font-extrabold text-[17px] text-primary">{money(totalPrice)}</span>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* CTA */}
-              <button
-                onClick={handleProceed}
-                disabled={selectedMealsList.length === 0 || !selectedZone || !address.trim() || selectedSlots.length === 0}
-                className="w-full bg-[#1F7A63] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                <ShoppingCart className="text-[20px]" />
-                {t("Proceed to Checkout")}
-              </button>
-              <div className="h-4" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showActiveSubWarning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[210] animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
-            <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
-              <AlertTriangle />
-              {t("Active Subscription Exists")}
-            </h3>
-
-            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              {t("You already have an active or paused subscription plan. You cannot purchase another plan until your current subscription expires or is cancelled.")}
-            </p>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setShowActiveSubWarning(false)}
-                className="w-full bg-primary hover:bg-[#155a49] text-white py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-transform"
-              >
-                {t("Close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main PlansScreen ──────────────────────────────────────────────────────────
+const SPECIALISM_LABELS = {
+  hashimoto: tKey("Hashimoto's"),
+  pregnancy: tKey("Pregnancy"),
+  low_gi: tKey("Low GI / diabetes"),
+  menopause: tKey("Menopause"),
+};
+const VENDOR_TYPE_LABELS = { home_cook: tKey("Home Cook"), cloud_kitchen: tKey("Cloud Kitchen"), restaurant: tKey("Restaurant"), catering: tKey("Catering") };
+
 export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPrefs }) {
   const { t } = useTranslation("customer");
+  const navigate = useNavigate();
   const [matchDietary, setMatchDietary] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [openMenuFor, setOpenMenuFor] = useState(null);
   const [openPlansFor, setOpenPlansFor] = useState(null);
   const [hasActiveSub, setHasActiveSub] = useState(false);
+  const [showActiveSubWarning, setShowActiveSubWarning] = useState(false);
   const [activeTab, setActiveTab] = useState("vendor_plans");
+  const [filters, setFilters] = useState({});
+  const [available, setAvailable] = useState({});
+
+  // Gap X: only makers that deliver to the customer's zone (from their default saved address).
+  const { addresses, loading: addressesLoading } = useAddresses();
+  const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
+  const zoneId = defaultAddress?.zoneId ? String(defaultAddress.zoneId) : localStorage.getItem("userZoneId") || "";
+  const { isOn } = usePlatformConfig(zoneId || undefined);
 
   useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        setLoading(true);
-        const response = await restaurantAPI.getRestaurants(
-          { limit: 100, status: "approved" },
-          { noCache: true, headers: { "X-Zone-Id": "" } }
-        );
-        const list = response?.data?.data?.restaurants || response?.data?.data || response?.data?.restaurants || [];
-        setVendors(Array.isArray(list) ? list : []);
-      } catch (err) {
-        console.error("Error fetching vendors:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (addressesLoading) return;
+    if (!zoneId) {
+      setVendors([]);
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    const params = { zoneId };
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v) params[k] = v === true ? "true" : v;
+    });
+    dmbExtraCustomerAPI
+      .browseVendors(params)
+      .then((res) => {
+        if (!alive) return;
+        setVendors(res.data?.vendors || []);
+        setAvailable(res.data?.filtersAvailable || {});
+        setLoadError("");
+      })
+      .catch((err) => alive && setLoadError(err?.response?.data?.message || t("Could not load makers")))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
     };
-    const checkActiveSub = async () => {
-      try {
-        const res = await dmbCustomerAPI.getMySubscriptions();
-        if (res.data?.success) {
-          const activeOrPaused = res.data.subscriptions?.some(
-            sub => sub.status === "active" || sub.status === "paused"
-          );
-          setHasActiveSub(activeOrPaused);
-        }
-      } catch (e) {
-        console.error("Error checking active subscriptions:", e);
-      }
-    };
-    fetchVendors();
-    checkActiveSub();
+  }, [zoneId, addressesLoading, JSON.stringify(filters), t]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    dmbCustomerAPI
+      .getMySubscriptions()
+      .then((res) => {
+        if (res.data?.success) setHasActiveSub(res.data.subscriptions?.some((sub) => sub.status === "active" || sub.status === "paused"));
+      })
+      .catch(() => {});
   }, []);
 
   const activePlans = vendors.map((vendor) => {
-    let tags = [];
-    if (Array.isArray(vendor.cuisines) && vendor.cuisines.length > 0) {
-      tags = vendor.cuisines.slice(0, 3).map((c) => (typeof c === "string" ? c : c.name));
-    } else if (vendor.vendorType) {
-      const typeMap = { home_cook: "Home Cook", cloud_kitchen: "Cloud Kitchen", restaurant: "Restaurant", catering: "Catering" };
-      tags = [typeMap[vendor.vendorType] || vendor.vendorType, "Fresh Meals"];
-    } else {
-      tags = ["Fresh Meals", "Daily Delivery"];
-    }
-
-    const realRating = Number(vendor.ratings?.average || vendor.rating) || 0;
-
+    const tags = Array.isArray(vendor.cuisines) && vendor.cuisines.length
+      ? vendor.cuisines.slice(0, 3).map((c) => (typeof c === "string" ? c : c.name))
+      : vendor.vendorType && VENDOR_TYPE_LABELS[vendor.vendorType] ? [t(VENDOR_TYPE_LABELS[vendor.vendorType])] : [t("Fresh Meals")];
     return {
-      id: vendor._id || vendor.id,
-      name: vendor.restaurantName || vendor.name || "Meal Vendor",
-      chefName: vendor.ownerName || "Chef",
-      location: vendor.city || vendor.zone || "Local",
-      rating: realRating > 0 ? realRating.toFixed(1) : null,
+      id: vendor._id,
+      name: vendor.name || t("Meal Vendor"),
+      chefName: vendor.chefName || "",
+      location: vendor.city || "",
+      rating: vendor.rating ? Number(vendor.rating).toFixed(1) : null,
+      ratingCount: vendor.ratingCount || 0,
       tags,
-      image: getPrimaryImage(vendor),
+      image: getPrimaryImage({ coverImages: vendor.image ? [vendor.image] : [], profileImage: vendor.profileImage }),
+      badges: vendor.badges || {},
+      deliveryWeekdays: vendor.deliveryWeekdays,
+      onVacation: vendor.onVacation,
       vendorData: vendor,
     };
   });
 
-  const filteredPlans = activePlans.filter(
-    (p) =>
-      (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.chefName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.location || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const q = searchQuery.toLowerCase();
+  const filteredPlans = activePlans.filter((p) => !q || [p.name, p.chefName, p.location, ...p.tags].some((x) => String(x || "").toLowerCase().includes(q)));
+  const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: f[k] === v ? undefined : v }));
+
+  const openPlans = (plan) => {
+    if (hasActiveSub) {
+      setShowActiveSubWarning(true);
+      return;
+    }
+    setOpenPlansFor(plan);
+  };
 
   const handleProceedToCheckout = (checkoutData) => {
     setOpenPlansFor(null);
@@ -904,6 +300,50 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                 )}
               </div>
 
+              {/* Amendment v2 Extra filters: eco (AI), weekend (AJ), specialist (AH), hot/cold (AL), rotation (AK) */}
+              {zoneId && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3 -mx-1 px-1">
+                  <FilterChip active={filters.eco} onClick={() => setFilter("eco", true)}><Leaf size={13} /> {t("Eco packaging")}</FilterChip>
+                  {available.saturday && <FilterChip active={filters.saturday} onClick={() => setFilter("saturday", true)}>{t("Saturday")}</FilterChip>}
+                  {available.sunday && <FilterChip active={filters.sunday} onClick={() => setFilter("sunday", true)}>{t("Sunday")}</FilterChip>}
+                  {(available.temperatures || []).length > 1 && (
+                    <>
+                      <FilterChip active={filters.temperature === "hot"} onClick={() => setFilter("temperature", "hot")}>{t("🔥 Hot")}</FilterChip>
+                      <FilterChip active={filters.temperature === "cold"} onClick={() => setFilter("temperature", "cold")}>{t("❄️ Cold")}</FilterChip>
+                    </>
+                  )}
+                  {(available.specialisms || []).map((sp) => (
+                    <FilterChip key={sp} active={filters.specialism === sp} onClick={() => setFilter("specialism", sp)}>
+                      <Stethoscope size={13} /> {SPECIALISM_LABELS[sp] ? t(SPECIALISM_LABELS[sp]) : sp}
+                    </FilterChip>
+                  ))}
+                  {available.rotation && <FilterChip active={filters.rotation} onClick={() => setFilter("rotation", true)}><Shuffle size={13} /> {t("Rotation")}</FilterChip>}
+                </div>
+              )}
+
+              {zoneId && (isOn("smartRotation") || isOn("selectMode")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                  {isOn("smartRotation") && (
+                    <button type="button" onClick={() => navigate("/user/rotation")} className="text-left bg-white rounded-2xl p-4 border border-[#e4e2e1] hover:border-primary/40 flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Shuffle size={20} /></span>
+                      <span>
+                        <span className="block font-extrabold text-[14px]">{t("Smart Rotation")}</span>
+                        <span className="block text-[12px] text-[#6e7a74]">{t("A different maker on different days")}</span>
+                      </span>
+                    </button>
+                  )}
+                  {isOn("selectMode") && (
+                    <button type="button" onClick={() => navigate("/user/select")} className="text-left bg-white rounded-2xl p-4 border border-[#e4e2e1] hover:border-primary/40 flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><ShoppingBag size={20} /></span>
+                      <span>
+                        <span className="block font-extrabold text-[14px]">{t("Try a single meal")}</span>
+                        <span className="block text-[12px] text-[#6e7a74]">{t("Order for today or tomorrow, no subscription")}</span>
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+
           {/* Hero Banner */}
           <div className="bg-gradient-to-br from-[#1F7A63] to-[#155a49] rounded-2xl p-5 mb-5 relative overflow-hidden shadow-lg">
             <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-xl" />
@@ -917,6 +357,18 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
               <p className="text-white/70 text-[12px] mt-1">{t("Fresh • Healthy • Delivered to your door")}</p>
             </div>
           </div>
+
+          {!addressesLoading && !zoneId && (
+            <div className="bg-white rounded-2xl p-5 border border-[#e4e2e1] mb-5 flex items-start gap-3">
+              <MapPin className="text-primary shrink-0" size={22} />
+              <div className="flex-1">
+                <p className="font-extrabold text-[14px]">{t("Where should we deliver?")}</p>
+                <p className="text-[12px] text-[#6e7a74] mt-0.5">{t("Add your address to see the makers who deliver to you.")}</p>
+                <button type="button" onClick={() => navigate("/user/addresses")} className="mt-3 px-4 py-2 rounded-xl bg-[#1F7A63] text-white text-[13px] font-bold">{t("Add address")}</button>
+              </div>
+            </div>
+          )}
+          {loadError && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800">{loadError}</div>}
 
           {/* Section heading */}
           <div className="flex items-center justify-between mb-4">
@@ -983,6 +435,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
 
                   {/* Card Body */}
                   <div className="p-4">
+                    <VendorBadges badges={plan.badges} onVacation={plan.onVacation} />
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {plan.tags.map((tag) => (
@@ -1005,7 +458,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
 
                       {/* View Plans Button */}
                       <button
-                        onClick={() => setOpenPlansFor(plan)}
+                        onClick={() => openPlans(plan)}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#1F7A63] text-white py-3 rounded-xl text-[13px] font-bold active:scale-[0.97] transition-all hover:bg-[#155a49] shadow-sm"
                       >
                         <Youtube className="text-[18px]" />
@@ -1037,19 +490,70 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
         />
       )}
 
-      {/* Plans Modal */}
+      {/* Subscribe sheet (server-quoted, Amendment v2 Extra) */}
       {openPlansFor && (
-        <PlansModal
-          vendorId={openPlansFor.id}
-          vendorName={openPlansFor.name}
-          vendorImage={openPlansFor.image}
+        <SubscribeSheet
+          vendor={{ id: openPlansFor.id, name: openPlansFor.name, image: openPlansFor.image, deliveryWeekdays: openPlansFor.deliveryWeekdays }}
           onClose={() => setOpenPlansFor(null)}
           onProceedToCheckout={handleProceedToCheckout}
-          hasActiveSub={hasActiveSub}
           matchDietary={matchDietary}
           dietaryPrefs={dietaryPrefs}
         />
       )}
+
+      {showActiveSubWarning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[210]">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left">
+            <h3 className="text-lg font-extrabold text-[#F59E0B] flex items-center gap-2">
+              <AlertTriangle />
+              {t("Active Subscription Exists")}
+            </h3>
+            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+              {t("You already have a subscription. Change your plan, switch maker or add a delivery slot from your subscription instead.")}
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button type="button" onClick={() => setShowActiveSubWarning(false)} className="py-2.5 rounded-xl border border-[#e4e2e1] font-bold text-xs">{t("Close")}</button>
+              <button type="button" onClick={() => navigate("/user/subscription")} className="bg-primary text-white py-2.5 rounded-xl font-bold text-xs">{t("Manage subscription")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
+}
+
+function FilterChip({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-bold border transition-all ${active ? "bg-[#1F7A63] text-white border-[#1F7A63]" : "bg-white text-[#1b1c1c] border-[#e4e2e1]"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Eco (AI), 7-day / weekend (AJ), dietitian-certified (AH), hot/cold (AL) and pre-order (M) badges. */
+function VendorBadges({ badges = {}, onVacation }) {
+  const { t } = useTranslation("customer");
+  const items = [];
+  if (onVacation) items.push(<span key="vac" className="bg-slate-100 text-slate-700 border-slate-200">{t("On holiday")}</span>);
+  if (badges.eco) items.push(<span key="eco" className="bg-emerald-50 text-emerald-800 border-emerald-200 inline-flex items-center gap-1"><Leaf size={11} /> {t("Eco packaging")}</span>);
+  if (badges.weekend === "7_days") items.push(<span key="wk" className="bg-indigo-50 text-indigo-800 border-indigo-200">{t("7 days a week")}</span>);
+  else if (badges.weekend === "sat") items.push(<span key="wk" className="bg-indigo-50 text-indigo-800 border-indigo-200">{t("Also Saturdays")}</span>);
+  else if (badges.weekend === "sun") items.push(<span key="wk" className="bg-indigo-50 text-indigo-800 border-indigo-200">{t("Also Sundays")}</span>);
+  (badges.dietitianCertified || []).forEach((sp) =>
+    items.push(
+      <span key={`sp-${sp.specialism}`} className="bg-violet-50 text-violet-800 border-violet-200 inline-flex items-center gap-1">
+        <Stethoscope size={11} /> {SPECIALISM_LABELS[sp.specialism] ? t(SPECIALISM_LABELS[sp.specialism]) : sp.specialism} · {t("dietitian certified")}
+      </span>,
+    ),
+  );
+  (badges.temperatures || []).forEach((tp) =>
+    items.push(<span key={`t-${tp}`} className={tp === "hot" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-sky-50 text-sky-700 border-sky-200"}>{tp === "hot" ? t("🔥 Hot") : t("❄️ Cold")}</span>),
+  );
+  if (badges.preOrder) items.push(<span key="pre" className="bg-amber-50 text-amber-800 border-amber-200">{t("New dish — pre-order")}</span>);
+  if (!items.length) return null;
+  return <div className="flex flex-wrap gap-1.5 mb-3 [&>span]:text-[10.5px] [&>span]:font-bold [&>span]:px-2 [&>span]:py-0.5 [&>span]:rounded-full [&>span]:border">{items}</div>;
 }
