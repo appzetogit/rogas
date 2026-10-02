@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { encryptedFields } from '../../../../utils/encryptedFields.plugin.js';
 
 const normalizeRatingValue = (value) => {
   const numeric = Number(value);
@@ -349,6 +350,90 @@ const restaurantSchema = new mongoose.Schema(
     activeSubscriberCount: { type: Number, default: 0, min: 0 },
     /** Tomorrow's forecast pushed to vendor */
     forecastPushTime: { type: String, default: '19:00' },
+
+    // ─── Amendment v2 Extra ──────────────────────────────────────────────────
+    /** Zones this vendor delivers to (Gap X). Empty = its own zoneId only. */
+    deliveryZoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
+    /** Weekdays the vendor delivers (JS days 0=Sun…6=Sat). Mon–Fri by default; weekends need ACM-177 (Gap AJ). */
+    deliveryWeekdays: { type: [Number], default: [1, 2, 3, 4, 5] },
+    /** The vendor may be part of customers' Smart Rotations (Gap AK). */
+    rotationAvailable: { type: Boolean, default: true },
+
+    /** Two-track home cook model (Gap AA). 1 = działalność nierejestrowana, 2 = Kitchen Partner / own company. */
+    cookTrack: { type: Number, enum: [1, 2, null], default: null, index: true },
+    cookTrackChangedAt: { type: Date, default: null },
+    track1JoinedAt: { type: Date, default: null },
+    /** Own company NIP (Track 2 without a Kitchen Partner). */
+    companyNip: { type: String, default: '' },
+    kitchenPhotos: {
+      type: [{ url: { type: String, required: true }, uploadedAt: { type: Date, default: Date.now }, _id: false }],
+      default: undefined,
+    },
+    kitchenPhotoReview: {
+      status: { type: String, enum: ['not_submitted', 'pending', 'approved', 'rejected'], default: 'not_submitted' },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+      reviewedAt: { type: Date, default: null },
+      reason: { type: String, default: '' },
+    },
+    sanepidDocUrl: { type: String, default: '' },
+    sanepidUploadedAt: { type: Date, default: null },
+    /** Track 1 may trade before the Sanepid document arrives, until this date (ACM-163). */
+    sanepidDeadline: { type: Date, default: null },
+    /** Set when the Sanepid grace period ran out without the document — the vendor cannot go online. */
+    track1Paused: { type: Boolean, default: false },
+    /** Threshold warnings already sent per month, e.g. { "2026-10": ["amber"] } (ACM-162). */
+    track1Warnings: { type: mongoose.Schema.Types.Mixed, default: undefined },
+    trackUpgradeNotice: {
+      sentAt: { type: Date, default: null },
+      deadline: { type: Date, default: null },
+      sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+    },
+
+    /** Preferred delivery partner (Gap AD). Linked only by an admin. */
+    deliveryPreference: { type: String, enum: ['pool', 'preferred_fleet_partner'], default: 'pool' },
+    preferredFleetPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FleetPartner', default: null },
+
+    /** Eco packaging (Gap AI). Badge shows when enabled AND (verified OR ACM-176 verification off). */
+    ecoPackaging: {
+      enabled: { type: Boolean, default: false },
+      type: { type: String, enum: ['biodegradable', 'recyclable', 'paper', 'reusable', ''], default: '' },
+      photoUrl: { type: String, default: '' },
+      declaredAt: { type: Date, default: null },
+      adminVerified: { type: Boolean, default: false },
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+      verifiedAt: { type: Date, default: null },
+    },
+
+    /** Medical diet specialisms (Gap AH) — each approved separately, expires after ACM-175 months. */
+    specialisms: {
+      type: [{
+        specialism: { type: String, enum: ['hashimoto', 'pregnancy', 'low_gi', 'menopause'], required: true },
+        status: { type: String, enum: ['pending', 'approved', 'rejected', 'expired'], default: 'pending' },
+        documentUrl: { type: String, default: '' },
+        samplePlanUrl: { type: String, default: '' },
+        dietitianName: { type: String, default: '' },
+        notes: { type: String, default: '' },
+        appliedAt: { type: Date, default: Date.now },
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+        approvedAt: { type: Date, default: null },
+        expiryDate: { type: Date, default: null },
+        rejectionReason: { type: String, default: '' },
+        reminderSentAt: { type: Date, default: null },
+        verificationLevel: { type: String, enum: ['dietitian_certified', 'dailymealbox_verified'], default: 'dietitian_certified' },
+      }],
+      default: undefined,
+    },
+
+    /** Meal-quality rating only (Gap R) — delivery problems never lower it. */
+    mealRating: {
+      average: { type: Number, default: 0 },
+      count: { type: Number, default: 0 },
+    },
+    /** Review responses (Gap T): responded / total, for the AP-05 response rate. */
+    reviewStats: {
+      total: { type: Number, default: 0 },
+      responded: { type: Number, default: 0 },
+    },
   },
   {
     collection: "food_restaurants",
@@ -495,6 +580,9 @@ restaurantSchema.index(
   },
 );
 restaurantSchema.index({ status: 1, createdAt: -1 });
+
+/** GDPR Art. 32 (Gap N): bank details are encrypted field-by-field (AES-256-GCM). */
+restaurantSchema.plugin(encryptedFields, { paths: ['accountNumber'] });
 
 export const FoodRestaurant = mongoose.model(
   "FoodRestaurant",

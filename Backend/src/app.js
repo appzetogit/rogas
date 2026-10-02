@@ -37,6 +37,17 @@ app.get('/ready', (_req, res) => {
     res.status(200).json({ status: 'ready' });
 });
 
+// GDPR Art. 32 (Gap N): plain HTTP is never served in production — redirect to HTTPS behind the TLS-terminating proxy.
+// FORCE_HTTPS=false turns it off (e.g. a proxy that already redirects); health checks above stay reachable over HTTP.
+const forceHttps = process.env.FORCE_HTTPS ? process.env.FORCE_HTTPS === 'true' : config.nodeEnv === 'production';
+if (forceHttps) {
+    app.use((req, res, next) => {
+        if (req.secure || req.get('x-forwarded-proto') === 'https') return next();
+        if (req.method === 'GET' || req.method === 'HEAD') return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`);
+        return res.status(403).json({ success: false, message: 'HTTPS is required' });
+    });
+}
+
 // Security & parsing middlewares
 app.use(helmet({
     contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },

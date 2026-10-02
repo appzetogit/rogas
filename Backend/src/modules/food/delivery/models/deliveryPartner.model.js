@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { encryptedFields } from '../../../../utils/encryptedFields.plugin.js';
 
 const normalizeRatingValue = (value) => {
     const numeric = Number(value);
@@ -126,6 +127,11 @@ const deliveryPartnerSchema = new mongoose.Schema(
             set: normalizeRatingValue
         },
         totalRatings: { type: Number, default: 0, min: 0 },
+        /** Delivery-experience rating only (Amendment v2 Gap R) — never lowered by the food. */
+        deliveryRating: {
+            average: { type: Number, default: 0 },
+            count: { type: Number, default: 0 }
+        },
 
         // ─── DailyMealBox Driver Fields ──────────────────────────────────────
         /** Fleet partner company this driver belongs to */
@@ -195,6 +201,9 @@ const deliveryPartnerSchema = new mongoose.Schema(
 // Indices
 deliveryPartnerSchema.index({ lastLocation: '2dsphere' });
 deliveryPartnerSchema.index({ isOnline: 1, lastLocationAt: -1 });
+
+/** GDPR Art. 32 (Gap N): bank details are encrypted field-by-field (AES-256-GCM). */
+deliveryPartnerSchema.plugin(encryptedFields, { paths: ['bankAccountNumber', 'bankIban'] });
 
 export const FoodDeliveryPartner = mongoose.model('FoodDeliveryPartner', deliveryPartnerSchema);
 

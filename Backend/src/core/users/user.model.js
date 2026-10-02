@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { encryptedFields, encryptedSubFields } from '../../utils/encryptedFields.plugin.js';
 
 const userAddressSchema = new mongoose.Schema(
     {
@@ -60,10 +61,18 @@ const userAddressSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
             index: true
-        }
+        },
+        /** Free-text name for "Other" addresses ("Mum's", "Gym") — up to 3 of them (Gap V). */
+        customLabel: { type: String, default: '', trim: true },
+        /** Delivery zone the address falls in, checked when saved (Gap U). */
+        zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null }
     },
     { _id: true, timestamps: true }
 );
+
+/** GDPR Art. 32 (Gap N): address details are encrypted field-by-field (AES-256-GCM). */
+export const USER_ENCRYPTED_ADDRESS_FIELDS = ['street', 'additionalDetails', 'zipCode', 'phone'];
+encryptedSubFields(userAddressSchema, { paths: USER_ENCRYPTED_ADDRESS_FIELDS });
 
 const userSchema = new mongoose.Schema(
     {
@@ -201,6 +210,44 @@ const userSchema = new mongoose.Schema(
             default: null,
             index: true
         },
+        // ─── Amendment v2 Extra ────────────────────────────────────────────
+        /** Per-category notification switches (Gap W); see dailymealbox/notifications/preferences.js. */
+        notificationPreferences: { type: mongoose.Schema.Types.Mixed, default: undefined },
+        /** GDPR: marketing email consent (Gap I) — default off; only `granted` customers are synced to Mailchimp. */
+        marketingEmailConsent: {
+            granted: { type: Boolean, default: false },
+            at: { type: Date, default: null },
+            source: { type: String, default: '' },
+            withdrawnAt: { type: Date, default: null }
+        },
+        /** WhatsApp invoice delivery (Gap J). The number is stored encrypted (Gap N). */
+        whatsappNumber: { type: String, default: '' },
+        invoiceDeliveryMethod: { type: String, enum: ['email', 'whatsapp', 'both'], default: 'email' },
+        /** Eco-packaging preference (Gap AI) — ranks eco vendors higher, never filters. */
+        ecoPreference: { type: Boolean, default: false },
+        /** Bad-debt flags set by the daily check or Customer Service (Gap F). */
+        badDebt: {
+            flagged: { type: Boolean, default: false, index: true },
+            reasons: { type: [String], default: undefined },
+            paymentFailures90d: { type: Number, default: 0 },
+            refundRequests60d: { type: Number, default: 0 },
+            chargebacks: { type: Number, default: 0 },
+            chargebackAmount: { type: Number, default: 0 },
+            debtAmount: { type: Number, default: 0 },
+            codBlocked: { type: Boolean, default: false },
+            subscriptionBlocked: { type: Boolean, default: false },
+            escalated: { type: Boolean, default: false },
+            flaggedBy: { type: String, default: '' },
+            flaggedAt: { type: Date, default: null },
+            lastCheckedAt: { type: Date, default: null },
+            notes: {
+                type: [{ text: String, by: String, at: { type: Date, default: Date.now }, _id: false }],
+                default: undefined
+            }
+        },
+        /** Customer segments (Gap Y). */
+        segmentIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'DMBCustomerSegment', default: undefined, index: true },
+
         /** Current subscription status (denormalized for fast queries) */
         subscriptionStatus: {
             type: String,
@@ -217,6 +264,8 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ phone: 1 }, { unique: true });
 userSchema.index({ 'addresses.location': '2dsphere' });
+
+userSchema.plugin(encryptedFields, { paths: [], nested: USER_ENCRYPTED_ADDRESS_FIELDS.map((f) => `addresses.${f}`) });
 
 export const FoodUser = mongoose.model('FoodUser', userSchema);
 

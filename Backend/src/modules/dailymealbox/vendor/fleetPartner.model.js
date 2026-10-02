@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { encryptedFields } from '../../../utils/encryptedFields.plugin.js';
 
 /**
  * FleetPartner — Fleet company managing driver delivery operations
@@ -48,7 +49,15 @@ const fleetPartnerSchema = new mongoose.Schema(
             }
         ],
 
-        approvedByAdminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null }
+        approvedByAdminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+
+        /**
+         * Gap AD: a single courier without a company registers as individual_unregistered (działalność nierejestrowana)
+         * and receives monthly settlement statements instead of invoicing (same mechanism as Track 1 cooks, Gap AB).
+         */
+        entityType: { type: String, enum: ['company', 'individual_unregistered'], default: 'company' },
+        /** Vendors that nominated this partner and an admin linked (many vendors → one partner). */
+        preferredForVendorIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant' }]
     },
     {
         collection: 'fleet_partners',
@@ -57,5 +66,8 @@ const fleetPartnerSchema = new mongoose.Schema(
 );
 
 fleetPartnerSchema.index({ city: 1, status: 1 });
+
+/** GDPR Art. 32 (Gap N): bank details are encrypted field-by-field (AES-256-GCM). */
+fleetPartnerSchema.plugin(encryptedFields, { paths: ['bankIban'] });
 
 export const FleetPartner = mongoose.model('FleetPartner', fleetPartnerSchema);

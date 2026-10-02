@@ -12,6 +12,8 @@ import test, { before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 
+// These tests express slot times in UTC; the platform zone is pinned to UTC so "11:00" means 11:00Z here.
+process.env.PLATFORM_TIMEZONE = 'UTC';
 const BASE_URI = process.env.ATTENDANCE_TEST_MONGO_URI || 'mongodb://127.0.0.1:27017';
 if (!/^mongodb:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(BASE_URI)) {
     throw new Error(`Refusing to run: ATTENDANCE_TEST_MONGO_URI must be a plain local mongod (got ${BASE_URI.replace(/\/\/.*@/, '//***@')})`);
@@ -160,6 +162,11 @@ test('runAttendanceSweep completes a checked-in shift once its window has closed
 });
 
 test('runAttendanceSweep reminds the admin once about a shift starting soon that is still unconfirmed', async () => {
+    // Confirmation reminders only run where ACM-152 is switched on.
+    const { DMBPlatformControl } = await import('../src/modules/dailymealbox/platform/platform.models.js');
+    const { invalidatePlatformConfig } = await import('../src/modules/dailymealbox/platform/platformConfig.service.js');
+    await DMBPlatformControl.updateOne({ key: 'driverShiftConfirmation', cityId: null }, { $set: { value: { enabled: true } } }, { upsert: true });
+    invalidatePlatformConfig();
     await FoodBusinessSettings.create({ supportEmail: 'ops@example.test' });
     const driver = await makeDriver({ name: 'Soon Sam' });
     const target = new Date(Date.now() + 90 * 60_000); // ~90 minutes from now: inside the 2h reminder window
@@ -190,16 +197,19 @@ test('runAttendanceSweep also seeds tomorrow\'s shifts so there is something for
     assert.equal(count, 1);
 });
 
-test('listShiftsForDriver returns a driver\'s own shifts newest-first, each carrying its slot info', async () => {
+test('listShiftsForDriver returns a driver\'s own shifts (next 7 days included) newest-first, each carrying its slot info', async () => {
     const driver = await makeDriver();
     await makeSlot({ key: 'lunch', name: 'Lunch' });
     await ShiftRecord.create({ driverId: driver._id, date: midnightUTC(addDays(new Date(), -1)), slotKey: 'lunch', status: 'completed' });
     await ShiftRecord.create({ driverId: driver._id, date: midnightUTC(), slotKey: 'lunch', status: 'scheduled' });
 
     const shifts = await attSvc.listShiftsForDriver(driver._id);
-    assert.equal(shifts.length, 2);
-    assert.equal(shifts[0].status, 'scheduled', 'newest (today) first');
+    // GAP Z: the next 7 days are always listed (today + 6 generated on demand), plus yesterday's completed shift.
+    assert.equal(shifts.length, 8);
+    assert.equal(shifts[0].status, 'scheduled', 'newest (furthest upcoming) first');
     assert.equal(shifts[0].slot.name, 'Lunch');
+    assert.equal(shifts[shifts.length - 1].status, 'completed');
+    assert.ok(shifts.every((s) => 'canUnconfirm' in s));
 });
 
 test('adminAttendanceOverview computes completed/(completed+no_show) per driver for the given month, ignoring open shifts', async () => {
@@ -236,4 +246,33 @@ test('tomorrowConfirmationStatus reports which of tomorrow\'s shifts are confirm
     assert.equal(rows.length, 1);
     assert.equal(rows[0].name, 'Tomorrow Tina');
     assert.equal(rows[0].confirmed, true);
+});
+
+test('unconfirmShift: allowed until 2 hours before the start, refused after', async () => {
+    const driver = await makeDriver();
+    const soon = new Date(Date.now() + 60 * 60_000);
+    await makeSlot({ key: 'lunch', startTime: hhmmUTC(soon), endTime: hhmmUTC(new Date(soon.getTime() + 3_600_000)) });
+    const near = await ShiftRecord.create({ driverId: driver._id, date: midnightUTC(soon), slotKey: 'lunch', status: 'confirmed', confirmedAt: new Date() });
+    await assert.rejects(() => attSvc.unconfirmShift(driver._id, near._id), /within 2 hours/);
+
+    const later = await ShiftRecord.create({ driverId: driver._id, date: midnightUTC(addDays(soon, 2)), slotKey: 'lunch', status: 'confirmed', confirmedAt: new Date() });
+    const res = await attSvc.unconfirmShift(driver._id, later._id);
+    assert.equal(res.status, 'scheduled');
+});
+
+test('a completed shift records its deliveries; a no-show never qualifies for the minimum guarantee', async () => {
+    const driver = await makeDriver({ minimumGuarantee: 80 });
+    await makeSlot({ key: 'lunch', startTime: '09:00', endTime: '13:00' });
+    const yesterday = midnightUTC(addDays(new Date(), -1));
+    await ShiftRecord.create({ driverId: driver._id, date: yesterday, slotKey: 'lunch', status: 'confirmed', checkedInAt: new Date(yesterday.getTime() + 9 * 3_600_000) });
+    const other = await makeDriver({ minimumGuarantee: 80 });
+    await ShiftRecord.create({ driverId: other._id, date: yesterday, slotKey: 'lunch', status: 'scheduled' });
+    await attSvc.runAttendanceSweep();
+    const done = await ShiftRecord.findOne({ driverId: driver._id }).lean();
+    assert.equal(done.status, 'completed');
+    assert.equal(done.deliveriesCount, 0);
+    assert.equal(done.minGuaranteeEligible, false, 'no deliveries → no guarantee');
+    const missed = await ShiftRecord.findOne({ driverId: other._id }).lean();
+    assert.equal(missed.status, 'no_show');
+    assert.equal(missed.minGuaranteeEligible, false);
 });

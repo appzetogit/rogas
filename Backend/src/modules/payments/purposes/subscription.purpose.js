@@ -11,6 +11,11 @@ export default {
             return { attention: `Subscription ${subscriptionId} is "${sub.status}" but its payment arrived; refund or reinstate it manually` };
         }
         await activateSubscription(subscriptionId);
+        // Invoice delivery (CA-v2-07 + Gap J): email and/or WhatsApp, as the customer chose. Never blocks activation.
+        try {
+            const { deliverSubscriptionInvoice } = await import('../../dailymealbox/integrations/invoiceDelivery.js');
+            await deliverSubscriptionInvoice(sub._id);
+        } catch { /* logged inside */ }
         return undefined;
     },
 

@@ -373,6 +373,19 @@ export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, pla
     // 💡 Clone the payload to avoid side-effects (e.g. adding multiple prefixes to the same object during broadcasting)
     let enrichedPayload = { ...payload };
 
+    // 🔕 Customer notification preferences (Amendment v2 Gap W): a customer who switched a category off does not get it,
+    // unless the type is critical (locked) or an admin forced it. Unknown/transactional events always go through.
+    if (String(ownerType || '').toUpperCase() === 'USER' && (payload?.data?.event || payload?.data?.type)) {
+        try {
+            const { customerAllowsPush } = await import('../../modules/dailymealbox/notifications/notify.js');
+            if (!(await customerAllowsPush(ownerId, payload.data.event || payload.data.type))) {
+                return { successCount: 0, failureCount: 0, results: [], skipped: 'preference' };
+            }
+        } catch (error) {
+            logger.warn(`[prefs] Preference check failed for ${ownerId}, sending anyway: ${error.message}`);
+        }
+    }
+
     // 🌐 Translate title/body into the recipient's chosen language (English when no translation exists).
     // A translation failure must never drop the push, so it degrades to the English text.
     try {

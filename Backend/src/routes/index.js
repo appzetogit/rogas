@@ -36,6 +36,8 @@ import officeAuthRoutes from '../modules/dailymealbox/office/routes/officeAuth.r
 import serviceManagementRoutes from '../modules/dailymealbox/serviceManagement/serviceManagement.routes.js';
 import { publicSlotRouter } from '../modules/dailymealbox/deliverySlot/deliverySlot.routes.js';
 import { publicI18nRouter } from '../modules/i18n/i18n.routes.js';
+import { publicConfigRouter } from '../modules/dailymealbox/platform/platform.routes.js';
+import dmbExtraRoutes from '../modules/dailymealbox/extra.routes.js';
 
 const router = express.Router();
 
@@ -96,6 +98,10 @@ router.use('/v1/dmb/office', officeRoutes);
 router.use('/v1/dmb/service', serviceManagementRoutes);
 // DMB Delivery Slots (public read; admin CRUD lives under /v1/food/admin/delivery-slots)
 router.use('/v1/dmb/slots', publicSlotRouter);
+// DailyMealBox runtime config (the web apps' equivalent of Firebase Remote Config — ACM-131…183)
+router.use('/v1/dmb/config', publicConfigRouter);
+// Amendment v2 Extra features (customer / vendor / driver endpoints; each route applies its own auth)
+router.use('/v1/dmb', dmbExtraRoutes);
 // Multi-language: public language list + bundles, per-account preference (admin CRUD under /v1/food/admin/i18n)
 router.use('/v1/i18n', publicI18nRouter);
 

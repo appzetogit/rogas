@@ -3728,6 +3728,16 @@ export async function approveRestaurant(id) {
     const restaurant = await FoodRestaurant.findById(id);
     if (!restaurant) return null;
 
+    // Amendment v2 Gap AA / ACM-165: a Track 1 home cook goes live only after the kitchen photo review.
+    if (restaurant.status !== 'approved' && restaurant.zoneChangeStatus !== 'pending') {
+        const { assertTrack1ReadyForApproval } = await import('../../../dailymealbox/vendor/vendorAmendment.service.js');
+        try {
+            await assertTrack1ReadyForApproval(restaurant._id);
+        } catch (err) {
+            throw new ValidationError(err.message);
+        }
+    }
+
     let update = {};
     let isZoneChange = restaurant.zoneChangeStatus === 'pending';
 

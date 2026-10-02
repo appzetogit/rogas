@@ -20,9 +20,10 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
             default: 0,
             min: 0
         },
+        /** fortnight (Gap L, ACM-151) and year (Gap C, ACM-149) are offered only while their control is on. */
         duration: {
             type: String,
-            enum: ['day', 'week', 'month'],
+            enum: ['day', 'week', 'fortnight', 'month', 'year'],
             required: true
         },
         description: {

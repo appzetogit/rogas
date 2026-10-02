@@ -84,53 +84,37 @@ const startServer = async () => {
             logger.error(`[attendance] Could not start upkeep jobs: ${err.message}`);
         }
 
-        // 1a. Cleanup all fake orders and batches (one-time startup migration/cleanup)
+        // 1-dmb. Amendment v2 Extra background jobs (slot migration, holidays, stock, settlements, reminders, …).
         try {
-            const db = mongoose.connection.db;
-            const collectionBatchesCol = db.collection('dmb_collection_batches');
-            const dailyOrdersCol = db.collection('dmb_daily_orders');
+            const { runAmendmentBootstrap } = await import('./src/modules/dailymealbox/platform/bootstrap.js');
+            await runAmendmentBootstrap();
+            const { registerAmendmentJobs } = await import('./src/modules/dailymealbox/platform/amendmentJobs.js');
+            const { startJobRunner } = await import('./src/modules/dailymealbox/platform/jobRunner.js');
+            registerAmendmentJobs();
+            startJobRunner();
+        } catch (err) {
+            logger.error(`[jobs] Could not start DailyMealBox jobs: ${err.message}`);
+        }
 
-            // Find all batches starting with BATCH- or containing fake data
-            const fakeBatches = await collectionBatchesCol.find({
-                $or: [
-                    { batchId: /^BATCH-/ },
-                    { collectionPinHash: '4901' }
-                ]
-            }).toArray();
-
-            const fakeBatchIds = fakeBatches.map(b => b._id);
-            let fakeOrderIds = [];
-            fakeBatches.forEach(b => {
-                if (b.orderIds && Array.isArray(b.orderIds)) {
-                    fakeOrderIds.push(...b.orderIds);
+        // 1a. Development-only clean-up of seeded demo batches/orders. It used to run on every start and matched any order
+        // priced in PLN — i.e. every real Polish order — so it is now opt-in and only matches the demo fixtures.
+        if (process.env.DMB_DEV_CLEANUP === 'true' && config.nodeEnv !== 'production') {
+            try {
+                const db = mongoose.connection.db;
+                const collectionBatchesCol = db.collection('dmb_collection_batches');
+                const dailyOrdersCol = db.collection('dmb_daily_orders');
+                const fakeBatches = await collectionBatchesCol.find({ $or: [{ batchId: /^BATCH-/ }, { collectionPinHash: '4901' }] }).toArray();
+                const fakeOrderIds = fakeBatches.flatMap((b) => (Array.isArray(b.orderIds) ? b.orderIds : []));
+                const deletedOrders = await dailyOrdersCol.deleteMany({
+                    $or: [{ _id: { $in: fakeOrderIds } }, { 'deliveryAddress.street': /^Mock Street/ }, { collectionPin: '4901' }]
+                });
+                const deletedBatches = await collectionBatchesCol.deleteMany({ $or: [{ _id: { $in: fakeBatches.map((b) => b._id) } }, { batchId: /^BATCH-/ }, { collectionPinHash: '4901' }] });
+                if (deletedOrders.deletedCount > 0 || deletedBatches.deletedCount > 0) {
+                    logger.info(`[DB CLEANUP] Deleted ${deletedOrders.deletedCount} demo orders and ${deletedBatches.deletedCount} demo batches.`);
                 }
-            });
-
-            // Delete fake orders
-            const deletedOrders = await dailyOrdersCol.deleteMany({
-                $or: [
-                    { _id: { $in: fakeOrderIds } },
-                    { 'pricing.currency': 'PLN' },
-                    { 'deliveryAddress.street': /^Mock Street/ },
-                    { collectionPin: '4901' },
-                    { 'meals.name': /^Healthy Meal/ }
-                ]
-            });
-
-            // Delete fake batches
-            const deletedBatches = await collectionBatchesCol.deleteMany({
-                $or: [
-                    { _id: { $in: fakeBatchIds } },
-                    { batchId: /^BATCH-/ },
-                    { collectionPinHash: '4901' }
-                ]
-            });
-
-            if (deletedOrders.deletedCount > 0 || deletedBatches.deletedCount > 0) {
-                logger.info(`[DB CLEANUP] Deleted ${deletedOrders.deletedCount} fake orders and ${deletedBatches.deletedCount} fake batches.`);
+            } catch (cleanupErr) {
+                logger.error(`Error cleaning up demo orders/batches: ${cleanupErr.message}`);
             }
-        } catch (cleanupErr) {
-            logger.error(`Error cleaning up fake orders/batches: ${cleanupErr.message}`);
         }
 
         // Seed DMB Duration Plans

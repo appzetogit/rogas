@@ -15,7 +15,7 @@ const shiftRecordSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ['scheduled', 'confirmed', 'completed', 'no_show'],
+            enum: ['scheduled', 'confirmed', 'completed', 'no_show', 'holiday'],
             default: 'scheduled',
             index: true
         },
@@ -30,7 +30,15 @@ const shiftRecordSchema = new mongoose.Schema(
         earnings: { type: Number, default: 0, min: 0 },
 
         /** Guards the "2h before shift, not yet confirmed" admin alert from firing more than once. */
-        unconfirmedAlertSentAt: { type: Date, default: null }
+        unconfirmedAlertSentAt: { type: Date, default: null },
+        /** Guards the driver's own "confirm your shift tomorrow" reminder (24h before, GAP Z). */
+        reminder24SentAt: { type: Date, default: null },
+        /** Set when a platform holiday cancels this shift (GAP G) — the driver app shows "Platform Holiday". */
+        holidayName: { type: String, default: '' },
+        /** Deliveries completed during this shift (snapshot when finalised); the minimum guarantee needs a completed shift. */
+        deliveriesCount: { type: Number, default: 0, min: 0 },
+        /** Whether this shift qualified for the driver's minimum guarantee (completed AND deliveries >= threshold). */
+        minGuaranteeEligible: { type: Boolean, default: false }
     },
     {
         collection: 'food_shift_records',

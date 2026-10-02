@@ -316,6 +316,11 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
 
         if (!order) throw new Error('Daily Order not found');
 
+        // Select mode → "Enjoyed your meal? Subscribe…" prompt (Amendment v2 Gap AG). Never blocks the delivery.
+        if (order.orderType === 'one_time_select') {
+            import('../orders/oneTimeOrder.service.js').then((m) => m.sendConversionPrompt(order)).catch(() => {});
+        }
+
         // Delivery count will be incremented upon payment confirmation
         // Notification to customer remains unchanged
 

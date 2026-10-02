@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 
 export const PROVIDER_IDS = ['razorpay', 'przelewy24', 'stripe', 'mock'];
-export const PURPOSES = ['subscription', 'pantry', 'wallet_topup', 'tip', 'office', 'driver_deposit'];
+export const PURPOSES = ['subscription', 'pantry', 'wallet_topup', 'tip', 'office', 'driver_deposit', 'one_time_order'];
 export const TX_STATUSES = ['created', 'pending', 'paid', 'failed', 'expired', 'cancelled', 'partially_refunded', 'refunded'];
 
 const refundSchema = new mongoose.Schema(

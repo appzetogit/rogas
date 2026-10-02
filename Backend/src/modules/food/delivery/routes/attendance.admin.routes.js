@@ -16,11 +16,12 @@ const handle = (fn) => async (req, res) => {
 
 // Every approved driver's attendance rate for a month (default: current month). ?maxRate=80 flags drivers below 80%.
 adminAttendanceRouter.get('/overview', requirePermission('driverManagement', 'view'), handle(async (req, res) => {
-    const { year, month, maxRate } = req.query;
+    const { year, month, maxRate, fleetPartnerId } = req.query;
     const data = await adminAttendanceOverview({
         year: year !== undefined ? Number(year) : undefined,
         month: month !== undefined ? Number(month) : undefined,
-        maxRate
+        maxRate,
+        fleetPartnerId: /^[a-f\d]{24}$/i.test(String(fleetPartnerId || '')) ? String(fleetPartnerId) : undefined
     });
     res.json({ success: true, data });
 }));

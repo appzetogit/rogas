@@ -17,7 +17,8 @@ const createAddressSchema = z.object({
     zipCode: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     phone: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     latitude: z.number().finite().min(-90).max(90),
-    longitude: coordSchema
+    longitude: coordSchema,
+    customLabel: z.string().max(30).optional().or(z.literal('')).transform((s) => String(s || '').trim())
 });
 
 const updateAddressSchema = createAddressSchema.partial();

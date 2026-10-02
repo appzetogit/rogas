@@ -18,7 +18,7 @@ export async function downloadInvoiceController(req, res, next) {
         // Pipe the PDF document to the response
         doc.pipe(res);
     } catch (error) {
-        if (error.name === 'ValidationError' || error.name === 'AuthError') {
+        if (error.name === 'ValidationError' || error.name === 'AuthError' || error.statusCode === 400) {
             return res.status(400).json({ success: false, message: error.message });
         }
         console.error('Error generating invoice PDF:', error);

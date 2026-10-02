@@ -25,6 +25,40 @@ import { VendorTimingSettings } from '../../food/admin/models/vendorTimingSettin
 const router = express.Router();
 
 /**
+ * Whether the customer may still skip / undo / change a delivery. All times are in the platform time zone
+ * (PLATFORM_TIMEZONE, default Europe/Warsaw) — this used to be hard-coded to Asia/Kolkata.
+ *   - never for today or past deliveries
+ *   - tomorrow's delivery: not after the admin's meal-change cut-off (Vendor Timing Settings, default 20:00)
+ *   - any delivery: not within the slot's own cut-off hours before it starts
+ */
+const modificationBlockedReason = async (order, verb) => {
+    const { localDateStr, localTimeHHMM, zonedInstant, storageDateStr, addDays, localToday } = await import('../../../utils/platformTime.js');
+    const orderDateStr = storageDateStr(order.deliveryDate);
+    const todayStr = localDateStr();
+    if (orderDateStr <= todayStr) return verb === 'undo' ? "Cannot undo skip for today's or past orders" : verb === 'skip' ? "Cannot skip today's or past orders" : "Cannot modify today's or past orders";
+    if (orderDateStr === storageDateStr(addDays(localToday(), 1))) {
+        const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
+        const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
+        if (localTimeHHMM() >= cutoffTime) {
+            return verb === 'undo' ? `Cannot undo skip for tomorrow's meal after ${cutoffTime}` : verb === 'skip' ? `Cannot skip tomorrow's meal after ${cutoffTime}` : `Cannot modify tomorrow's meal after ${cutoffTime}`;
+        }
+    }
+    const slotDef = (await listSlots()).find((sl) => sl.key === order.deliverySlot);
+    if (slotDef?.orderCutoffHours > 0 && slotDef.startTime) {
+        const deadline = zonedInstant(orderDateStr, slotDef.startTime).getTime() - slotDef.orderCutoffHours * 3600 * 1000;
+        if (Date.now() >= deadline) return `Changes to ${slotDef.name} meals close ${slotDef.orderCutoffHours} hour(s) before the slot starts`;
+    }
+    return null;
+};
+
+/** What the customer paid for one delivery — credited on skip, debited on undo. */
+const paidForOrder = (order, sub) => {
+    const paid = Number(order.pricing?.totalPrice) || 0;
+    if (paid > 0) return paid;
+    return Number(sub?.pricing?.basePricePerDay) || Number(order.pricing?.foodCost) || 0;
+};
+
+/**
  * DailyMealBox Subscription Routes
  * PRD Reference: CA-07, CA-12, CA-15
  */
@@ -95,46 +129,18 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot skip today's or past orders
-        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+        const blocked = await modificationBlockedReason(order, 'skip');
+        if (blocked) return res.status(400).json({ success: false, message: blocked });
         const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
-        if (orderDateStr <= todayISTStr) {
-            return res.status(400).json({ success: false, message: "Cannot skip today's or past orders" });
-        }
 
-        // Cutoff time check for tomorrow's orders
-        const tomorrowDate = new Date();
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
-
-        if (orderDateStr === tomorrowISTStr) {
-            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
-            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
-            const now = new Date();
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Kolkata',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const currentISTTime = formatter.format(now);
-            
-            if (currentISTTime >= cutoffTime) {
-                const [h, m] = cutoffTime.split(':');
-                const h12 = parseInt(h, 10) % 12 || 12;
-                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
-                const formattedCutoff = `${h12}:${m} ${ampm}`;
-                return res.status(400).json({ success: false, message: `Cannot skip tomorrow's meal after ${formattedCutoff}` });
-            }
-        }
-
-        // Per-slot cutoff configured by admin (hours before the slot's start time)
-        const slotDef = (await listSlots()).find(sl => sl.key === order.deliverySlot);
-        if (slotDef?.orderCutoffHours > 0 && slotDef.startTime) {
-            const deadline = new Date(`${orderDateStr}T${slotDef.startTime}:00+05:30`).getTime() - slotDef.orderCutoffHours * 3600 * 1000;
-            if (Date.now() >= deadline) {
-                return res.status(400).json({ success: false, message: `Cannot skip ${slotDef.name} meals within ${slotDef.orderCutoffHours} hour(s) of the slot start` });
-            }
+        // Monthly skip limit (ACM-13). Select-mode and pre-orders have no subscription to skip against.
+        const subForLimit = order.subscriptionId ? await DMBSubscription.findById(order.subscriptionId).select('maxSkipsPerMonth skipsUsedThisMonth skipsMonthKey').lean() : null;
+        if (!subForLimit) return res.status(400).json({ success: false, message: 'Only subscription deliveries can be skipped' });
+        const { localDateStr: monthOf } = await import('../../../utils/platformTime.js');
+        const monthKey = monthOf().slice(0, 7);
+        const usedThisMonth = subForLimit.skipsMonthKey === monthKey ? (subForLimit.skipsUsedThisMonth || 0) : 0;
+        if (usedThisMonth >= (subForLimit.maxSkipsPerMonth ?? 2)) {
+            return res.status(400).json({ success: false, code: 'SKIP_LIMIT', message: `Skip limit reached: ${subForLimit.maxSkipsPerMonth ?? 2} skips per month` });
         }
 
         if (order.status !== 'scheduled') {
@@ -147,16 +153,15 @@ router.patch('/daily-orders/:orderId/skip', authMiddleware, requireRoles('USER',
         let creditAmount = 0;
         const sub = await DMBSubscription.findById(order.subscriptionId);
         if (sub) {
-            const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-            if (sub.skipsMonthKey !== currentMonthKey) {
-                sub.skipsMonthKey = currentMonthKey;
+            if (sub.skipsMonthKey !== monthKey) {
+                sub.skipsMonthKey = monthKey;
                 sub.skipsUsedThisMonth = 0;
             }
             sub.skipsUsedThisMonth = (sub.skipsUsedThisMonth || 0) + 1;
             await sub.save();
 
-            const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
-            creditAmount = (sub.pricing?.basePricePerDay || order.pricing?.foodCost || 0) * slotCount;
+            // One order is one slot on one day: credit exactly what was paid for it (it used to credit every slot).
+            creditAmount = paidForOrder(order, sub);
             if (creditAmount > 0) {
                 await refundWalletBalance(userId, creditAmount, `Meal skipped on ${orderDateStr}`, {
                     orderId: order._id,
@@ -194,38 +199,9 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot undo skip for today's or past orders
-        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+        const blocked = await modificationBlockedReason(order, 'undo');
+        if (blocked) return res.status(400).json({ success: false, message: blocked });
         const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
-        if (orderDateStr <= todayISTStr) {
-            return res.status(400).json({ success: false, message: "Cannot undo skip for today's or past orders" });
-        }
-
-        // Cutoff time check for tomorrow's orders
-        const tomorrowDate = new Date();
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
-
-        if (orderDateStr === tomorrowISTStr) {
-            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
-            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
-            const now = new Date();
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Kolkata',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const currentISTTime = formatter.format(now);
-            
-            if (currentISTTime >= cutoffTime) {
-                const [h, m] = cutoffTime.split(':');
-                const h12 = parseInt(h, 10) % 12 || 12;
-                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
-                const formattedCutoff = `${h12}:${m} ${ampm}`;
-                return res.status(400).json({ success: false, message: `Cannot undo skip for tomorrow's meal after ${formattedCutoff}` });
-            }
-        }
 
         if (order.status !== 'skipped') {
             return res.status(400).json({ success: false, message: `Cannot undo skip for order in status: ${order.status}` });
@@ -239,8 +215,7 @@ router.patch('/daily-orders/:orderId/undo-skip', authMiddleware, requireRoles('U
                 sub.skipsUsedThisMonth -= 1;
                 await sub.save();
             }
-            const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
-            const debitAmount = (sub.pricing?.basePricePerDay || order.pricing?.foodCost || 0) * slotCount;
+            const debitAmount = paidForOrder(order, sub);
             if (debitAmount > 0) {
                 await deductWalletBalance(userId, debitAmount, `Undo meal skip on ${orderDateStr}`, {
                     orderId: order._id,
@@ -279,38 +254,8 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
         const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Enforce: Cannot modify today's or past orders
-        const todayISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
-        const orderDateStr = new Date(order.deliveryDate).toISOString().split('T')[0];
-        if (orderDateStr <= todayISTStr) {
-            return res.status(400).json({ success: false, message: "Cannot modify today's or past orders" });
-        }
-
-        // Cutoff time check for tomorrow's orders
-        const tomorrowDate = new Date();
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowISTStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrowDate);
-
-        if (orderDateStr === tomorrowISTStr) {
-            const settings = await VendorTimingSettings.findOne({ isActive: true }).lean();
-            const cutoffTime = settings?.mealChangeCutoffTime || '20:00';
-            const now = new Date();
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Kolkata',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const currentISTTime = formatter.format(now);
-            
-            if (currentISTTime >= cutoffTime) {
-                const [h, m] = cutoffTime.split(':');
-                const h12 = parseInt(h, 10) % 12 || 12;
-                const ampm = parseInt(h, 10) >= 12 ? 'PM' : 'AM';
-                const formattedCutoff = `${h12}:${m} ${ampm}`;
-                return res.status(400).json({ success: false, message: `Cannot modify tomorrow's meal after ${formattedCutoff}` });
-            }
-        }
+        const blocked = await modificationBlockedReason(order, 'change');
+        if (blocked) return res.status(400).json({ success: false, message: blocked });
 
         if (!['scheduled'].includes(order.status)) {
             return res.status(400).json({ success: false, message: 'Can only change meal before preparation starts' });
@@ -319,10 +264,19 @@ router.patch('/daily-orders/:orderId/change-meal', authMiddleware, requireRoles(
         if (!mealPlanIds || !Array.isArray(mealPlanIds) || mealPlanIds.length === 0) {
             return res.status(400).json({ success: false, message: 'mealPlanIds array is required' });
         }
-        // Fetch meal details
-        const plans = await DMBMealPlan.find({ _id: { $in: mealPlanIds }, status: 'active' }).lean();
-        if (plans.length === 0) return res.status(400).json({ success: false, message: 'No valid meal plans found' });
-        order.meals = plans.map(p => ({ mealPlanId: p._id, name: p.name, quantity: 1 }));
+        // Only the maker delivering this order (also on a Smart Rotation day: swap within the same maker, Gap AK).
+        const plans = await DMBMealPlan.find({ _id: { $in: mealPlanIds }, status: 'active', vendorId: order.vendorId }).lean();
+        if (plans.length === 0) return res.status(400).json({ success: false, message: 'No valid meal plans found for this maker' });
+        const mapped = plans.map(p => ({ mealPlanId: p._id, name: p.name, quantity: 1, temperatureType: p.temperatureType || null }));
+        if (order.isFamilyBox && req.body.memberLabel) {
+            // Family Box: replace only that person's set, keep everyone else's.
+            const label = String(req.body.memberLabel);
+            if (!order.meals.some((m) => m.memberLabel === label)) return res.status(400).json({ success: false, message: 'Unknown family member' });
+            order.meals = [...order.meals.filter((m) => m.memberLabel !== label), ...mapped.map((m) => ({ ...m, memberLabel: label }))];
+        } else {
+            order.meals = mapped;
+        }
+        order.hasColdMeal = order.meals.some((m) => m.temperatureType === 'cold');
         await order.save();
 
         // Broadcast order update via socket
@@ -390,7 +344,8 @@ router.patch('/:subscriptionId/pause', authMiddleware, requireRoles('USER', 'EMP
 // ─── Resume Subscription ───────────────────────────────────────────────────
 router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
-        const sub = await resumeSubscription(req.params.subscriptionId);
+        // Scoped to the caller: a customer can only resume their own subscription.
+        const sub = await resumeSubscription(req.params.subscriptionId, { userId: req.user._id || req.user.userId });
         if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found or not paused' });
         res.json({ success: true, message: 'Subscription resumed successfully', subscription: sub });
     } catch (err) {
@@ -428,13 +383,19 @@ router.patch('/:subscriptionId/activate', authMiddleware, async (req, res) => {
 router.get('/plans', async (req, res) => {
     try {
         const { VendorSubscriptionPlan } = await import('./vendorSubscriptionPlan.model.js');
-        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-        const list = await VendorSubscriptionPlan.find({ status: 'active' }).sort({ createdAt: -1 });
-        
-        const settings = await DeliveryOrderFeeSettings.findOne({ isActive: true });
-        const feePerOrder = settings ? (settings.feePerOrder || 0) : 0;
-        
-        res.json({ success: true, plans: list, feePerOrder });
+        const all = await VendorSubscriptionPlan.find({ status: 'active' }).sort({ createdAt: -1 }).lean();
+        // Annual (ACM-149), fortnightly (ACM-151) and weekend (ACM-177) plans are offered only where switched on.
+        const { getControl } = await import('../platform/platformConfig.service.js');
+        const ctx = { zoneId: req.query.zoneId || req.zoneId };
+        const [annual, fortnight, weekend] = await Promise.all([getControl('annualPlan', ctx), getControl('fortnightlyPlan', ctx), getControl('weekendDelivery', ctx)]);
+        const list = all.filter((p) => (p.duration !== 'year' || annual.enabled)
+            && (p.duration !== 'fortnight' || fortnight.enabled)
+            && (p.deliveryDays !== 'full_week' || (weekend.saturday && weekend.sunday)));
+
+        const { deliveryFeeForZone } = await import('../platform/zoneFee.js');
+        const { fee: feePerOrder } = await deliveryFeeForZone(ctx.zoneId);
+
+        res.json({ success: true, plans: list, feePerOrder, annualDiscountPct: annual.enabled ? annual.discountPct : 0 });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -497,55 +458,16 @@ router.delete('/durations/:id', authMiddleware, requireRoles('ADMIN'), async (re
     }
 });
 
-// ─── Rate a Delivered Order ──────────────────────────────────────────────────
+// ─── Rate a Delivered Order (Gap R: meal / delivery / overall) ───────────────────
 // POST /dmb/subscriptions/daily-orders/:orderId/rate
+// Body: { mealQuality?, deliveryExperience?, overall?, comment?, tipAmount? }  (legacy: { rating, comment })
 router.post('/daily-orders/:orderId/rate', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
-        const userId = req.user._id || req.user.userId;
-        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-
-        if (order.status !== 'delivered') {
-            return res.status(400).json({ success: false, message: 'Can only rate delivered orders' });
-        }
-        if (order.isRated) {
-            return res.status(400).json({ success: false, message: 'Order has already been rated' });
-        }
-
-        const { rating, comment, tipAmount } = req.body;
-
-        if (!rating || rating < 1 || rating > 5) {
-            return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
-        }
-
-        order.deliveryRating = rating;
-        order.ratingFeedback = comment || '';
-        order.driverTip = Math.max(0, Number(tipAmount) || 0);
-        order.isRated = true;
-        await order.save();
-
-        // Update delivery partner's aggregate rating if assigned
-        if (order.dispatch?.deliveryPartnerId) {
-            try {
-                const { default: mongoose } = await import('mongoose');
-                const FoodDeliveryPartner = mongoose.model('FoodDeliveryPartner');
-                const partner = await FoodDeliveryPartner.findById(order.dispatch.deliveryPartnerId);
-                if (partner) {
-                    const totalRatings = (partner.totalRatings || 0) + 1;
-                    const currentTotal = (partner.rating || 0) * (partner.totalRatings || 0);
-                    partner.rating = (currentTotal + rating) / totalRatings;
-                    partner.totalRatings = totalRatings;
-                    await partner.save();
-                }
-            } catch (partnerErr) {
-                console.error('Failed to update delivery partner rating:', partnerErr);
-                // Non-critical — don't fail the request
-            }
-        }
-
-        res.json({ success: true, message: 'Rating submitted successfully' });
+        const { rateOrder } = await import('../ratings/ratings.service.js');
+        const order = await rateOrder({ userId: req.user._id || req.user.userId, orderId: req.params.orderId, body: req.body || {} });
+        res.json({ success: true, message: 'Rating submitted successfully', ratings: order.ratings });
     } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
+        res.status(err.statusCode || 400).json({ success: false, code: err.code, message: err.message });
     }
 });
 

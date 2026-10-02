@@ -39,8 +39,23 @@ export const ensureDefaultSlots = async () => {
     return seedPromise;
 };
 
+let backfillPromise = null;
+/** Slots created before the lifecycle existed get a status matching isEnabled and link to their own shift. */
+const backfillLifecycle = async () => {
+    if (!backfillPromise) {
+        backfillPromise = (async () => {
+            await DeliverySlot.updateMany({ status: { $exists: false }, isEnabled: true }, { $set: { status: 'active' } });
+            await DeliverySlot.updateMany({ status: { $exists: false }, isEnabled: false }, { $set: { status: 'disabled' } });
+            const unlinked = await DeliverySlot.find({ $or: [{ linkedShiftKey: { $exists: false } }, { linkedShiftKey: '' }] }).select('key').lean();
+            for (const s of unlinked) await DeliverySlot.updateOne({ _id: s._id }, { $set: { linkedShiftKey: s.key } });
+        })().catch((e) => { backfillPromise = null; throw e; });
+    }
+    return backfillPromise;
+};
+
 export const listSlots = async ({ onlyEnabled = false } = {}) => {
     await ensureDefaultSlots();
+    await backfillLifecycle();
     const q = onlyEnabled ? { isEnabled: true } : {};
     return DeliverySlot.find(q).sort({ sortOrder: 1, startTime: 1 }).lean();
 };
@@ -96,7 +111,11 @@ const sanitize = (body, { partial = false } = {}) => {
         out.availableDays = days;
     }
     if (body.sortOrder !== undefined) out.sortOrder = num(body.sortOrder, 0);
-    if (body.isEnabled !== undefined) out.isEnabled = Boolean(body.isEnabled);
+    if (body.cityIds !== undefined) {
+        const ids = (Array.isArray(body.cityIds) ? body.cityIds : []).map(String).filter((id) => /^[0-9a-f]{24}$/i.test(id));
+        out.cityIds = [...new Set(ids)];
+    }
+    if (body.linkedShiftKey !== undefined) out.linkedShiftKey = String(body.linkedShiftKey || '').trim().toLowerCase();
 
     const s = out.startTime, e = out.endTime;
     if (s && e && s >= e) throw new Error('End time must be later than start time');
@@ -112,14 +131,90 @@ export const createSlot = async (body) => {
     if (!KEY_RE.test(key)) throw new Error('Slot key must start with a letter and use only a-z, 0-9 and underscore (2-30 chars)');
     if (await DeliverySlot.exists({ key })) throw new Error(`A slot with key "${key}" already exists`);
     if (data.sortOrder === undefined) data.sortOrder = (await DeliverySlot.countDocuments()) + 1;
-    const doc = await DeliverySlot.create({ ...data, key });
+    data.linkedShiftKey = data.linkedShiftKey || key;
+    if (data.linkedShiftKey !== key && !(await DeliverySlot.exists({ key: data.linkedShiftKey }))) {
+        throw new Error(`Linked driver shift "${data.linkedShiftKey}" does not exist — link the slot to its own shift or to an existing slot's shift`);
+    }
+    // Gap A: a new slot always starts as a draft; the admin activates it once drivers cover its shift.
+    const doc = await DeliverySlot.create({ ...data, key, status: 'draft', isEnabled: false });
     return doc.toObject();
 };
 
+/** Approved drivers whose allowedShifts include the slot's linked shift. */
+export const shiftCoverage = async (slot) => {
+    const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+    const shiftKey = slot.linkedShiftKey || slot.key;
+    const drivers = await FoodDeliveryPartner.countDocuments({ status: 'approved', allowedShifts: shiftKey });
+    return { shiftKey, drivers };
+};
+
+/** draft/disabled/deactivating → active. Refuses a slot whose linked shift has no drivers (no orphan slots). */
+export const activateSlot = async (id, { force = false } = {}) => {
+    const slot = await DeliverySlot.findById(id);
+    if (!slot) throw new Error('Delivery slot not found');
+    const coverage = await shiftCoverage(slot);
+    if (!coverage.drivers && !force) {
+        const err = new Error(`No approved driver works the "${coverage.shiftKey}" shift yet. Assign drivers to that shift (Driver Management) or link this slot to a shift that has drivers, then activate.`);
+        err.statusCode = 409;
+        err.usage = coverage;
+        throw err;
+    }
+    slot.status = 'active';
+    slot.isEnabled = true;
+    slot.deactivatingAt = null;
+    slot.graceEndsAt = null;
+    slot.migratedAt = null;
+    await slot.save();
+    return { slot: slot.toObject(), coverage };
+};
+
+/**
+ * active → deactivating. New customers stop seeing the slot at once; existing subscribers are flagged
+ * (needsSlotChange), told to pick a new slot, and keep their deliveries for `graceDays` (default 14). After that the
+ * migration job moves anyone left to `fallbackSlotKey`.
+ */
+export const deactivateSlot = async (id, { graceDays = 14, fallbackSlotKey = '' } = {}) => {
+    const slot = await DeliverySlot.findById(id);
+    if (!slot) throw new Error('Delivery slot not found');
+    if (slot.status === 'deactivating') return { slot: slot.toObject(), affected: 0 };
+    const usage = await getSlotUsage(slot.key);
+    const others = await DeliverySlot.find({ _id: { $ne: slot._id }, status: 'active' }).sort({ sortOrder: 1 }).lean();
+    if (usage.subscriptions > 0 && !others.length) {
+        throw new Error('This is the last active slot and it still has subscribers — activate another slot first');
+    }
+    const fallback = fallbackSlotKey || others[0]?.key || '';
+    if (fallback && !others.some((o) => o.key === fallback)) throw new Error(`Fallback slot "${fallback}" is not an active slot`);
+    const grace = Math.max(0, Math.min(Number(graceDays) || 14, 60));
+
+    slot.status = usage.subscriptions > 0 ? 'deactivating' : 'disabled';
+    slot.isEnabled = false;
+    slot.deactivatingAt = new Date();
+    slot.graceEndsAt = usage.subscriptions > 0 ? new Date(Date.now() + grace * 86_400_000) : null;
+    slot.fallbackSlotKey = fallback;
+    await slot.save();
+
+    let affected = 0;
+    if (usage.subscriptions > 0) {
+        const { flagSubscriptionsForSlotChange } = await import('./slotMigration.service.js');
+        affected = await flagSubscriptionsForSlotChange(slot.toObject());
+    }
+    return { slot: slot.toObject(), affected, usage };
+};
+
 export const updateSlot = async (id, body) => {
+    // isEnabled is a lifecycle change, not a plain field: true activates, false starts deactivation (with grace).
+    if (body.isEnabled !== undefined) {
+        const { isEnabled, ...rest } = body;
+        if (Object.keys(rest).length) await updateSlot(id, rest);
+        return isEnabled ? (await activateSlot(id)).slot : (await deactivateSlot(id, { graceDays: body.graceDays, fallbackSlotKey: body.fallbackSlotKey })).slot;
+    }
     const data = sanitize(body, { partial: true });
+    delete data.isEnabled;
     const current = await DeliverySlot.findById(id);
     if (!current) throw new Error('Delivery slot not found');
+    if (data.linkedShiftKey && data.linkedShiftKey !== current.key && !(await DeliverySlot.exists({ key: data.linkedShiftKey }))) {
+        throw new Error(`Linked driver shift "${data.linkedShiftKey}" does not exist`);
+    }
     const start = data.startTime || current.startTime;
     const end = data.endTime || current.endTime;
     if (start >= end) throw new Error('End time must be later than start time');
@@ -137,7 +232,7 @@ export const getSlotUsage = async (key) => {
     ]);
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const [subs, orders, plans] = await Promise.all([
-        DMBSubscription.countDocuments({ status: { $in: ['active', 'paused', 'pending_payment'] }, $or: [{ deliverySlot: key }, { deliverySlots: key }] }),
+        DMBSubscription.countDocuments({ status: { $in: ['active', 'paused', 'pending_payment'] }, $or: [{ deliverySlot: key }, { deliverySlots: key }, { daySlotKeys: key }, { 'familyBox.members.slots': key }] }),
         DMBDailyOrder.countDocuments({ deliverySlot: key, deliveryDate: { $gte: today }, status: { $in: ['scheduled', 'preparing', 'ready', 'out_for_delivery'] } }),
         DMBMealPlan.countDocuments({ status: { $ne: 'archived' }, availableSlots: key })
     ]);
@@ -172,6 +267,24 @@ export const getSlotPriorityMap = async () =>
 /** True when the slot exists, is enabled, and is offered on the given weekday (0=Sun). */
 export const slotServesDay = (slotDefs, key, dayOfWeek) => {
     const def = slotDefs.find((s) => s.key === key);
-    if (!def || def.isEnabled === false) return false;
+    if (!def) return false;
+    // A slot being phased out (Gap A) keeps serving existing subscribers until its grace period ends.
+    if (def.isEnabled === false && def.status !== 'deactivating') return false;
     return def.availableDays.includes(dayOfWeek);
+};
+
+/**
+ * Slots offered to a *new* subscriber in a city: active, scoped to that city (or all cities), with weekend days
+ * removed unless weekend delivery is open there (ACM-177). Existing subscriptions are not affected by these filters.
+ */
+export const offeredSlots = async ({ cityId = null, weekend = { saturday: true, sunday: true } } = {}) => {
+    const all = await listSlots();
+    return all
+        .filter((s) => s.status === 'active' || (s.status === undefined && s.isEnabled))
+        .filter((s) => !s.cityIds?.length || (cityId && s.cityIds.map(String).includes(String(cityId))))
+        .map((s) => ({
+            ...s,
+            availableDays: (s.availableDays || []).filter((d) => (d !== 6 || weekend.saturday) && (d !== 0 || weekend.sunday))
+        }))
+        .filter((s) => s.availableDays.length);
 };

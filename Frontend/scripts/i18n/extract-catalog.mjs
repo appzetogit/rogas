@@ -123,10 +123,31 @@ export function keysInBackend() {
       if (e.isDirectory()) { if (e.name !== 'node_modules') stack.push(f); continue; }
       if (!/\.js$/.test(e.name) || /modules[\\/]i18n[\\/]/.test(f)) continue;
       const code = fs.readFileSync(f, 'utf8');
-      if (!/\bmsg\(|\bpushText\(|\btranslateFor\(|\bqueueEmail\(/.test(code)) continue;
+      if (!/\bmsg\(|\bpushText\(|\btranslateFor\(|\bqueueEmail\(|\bsubjectKey\b/.test(code)) continue;
       let ast;
       try { ast = parse(code, { sourceType: 'module', plugins: ['optionalChaining', 'dynamicImport', 'topLevelAwait'] }); } catch { continue; }
       traverse(ast, {
+        // `email: { subjectKey: '…', bodyKey: '…' }` handed to the DailyMealBox notify() helper (which calls queueEmail).
+        ObjectProperty(p) {
+          if (p.node.key?.name !== 'email') return;
+          const objects = [];
+          const collect = (n) => {
+            if (!n) return;
+            if (n.type === 'ObjectExpression') objects.push(n);
+            else if (n.type === 'ConditionalExpression') { collect(n.consequent); collect(n.alternate); }
+            else if (n.type === 'LogicalExpression') { collect(n.left); collect(n.right); }
+          };
+          collect(p.node.value);
+          for (const obj of objects) {
+            for (const propName of ['subjectKey', 'bodyKey']) {
+              const prop = obj.properties.find((pr) => pr.type === 'ObjectProperty' && pr.key?.name === propName);
+              if (!prop) continue;
+              const key = literalOf(prop.value);
+              if (key === null) problems.push(`non-literal email.${propName} at ${toPosix(path.relative(BACKEND, f))}:${p.node.loc.start.line}`);
+              else out.push({ key, ns: 'email' });
+            }
+          }
+        },
         CallExpression(p) {
           const c = p.node.callee;
           if (c.type !== 'Identifier') return;

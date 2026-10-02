@@ -16,12 +16,19 @@ const dmbDailyOrderSchema = new mongoose.Schema(
             index: true
         },
 
+        /**
+         * subscription      — generated from a subscription (subscriptionId set)
+         * one_time_select   — Select mode single meal, no subscription (Gap AG)
+         * pre_order         — confirmed pre-order of a new meal launch (Gap M)
+         */
+        orderType: { type: String, enum: ['subscription', 'one_time_select', 'pre_order'], default: 'subscription', index: true },
         subscriptionId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'DMBSubscription',
-            required: true,
+            required: function requiredForSubscriptionOrders() { return !this.orderType || this.orderType === 'subscription'; },
             index: true
         },
+        zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null },
 
         userId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -42,9 +49,18 @@ const dmbDailyOrderSchema = new mongoose.Schema(
             {
                 mealPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'DMBMealPlan' },
                 name: { type: String, default: '' },
-                quantity: { type: Number, default: 1 }
+                quantity: { type: Number, default: 1 },
+                /** Family Box (Gap AF): whose set this is, e.g. "Person 1 — Keto Lunch". */
+                memberLabel: { type: String, default: '' },
+                /** Gap AL snapshot so the driver/customer screens need no extra lookup. */
+                temperatureType: { type: String, enum: ['hot', 'cold', null], default: null }
             }
         ],
+        /** Family Box: one stop, several labelled sets (DA-04 shows the set count). */
+        isFamilyBox: { type: Boolean, default: false },
+        setCount: { type: Number, default: 1, min: 1 },
+        /** True when any meal in the order is a cold meal box (driver insulated-bag reminder). */
+        hasColdMeal: { type: Boolean, default: false },
 
         /** The specific delivery date (date only, midnight UTC) */
         deliveryDate: {
@@ -106,6 +122,27 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         pickedUpAt: { type: Date, default: null },
         deliveredAt: { type: Date, default: null },
 
+        /**
+         * Separated ratings (Gap R): meal quality feeds the vendor, delivery experience feeds the driver, overall feeds
+         * platform analytics. `deliveryRating` is kept for older screens and mirrors deliveryExperience (or the single
+         * overall rating when ACM-159 is off).
+         */
+        ratings: {
+            mealQuality: { type: Number, default: null, min: 1, max: 5 },
+            deliveryExperience: { type: Number, default: null, min: 1, max: 5 },
+            overall: { type: Number, default: null, min: 1, max: 5 }
+        },
+        ratedAt: { type: Date, default: null },
+        /** Vendor's public reply to the review (Gap T). Editable for 24h, never deletable by the vendor. */
+        vendorResponse: {
+            text: { type: String, default: '' },
+            createdAt: { type: Date, default: null },
+            editedAt: { type: Date, default: null },
+            hidden: { type: Boolean, default: false },
+            hiddenReason: { type: String, default: '' },
+            hiddenBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+            hiddenAt: { type: Date, default: null }
+        },
         /** Customer rating for the delivery (1-5 stars) */
         deliveryRating: { type: Number, default: null, min: 1, max: 5 },
         /** Customer feedback text */
@@ -120,7 +157,25 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         paymentMethod: { type: String, enum: ['CASH', 'ONLINE', 'QR', ''], default: '' },
         paymentConfirmed: { type: Boolean, default: false },
 
-        notes: { type: String, default: '' }
+        notes: { type: String, default: '' },
+
+        /** One-off address for this delivery only (Gap V) — the subscription's day assignment is unchanged. */
+        addressOverridden: { type: Boolean, default: false },
+        /** Failed delivery report (DA-07) incl. what happened to the box (Gap P). */
+        failure: {
+            reason: { type: String, default: '' },
+            disposition: { type: String, enum: ['held_by_driver', 'returned_to_vendor', 'left_with_neighbour', 'returned_to_shop', ''], default: '' },
+            note: { type: String, default: '' },
+            photoUrl: { type: String, default: '' },
+            reportedAt: { type: Date, default: null },
+            reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null }
+        },
+        /** Select mode → subscription conversion tracking (Gap AG). */
+        conversionPromptSentAt: { type: Date, default: null },
+        convertedToSubscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'DMBSubscription', default: null },
+        /** Payment for orders not paid through a subscription (Select mode, pre-orders). */
+        paymentStatus: { type: String, enum: ['not_required', 'pending', 'paid', 'failed', 'refunded'], default: 'not_required' },
+        paymentTransactionId: { type: String, default: '' }
     },
     {
         collection: 'dmb_daily_orders',
@@ -131,7 +186,12 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 // ─── Indexes ────────────────────────────────────────────────────────────────
 dmbDailyOrderSchema.index({ userId: 1, deliveryDate: 1 });
 dmbDailyOrderSchema.index({ vendorId: 1, deliveryDate: 1, status: 1 });
-dmbDailyOrderSchema.index({ subscriptionId: 1, deliveryDate: 1, deliverySlot: 1 }, { unique: true });
+// One order per subscription/day/slot. Partial so Select-mode and pre-order rows (no subscription) never collide.
+dmbDailyOrderSchema.index(
+    { subscriptionId: 1, deliveryDate: 1, deliverySlot: 1 },
+    { unique: true, partialFilterExpression: { subscriptionId: { $type: 'objectId' } }, name: 'subscription_day_slot_unique' }
+);
+dmbDailyOrderSchema.index({ vendorId: 1, 'ratings.mealQuality': 1, ratedAt: -1 });
 
 // ─── Pre-save: generate orderId and deliveryPin ──────────────────────────────
 dmbDailyOrderSchema.pre('save', function (next) {

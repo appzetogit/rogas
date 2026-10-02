@@ -31,24 +31,6 @@ const toDateOnly = (date) => {
     return d;
 };
 
-const getNextValidDeliveryDate = (date, deliveryDays) => {
-    let current = new Date(date);
-    while (true) {
-        const dayOfWeek = current.getUTCDay();
-        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-        const isSunday = dayOfWeek === 0;
-        
-        let isValid = true;
-        if (deliveryDays === 'mon_fri' && !isWeekday) isValid = false;
-        if (isSunday && deliveryDays !== 'full_week') isValid = false;
-        
-        if (isValid) {
-            return current;
-        }
-        current.setUTCDate(current.getUTCDate() + 1);
-    }
-};
-
 /**
  * Subscription Service — DailyMealBox
  * Handles: create, skip, pause, resume, cancel, swap-meal, auto-resume
@@ -228,6 +210,27 @@ export const activateSubscription = async (subscriptionId) => {
         { new: true }
     );
     if (!sub) throw new Error('Subscription not found');
+    await FoodUser.findByIdAndUpdate(sub.userId, { subscriptionStatus: 'active' });
+
+    // Gap AG: a recent Select-mode customer who now subscribes to that maker counts as a conversion.
+    try {
+        const { recordConversion } = await import('../orders/oneTimeOrder.service.js');
+        await recordConversion(sub);
+    } catch (err) {
+        logger.warn(`Select conversion tracking failed for ${sub.subscriptionId}: ${err.message}`);
+    }
+    if (sub.renewsSubscriptionId) {
+        await DMBSubscription.updateOne({ _id: sub.renewsSubscriptionId }, { $set: { renewedBySubscriptionId: sub._id, pendingRotation: undefined, pendingRotationFrom: null } });
+    }
+    // Gap S: a paid replacement shortens the subscription it replaces (and credits unused days when downgrading).
+    if (sub.replacesSubscriptionId) {
+        try {
+            const { applyPendingChange } = await import('./subscriptionCheckout.service.js');
+            await applyPendingChange(sub);
+        } catch (err) {
+            logger.error(`Plan change for ${sub.subscriptionId} could not be applied: ${err.message}`);
+        }
+    }
 
     // Notify vendor: new subscriber
     await sendNotificationToUser({
@@ -298,234 +301,107 @@ export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason })
     return { skipsUsed: sub.skipsUsedThisMonth, maxSkips: sub.maxSkipsPerMonth, walletCredited: creditAmount };
 };
 
-// ─── Pause Subscription (PRD ACM-14) ──────────────────────────────────────
+// ─── Pause / Resume (PRD ACM-14) ───────────────────────────────────────────
+// Pausing removes the not-yet-prepared deliveries inside the pause window and moves the end date out by the same number
+// of delivery days (using the subscription's own schedule, so custom days / per-day slots / fortnights stay correct).
+// Resuming early gives back the days that were not actually paused.
+
+const scheduleCtx = async (sub) => {
+    const [{ listSlots }, { holidaySetForZone }] = await Promise.all([
+        import('../deliverySlot/deliverySlot.service.js'),
+        import('../platform/holiday.service.js')
+    ]);
+    return { slotDefs: await listSlots(), holidays: await holidaySetForZone(sub.zoneId) };
+};
+
+/** Delivery dates of a subscription in [from, to). */
+const deliveryDatesBetween = async (sub, from, to) => {
+    const { deliveriesOn } = await import('./schedule.js');
+    const ctx = await scheduleCtx(sub);
+    const out = [];
+    for (let d = new Date(from); d < to; d = new Date(d.getTime() + 86_400_000)) {
+        if (deliveriesOn(sub, d, ctx).length) out.push(new Date(d));
+    }
+    return out;
+};
+
 export const pauseSubscription = async ({ subscriptionId, userId, pauseDays, reason }) => {
     const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId }));
     if (!sub) throw new Error('Subscription not found');
     if (sub.status !== 'active') throw new Error('Only active subscriptions can be paused');
 
     const maxPauseDays = sub.maxPauseDays || 2;
-    if (pauseDays > maxPauseDays) {
-        throw new Error(`Max pause duration is ${maxPauseDays} days`);
-    }
+    const days = Math.floor(Number(pauseDays) || 0);
+    if (days < 1) throw new Error('Pause for at least 1 day');
+    if (days > maxPauseDays) throw new Error(`Max pause duration is ${maxPauseDays} days`);
 
-    const today = toDateOnly(new Date());
+    const { localToday, addDays } = await import('../../../utils/platformTime.js');
+    const today = localToday();
+    const tomorrow = addDays(today, 1);
+    const pauseUntil = addDays(tomorrow, days);
 
-    // ── Remaining days guard ──────────────────────────────────────────────
-    let currentEndDate = sub.endDate;
-    if (!currentEndDate) {
-        const start = new Date(sub.startDate);
-        currentEndDate = new Date(start);
-        if (sub.duration === 'weekly') {
-            currentEndDate.setDate(start.getDate() + 7);
-        } else if (sub.duration === 'monthly') {
-            currentEndDate.setDate(start.getDate() + 30);
-        } else if (sub.duration === 'one_day') {
-            currentEndDate.setDate(start.getDate() + 1);
-        } else {
-            currentEndDate.setDate(start.getDate() + 7);
+    if (sub.endDate) {
+        const remaining = await deliveryDatesBetween(sub.toObject(), tomorrow, new Date(sub.endDate));
+        if (remaining.length <= 1) throw new Error('Cannot pause: your subscription has only 1 delivery left.');
+        if (pauseUntil >= new Date(sub.endDate)) {
+            throw new Error('You cannot pause past the end of your subscription.');
         }
     }
-    const endDateNorm = toDateOnly(currentEndDate);
-    const remainingDays = Math.round((endDateNorm.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 
-    if (remainingDays <= 1) {
-        throw new Error('Cannot pause: your subscription has only 1 day remaining.');
+    const lost = await deliveryDatesBetween(sub.toObject(), tomorrow, pauseUntil);
+    sub.pauseOriginalEndDate = sub.endDate || null;
+    if (sub.endDate && lost.length) {
+        const { extendEndDateByDeliveries } = await import('./schedule.js');
+        sub.endDate = extendEndDateByDeliveries(sub.toObject(), lost.length, await scheduleCtx(sub));
     }
-    if (pauseDays >= remainingDays) {
-        throw new Error(`You can only pause for up to ${remainingDays - 1} day(s) since your subscription has ${remainingDays} day(s) remaining.`);
-    }
-    // ─────────────────────────────────────────────────────────────────────
-    const pauseUntil = new Date(today);
-    pauseUntil.setUTCDate(today.getUTCDate() + 1 + pauseDays);
-
-    // Extend endDate by pauseDays (currentEndDate already resolved above)
-    const newEndDate = new Date(currentEndDate);
-    newEndDate.setUTCDate(newEndDate.getUTCDate() + pauseDays);
-    sub.endDate = newEndDate;
-
     sub.status = 'paused';
     sub.pausedUntil = pauseUntil;
     sub.pausedAt = today;
-    sub.requestedPauseDays = pauseDays;
+    sub.requestedPauseDays = days;
     sub.pauseReason = reason || '';
     await sub.save();
 
-    // Update user status
-    await FoodUser.findByIdAndUpdate(userId, { subscriptionStatus: 'paused' });
-
-    // Shift upcoming scheduled daily orders
     const { DMBDailyOrder } = await import('./dmb.dailyOrder.model.js');
-    const tomorrow = toDateOnly(new Date());
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const removed = await DMBDailyOrder.find({ subscriptionId: sub._id, deliveryDate: { $gte: tomorrow, $lt: pauseUntil }, status: 'scheduled' }).select('_id orderId deliveryDate deliverySlot vendorId').lean();
+    await DMBDailyOrder.deleteMany({ _id: { $in: removed.map((o) => o._id) } });
 
-    const upcomingOrders = await DMBDailyOrder.find({
-        subscriptionId: sub._id,
-        deliveryDate: { $gte: tomorrow },
-        status: 'scheduled'
-    }).sort({ deliveryDate: 1 });
+    const live = await DMBSubscription.exists({ userId: sub.userId, status: 'active' });
+    if (!live) await FoodUser.findByIdAndUpdate(userId, { subscriptionStatus: 'paused' });
 
-    // Group by deliveryDate to handle multiple slots per day
-    const ordersByDate = {};
-    for (const order of upcomingOrders) {
-        const dateKey = toDateOnly(order.deliveryDate).getTime();
-        if (!ordersByDate[dateKey]) {
-            ordersByDate[dateKey] = [];
-        }
-        ordersByDate[dateKey].push(order);
-    }
-
-    const sortedDateKeys = Object.keys(ordersByDate).map(Number).sort((a, b) => a - b);
-    let lastAllocatedDate = null;
-    const ioUpdates = [];
-
-    for (const dateKey of sortedDateKeys) {
-        const originalDate = new Date(dateKey);
-        let newDate = new Date(originalDate);
-        newDate.setUTCDate(newDate.getUTCDate() + pauseDays);
-
-        if (lastAllocatedDate && newDate <= lastAllocatedDate) {
-            newDate = new Date(lastAllocatedDate);
-            newDate.setUTCDate(newDate.getUTCDate() + 1);
-        }
-
-        newDate = getNextValidDeliveryDate(newDate, sub.deliveryDays);
-
-        while (lastAllocatedDate && newDate <= lastAllocatedDate) {
-            newDate.setUTCDate(newDate.getUTCDate() + 1);
-            newDate = getNextValidDeliveryDate(newDate, sub.deliveryDays);
-        }
-
-        for (const order of ordersByDate[dateKey]) {
-            order.deliveryDate = newDate;
-            await order.save();
-
-            ioUpdates.push({
-                orderId: order.orderId,
-                _id: order._id,
-                status: order.status,
-                deliveryDate: newDate,
-                deliverySlot: order.deliverySlot,
-                updatedAt: new Date().toISOString()
-            });
-        }
-
-        lastAllocatedDate = newDate;
-    }
-
-    // Emit Socket.IO updates
     try {
         const io = getIO();
         if (io) {
-            io.to(`sub_${sub._id}`).emit('subscription_paused', {
-                subscriptionId: sub.subscriptionId,
-                status: sub.status,
-                pausedUntil: sub.pausedUntil,
-                endDate: sub.endDate
-            });
-            io.to(`vendor_${sub.vendorId}`).emit('subscriber_paused', {
-                subscriptionId: sub.subscriptionId,
-                pausedUntil: sub.pausedUntil
-            });
-            // Emit order updates
-            for (const payload of ioUpdates) {
-                io.to(`sub_${sub._id}`).emit('order_status_updated', payload);
-                io.to(`vendor_${sub.vendorId}`).emit('order_status_update', payload);
+            io.to(`sub_${sub._id}`).emit('subscription_paused', { subscriptionId: sub.subscriptionId, status: sub.status, pausedUntil: sub.pausedUntil, endDate: sub.endDate });
+            for (const vid of new Set(removed.map((o) => String(o.vendorId)))) {
+                io.to(`vendor_${vid}`).emit('subscriber_paused', { subscriptionId: sub.subscriptionId, pausedUntil: sub.pausedUntil });
+            }
+            for (const o of removed) {
+                io.to(`vendor_${o.vendorId}`).emit('order_status_update', { orderId: o.orderId, _id: o._id, status: 'removed', deliveryDate: o.deliveryDate, deliverySlot: o.deliverySlot, updatedAt: new Date().toISOString() });
             }
         }
     } catch (err) {
         logger.warn(`Failed to broadcast pause sockets: ${err.message}`);
     }
 
-    logger.info(`Subscription paused: ${subscriptionId} until ${pauseUntil}`);
-    return { pausedUntil: pauseUntil };
+    logger.info(`Subscription paused: ${subscriptionId} until ${pauseUntil.toISOString()}, ${lost.length} delivery day(s) moved to the end`);
+    return { pausedUntil: pauseUntil, endDate: sub.endDate, movedDeliveries: lost.length };
 };
 
-// ─── Resume Subscription ───────────────────────────────────────────────────
-export const resumeSubscription = async (subscriptionId) => {
-    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { status: 'paused' }));
+export const resumeSubscription = async (subscriptionId, { userId } = {}) => {
+    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, userId ? { status: 'paused', userId } : { status: 'paused' }));
     if (!sub) return null;
 
-    const now = toDateOnly(new Date());
-    const pausedAt = sub.pausedAt ? toDateOnly(sub.pausedAt) : now;
-    const requestedPauseDays = sub.requestedPauseDays || 0;
-
-    // Calculate actual days paused
-    const actualDays = Math.max(0, Math.round((now.getTime() - pausedAt.getTime()) / (24 * 60 * 60 * 1000)));
-    const refundDays = requestedPauseDays - actualDays;
-
-    const ioUpdates = [];
-
-    if (refundDays > 0) {
-        // Adjust endDate
-        if (sub.endDate) {
-            const newEndDate = new Date(sub.endDate);
-            newEndDate.setUTCDate(newEndDate.getUTCDate() - refundDays);
-            sub.endDate = newEndDate;
-        }
-
-        // Shift future orders back
-        const { DMBDailyOrder } = await import('./dmb.dailyOrder.model.js');
-        const tomorrow = toDateOnly(new Date());
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-
-        const upcomingOrders = await DMBDailyOrder.find({
-            subscriptionId: sub._id,
-            deliveryDate: { $gte: tomorrow },
-            status: 'scheduled'
-        }).sort({ deliveryDate: 1 });
-
-        // Group by deliveryDate to handle multiple slots per day
-        const ordersByDate = {};
-        for (const order of upcomingOrders) {
-            const dateKey = toDateOnly(order.deliveryDate).getTime();
-            if (!ordersByDate[dateKey]) {
-                ordersByDate[dateKey] = [];
-            }
-            ordersByDate[dateKey].push(order);
-        }
-
-        const sortedDateKeys = Object.keys(ordersByDate).map(Number).sort((a, b) => a - b);
-        let lastAllocatedDate = null;
-
-        for (const dateKey of sortedDateKeys) {
-            const originalDate = new Date(dateKey);
-            let newDate = new Date(originalDate);
-            newDate.setUTCDate(newDate.getUTCDate() - refundDays);
-
-            // Ensure we don't shift to today or past
-            if (newDate < tomorrow) {
-                newDate = new Date(tomorrow);
-            }
-
-            if (lastAllocatedDate && newDate <= lastAllocatedDate) {
-                newDate = new Date(lastAllocatedDate);
-                newDate.setUTCDate(newDate.getUTCDate() + 1);
-            }
-
-            newDate = getNextValidDeliveryDate(newDate, sub.deliveryDays);
-
-            while (lastAllocatedDate && newDate <= lastAllocatedDate) {
-                newDate.setUTCDate(newDate.getUTCDate() + 1);
-                newDate = getNextValidDeliveryDate(newDate, sub.deliveryDays);
-            }
-
-            for (const order of ordersByDate[dateKey]) {
-                order.deliveryDate = newDate;
-                await order.save();
-
-                ioUpdates.push({
-                    orderId: order.orderId,
-                    _id: order._id,
-                    status: order.status,
-                    deliveryDate: newDate,
-                    deliverySlot: order.deliverySlot,
-                    updatedAt: new Date().toISOString()
-                });
-            }
-
-            lastAllocatedDate = newDate;
-        }
+    const { localToday, addDays } = await import('../../../utils/platformTime.js');
+    const today = localToday();
+    // Early resume: give back the delivery days that were not actually paused.
+    if (sub.pausedUntil && today < new Date(sub.pausedUntil) && sub.pauseOriginalEndDate) {
+        const pausedFrom = addDays(new Date(sub.pausedAt || today), 1);
+        const resumeFrom = addDays(today, 1);
+        const actuallyLost = await deliveryDatesBetween({ ...sub.toObject(), endDate: null, status: 'active' }, pausedFrom, resumeFrom);
+        const { extendEndDateByDeliveries } = await import('./schedule.js');
+        sub.endDate = actuallyLost.length
+            ? extendEndDateByDeliveries({ ...sub.toObject(), endDate: sub.pauseOriginalEndDate }, actuallyLost.length, await scheduleCtx(sub))
+            : sub.pauseOriginalEndDate;
     }
 
     sub.status = 'active';
@@ -533,11 +409,11 @@ export const resumeSubscription = async (subscriptionId) => {
     sub.pausedAt = null;
     sub.requestedPauseDays = 0;
     sub.pauseReason = '';
+    sub.pauseOriginalEndDate = null;
     await sub.save();
 
     await FoodUser.findByIdAndUpdate(sub.userId, { subscriptionStatus: 'active' });
 
-    // Immediately regenerate/restore upcoming meals/daily orders
     try {
         const { ensureOrdersForUser } = await import('./dmb.dailyOrder.service.js');
         await ensureOrdersForUser(sub.userId);
@@ -545,29 +421,17 @@ export const resumeSubscription = async (subscriptionId) => {
         logger.warn(`Failed to immediately generate orders on resume: ${err.message}`);
     }
 
-    // Emit Socket.IO updates
     try {
         const io = getIO();
         if (io) {
-            io.to(`sub_${sub._id}`).emit('subscription_resumed', {
-                subscriptionId: sub.subscriptionId,
-                status: sub.status,
-                endDate: sub.endDate
-            });
-            io.to(`vendor_${sub.vendorId}`).emit('subscriber_resumed', {
-                subscriptionId: sub.subscriptionId
-            });
-            // Emit order updates
-            for (const payload of ioUpdates) {
-                io.to(`sub_${sub._id}`).emit('order_status_updated', payload);
-                io.to(`vendor_${sub.vendorId}`).emit('order_status_update', payload);
-            }
+            io.to(`sub_${sub._id}`).emit('subscription_resumed', { subscriptionId: sub.subscriptionId, status: sub.status, endDate: sub.endDate });
+            io.to(`vendor_${sub.vendorId}`).emit('subscriber_resumed', { subscriptionId: sub.subscriptionId });
         }
     } catch (err) {
         logger.warn(`Failed to broadcast resume sockets: ${err.message}`);
     }
 
-    logger.info(`Subscription resumed: ${subscriptionId}, actualDays paused: ${actualDays}, refundDays: ${refundDays}`);
+    logger.info(`Subscription resumed: ${subscriptionId}`);
     return sub;
 };
 

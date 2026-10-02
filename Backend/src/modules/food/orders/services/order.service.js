@@ -159,6 +159,11 @@ export async function createOrder(userId, dto) {
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
+  if (isCash) {
+    // Bad-debt COD block set by Customer Service (Amendment v2 Gap F).
+    const buyer = await FoodUser.findById(userId).select("badDebt.codBlocked").lean();
+    if (buyer?.badDebt?.codBlocked) throw new ValidationError("Cash on delivery is not available for this account. Please pay online.");
+  }
 
   // Ensure pricing is present and consistent.
   const computedSubtotal = (dto.items || []).reduce((sum, item) => {

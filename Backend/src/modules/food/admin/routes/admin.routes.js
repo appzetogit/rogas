@@ -25,6 +25,7 @@ import { adminI18nRouter } from '../../../i18n/i18n.routes.js';
 import { adminPaymentsRouter } from '../../../payments/payments.admin.routes.js';
 import { adminEmailRouter } from '../../../email/email.admin.routes.js';
 import { adminAttendanceRouter } from '../../../food/delivery/routes/attendance.admin.routes.js';
+import dmbAdminExtraRoutes from '../../../dailymealbox/extra.admin.routes.js';
 
 const router = express.Router();
 
@@ -384,6 +385,8 @@ router.use('/i18n', adminI18nRouter);
 router.use('/payments', adminPaymentsRouter);
 router.use('/email', adminEmailRouter);
 router.use('/attendance', adminAttendanceRouter);
+// ----- DailyMealBox Amendment v2 Extra (ACM controls, alerts, holidays, bad debt, segments, legal CMS, …) -----
+router.use('/dmb', dmbAdminExtraRoutes);
 
 // ----- Delivery Slots (dynamic meal slots CRUD) -----
 router.use('/delivery-slots', adminSlotRouter);

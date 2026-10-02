@@ -81,7 +81,18 @@ const pantryOrderSchema = new mongoose.Schema(
             status: { type: String, enum: ['scheduled', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'failed'], default: 'scheduled' },
             deliveryPin: { type: String },
             deliveredAt: { type: Date },
-            driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }
+            driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' },
+            /** DA-07 failed delivery and what happened to the bag (Amendment v2 Gap P). */
+            failure: {
+                reason: { type: String, default: '' },
+                disposition: { type: String, enum: ['held_by_driver', 'returned_to_vendor', 'left_with_neighbour', 'returned_to_shop', ''], default: '' },
+                note: { type: String, default: '' },
+                photoUrl: { type: String, default: '' },
+                reportedAt: { type: Date, default: null }
+            },
+            /** returned_to_shop → the shop partner can restock the items (FP-03/VM-04). */
+            returnStatus: { type: String, enum: ['none', 'returned_to_shop', 'restocked'], default: 'none' },
+            restockedAt: { type: Date, default: null }
         }],
         paymentId: { type: String },
         paymentOrderId: { type: String },

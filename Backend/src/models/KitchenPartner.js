@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { encryptedFields } from '../utils/encryptedFields.plugin.js';
 
 const kitchenPartnerSchema = new mongoose.Schema(
     {
@@ -76,5 +77,8 @@ kitchenPartnerSchema.pre('save', function (next) {
     next();
 });
 
-const KitchenPartner = mongoose.model('KitchenPartner', kitchenPartnerSchema);
+/** GDPR Art. 32 (Gap N): bank details are encrypted field-by-field (AES-256-GCM). */
+kitchenPartnerSchema.plugin(encryptedFields, { paths: ['bankDetails'] });
+
+const KitchenPartner = mongoose.models.KitchenPartner || mongoose.model('KitchenPartner', kitchenPartnerSchema);
 export default KitchenPartner;

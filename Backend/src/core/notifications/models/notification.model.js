@@ -35,7 +35,7 @@ const notificationSchema = new mongoose.Schema(
         },
         source: {
             type: String,
-            enum: ['ADMIN_BROADCAST', 'FSSAI_EXPIRY'],
+            enum: ['ADMIN_BROADCAST', 'FSSAI_EXPIRY', 'SYSTEM'],
             default: 'ADMIN_BROADCAST',
             index: true
         },
@@ -72,6 +72,8 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ ownerType: 1, ownerId: 1, createdAt: -1 });
 notificationSchema.index({ ownerType: 1, ownerId: 1, isRead: 1, dismissedAt: 1 });
-notificationSchema.index({ broadcastId: 1, ownerType: 1, ownerId: 1 }, { unique: true, sparse: true });
+// Unique per broadcast only. (It used to be `sparse`, which still indexes the null broadcastId of every non-broadcast
+// notification and so allowed just one per owner; bootstrap.js replaces the old index on existing databases.)
+notificationSchema.index({ broadcastId: 1, ownerType: 1, ownerId: 1 }, { unique: true, partialFilterExpression: { broadcastId: { $type: 'objectId' } } });
 
 export const FoodNotification = mongoose.model('FoodNotification', notificationSchema);

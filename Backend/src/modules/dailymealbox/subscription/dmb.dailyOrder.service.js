@@ -839,6 +839,8 @@ import { getSlotPriorityMap, listSlots, slotServesDay } from '../deliverySlot/de
 
 // cloud code
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
+import { localToday, addDays as addLocalDays } from '../../../utils/platformTime.js';
+import { applyCustomerOrderVisibility } from '../platform/visibility.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
 import { CollectionBatch } from '../delivery/collectionBatch.model.js';
@@ -932,296 +934,27 @@ const attachDailyMenuDetails = async (orders) => {
 
 /**
  * Generate DMBDailyOrder records for all active subscriptions on a given date.
+ * Delegates to orderGeneration.js (schedule-driven: end dates, custom days, per-day slots & addresses, Family Box,
+ * Smart Rotation, fortnightly weeks and platform holidays are all respected).
  */
 export const generateDailyOrdersForDate = async (targetDate = new Date()) => {
-    const dayStart = toDateOnly(targetDate);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-
-    const dayOfWeek = dayStart.getUTCDay();
-    const slotDefs = await listSlots();
-
-    const activeSubscriptions = await DMBSubscription.find({ status: 'active' })
-        .populate('meals.mealPlanId', 'name pricePerDay')
-        .lean();
-
-    let created = 0;
-    let skipped = 0;
-
-    for (const sub of activeSubscriptions) {
-        try {
-            const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-            const isMonFri = sub.deliveryDays === 'mon_fri';
-
-            if (isMonFri && !isWeekday) {
-                skipped++;
-                continue;
-            }
-
-            // ── startDate guard: skip dates before the subscription's chosen start ──
-            if (sub.startDate) {
-                const subStart = toDateOnly(new Date(sub.startDate));
-                if (dayStart < subStart) {
-                    skipped++;
-                    continue;
-                }
-            }
-            // ─────────────────────────────────────────────────────────────────────
-
-            const slots = sub.deliverySlots?.length
-                ? sub.deliverySlots
-                : (sub.deliverySlot ? [sub.deliverySlot] : []);
-
-            if (slots.length === 0) {
-                logger.warn(`[DAILY-ORDERS] Subscription ${sub.subscriptionId} has no delivery slot — skipping`);
-                skipped++;
-                continue;
-            }
-
-            for (const slot of slots) {
-                if (!slotServesDay(slotDefs, slot, dayOfWeek)) { continue; }
-                const existing = await DMBDailyOrder.findOne({
-                    subscriptionId: sub._id,
-                    deliveryDate: { $gte: dayStart, $lt: dayEnd },
-                    deliverySlot: slot
-                });
-
-                if (existing) {
-                    skipped++;
-                    continue;
-                }
-
-                const mealsSnapshot = [];
-                for (const m of (sub.meals || [])) {
-                    const planId = m.mealPlanId?._id || m.mealPlanId;
-                    let displayName = 'No meal set';
-
-                    try {
-                        const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js');
-                        let dailyMenuItem = await DMBDailyMenu.findOne({
-                            vendorId: sub.vendorId,
-                            mealPlanId: planId,
-                            date: dayStart,
-                            slot: slot
-                        });
-                        if (!dailyMenuItem) {
-                            dailyMenuItem = await DMBDailyMenu.findOne({
-                                vendorId: sub.vendorId,
-                                date: dayStart,
-                                slot: slot
-                            });
-                        }
-                        if (dailyMenuItem && dailyMenuItem.dishName) {
-                            displayName = dailyMenuItem.dishName;
-                        }
-                    } catch (e) {
-                        logger.warn(`Error resolving daily menu for daily order: ${e.message}`);
-                    }
-
-                    mealsSnapshot.push({
-                        mealPlanId: planId,
-                        name: displayName,
-                        quantity: m.quantity || 1
-                    });
-                }
-
-                const foodCost = sub.pricing?.basePricePerDay || 0;
-                const foodVat = sub.pricing?.foodVat || 0;
-
-                let vatBaseAmount = foodCost;
-                if (sub.pricing?.applyFoodVatOnMenu) {
-                    try {
-                        const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
-                        const activePlans = await DMBMealPlan.find({ vendorId: sub.vendorId, status: 'active' }).lean();
-                        const sumPrices = activePlans.reduce((acc, p) => acc + (p.pricePerDay || 0), 0);
-                        const avgMenuPrice = activePlans.length > 0 ? (sumPrices / activePlans.length) : 0;
-                        vatBaseAmount = avgMenuPrice || foodCost;
-                    } catch (e) {
-                        logger.warn(`Error resolving active meals for daily order VAT: ${e.message}`);
-                    }
-                }
-                const foodVatAmount = Math.round((vatBaseAmount * (foodVat / 100)) * 100) / 100;
-                const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
-                const deliveryVat = sub.pricing?.deliveryVat || 0;
-                const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
-                const platformFee = 0; // Platform fee is charged once per subscription, not daily
-                const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
-
-                await DMBDailyOrder.create({
-                    subscriptionId: sub._id,
-                    userId: sub.userId,
-                    vendorId: sub.vendorId,
-                    meals: mealsSnapshot,
-                    deliveryDate: dayStart,
-                    deliverySlot: slot,
-                    status: 'scheduled',
-                    pricing: {
-                        foodCost,
-                        foodVat,
-                        foodVatAmount,
-                        deliveryFee,
-                        deliveryVat,
-                        deliveryVatAmount,
-                        platformFee,
-                        totalPrice: finalTotalPrice,
-                        currency: sub.pricing?.currency || 'PLN'
-                    },
-                    deliveryAddress: sub.deliveryAddress
-                });
-
-                created++;
-            }
-        } catch (err) {
-            logger.warn(`Failed to generate daily order for sub ${sub._id}: ${err.message}`);
-        }
-    }
-
-    logger.info(`Daily orders for ${dateStr(targetDate)}: created=${created}, skipped=${skipped}`);
-    return { created, skipped, date: dateStr(targetDate) };
+    const { generateForDate } = await import('./orderGeneration.js');
+    const res = await generateForDate(targetDate);
+    logger.info(`Daily orders for ${res.date}: created=${res.created} across ${res.subscriptions} subscriptions`);
+    return { created: res.created, skipped: 0, date: res.date };
 };
 
 /**
- * Ensure next 14 days of orders exist for a specific user.
+ * Ensure the customer's upcoming orders exist for the calendar preview window (ACM-171, default 10 days).
  */
 export const ensureOrdersForUser = async (userId) => {
-    const { DMBDailyMenu } = await import('../mealplan/dailyMenu.model.js').catch(() => ({ DMBDailyMenu: null }));
-
-    const subs = await DMBSubscription.find({ userId, status: 'active' })
-        .populate('meals.mealPlanId', 'name pricePerDay')
-        .lean();
-
-    const today = toDateOnly(new Date());
-    const tomorrow = toDateOnly(new Date(Date.now() + 86400000));
-
-    for (const sub of subs) {
-        const targetDates = [today, tomorrow];
-
-        if (DMBDailyMenu) {
-            try {
-                const upcomingCustomMenus = await DMBDailyMenu.find({
-                    vendorId: sub.vendorId,
-                    date: { $gte: today }
-                }).lean();
-                for (const menu of upcomingCustomMenus) {
-                    const menuDate = toDateOnly(menu.date);
-                    if (!targetDates.some(d => d.getTime() === menuDate.getTime())) {
-                        targetDates.push(menuDate);
-                    }
-                }
-            } catch (err) {
-                logger.warn(`ensureOrdersForUser custom menu query failed: ${err.message}`);
-            }
-        }
-
-        const slotDefs = await listSlots();
-        for (const targetDate of targetDates) {
-            const dayStart = toDateOnly(targetDate);
-            const dayEnd = new Date(dayStart);
-            dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-
-            // ── startDate guard: skip dates before the subscription's chosen start ──
-            if (sub.startDate) {
-                const subStart = toDateOnly(new Date(sub.startDate));
-                if (dayStart < subStart) continue;
-            }
-            // ─────────────────────────────────────────────────────────────────────
-
-            const dayOfWeek = dayStart.getUTCDay();
-            const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-            if (sub.deliveryDays === 'mon_fri' && !isWeekday) continue;
-            if (dayOfWeek === 0 && sub.deliveryDays !== 'full_week') continue;
-
-            const slots = sub.deliverySlots?.length
-                ? sub.deliverySlots
-                : (sub.deliverySlot ? [sub.deliverySlot] : []);
-
-            for (const slot of slots) {
-                if (!slotServesDay(slotDefs, slot, dayOfWeek)) { continue; }
-                const existing = await DMBDailyOrder.findOne({
-                    subscriptionId: sub._id,
-                    deliveryDate: { $gte: dayStart, $lt: dayEnd },
-                    deliverySlot: slot
-                });
-
-                if (!existing) {
-                    const mealsSnapshot = [];
-                    for (const m of (sub.meals || [])) {
-                        const planId = m.mealPlanId?._id || m.mealPlanId;
-                        let displayName = 'No meal set';
-
-                        try {
-                            if (DMBDailyMenu) {
-                                let dailyMenuItem = await DMBDailyMenu.findOne({
-                                    vendorId: sub.vendorId,
-                                    mealPlanId: planId,
-                                    date: dayStart,
-                                    slot: slot
-                                }).lean();
-                                if (!dailyMenuItem) {
-                                    dailyMenuItem = await DMBDailyMenu.findOne({
-                                        vendorId: sub.vendorId,
-                                        date: dayStart,
-                                        slot: slot
-                                    }).lean();
-                                }
-                                if (dailyMenuItem?.dishName) {
-                                    displayName = dailyMenuItem.dishName;
-                                }
-                            }
-                        } catch (e) { }
-
-                        mealsSnapshot.push({
-                            mealPlanId: planId,
-                            name: displayName,
-                            quantity: m.quantity || 1
-                        });
-                    }
-
-                    const foodCost = sub.pricing?.basePricePerDay || 0;
-                    const foodVat = sub.pricing?.foodVat || 0;
-
-                    let vatBaseAmount = foodCost;
-                    if (sub.pricing?.applyFoodVatOnMenu) {
-                        try {
-                            const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
-                            const activePlans = await DMBMealPlan.find({ vendorId: sub.vendorId, status: 'active' }).lean();
-                            const sumPrices = activePlans.reduce((acc, p) => acc + (p.pricePerDay || 0), 0);
-                            const avgMenuPrice = activePlans.length > 0 ? (sumPrices / activePlans.length) : 0;
-                            vatBaseAmount = avgMenuPrice || foodCost;
-                        } catch (e) { }
-                    }
-                    const foodVatAmount = Math.round((vatBaseAmount * (foodVat / 100)) * 100) / 100;
-                    const deliveryFee = sub.pricing?.deliveryFeePerDay || 0;
-                    const deliveryVat = sub.pricing?.deliveryVat || 0;
-                    const deliveryVatAmount = Math.round((deliveryFee * (deliveryVat / 100)) * 100) / 100;
-                    const platformFee = 0; // Platform fee is charged once per subscription, not daily
-                    const finalTotalPrice = Math.round((foodCost + foodVatAmount + deliveryFee + deliveryVatAmount + platformFee) * 100) / 100;
-
-                    await DMBDailyOrder.create({
-                        subscriptionId: sub._id,
-                        userId: sub.userId,
-                        vendorId: sub.vendorId,
-                        meals: mealsSnapshot,
-                        deliveryDate: dayStart,
-                        deliverySlot: slot,
-                        status: 'scheduled',
-                        pricing: {
-                            foodCost,
-                            foodVat,
-                            foodVatAmount,
-                            deliveryFee,
-                            deliveryVat,
-                            deliveryVatAmount,
-                            platformFee,
-                            totalPrice: finalTotalPrice,
-                            currency: sub.pricing?.currency || 'PLN'
-                        },
-                        deliveryAddress: sub.deliveryAddress
-                    }).catch(e => logger.warn(`ensureOrdersForUser: ${e.message}`));
-                }
-            }
-        }
-    }
+    const { generateForUser } = await import('./orderGeneration.js');
+    let days = 10;
+    try {
+        const { getControl } = await import('../platform/platformConfig.service.js');
+        days = Number((await getControl('calendarPreviewDays')).days) || 10;
+    } catch { /* default */ }
+    return generateForUser(userId, { days });
 };
 
 /**
@@ -1230,9 +963,9 @@ export const ensureOrdersForUser = async (userId) => {
 export const getTodayAndTomorrowMeals = async (userId) => {
     await ensureOrdersForUser(userId);
 
-    const today = toDateOnly(new Date());
-    const tomorrow = toDateOnly(new Date(Date.now() + 86400000));
-    const dayAfterTomorrow = toDateOnly(new Date(Date.now() + 2 * 86400000));
+    const today = localToday();
+    const tomorrow = addLocalDays(today, 1);
+    const dayAfterTomorrow = addLocalDays(today, 2);
 
     const orderDocs = await DMBDailyOrder.find({
         userId,
@@ -1281,9 +1014,11 @@ export const getTodayAndTomorrowMeals = async (userId) => {
         new Date(o.deliveryDate).getTime() === tomorrow.getTime()
     );
 
+    const vis = await customerVisibility(userId);
+    const card = (o) => applyCustomerOrderVisibility(formatOrderCard(o), vis);
     return {
-        today: todayOrders.length > 0 ? formatOrderCard(todayOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || todayOrders[todayOrders.length - 1]) : null,
-        tomorrow: tomorrowOrders.length > 0 ? formatOrderCard(tomorrowOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || tomorrowOrders[0]) : null
+        today: todayOrders.length > 0 ? card(todayOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || todayOrders[todayOrders.length - 1]) : null,
+        tomorrow: tomorrowOrders.length > 0 ? card(tomorrowOrders.find(o => !['delivered', 'skipped', 'failed'].includes(o.status)) || tomorrowOrders[0]) : null
     };
 };
 
@@ -1293,7 +1028,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
 export const getCustomerOrders = async (userId, { type = 'upcoming', date, page, limit } = {}) => {
     await ensureOrdersForUser(userId);
 
-    const today = toDateOnly(new Date());
+    const today = localToday();
 
     const filter = { userId };
 
@@ -1383,7 +1118,8 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date, page,
         }
         return { ...order, status };
     });
-    const formattedOrders = mappedOrders.map(formatOrderCard);
+    const vis = await customerVisibility(userId);
+    const formattedOrders = mappedOrders.map((o) => applyCustomerOrderVisibility(formatOrderCard(o), vis));
 
     if (!date && page && limit) {
         return {
@@ -1611,7 +1347,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
 
     try {
         const vendor = await FoodRestaurant.findById(vendorId)
-            .select('restaurantName location zoneId serviceZone city phone addressLine1');
+            .select('restaurantName location zoneId serviceZone city phone addressLine1 preferredFleetPartnerId');
 
         // FIX: log vendor details so we can debug city/zone issues easily
         logger.info(`[DRIVER-NOTIFY] Vendor details — city: "${vendor?.city}", location.city: "${vendor?.location?.city}", zoneId: "${vendor?.zoneId}"`);
@@ -1651,7 +1387,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         // FIX: use the robust driver filter
         const driverFilter = buildDriverFilter(vendor);
         let onlineDrivers = await FoodDeliveryPartner.find(driverFilter)
-            .select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus');
+            .select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus fleetPartnerId');
 
         logger.info(`[DRIVER-NOTIFY] Driver query matched ${onlineDrivers.length} online drivers for vendor ${vendorId}`);
 
@@ -1665,6 +1401,17 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
             }).select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus').limit(50);
             logger.warn(`[DRIVER-NOTIFY] Fallback: found ${fallbackDrivers.length} total online drivers in system`);
             onlineDrivers = fallbackDrivers;
+        }
+
+        // Gap AD / ACM-170: the vendor's preferred delivery partner's drivers get the pickup first; when none of them is
+        // online the whole pool is used (silent fallback).
+        try {
+            const { prioritisePreferredDrivers } = await import('../vendor/vendorAmendment.service.js');
+            const prioritised = await prioritisePreferredDrivers(vendor, onlineDrivers);
+            if (prioritised.preferred) logger.info(`[DRIVER-NOTIFY] ${prioritised.drivers.length} preferred-partner driver(s) offered the pickup first`);
+            onlineDrivers = prioritised.drivers;
+        } catch (prefErr) {
+            logger.warn(`[DRIVER-NOTIFY] preferred partner routing skipped: ${prefErr.message}`);
         }
 
         const io = getIO();
@@ -1692,17 +1439,20 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
 
 
         if (onlineDrivers.length > 0) {
+            // Customer details per the driver visibility controls (ACM-141/142/143).
+            const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
+            const driverVis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
             const ordersDetails = readyOrders.map(o => ({
                 _id: o._id,
                 orderId: o.orderId,
                 status: o.status,
                 deliveryAddress: o.deliveryAddress,
                 meals: o.meals,
-                customer: {
-                    name: o.userId?.name || '',
-                    phone: o.userId?.phone || ''
-                },
-                pricing: o.pricing
+                isFamilyBox: Boolean(o.isFamilyBox),
+                setCount: o.setCount || 1,
+                hasColdMeal: Boolean(o.hasColdMeal),
+                customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, driverVis),
+                pricing: driverPricingView(o.pricing || {}, driverVis)
             }));
 
             let feePerOrder = 18; // fallback default
@@ -1939,9 +1689,28 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
 
 
 // ─── Internal Formatter ────────────────────────────────────────────────────
+/** Visibility switches (Gap O) for a customer, resolved for the zone of their latest subscription. */
+const customerVisibility = async (userId) => {
+    const { visibilityFor } = await import('../platform/visibility.js');
+    const sub = await DMBSubscription.findOne({ userId }).sort({ createdAt: -1 }).select('zoneId').lean();
+    return visibilityFor('customer', { zoneId: sub?.zoneId });
+};
+
 const formatOrderCard = (order) => ({
     _id: order._id,
     orderId: order.orderId,
+    orderType: order.orderType || 'subscription',
+    isFamilyBox: Boolean(order.isFamilyBox),
+    setCount: order.setCount || 1,
+    hasColdMeal: Boolean(order.hasColdMeal),
+    addressOverridden: Boolean(order.addressOverridden),
+    ratings: order.ratings || null,
+    ratedAt: order.ratedAt || null,
+    // A reply hidden by an admin is not shown to the customer (Gap T).
+    vendorResponse: order.vendorResponse?.createdAt && !order.vendorResponse.hidden
+        ? { text: order.vendorResponse.text, createdAt: order.vendorResponse.createdAt, editedAt: order.vendorResponse.editedAt }
+        : null,
+    failure: order.failure?.reportedAt ? { reason: order.failure.reason, reportedAt: order.failure.reportedAt } : null,
     vendorId: order.vendorId?._id || order.vendorId || null,
     status: order.status,
     deliveryDate: order.deliveryDate,
@@ -1959,10 +1728,12 @@ const formatOrderCard = (order) => ({
         photo: m.customPhoto || m.mealPlanId?.photos?.[0] || null,
         nutrition: m.customNutrition || m.mealPlanId?.nutrition || null,
         description: m.customDescription || m.mealPlanId?.description || '',
-        quantity: m.quantity
+        quantity: m.quantity,
+        memberLabel: m.memberLabel || '',
+        temperatureType: m.temperatureType || null
     })),
     pricing: order.pricing,
-    subscriptionId: order.subscriptionId,
+    subscriptionId: order.subscriptionId?._id || order.subscriptionId,
     deliveryPin: order.deliveryPin || '',
     deliveryAddress: order.deliveryAddress,
     isRated: order.isRated || false,

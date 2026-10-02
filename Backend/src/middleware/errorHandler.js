@@ -13,11 +13,11 @@ const errorHandler = (err, req, res, next) => {
         logger.error(`[${requestId}] ${err.stack}`);
     }
 
-    res.status(statusCode).json({
-        success: false,
-        message: message,
-        error: message
-    });
+    const body = { success: false, message: message, error: message };
+    // Machine-readable reason (e.g. ADDRESS_OUTSIDE_ZONE) and safe details for the apps, when the error carries them.
+    if (err.code && typeof err.code === 'string') body.code = err.code;
+    if (err.details && typeof err.details === 'object') body.details = err.details;
+    res.status(statusCode).json(body);
 };
 
 export default errorHandler;

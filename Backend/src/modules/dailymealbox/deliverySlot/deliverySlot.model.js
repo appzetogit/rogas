@@ -24,7 +24,28 @@ const deliverySlotSchema = new mongoose.Schema({
     availableDays: { type: [Number], default: [1, 2, 3, 4, 5, 6, 0] },
 
     sortOrder: { type: Number, default: 0 },
-    isEnabled: { type: Boolean, default: true }
+    /** Kept in sync with `status`: true only while the slot is `active` (offered to new subscribers). */
+    isEnabled: { type: Boolean, default: true },
+
+    // ─── Amendment v2 Extra — Gap A lifecycle ─────────────────────────────────────────────────────────────
+    /**
+     * draft        created, not offered yet (admin activates manually)
+     * active       offered to customers
+     * deactivating no longer offered; existing subscribers keep deliveries until graceEndsAt, then move to fallbackSlotKey
+     * disabled     switched off
+     */
+    status: { type: String, enum: ['draft', 'active', 'deactivating', 'disabled'], default: 'active', index: true },
+    /** Cities the slot is offered in (AdminCity ids). Empty = every city. */
+    cityIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AdminCity' }],
+    /**
+     * The driver shift that covers this slot: its own key (drivers list it in allowedShifts) or another slot's key
+     * whose drivers also cover this one (e.g. "late_dinner" covered by the "dinner" shift). Never empty.
+     */
+    linkedShiftKey: { type: String, default: '', trim: true, lowercase: true },
+    deactivatingAt: { type: Date, default: null },
+    graceEndsAt: { type: Date, default: null },
+    fallbackSlotKey: { type: String, default: '' },
+    migratedAt: { type: Date, default: null }
 }, {
     timestamps: true,
     collection: 'dmb_delivery_slots'

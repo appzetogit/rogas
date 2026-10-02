@@ -22,6 +22,17 @@ import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { upload } from '../../../middleware/upload.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 import { msg, translateFor } from '../../i18n/i18n.service.js';
+import { assertCookAgreementAccepted } from '../legal/legal.service.js';
+
+/** Gap AC: a Track 1 cook who has not accepted the current Cook Agreement (or is paused for Sanepid) cannot trade. */
+const cookAgreementGate = async (req, res, next) => {
+    try {
+        await assertCookAgreementAccepted(req.user.userId || req.user._id);
+        next();
+    } catch (err) {
+        res.status(err.statusCode || 403).json({ success: false, code: err.code, message: err.message });
+    }
+};
 
 const router = express.Router();
 
@@ -107,7 +118,7 @@ router.get('/forecast', authMiddleware, requireRoles('RESTAURANT'), async (req, 
 });
 
 // ─── CRITICAL: Mark All Orders Ready → Generate Collection PINs ──────────
-router.post('/mark-ready', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+router.post('/mark-ready', authMiddleware, requireRoles('RESTAURANT'), cookAgreementGate, async (req, res) => {
     try {
         const { deliveryDate, deliverySlot } = req.body;
         if (!deliveryDate || !deliverySlot) {
@@ -139,25 +150,36 @@ router.get('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req
 router.post('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         if (req.body?.availableSlots?.length) await assertValidSlotKeys(req.body.availableSlots);
-        const plan = await DMBMealPlan.create({ vendorId: req.user.userId, ...req.body });
+        const { prepareMealPlanInput } = await import('../mealplan/mealPlanRules.js');
+        const vendor = await FoodRestaurant.findById(req.user.userId).select('specialisms').lean();
+        const input = await prepareMealPlanInput({ vendor, body: req.body || {} });
+        const plan = await DMBMealPlan.create({ ...input, vendorId: req.user.userId });
         res.status(201).json({ success: true, plan });
     } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
+        res.status(400).json({ success: false, code: err.code, message: err.message });
     }
 });
 
 router.put('/meal-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
         if (req.body?.availableSlots?.length) await assertValidSlotKeys(req.body.availableSlots, { allowDisabled: true });
+        const existing = await DMBMealPlan.findOne({ _id: req.params.planId, vendorId: req.user.userId }).lean();
+        if (!existing) return res.status(404).json({ success: false, message: 'Meal plan not found' });
+        const { prepareMealPlanInput } = await import('../mealplan/mealPlanRules.js');
+        const vendor = await FoodRestaurant.findById(req.user.userId).select('specialisms').lean();
+        const input = await prepareMealPlanInput({ vendor, body: req.body || {}, existing });
         const plan = await DMBMealPlan.findOneAndUpdate(
             { _id: req.params.planId, vendorId: req.user.userId },
-            req.body,
+            input,
             { new: true, runValidators: true }
         );
-        if (!plan) return res.status(404).json({ success: false, message: 'Meal plan not found' });
+        // Gap AK: a new price changes Smart Rotation subscribers' next period — tell them.
+        if (input.pricePerDay !== undefined && Number(input.pricePerDay) !== Number(existing.pricePerDay)) {
+            import('../subscription/rotationPricing.js').then((m) => m.notifyRotationPriceChange(plan)).catch(() => {});
+        }
         res.json({ success: true, plan });
     } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
+        res.status(400).json({ success: false, code: err.code, message: err.message });
     }
 });
 
@@ -213,6 +235,9 @@ router.post('/daily-menus', authMiddleware, requireRoles('RESTAURANT'), async (r
             },
             { new: true, upsert: true, runValidators: true }
         );
+
+        // Gap AE: subscribers with a delivery that day hear the menu is confirmed (dates after tomorrow).
+        import('./vendorAmendment.service.js').then((m) => m.notifyMenuConfirmed(vendorId, normalizedDate, finalSlot)).catch(() => {});
 
         // Proactively generate/ensure daily orders exist for all active subscribers for this date first,
         // so they get this new menu customized dish immediately.
@@ -653,7 +678,7 @@ router.get('/:vendorId/plans', async (req, res) => {
         if (req.query.excludeAllergies) {
             const allergies = req.query.excludeAllergies.split(',').map(a => a.trim());
             // Exclude meal plans that contain ANY of the excluded allergies
-            query.allergies = { $nin: allergies };
+            query.allergens = { $nin: allergies }; // the field is `allergens` — this used to filter a field that does not exist
         }
 
         const mealPlans = await DMBMealPlan.find(query).select('name pricePerDay availableSlots availableDays capacity nutrition dietTags allergens');
@@ -703,6 +728,12 @@ router.put('/meal-plans/:planId/toggle-status', authMiddleware, requireRoles('RE
         if (!plan) return res.status(404).json({ success: false, message: 'Meal plan not found' });
 
         const newStatus = plan.status === 'active' ? 'draft' : 'active';
+        if (newStatus === 'active') {
+            // Publishing runs the same rules as saving (Hot/Cold mandatory, medical category, …).
+            const { prepareMealPlanInput } = await import('../mealplan/mealPlanRules.js');
+            const vendor = await FoodRestaurant.findById(req.user.userId).select('specialisms').lean();
+            await prepareMealPlanInput({ vendor, body: { status: 'active' }, existing: plan.toObject() });
+        }
         plan.status = newStatus;
         await plan.save();
 
@@ -749,7 +780,7 @@ router.put('/meal-plans/:planId/toggle-status', authMiddleware, requireRoles('RE
 
         res.json({ success: true, plan, newStatus, message: `Meal plan ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully` });
     } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
+        res.status(400).json({ success: false, code: err.code, message: err.message });
     }
 });
 
@@ -866,7 +897,7 @@ router.get('/daily-orders', authMiddleware, requireRoles('RESTAURANT'), async (r
 // ─── NEW: Update Single Order Status (Preparing / Ready) ──────────────────
 // PATCH /api/v1/dmb/vendor/daily-orders/:orderId/status
 // Body: { status: 'preparing' | 'ready' | ... }
-router.patch('/daily-orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+router.patch('/daily-orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT'), cookAgreementGate, async (req, res) => {
     try {
         const vendorId = req.user.userId || req.user._id;
         const { status } = req.body;
@@ -881,7 +912,7 @@ router.patch('/daily-orders/:orderId/status', authMiddleware, requireRoles('REST
 // ─── NEW: Mark ALL orders ready for a slot (batch) ─────────────────────────
 // POST /api/v1/dmb/vendor/daily-orders/mark-all-ready
 // Body: { date, slot }
-router.post('/daily-orders/mark-all-ready', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+router.post('/daily-orders/mark-all-ready', authMiddleware, requireRoles('RESTAURANT'), cookAgreementGate, async (req, res) => {
     try {
         const vendorId = req.user.userId || req.user._id;
         const { date, slot } = req.body;

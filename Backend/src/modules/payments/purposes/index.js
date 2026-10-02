@@ -12,6 +12,7 @@ import walletTopup from './walletTopup.purpose.js';
 import tip from './tip.purpose.js';
 import office from './office.purpose.js';
 import driverDeposit from './driverDeposit.purpose.js';
+import oneTimeOrder from './oneTimeOrder.purpose.js';
 
 const HANDLERS = {
     subscription,
@@ -19,7 +20,8 @@ const HANDLERS = {
     wallet_topup: walletTopup,
     tip,
     office,
-    driver_deposit: driverDeposit
+    driver_deposit: driverDeposit,
+    one_time_order: oneTimeOrder
 };
 
 export const getPurpose = (purpose) => {

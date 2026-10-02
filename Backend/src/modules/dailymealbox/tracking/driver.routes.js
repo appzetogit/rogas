@@ -429,6 +429,10 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         const activeWindow = isSlotActive ? slotWindow : null;
         const upcomingWindow = !isSlotActive ? nextSlotWindow : null;
 
+        // Amendment v2 Extra: cold-bag banner (AL), family set counts (AF), customer data per visibility controls (O).
+        const { enrichDriverRoute } = await import('./driverRouteEnrich.js');
+        const enriched = await enrichDriverRoute({ stops, orders, zoneId: driver?.zoneIds?.[0] });
+
         return res.json({
             success: true,
             isSlotActive,
@@ -438,7 +442,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
             nextSlot: isSlotActive ? null : nextSlot,
             nextSlotWindow: upcomingWindow,
             nextSlotStartTime: upcomingWindow ? fmtTime(upcomingWindow.startMins) : null,
-            stops,
+            stops: enriched.stops,
+            hasColdMeals: enriched.hasColdMeals,
+            coldBagNotice: enriched.coldBagNotice,
             totalOrders: orders.length,
             totalVendors: vendorMap.size
         });
@@ -685,10 +691,15 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             });
         }
 
+        const { enrichDriverRoute } = await import('./driverRouteEnrich.js');
+        const enriched = await enrichDriverRoute({ stops, orders: ordersWithPins, zoneId: batch.vendorId?.zoneId });
+
         res.json({
             success: true,
-            stops,
-            orders: ordersWithPins,
+            stops: enriched.stops,
+            orders: enriched.orders,
+            hasColdMeals: enriched.hasColdMeals,
+            coldBagNotice: enriched.coldBagNotice,
             totalBoxes: ordersWithPins.length,
             vendorName,
             vendorAddress,

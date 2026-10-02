@@ -75,10 +75,27 @@ const mealPlanSchema = new mongoose.Schema(
         vatRate: { type: Number, default: 0.08 },
 
         // ─── Status ───────────────────────────────────────────────────────────
+        /** pre_order = new meal launch customers can reserve until preorderCutoff (Gap M). */
         status: {
             type: String,
-            enum: ['active', 'draft', 'archived'],
+            enum: ['active', 'draft', 'archived', 'pre_order'],
             default: 'draft',
+            index: true
+        },
+        launchDate: { type: Date, default: null },
+        preorderCutoff: { type: Date, default: null },
+        launchedAt: { type: Date, default: null },
+
+        // ─── Gap AL — Hot / Cold ──────────────────────────────────────────────
+        temperatureType: { type: String, enum: ['hot', 'cold', null], default: null, index: true },
+        /** Required for cold meals, max 150 characters ("Microwave 3 min at 800W"). */
+        reheatInstructions: { type: String, default: '', trim: true, maxlength: 150 },
+
+        // ─── Gap AH — plan category (medical diets need an approved specialism) ─
+        planCategory: {
+            type: String,
+            enum: ['standard', 'keto', 'vegan', 'hashimoto', 'pregnancy', 'low_gi', 'menopause'],
+            default: 'standard',
             index: true
         },
 
