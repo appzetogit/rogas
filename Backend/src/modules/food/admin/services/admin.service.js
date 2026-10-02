@@ -8,6 +8,8 @@ import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model
 import { DeliveryShiftChangeRequest } from '../../delivery/models/shiftChangeRequest.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
 import { FoodZone } from '../models/zone.model.js';
+import { invalidateZoneCache } from '../../../dailymealbox/zones/zoneGeo.service.js';
+import { invalidateZoneCityCache } from '../../../dailymealbox/platform/platformConfig.service.js';
 import { FoodCategory } from '../models/category.model.js';
 import { FoodItem } from '../models/food.model.js';
 import { FoodOffer } from '../models/offer.model.js';
@@ -5468,6 +5470,7 @@ export async function createZone(body) {
         isActive: body.isActive !== false
     });
     await zone.save();
+    invalidateZoneCache();
     return { zone: zone.toObject() };
 }
 
@@ -5490,11 +5493,14 @@ export async function updateZone(id, body) {
     if (zone.name) zone.serviceLocation = zone.serviceLocation || zone.name;
 
     await zone.save();
+    invalidateZoneCache();
     return { zone: zone.toObject() };
 }
 
 export async function deleteZone(id) {
     const zone = await FoodZone.findByIdAndDelete(id);
+    invalidateZoneCache();
+    invalidateZoneCityCache();
     return zone ? { id } : null;
 }
 

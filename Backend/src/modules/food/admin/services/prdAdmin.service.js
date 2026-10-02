@@ -10,6 +10,7 @@ import { FoodZone } from '../models/zone.model.js';
 import { FleetPartner } from '../../../dailymealbox/vendor/fleetPartner.model.js';
 import { AdminAuditLog } from '../models/auditLog.model.js';
 import { AdminCity } from '../models/adminCity.model.js';
+import { invalidateZoneCityCache } from '../../../dailymealbox/platform/platformConfig.service.js';
 import { AdminFeatureToggle } from '../models/featureToggle.model.js';
 import { AdminIntegrationSetting } from '../models/integrationSetting.model.js';
 import { AdminEnvironmentSetting } from '../models/environmentSetting.model.js';
@@ -179,6 +180,7 @@ export async function createCity(body = {}, req) {
     });
     city.activationChecklist = await computeCityChecklist(city);
     await city.save();
+    invalidateZoneCityCache();
     await writeAudit(req, 'city.create', 'AdminCity', city._id, null, city.toObject(), body.reason);
     return city.toObject();
 }
@@ -199,6 +201,7 @@ export async function updateCity(id, body = {}, req) {
     city.updatedBy = objectIdOrNull(req?.user?.userId);
     city.activationChecklist = await computeCityChecklist(city);
     await city.save();
+    invalidateZoneCityCache();
     const after = city.toObject();
     await writeAudit(req, 'city.update', 'AdminCity', city._id, before, after, body.reason);
     return after;
