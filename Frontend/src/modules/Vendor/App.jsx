@@ -30,6 +30,8 @@ import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
 import VendorServicePage from './components/VendorServicePage';
 import { VendorLegalPage } from './components/VendorLegalPage';
+import VendorHub, { MenuCoverageNudge } from './components/amendment/VendorHub';
+import LegalAcceptanceGate from '../../shared/components/LegalAcceptanceGate';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
 import { restaurantClient } from '../../services/api/axios';
@@ -37,6 +39,21 @@ import { dmbVendorAPI, authAPI, restaurantAPI } from '../../services/api/index';
 import { Menu, MoreVertical, Home, Receipt, UtensilsCrossed, Banknote, MoreHorizontal, CheckCircle, ChefHat, LogOut, ArrowLeft, Star } from 'lucide-react';
 import useDeliverySlots, { pickCurrentSlot } from '../../shared/hooks/useDeliverySlots';
 import { useTranslation } from "react-i18next";
+
+/** Amendment v2 Extra meal fields (hot/cold Gap AL, pre-order Gap M) as the menu screen uses them. */
+const amendmentMealFields = (p) => ({
+  temperatureType: p.temperatureType || '',
+  reheatInstructions: p.reheatInstructions || '',
+  isPreOrder: p.status === 'pre_order',
+  launchDate: p.launchDate ? String(p.launchDate).slice(0, 10) : '',
+  preorderCutoff: p.preorderCutoff ? String(p.preorderCutoff).slice(0, 10) : '',
+  planCategory: p.planCategory || '',
+});
+const amendmentMealPayload = (m) => ({
+  temperatureType: m.temperatureType || null,
+  reheatInstructions: m.temperatureType === 'cold' ? m.reheatInstructions || '' : '',
+  ...(m.isPreOrder ? { launchDate: m.launchDate || null, preorderCutoff: m.preorderCutoff || null } : {}),
+});
 
 export default function App() {
   const { t: tr } = useTranslation("vendor");
@@ -233,7 +250,8 @@ export default function App() {
               allergens: p.allergens || [],
               dietType: (p.dietTags && p.dietTags.length > 0) ? p.dietTags[0].charAt(0).toUpperCase() + p.dietTags[0].slice(1) : 'No preference',
               status: p.status === 'active' ? 'Active' : 'Draft',
-              portions: p.capacity || 10
+              portions: p.capacity || 10,
+              ...amendmentMealFields(p)
             }));
           setMeals(mappedMeals);
         }
@@ -377,7 +395,8 @@ export default function App() {
         allergens: newMeal.allergens,
         dietTags: newMeal.dietType && newMeal.dietType !== 'No preference' ? [newMeal.dietType.toLowerCase()] : [],
         photos: [newMeal.imageUrl],
-        status: 'active',
+        status: newMeal.isPreOrder ? 'pre_order' : 'active',
+        ...amendmentMealPayload(newMeal),
         city: profile.location?.city || profile.city || 'indore',
         availableSlots: profile.mealSlots || [],
         availableDays: ['mon', 'tue', 'wed', 'thu', 'fri']
@@ -400,11 +419,14 @@ export default function App() {
         allergens: created.allergens || [],
         dietType: (created.dietTags && created.dietTags.length > 0) ? created.dietTags[0].charAt(0).toUpperCase() + created.dietTags[0].slice(1) : 'No preference',
         status: created.status === 'active' ? 'Active' : 'Draft',
-        portions: created.capacity || 10
+        portions: created.capacity || 10,
+        ...amendmentMealFields(created)
       }]);
       triggerGlobalToast(tr("Meal added successfully"));
+      return true;
     } catch (err) {
       triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to add meal plan"));
+      return false;
     }
   };
 
@@ -415,7 +437,8 @@ export default function App() {
       if (updatedFields.price) payload.pricePerDay = updatedFields.price;
       if (updatedFields.description) payload.description = updatedFields.description;
       if (updatedFields.portions) payload.capacity = updatedFields.portions;
-      if (updatedFields.status) payload.status = updatedFields.status.toLowerCase();
+      if (updatedFields.status) payload.status = updatedFields.isPreOrder ? 'pre_order' : updatedFields.status.toLowerCase();
+      if (updatedFields.temperatureType !== undefined) Object.assign(payload, amendmentMealPayload(updatedFields));
       if (updatedFields.imageUrl) payload.photos = [updatedFields.imageUrl];
       if (updatedFields.allergens) payload.allergens = updatedFields.allergens;
       if (updatedFields.dietType !== undefined) {
@@ -447,11 +470,14 @@ export default function App() {
         allergens: updated.allergens || [],
         dietType: (updated.dietTags && updated.dietTags.length > 0) ? updated.dietTags[0].charAt(0).toUpperCase() + updated.dietTags[0].slice(1) : 'No preference',
         status: updated.status === 'active' ? 'Active' : 'Draft',
-        portions: updated.capacity || 10
+        portions: updated.capacity || 10,
+        ...amendmentMealFields(updated)
       } : m));
       triggerGlobalToast(tr("Meal updated successfully"));
+      return true;
     } catch (err) {
       triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to edit meal plan"));
+      return false;
     }
   };
 
@@ -688,6 +714,7 @@ export default function App() {
     if (location.pathname.includes('/menu')) return tr("Meal Plans");
     if (location.pathname.includes('/earnings')) return tr("Earnings Ledger");
     if (location.pathname.includes('/profile')) return tr("My Profile");
+    if (location.pathname.includes('/more')) return tr("Growth & compliance");
     return tr("Vendor Hub");
   };
 
@@ -723,6 +750,7 @@ export default function App() {
               { path: '/vendor/orders', label: 'Orders', icon: Receipt },
               { path: '/vendor/menu', label: 'Menu', icon: UtensilsCrossed },
               { path: '/vendor/earnings', label: 'Earn', icon: Banknote },
+              { path: '/vendor/more', label: 'Growth', icon: Star },
               { path: '/vendor/profile', label: 'Profile', icon: MoreHorizontal }
             ].map((item) => {
               const Icon = item.icon;
@@ -816,6 +844,11 @@ export default function App() {
 
           {/* Main Content Area */}
           <main className={`flex-grow ${isDashboardPage ? 'pt-0 md:pt-6' : 'pt-14 md:pt-16'} pb-[83px] md:pb-6 bg-slate-50/50 flex flex-col`}>
+            {isDashboardPage && profile.vendorType !== 'pantry_shop' && (
+              <div className="px-4 md:px-8 pt-3 max-w-5xl w-full">
+                <MenuCoverageNudge onOpen={() => navigate('/vendor/more/menu-coverage')} />
+              </div>
+            )}
             <Routes>
               <Route path="/dashboard" element={<HomeDashboard profile={profile} orders={orders} meals={meals} transactions={transactions} onMarkAllReady={handleMarkAllReady} onNavigateToTab={(t) => navigate(`/vendor/${t.toLowerCase()}`)} onOpenSubView={setShowSubView} subscriberCount={subscriberCount} />} />
               {profile.vendorType === 'pantry_shop' ? (
@@ -831,6 +864,8 @@ export default function App() {
               <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
               <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
               <Route path="/service" element={<VendorServicePage />} />
+              <Route path="/more" element={<VendorHub profile={profile} />} />
+              <Route path="/more/:section" element={<VendorHub profile={profile} />} />
               <Route path="/termsandcondition" element={<VendorLegalPage pageType="terms" />} />
               <Route path="/privacy" element={<VendorLegalPage pageType="privacy" />} />
               <Route path="/" element={<Navigate to={profile.isRegistered ? "/vendor/dashboard" : "/vendor/welcome"} />} />
@@ -876,6 +911,8 @@ export default function App() {
             <span className="text-[10px] uppercase font-bold tracking-wider mt-1">{tr("More")}</span>
           </button>
         </nav>
+
+        <LegalAcceptanceGate panel="vendor" enabled={profile.isRegistered} />
 
         {/* Global Toast notifications overlay */}
         <div

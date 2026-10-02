@@ -8,7 +8,7 @@ import { restaurantAPI, uploadAPI, dmbVendorAPI } from '../../../services/api/in
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2 } from 'lucide-react';
+import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2, Star } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 import useMoney from "@/shared/payments/money";
@@ -1032,6 +1032,16 @@ export default function ProfileSettings({
 
 
 
+
+              <button
+              onClick={() => navigate('/vendor/more')}
+              className="w-full flex items-center justify-between p-4 bg-white hover:bg-surface-container/5 transition-colors group text-on-surface">
+                <div className="flex items-center gap-3">
+                  <Star className="text-primary" />
+                  <span className="font-bold text-[13px]">{tr("Reviews, stock, delivery days & badges")}</span>
+                </div>
+                <ChevronRight className="text-secondary group-active:translate-x-0.5 transition-transform text-[18px]" />
+              </button>
 
               <button
               onClick={() => navigate('/vendor/service')}

@@ -9,6 +9,7 @@ import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, 
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { Trans, useTranslation } from "react-i18next";
 import { getCurrentLanguage } from "@/shared/i18n";
+import MealAmendmentFields, { EMPTY_MEAL_EXTRA } from "./amendment/MealAmendmentFields";
 
 const toLocalDateStr = (d) => {
   if (!d) return "";
@@ -279,6 +280,8 @@ export default function MenuManager({
   const [mealDietType, setMealDietType] = useState('No preference');
   const [mealImageUrl, setMealImageUrl] = useState('');
   const [mealPortions, setMealPortions] = useState(10);
+  const [mealExtra, setMealExtra] = useState(EMPTY_MEAL_EXTRA);
+  const [savingMeal, setSavingMeal] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const handleMealPhotoChange = async (e) => {
@@ -352,6 +355,13 @@ export default function MenuManager({
     setMealDietType(meal.dietType || 'No preference');
     setMealImageUrl(meal.imageUrl);
     setMealPortions(meal.portions);
+    setMealExtra({
+      temperatureType: meal.temperatureType || '',
+      reheatInstructions: meal.reheatInstructions || '',
+      isPreOrder: Boolean(meal.isPreOrder),
+      launchDate: meal.launchDate || '',
+      preorderCutoff: meal.preorderCutoff || '',
+    });
     setSubView('addEdit');
   };
 
@@ -370,6 +380,7 @@ export default function MenuManager({
     // Provide a nice default delicious image
     setMealImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ');
     setMealPortions(12);
+    setMealExtra(EMPTY_MEAL_EXTRA);
     setSubView('addEdit');
   };
 
@@ -379,8 +390,17 @@ export default function MenuManager({
     );
   };
 
-  const handleSaveMeal = (e) => {
+  const handleSaveMeal = async (e) => {
     e.preventDefault();
+    if (savingMeal) return;
+    if (mealExtra.temperatureType === 'cold' && !mealExtra.reheatInstructions.trim()) {
+      triggerToast(t("Add reheating instructions for a cold meal"));
+      return;
+    }
+    if (mealExtra.isPreOrder && !mealExtra.launchDate) {
+      triggerToast(t("Set the launch date for the pre-order"));
+      return;
+    }
     const priceNum = parseFloat(mealPrice) || 12.00;
 
     const payload = {
@@ -396,16 +416,16 @@ export default function MenuManager({
       dietType: mealDietType,
       imageUrl: mealImageUrl,
       portions: mealPortions,
-      status: 'Active'
+      status: 'Active',
+      ...mealExtra
     };
 
-    if (editingMeal) {
-      onEditMeal(editingMeal.id, payload);
-      triggerToast(t("Meal updated successfully"));
-    } else {
-      onAddMeal(payload);
-      triggerToast(t("Meal added successfully"));
-    }
+    // The server checks hot/cold, reheating and pre-order rules; stay on the form when it refuses.
+    setSavingMeal(true);
+    const ok = editingMeal ? await onEditMeal(editingMeal.id, payload) : await onAddMeal(payload);
+    setSavingMeal(false);
+    if (ok === false) return;
+    triggerToast(editingMeal ? t("Meal updated successfully") : t("Meal added successfully"));
     setSubView('list');
   };
 
@@ -533,9 +553,16 @@ export default function MenuManager({
                                     meal.status === 'Active' ? 'bg-primary/10 text-primary' : 'bg-secondary-container/10 text-on-secondary-container'
                                   }`}
                                 >
-                                  {meal.status}
+                                  {meal.isPreOrder ? t("Pre-order") : meal.status === 'Active' ? t("Active") : t("Draft")}
                                 </span>
                               </div>
+                              {(meal.temperatureType || meal.isPreOrder) && (
+                                <div className="flex gap-1 mt-1">
+                                  {meal.temperatureType === 'hot' && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700">{t("🔥 Hot")}</span>}
+                                  {meal.temperatureType === 'cold' && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700">{t("❄️ Cold")}</span>}
+                                  {meal.isPreOrder && meal.launchDate && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800">{t("Launch {{date}}", { date: meal.launchDate })}</span>}
+                                </div>
+                              )}
                               <p className="text-[14px] font-extrabold text-on-surface mt-0.5">
                                 <Trans t={t} i18nKey={"{{price}} PLN <0>· 8% VAT</0>"} defaults={"{{price}} PLN <0>· 8% VAT</0>"} values={{ price: meal.price.toFixed(2) }} components={[<span className="text-outline font-normal text-[11px]" />]} />
                               </p>
@@ -1012,10 +1039,14 @@ export default function MenuManager({
               </label>
             </div>
 
+            {/* Hot/Cold (AL) and pre-order (M) */}
+            <MealAmendmentFields value={mealExtra} onChange={setMealExtra} />
+
             {/* Submit button bar */}
             <div className="pt-4 flex flex-col gap-2.5">
               <button
               type="submit"
+              disabled={savingMeal}
               className="w-full py-4 bg-primary text-on-primary font-bold text-[15px] rounded-xl shadow-lg active:scale-98 transition-transform flex items-center justify-center gap-2 cursor-pointer">
               
                 <Save className="leading-none text-[20px]" />
