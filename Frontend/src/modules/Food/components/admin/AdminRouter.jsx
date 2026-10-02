@@ -166,6 +166,28 @@ const AdminDeliveryService = lazy(() => import("@food/pages/admin/service-manage
 const AdminVendorService = lazy(() => import("@food/pages/admin/service-management/AdminVendorService"));
 const AdminCustomerService = lazy(() => import("@food/pages/admin/service-management/AdminCustomerService"));
 const DeveloperSettingsPage = lazy(() => import("@food/pages/admin/DeveloperSettingsPage"));
+// Amendment v2 Extra (platform controls & compliance)
+const DmbControls = lazy(() => import("@food/pages/admin/dmb/ControlsPage"));
+const DmbAlerts = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.AlertsPage })));
+const DmbJobs = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.JobsPage })));
+const DmbHolidays = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.HolidaysPage })));
+const DmbZoneFees = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.ZoneFeesPage })));
+const DmbExpansion = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.ExpansionDemandPage })));
+const DmbBadDebt = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.BadDebtPage })));
+const DmbSegments = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.SegmentsPage })));
+const DmbLegal = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.LegalPage })));
+const DmbHomeCooks = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.HomeCooksPage })));
+const DmbSettlements = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.SettlementsPage })));
+const DmbFleetRequests = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.FleetRequestsPage })));
+const DmbEco = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.EcoVendorsPage })));
+const DmbSpecialisms = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.SpecialismsPage })));
+const DmbTemperature = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.TemperaturePage })));
+const DmbReviews = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.ReviewModerationPage })));
+const DmbStock = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.StockPage })));
+const DmbPantryReturns = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.PantryReturnsPage })));
+const DmbGrowth = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.GrowthPage })));
+const DmbIntegrations = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.IntegrationsPage })));
+const DmbSecurity = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.SecurityPage })));
 
 export default function AdminRouter() {
   return (
@@ -390,6 +412,28 @@ export default function AdminRouter() {
             <Route path="service/customer" element={<AdminCustomerService />} />
             {/* DEVELOPER SETTINGS */}
             <Route path="developer-settings" element={<DeveloperSettingsPage />} />
+            {/* AMENDMENT v2 EXTRA — platform controls & compliance */}
+            <Route path="dmb/controls" element={<DmbControls />} />
+            <Route path="dmb/alerts" element={<DmbAlerts />} />
+            <Route path="dmb/jobs" element={<DmbJobs />} />
+            <Route path="dmb/holidays" element={<DmbHolidays />} />
+            <Route path="dmb/zone-fees" element={<DmbZoneFees />} />
+            <Route path="dmb/expansion-demand" element={<DmbExpansion />} />
+            <Route path="dmb/bad-debt" element={<DmbBadDebt />} />
+            <Route path="dmb/segments" element={<DmbSegments />} />
+            <Route path="dmb/legal" element={<DmbLegal />} />
+            <Route path="dmb/home-cooks" element={<DmbHomeCooks />} />
+            <Route path="dmb/settlements" element={<DmbSettlements />} />
+            <Route path="dmb/fleet-requests" element={<DmbFleetRequests />} />
+            <Route path="dmb/eco" element={<DmbEco />} />
+            <Route path="dmb/specialisms" element={<DmbSpecialisms />} />
+            <Route path="dmb/temperature" element={<DmbTemperature />} />
+            <Route path="dmb/reviews" element={<DmbReviews />} />
+            <Route path="dmb/stock" element={<DmbStock />} />
+            <Route path="dmb/pantry-returns" element={<DmbPantryReturns />} />
+            <Route path="dmb/growth" element={<DmbGrowth />} />
+            <Route path="dmb/integrations" element={<DmbIntegrations />} />
+            <Route path="dmb/security" element={<DmbSecurity />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}

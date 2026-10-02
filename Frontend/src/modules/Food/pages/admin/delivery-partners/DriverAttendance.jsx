@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarCheck, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { adminAPI } from '../../../../../services/api';
+import { adminAPI, dmbExtraAdminAPI } from '../../../../../services/api';
 
 const errText = (e, fallback) => e?.response?.data?.message || e?.message || fallback;
 const badge = (text, cls) => <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${cls}`}>{text}</span>;
@@ -13,13 +13,18 @@ function RatesTab({ notify }) {
   const [month, setMonth] = useState(now.getUTCMonth());
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [rows, setRows] = useState(null);
+  const [fleetPartnerId, setFleetPartnerId] = useState('');
+  const [partners, setPartners] = useState([]);
+  useEffect(() => {
+    dmbExtraAdminAPI.fleetPartners().then((res) => setPartners(res?.data?.partners || [])).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      const res = await adminAPI.getAttendanceOverview({ year, month, maxRate: flaggedOnly ? 80 : undefined });
+      const res = await adminAPI.getAttendanceOverview({ year, month, maxRate: flaggedOnly ? 80 : undefined, fleetPartnerId: fleetPartnerId || undefined });
       setRows(res?.data?.data || []);
     } catch (e) { notify('error', errText(e, 'Failed to load attendance')); }
-  }, [year, month, flaggedOnly, notify]);
+  }, [year, month, flaggedOnly, fleetPartnerId, notify]);
   useEffect(() => { load(); }, [load]);
 
   return (
@@ -30,6 +35,10 @@ function RatesTab({ notify }) {
         </select>
         <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700">
           {[now.getUTCFullYear() - 1, now.getUTCFullYear()].map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={fleetPartnerId} onChange={(e) => setFleetPartnerId(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700">
+          <option value="">All fleet partners</option>
+          {partners.map((p) => <option key={p._id} value={p._id}>{p.companyName}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 ml-2">
           <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} />
@@ -43,20 +52,23 @@ function RatesTab({ notify }) {
             <tr className="bg-slate-50 text-slate-500 text-left">
               <th className="px-4 py-3 font-bold">Driver</th>
               <th className="px-4 py-3 font-bold">City</th>
+              <th className="px-4 py-3 font-bold">Fleet partner</th>
               <th className="px-4 py-3 font-bold text-right">Completed</th>
               <th className="px-4 py-3 font-bold text-right">No-show</th>
               <th className="px-4 py-3 font-bold text-right">Rate</th>
+              <th className="px-4 py-3 font-bold text-right" title="Completed shifts that count for the minimum guarantee">Guarantee shifts</th>
             </tr>
           </thead>
           <tbody>
             {rows === null ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No drivers to show.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No drivers to show.</td></tr>
             ) : rows.map((r) => (
               <tr key={r.driverId} className="border-t border-slate-100">
                 <td className="px-4 py-3 font-semibold text-slate-800">{r.name}</td>
                 <td className="px-4 py-3 text-slate-500">{r.city || '—'}</td>
+                <td className="px-4 py-3 text-slate-500">{r.fleetPartnerName || '—'}</td>
                 <td className="px-4 py-3 text-right text-slate-700">{r.completed}</td>
                 <td className="px-4 py-3 text-right text-slate-700">{r.noShow}</td>
                 <td className="px-4 py-3 text-right">
@@ -64,6 +76,7 @@ function RatesTab({ notify }) {
                     ? <span className="text-slate-400">—</span>
                     : badge(`${r.rate}%`, r.rate < 80 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}
                 </td>
+                <td className="px-4 py-3 text-right text-slate-700">{r.guaranteeShifts ?? 0}</td>
               </tr>
             ))}
           </tbody>

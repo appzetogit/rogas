@@ -73,6 +73,59 @@ export const adminSidebarMenu = [
   },
 
 
+  // ─── PLATFORM CONTROLS & COMPLIANCE (Amendment v2 Extra) ─────────────────
+  {
+    type: "section",
+    label: "PLATFORM CONTROLS",
+    roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER", "CUSTOMER_SERVICE", "MARKETING_MANAGER", "WEB_MANAGER", "ACCOUNTANT"],
+    items: [
+      { type: "link", label: "Admin Controls (ACM)", path: "/admin/food/dmb/controls", icon: "Settings" },
+      { type: "link", label: "Alerts", path: "/admin/food/dmb/alerts", icon: "AlertTriangle" },
+      { type: "link", label: "Scheduled Jobs", path: "/admin/food/dmb/jobs", icon: "Clock", roles: ["SUPER_ADMIN"] },
+      { type: "link", label: "Holidays", path: "/admin/food/dmb/holidays", icon: "Calendar", roles: ["SUPER_ADMIN", "CITY_MANAGER"] },
+      { type: "link", label: "Zone Delivery Fees", path: "/admin/food/dmb/zone-fees", icon: "DollarSign", roles: ["SUPER_ADMIN", "CITY_MANAGER"] },
+      {
+        type: "expandable",
+        label: "Vendors & Compliance",
+        icon: "Building2",
+        roles: ["SUPER_ADMIN", "CITY_MANAGER", "FLEET_MANAGER", "ACCOUNTANT", "CUSTOMER_SERVICE"],
+        subItems: [
+          { label: "Home Cooks", path: "/admin/food/dmb/home-cooks" },
+          { label: "Settlement Statements", path: "/admin/food/dmb/settlements" },
+          { label: "Delivery Partner Requests", path: "/admin/food/dmb/fleet-requests" },
+          { label: "Eco Packaging", path: "/admin/food/dmb/eco" },
+          { label: "Medical Specialisms", path: "/admin/food/dmb/specialisms" },
+          { label: "Hot / Cold Labels", path: "/admin/food/dmb/temperature" },
+          { label: "Review Replies", path: "/admin/food/dmb/reviews" },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "Customers & Marketing",
+        icon: "Users",
+        roles: ["SUPER_ADMIN", "CITY_MANAGER", "CUSTOMER_SERVICE", "MARKETING_MANAGER", "WEB_MANAGER"],
+        subItems: [
+          { label: "Bad-Debt Customers", path: "/admin/food/dmb/bad-debt" },
+          { label: "Customer Segments", path: "/admin/food/dmb/segments" },
+          { label: "Legal Documents", path: "/admin/food/dmb/legal" },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "Operations Reports",
+        icon: "FileText",
+        subItems: [
+          { label: "Live Stock", path: "/admin/food/dmb/stock" },
+          { label: "Pantry Returns", path: "/admin/food/dmb/pantry-returns" },
+          { label: "Growth", path: "/admin/food/dmb/growth" },
+          { label: "Expansion Demand", path: "/admin/food/dmb/expansion-demand" },
+        ],
+      },
+      { type: "link", label: "Integrations (GA4 / Mailchimp / WhatsApp)", path: "/admin/food/dmb/integrations", icon: "Link", roles: ["SUPER_ADMIN", "MARKETING_MANAGER", "WEB_MANAGER"] },
+      { type: "link", label: "Security & Encryption", path: "/admin/food/dmb/security", icon: "Lock", roles: ["SUPER_ADMIN"] },
+    ],
+  },
+
   // ─── DRIVER MANAGEMENT ──────────────────────────────────────────────────
   {
     type: "section",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, Plus, Pencil, Trash2, Save, CheckCircle, AlertTriangle, X, CalendarDays } from 'lucide-react';
-import { adminAPI } from '../../../../../services/api';
+import { adminAPI, dmbExtraAdminAPI } from '../../../../../services/api';
 
 const to12h = (hhmm) => {
   if (!hhmm) return '';
@@ -217,12 +217,32 @@ export default function VendorTiming() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Gap A lifecycle: activating needs drivers on the linked shift; deactivating gives subscribers a grace period
+  // to pick another slot (then they move to the fallback slot automatically).
+  const [deactivate, setDeactivate] = useState(null);
   const toggleEnabled = async (slot) => {
+    if (slot.isEnabled || slot.status === 'deactivating') {
+      setDeactivate({ slot, graceDays: 14, fallbackSlotKey: slots.find((x) => x._id !== slot._id && x.status === 'active')?.key || '' });
+      return;
+    }
     try {
-      await adminAPI.updateDeliverySlot(slot._id, { isEnabled: !slot.isEnabled });
-      setSlots((prev) => prev.map((s) => (s._id === slot._id ? { ...s, isEnabled: !s.isEnabled } : s)));
+      await dmbExtraAdminAPI.activateSlot(slot._id);
+      showToast('success', `"${slot.name}" is now offered to customers`);
+      load();
     } catch (e) {
-      showToast('error', e?.response?.data?.message || 'Failed to update slot');
+      showToast('error', e?.response?.data?.message || 'Failed to activate slot');
+    }
+  };
+  const doDeactivate = async () => {
+    const { slot, graceDays, fallbackSlotKey } = deactivate;
+    try {
+      const res = await dmbExtraAdminAPI.deactivateSlot(slot._id, { graceDays: Number(graceDays) || 14, fallbackSlotKey });
+      setDeactivate(null);
+      const affected = res?.data?.affected || 0;
+      showToast('success', affected ? `${affected} subscriptions asked to choose a new slot within ${graceDays} days` : `"${slot.name}" disabled`);
+      load();
+    } catch (e) {
+      showToast('error', e?.response?.data?.message || 'Failed to deactivate slot');
     }
   };
 
@@ -306,6 +326,11 @@ export default function VendorTiming() {
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {isActiveNow(s) && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Active now</span>}
+                    {s.status && s.status !== 'active' && (
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${s.status === 'deactivating' ? 'bg-amber-100 text-amber-800' : s.status === 'draft' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>
+                        {s.status === 'deactivating' ? `Ending ${s.graceEndsAt ? new Date(s.graceEndsAt).toLocaleDateString('en-GB') : ''}` : s.status}
+                      </span>
+                    )}
                     <button onClick={() => toggleEnabled(s)} aria-label="Toggle"
                       className={`relative w-11 h-6 rounded-full transition-colors ${s.isEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                       <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${s.isEnabled ? 'translate-x-5' : ''}`} />
@@ -369,6 +394,25 @@ export default function VendorTiming() {
           onClose={() => setModal(null)}
           onSaved={(msg) => { setModal(null); showToast('success', msg); load(); }}
         />
+      )}
+
+      {deactivate && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-black text-slate-800">Stop offering "{deactivate.slot.name}"?</h3>
+            <p className="text-sm text-slate-500">New customers can no longer choose it at once. Current subscribers are asked to pick another slot; when the grace period ends they move to the fallback slot automatically.</p>
+            <Field label="Grace period (days)"><input type="number" min={0} max={60} value={deactivate.graceDays} onChange={(e) => setDeactivate({ ...deactivate, graceDays: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2" /></Field>
+            <Field label="Fallback slot">
+              <select value={deactivate.fallbackSlotKey} onChange={(e) => setDeactivate({ ...deactivate, fallbackSlotKey: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2">
+                {slots.filter((x) => x._id !== deactivate.slot._id && x.status === 'active').map((x) => <option key={x.key} value={x.key}>{x.name}</option>)}
+              </select>
+            </Field>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeactivate(null)} className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-sm">Cancel</button>
+              <button onClick={doDeactivate} className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-sm">Deactivate</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmDel && (

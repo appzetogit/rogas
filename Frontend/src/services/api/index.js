@@ -2403,7 +2403,7 @@ export const dmbExtraAdminAPI = {
   generateSettlements: (period) => adminClient.post(dmbAdmin("/settlements/generate"), { period }),
   settlementPdf: (id) => adminClient.get(dmbAdmin(`/settlements/${id}/pdf`), { responseType: "blob" }),
   fleetRequests: (params) => adminClient.get(dmbAdmin("/fleet-requests"), { params }),
-  approveFleetRequest: (id) => adminClient.post(dmbAdmin(`/fleet-requests/${id}/approve`)),
+  approveFleetRequest: (id, fleetPartnerId) => adminClient.post(dmbAdmin(`/fleet-requests/${id}/approve`), { fleetPartnerId }),
   rejectFleetRequest: (id, reason) => adminClient.post(dmbAdmin(`/fleet-requests/${id}/reject`), { reason }),
   linkPreferredPartner: (vendorId, fleetPartnerId) => adminClient.post(dmbAdmin(`/vendors/${vendorId}/preferred-partner`), { fleetPartnerId }),
   unlinkPreferredPartner: (vendorId) => adminClient.delete(dmbAdmin(`/vendors/${vendorId}/preferred-partner`)),
@@ -2422,4 +2422,6 @@ export const dmbExtraAdminAPI = {
   securityStatus: () => adminClient.get(dmbAdmin("/security/status")),
   // Driver attendance (B/Z)
   attendanceOverview: (params) => adminClient.get("/food/admin/attendance/overview", { params }),
+  cities: () => adminClient.get("/food/admin/cities"),
+  fleetPartners: () => adminClient.get(dmbAdmin("/fleet-requests"), { params: { status: "none" } }),
 };
