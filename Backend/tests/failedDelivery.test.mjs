@@ -1,6 +1,6 @@
 /**
- * DA-07 "Cannot deliver" (Amendment v2 Extra, Gap P): only the driver who picked the box up can report it failed,
- * a photo is mandatory and "returned to shop" is for Pantry bags only.
+ * Driver ownership of deliveries: only the driver who picked a box up can mark it delivered or report it failed
+ * (DA-07 "Cannot deliver", Gap P), each only once; a failure needs a photo and "returned to shop" is Pantry-only.
  * Needs a LOCAL MongoDB:  AMENDMENT_TEST_MONGO_URI=mongodb://127.0.0.1:27017 node --test tests/failedDelivery.test.mjs
  */
 import { test, before, after } from 'node:test';
@@ -30,9 +30,9 @@ before(async () => {
         deliveryAddress: w.address
     });
     await subSvc.activateSubscription(subscription.subscriptionId);
-    for (let i = 0; i < 3; i++) await gen.generateForDate(time.addDays(new Date(start), i));
+    for (let i = 0; i < 4; i++) await gen.generateForDate(time.addDays(new Date(start), i));
     orders = await w.DMBDailyOrder.find({ subscriptionId: subscription._id }).sort({ deliveryDate: 1 });
-    assert.ok(orders.length >= 2, 'fixture needs two daily orders');
+    assert.ok(orders.length >= 3, "fixture needs three daily orders");
 
     driverA = await w.FoodDeliveryPartner.create({ name: 'Driver A', phone: nextPhone(), status: 'approved', zoneIds: [w.zone._id] });
     driverB = await w.FoodDeliveryPartner.create({ name: 'Driver B', phone: nextPhone(), status: 'approved', zoneIds: [w.zone._id] });
@@ -70,4 +70,17 @@ test('the carrying driver reports it: order failed, reason recorded, admin alert
     const { DMBAdminAlert } = await import('../src/modules/dailymealbox/platform/platform.models.js');
     assert.ok(await DMBAdminAlert.findOne({ type: 'delivery_failed', entityId: failed._id }).lean(), 'admin alert raised');
     await assert.rejects(report(driverA._id, orders[0]._id), /already failed/);
+});
+
+test('marking delivered (photo / PIN path): only the carrying driver, only once', async () => {
+    const { confirmDelivery } = await import('../src/modules/dailymealbox/delivery/collectionPin.service.js');
+    assert.ok(orders[2], 'fixture needs a third daily order');
+    const id = String(orders[2]._id);
+    await assert.rejects(confirmDelivery({ orderId: id, driverId: driverA._id, method: 'photo', proofPhotoUrl: 'https://x/p.jpg' }), /not assigned to you/, 'nobody picked it up yet');
+    await w.DMBDailyOrder.updateOne({ _id: id }, { $set: { status: 'out_for_delivery', 'dispatch.deliveryPartnerId': driverA._id } });
+    await assert.rejects(confirmDelivery({ orderId: id, driverId: driverB._id, method: 'photo', proofPhotoUrl: 'https://x/p.jpg' }), /not assigned to you/);
+    const delivered = await confirmDelivery({ orderId: id, driverId: driverA._id, method: 'photo', proofPhotoUrl: 'https://x/p.jpg' });
+    assert.equal(delivered.status, 'delivered');
+    await assert.rejects(confirmDelivery({ orderId: id, driverId: driverA._id, method: 'photo', proofPhotoUrl: 'https://x/p.jpg' }), /already delivered/);
+    await assert.rejects(confirmDelivery({ orderId: String(orders[0]._id), driverId: driverA._id, method: 'photo' }), /already failed/, 'a failed box cannot be flipped to delivered');
 });

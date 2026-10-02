@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { getRedis } from '../../../config/redis.js';
 import { CollectionBatch } from './collectionBatch.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
@@ -298,13 +299,21 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
 export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, gpsMismatch, proofPhotoUrl }) => {
     const io = getIO();
 
+    if (!mongoose.Types.ObjectId.isValid(String(orderId))) throw new Error('Order not found');
+    // Only the driver carrying the box (set at pickup / batch acceptance) may complete it, and only once.
+    const assertDriver = (assigned) => {
+        if (!assigned || String(assigned) !== String(driverId)) throw new Error('This delivery is not assigned to you');
+    };
+
     // Check if it is a DMB Daily Order
-    const isDmbOrder = await DMBDailyOrder.exists({ _id: orderId });
+    const dmbOrder = await DMBDailyOrder.findById(orderId).select('status dispatch.deliveryPartnerId').lean();
 
     let order;
-    if (isDmbOrder) {
-        order = await DMBDailyOrder.findByIdAndUpdate(
-            orderId,
+    if (dmbOrder) {
+        assertDriver(dmbOrder.dispatch?.deliveryPartnerId);
+        if (['delivered', 'failed', 'skipped'].includes(dmbOrder.status)) throw new Error(`This delivery is already ${dmbOrder.status}`);
+        order = await DMBDailyOrder.findOneAndUpdate(
+            { _id: orderId, status: { $nin: ['delivered', 'failed', 'skipped'] }, 'dispatch.deliveryPartnerId': dmbOrder.dispatch.deliveryPartnerId },
             {
                 $set: {
                     status: 'delivered',
@@ -314,7 +323,7 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
             { new: true }
         );
 
-        if (!order) throw new Error('Daily Order not found');
+        if (!order) throw new Error('This delivery was updated meanwhile — refresh your route');
 
         // Select mode → "Enjoyed your meal? Subscribe…" prompt (Amendment v2 Gap AG). Never blocks the delivery.
         if (order.orderType === 'one_time_select') {
@@ -350,6 +359,9 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
     } else {
         const existingOrder = await FoodOrder.findById(orderId);
         if (!existingOrder) throw new Error('Order not found');
+        assertDriver(existingOrder.dispatch?.deliveryPartnerId);
+        const current = String(existingOrder.orderStatus || '');
+        if (current === 'delivered' || current.startsWith('cancelled')) throw new Error(`This order is already ${current.replace(/_/g, ' ')}`);
 
         // Fallback to legacy FoodOrder update
         order = await FoodOrder.findByIdAndUpdate(
