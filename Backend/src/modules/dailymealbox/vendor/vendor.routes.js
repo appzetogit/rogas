@@ -151,8 +151,19 @@ router.post('/meal-plans', authMiddleware, requireRoles('RESTAURANT'), async (re
     try {
         if (req.body?.availableSlots?.length) await assertValidSlotKeys(req.body.availableSlots);
         const { prepareMealPlanInput } = await import('../mealplan/mealPlanRules.js');
-        const vendor = await FoodRestaurant.findById(req.user.userId).select('specialisms').lean();
+        const vendor = await FoodRestaurant.findById(req.user.userId).select('specialisms city location.city zoneId').lean();
         const input = await prepareMealPlanInput({ vendor, body: req.body || {} });
+        // The meal's city is the kitchen's city; the app may not know it, so the vendor profile (or its zone's
+        // city) fills it in.
+        input.city = String(input.city || vendor?.city || vendor?.location?.city || '').trim();
+        if (!input.city && vendor?.zoneId) {
+            const { AdminCity } = await import('../../food/admin/models/adminCity.model.js');
+            const { FoodZone } = await import('../../food/admin/models/zone.model.js');
+            const city = await AdminCity.findOne({ zoneIds: vendor.zoneId }).select('name').lean();
+            const zone = city ? null : await FoodZone.findById(vendor.zoneId).select('serviceLocation name').lean();
+            input.city = String(city?.name || zone?.serviceLocation || zone?.name || '').trim();
+        }
+        if (!input.city) return res.status(400).json({ success: false, code: 'CITY_REQUIRED', message: 'Add your kitchen address (city) in your profile before adding meals' });
         const plan = await DMBMealPlan.create({ ...input, vendorId: req.user.userId });
         res.status(201).json({ success: true, plan });
     } catch (err) {

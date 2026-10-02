@@ -104,9 +104,11 @@ export default function App() {
   const [showGlobalToast, setShowGlobalToast] = useState(false);
   const [toastText, setToastText] = useState('');
 
-  const triggerGlobalToast = (msg) => {
+  // Callers in a catch block pass "error": server messages ("Choose Hot or Cold before publishing…") don't
+  // always contain a word the pattern below recognises.
+  const triggerGlobalToast = (msg, kind) => {
     if (!msg) return;
-    const isError = /fail|invalid|error|blocked|rejected|not found|already registered/i.test(msg);
+    const isError = kind === 'error' || /fail|invalid|error|blocked|rejected|not found|already registered/i.test(msg);
     if (isError) {
       toast.error(msg);
     } else {
@@ -323,7 +325,7 @@ export default function App() {
       setVacation((prev) => ({ ...prev, ...v }));
       triggerGlobalToast(v.isKitchenOpen ? tr("Kitchen is now OPEN! 🍳") : tr("Vacation mode activated 🌴"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update vacation settings"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update vacation settings"), 'error');
     }
   };
 
@@ -341,7 +343,7 @@ export default function App() {
       setOrders((prev) => prev.map((o) => ({ ...o, status: 'Ready' })));
       triggerGlobalToast(tr("All kitchen orders marked as READY ✓"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"), 'error');
     }
   };
 
@@ -354,7 +356,7 @@ export default function App() {
         setOrders((prev) => prev.map((o) => o.id === id || (o.deliveryDate === orderObj.deliveryDate && o.deliverySlot === orderObj.deliverySlot) ? { ...o, status: 'Ready' } : o));
         triggerGlobalToast(tr("Orders for {{deliverySlot}} marked as Ready", { deliverySlot: orderObj.deliverySlot }));
       } catch (err) {
-        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update order status"));
+        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to update order status"), 'error');
       }
     } else {
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
@@ -370,7 +372,7 @@ export default function App() {
         setOrders((prev) => prev.map((o) => from === 'any' || o.status === from ? { ...o, status: to } : o));
         triggerGlobalToast(tr("Batch update: marked items as READY ✓"));
       } catch (err) {
-        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"));
+        triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to mark orders ready"), 'error');
       }
     } else {
       setOrders((prev) => prev.map((o) => from === 'any' || o.status === from ? { ...o, status: to } : o));
@@ -397,7 +399,7 @@ export default function App() {
         photos: [newMeal.imageUrl],
         status: newMeal.isPreOrder ? 'pre_order' : 'active',
         ...amendmentMealPayload(newMeal),
-        city: profile.location?.city || profile.city || 'indore',
+        city: profile.location?.city || profile.city || undefined,
         availableSlots: profile.mealSlots || [],
         availableDays: ['mon', 'tue', 'wed', 'thu', 'fri']
       };
@@ -425,7 +427,7 @@ export default function App() {
       triggerGlobalToast(tr("Meal added successfully"));
       return true;
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to add meal plan"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to add meal plan"), 'error');
       return false;
     }
   };
@@ -476,7 +478,7 @@ export default function App() {
       triggerGlobalToast(tr("Meal updated successfully"));
       return true;
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to edit meal plan"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to edit meal plan"), 'error');
       return false;
     }
   };
@@ -487,7 +489,7 @@ export default function App() {
       setMeals((prev) => prev.map((m) => m.id === id ? { ...m, status: 'Removed' } : m));
       triggerGlobalToast(tr("Meal removed from menu"));
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to delete meal plan"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to delete meal plan"), 'error');
     }
   };
 
@@ -508,7 +510,7 @@ export default function App() {
           : " " + tr("Meal deactivated successfully")
       );
     } catch (err) {
-      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to toggle meal status"));
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to toggle meal status"), 'error');
     }
   };
 
@@ -536,7 +538,7 @@ export default function App() {
                 triggerGlobalToast(tr("OTP sent successfully!"));
                 navigate('/vendor/auth/login-otp');
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"));
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"), 'error');
               }
             }} />
           } />
@@ -556,7 +558,7 @@ export default function App() {
                 triggerGlobalToast(tr("OTP sent successfully!"));
                 navigate('/vendor/auth/register-otp');
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"));
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"), 'error');
               }
             }} />
           } />
@@ -594,7 +596,7 @@ export default function App() {
 
                 handleCompleteRegistration(user);
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to verify OTP"));
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to verify OTP"), 'error');
               }
             }} />
           } />
@@ -608,7 +610,7 @@ export default function App() {
                 navigate('/vendor/auth/register-details');
               } catch (err) {
                 // If phone is already registered, verify will return the user or an error
-                triggerGlobalToast(err.response?.data?.message || err.message || tr("OTP Verification failed"));
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("OTP Verification failed"), 'error');
               }
             }} />
           } />
@@ -699,7 +701,7 @@ export default function App() {
                 triggerGlobalToast(tr("Registration submitted successfully!"));
                 navigate('/vendor/auth/under-review', { state: { phone: authPhone, status: 'pending', restaurantName: p.name } });
               } catch (err) {
-                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to register vendor"));
+                triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to register vendor"), 'error');
               }
             }} />
           } />

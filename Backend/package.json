@@ -26,6 +26,7 @@
     "test:attendance": "node --test tests/attendance.test.mjs",
     "test:subscription-engine": "node --test tests/subscriptionEngine.test.mjs",
     "test:field-encryption": "node --test tests/fieldEncryption.test.mjs",
+    "test:failed-delivery": "node --test tests/failedDelivery.test.mjs",
     "i18n:seed:check": "node scripts/i18n-seed.mjs check",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

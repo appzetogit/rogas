@@ -150,7 +150,7 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
 
         const bdcFormatted = bdcData.formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
         formattedAddress = nominatimData?.display_name || bdcFormatted
-        city = bdcData.city || bdcData.locality || "Indore"
+        city = bdcData.city || bdcData.locality || ""
         state = bdcData.principalSubdivision || ""
 
         if (nominatimData?.address) {

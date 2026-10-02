@@ -36,10 +36,10 @@ export const reportFailedDelivery = async ({ driverId, stopType = 'dmb', id, ...
         const order = await PantryOrder.findOne({ 'dailyDeliveries._id': id });
         if (!order) throw new FailedDeliveryError('Delivery not found', 404);
         const dd = order.dailyDeliveries.id(id);
-        if (dd.driverId && String(dd.driverId) !== String(driverId)) throw new FailedDeliveryError('This delivery is assigned to another driver', 403);
+        // The driver is set at pickup (collection PIN); only the driver carrying the bag can report it failed.
+        if (!dd.driverId || String(dd.driverId) !== String(driverId)) throw new FailedDeliveryError('This delivery is not assigned to you', 403);
         if (['delivered', 'failed'].includes(dd.status)) throw new FailedDeliveryError(`This delivery is already ${dd.status}`);
         dd.status = 'failed';
-        dd.driverId = dd.driverId || driverId;
         dd.failure = failure;
         dd.returnStatus = data.disposition === 'returned_to_shop' ? 'returned_to_shop' : 'none';
         await order.save();
@@ -64,11 +64,11 @@ export const reportFailedDelivery = async ({ driverId, stopType = 'dmb', id, ...
     if (!mongoose.Types.ObjectId.isValid(String(id))) throw new FailedDeliveryError('Delivery not found', 404);
     const order = await DMBDailyOrder.findById(id);
     if (!order) throw new FailedDeliveryError('Delivery not found', 404);
-    if (order.dispatch?.deliveryPartnerId && String(order.dispatch.deliveryPartnerId) !== String(driverId)) throw new FailedDeliveryError('This delivery is assigned to another driver', 403);
+    // dispatch.deliveryPartnerId is set at pickup; only the driver carrying the box can report it failed.
+    if (!order.dispatch?.deliveryPartnerId || String(order.dispatch.deliveryPartnerId) !== String(driverId)) throw new FailedDeliveryError('This delivery is not assigned to you', 403);
     if (['delivered', 'failed', 'skipped'].includes(order.status)) throw new FailedDeliveryError(`This delivery is already ${order.status}`);
     order.status = 'failed';
     order.failure = { ...failure, reportedBy: driverId };
-    if (!order.dispatch?.deliveryPartnerId) order.dispatch = { deliveryPartnerId: driverId };
     await order.save();
     await notify({
         to: 'customer', id: order.userId, event: 'delivery_failed',

@@ -174,10 +174,10 @@ export default function MenuManager({
         await fetchDailyMenus();
         setMealSelectorOpenPlan(null);
       } else {
-        triggerToast(res.data?.message || t("Failed to schedule meal"));
+        triggerToast(res.data?.message || t("Failed to schedule meal"), 'error');
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || t("Error scheduling meal"));
+      triggerToast(err.response?.data?.message || err.message || t("Error scheduling meal"), 'error');
     }
   };
 
@@ -192,10 +192,10 @@ export default function MenuManager({
         triggerToast(t("Meal removed from schedule! ✓"));
         await fetchDailyMenus();
       } else {
-        triggerToast(res.data?.message || t("Failed to remove meal"));
+        triggerToast(res.data?.message || t("Failed to remove meal"), 'error');
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || t("Error removing meal"));
+      triggerToast(err.response?.data?.message || err.message || t("Error removing meal"), 'error');
     }
   };
 
@@ -231,7 +231,7 @@ export default function MenuManager({
   const handleSaveDailyMenu = async (e) => {
     e.preventDefault();
     if (!selectedMealForSchedule || !dishNameSchedule) {
-      triggerToast(t("Dish name is required"));
+      triggerToast(t("Dish name is required"), 'error');
       return;
     }
     
@@ -258,10 +258,10 @@ export default function MenuManager({
         await fetchDailyMenus();
         setScheduleModalOpen(false);
       } else {
-        triggerToast(res.data?.message || t("Failed to save daily menu"));
+        triggerToast(res.data?.message || t("Failed to save daily menu"), 'error');
       }
     } catch (err) {
-      triggerToast(err.response?.data?.message || err.message || t("Error saving daily menu"));
+      triggerToast(err.response?.data?.message || err.message || t("Error saving daily menu"), 'error');
     } finally {
       setIsSavingSchedule(false);
     }
@@ -295,10 +295,10 @@ export default function MenuManager({
           setMealImageUrl(url);
           triggerToast(t("Photo uploaded successfully ✓"));
         } else {
-          triggerToast(t("Failed to parse uploaded photo URL"));
+          triggerToast(t("Failed to parse uploaded photo URL"), 'error');
         }
       } catch (err) {
-        triggerToast(err.message || t("Failed to upload photo"));
+        triggerToast(err.message || t("Failed to upload photo"), 'error');
       } finally {
         setIsUploadingPhoto(false);
       }
@@ -316,10 +316,10 @@ export default function MenuManager({
           setPhotoSchedule(url);
           triggerToast(t("Schedule photo uploaded successfully ✓"));
         } else {
-          triggerToast(t("Failed to parse uploaded photo URL"));
+          triggerToast(t("Failed to parse uploaded photo URL"), 'error');
         }
       } catch (err) {
-        triggerToast(err.message || t("Failed to upload photo"));
+        triggerToast(err.message || t("Failed to upload photo"), 'error');
       } finally {
         setIsUploadingPhoto(false);
       }
@@ -334,8 +334,10 @@ export default function MenuManager({
   // Toast notice state
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastKind, setToastKind] = useState('info');
 
-  const triggerToast = (msg) => {
+  const triggerToast = (msg, kind = 'info') => {
+    setToastKind(kind);
     setToastMessage(msg);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
@@ -394,11 +396,11 @@ export default function MenuManager({
     e.preventDefault();
     if (savingMeal) return;
     if (mealExtra.temperatureType === 'cold' && !mealExtra.reheatInstructions.trim()) {
-      triggerToast(t("Add reheating instructions for a cold meal"));
+      triggerToast(t("Add reheating instructions for a cold meal"), 'error');
       return;
     }
     if (mealExtra.isPreOrder && !mealExtra.launchDate) {
-      triggerToast(t("Set the launch date for the pre-order"));
+      triggerToast(t("Set the launch date for the pre-order"), 'error');
       return;
     }
     const priceNum = parseFloat(mealPrice) || 12.00;
@@ -441,7 +443,7 @@ export default function MenuManager({
     e.preventDefault();
     const selectedMeal = meals.find((m) => m.id === selectedMealId);
     if (!selectedMeal) {
-      triggerToast(t("Please select a valid meal"));
+      triggerToast(t("Please select a valid meal"), 'error');
       return;
     }
 
@@ -1524,7 +1526,7 @@ export default function MenuManager({
         showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`
         }>
         
-        <CheckCircle className="text-primary-fixed text-green-400" />
+        {toastKind === 'error' ? <Info className="text-amber-300" /> : <CheckCircle className="text-primary-fixed text-green-400" />}
         <span className="font-bold text-[13px]">{toastMessage}</span>
       </div>
     </div>);
