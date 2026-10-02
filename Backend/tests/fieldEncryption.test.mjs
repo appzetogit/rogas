@@ -146,3 +146,17 @@ test('key rotation: old values stay readable with PII_ENCRYPTION_KEY_PREVIOUS an
         delete process.env.PII_ENCRYPTION_KEY_PREVIOUS;
     }
 });
+
+test('driver identity-document numbers are stored encrypted and read back as plaintext', async () => {
+    const d = await FoodDeliveryPartner.create({ name: 'Doc Driver', phone: '+48500000006', drivingLicenseNumber: ' 01234/22/1465 ', aadharNumber: 'ABC123456', panNumber: 'PL-ID-77' });
+    const raw = await mongoose.connection.collection('food_delivery_partners').findOne({ _id: d._id });
+    for (const f of ['drivingLicenseNumber', 'aadharNumber', 'panNumber']) assert.match(raw[f], ENC, f);
+    const lean = await FoodDeliveryPartner.findById(d._id).select('drivingLicenseNumber aadharNumber panNumber').lean();
+    assert.equal(lean.drivingLicenseNumber, '01234/22/1465', 'trimmed then encrypted');
+    assert.equal(lean.aadharNumber, 'ABC123456');
+    const hydrated = await FoodDeliveryPartner.findById(d._id);
+    hydrated.panNumber = 'PL-ID-78';
+    await hydrated.save();
+    assert.equal((await FoodDeliveryPartner.findById(d._id).lean()).panNumber, 'PL-ID-78');
+    assert.match((await mongoose.connection.collection('food_delivery_partners').findOne({ _id: d._id })).panNumber, ENC);
+});

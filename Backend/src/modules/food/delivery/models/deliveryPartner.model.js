@@ -203,7 +203,8 @@ deliveryPartnerSchema.index({ lastLocation: '2dsphere' });
 deliveryPartnerSchema.index({ isOnline: 1, lastLocationAt: -1 });
 
 /** GDPR Art. 32 (Gap N): bank details are encrypted field-by-field (AES-256-GCM). */
-deliveryPartnerSchema.plugin(encryptedFields, { paths: ['bankAccountNumber', 'bankIban'] });
+// Gap N: bank details and identity-document numbers are stored encrypted (nothing queries by them).
+deliveryPartnerSchema.plugin(encryptedFields, { paths: ['bankAccountNumber', 'bankIban', 'drivingLicenseNumber', 'aadharNumber', 'panNumber'] });
 
 export const FoodDeliveryPartner = mongoose.model('FoodDeliveryPartner', deliveryPartnerSchema);
 

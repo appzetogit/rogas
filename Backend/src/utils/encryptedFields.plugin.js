@@ -33,7 +33,17 @@ export const decryptPlain = (obj, paths) => {
 };
 
 const getter = (v) => (typeof v === 'string' ? safeDecrypt(v) : v);
-const setter = (v) => (typeof v === 'string' && v !== '' ? encryptField(v) : v);
+// Mongoose runs a custom setter before the built-in trim/lowercase/uppercase ones, which would then only see
+// ciphertext — so those options are applied here, to the plaintext.
+const setterFor = (schemaPath) => (v) => {
+    if (typeof v !== 'string' || v === '') return v;
+    const o = schemaPath.options || {};
+    let plain = v;
+    if (o.trim) plain = plain.trim();
+    if (o.lowercase) plain = plain.toLowerCase();
+    if (o.uppercase) plain = plain.toUpperCase();
+    return plain === '' ? plain : encryptField(plain);
+};
 
 export const encryptedFields = (schema, { paths = [], nested = [] } = {}) => {
     // `nested` = paths inside subdocument arrays whose own schema is set up with encryptedSubFields — only lean
@@ -42,7 +52,7 @@ export const encryptedFields = (schema, { paths = [], nested = [] } = {}) => {
         const schemaPath = schema.path(p);
         if (!schemaPath) throw new Error(`encryptedFields: unknown path "${p}"`);
         schemaPath.get(getter);
-        schemaPath.set(setter);
+        schemaPath.set(setterFor(schemaPath));
     }
     // Path getters only (no virtuals) so API output keeps its shape.
     const opts = (existing) => ({ ...(existing || {}), getters: true, virtuals: existing?.virtuals ?? false });
@@ -67,7 +77,7 @@ export const encryptedSubFields = (subSchema, { paths = [] } = {}) => {
         const schemaPath = subSchema.path(p);
         if (!schemaPath) throw new Error(`encryptedSubFields: unknown path "${p}"`);
         schemaPath.get(getter);
-        schemaPath.set(setter);
+        schemaPath.set(setterFor(schemaPath));
     }
     subSchema.set('toJSON', { ...(subSchema.get('toJSON') || {}), getters: true, virtuals: false });
     subSchema.set('toObject', { ...(subSchema.get('toObject') || {}), getters: true, virtuals: false });
