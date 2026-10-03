@@ -595,3 +595,15 @@
   --ad-text: #2B2B2B !important;
   --ad-text-primary: #2B2B2B !important;
 }
+
+/* Fallback defaults (no !important so themeSettings.js inline values still win).
+   Without these, var(--ad-card-bg) is undefined when no admin theme config is
+   loaded, which makes dialogs/forms/cards render transparent. */
+.admin-theme-container {
+  --ad-card-bg: #ffffff;
+  --ad-card-border: #e2e8f0;
+  --ad-card-text-muted: #64748b;
+  --ad-input-bg: #ffffff;
+  --ad-input-border: #cbd5e1;
+  --ad-primary-light: rgba(31, 122, 99, 0.1);
+}
