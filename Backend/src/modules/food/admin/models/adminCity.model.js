@@ -35,7 +35,23 @@ const adminCitySchema = new mongoose.Schema(
         // real default currency. Changing this default would break that detection — see currencyFor() before
         // touching this.
         currency: { type: String, required: true, trim: true, uppercase: true, default: 'INR' },
+        // Legacy single rate; superseded by `vat` below and no longer read by any calculation.
         vatRate: { type: Number, default: 0, min: 0 },
+        // VAT percentages per category (PRD §2.1). No defaults on purpose: a city with a missing rate must fail
+        // loudly in the calculation (see cityVat.service.js) instead of silently using a made-up number.
+        vat: {
+            type: new mongoose.Schema(
+                {
+                    foodRestaurant: { type: Number, default: null, min: 0, max: 100 },
+                    foodBasic: { type: Number, default: null, min: 0, max: 100 },
+                    delivery: { type: Number, default: null, min: 0, max: 100 },
+                    service: { type: Number, default: null, min: 0, max: 100 },
+                    tips: { type: Number, default: null, min: 0, max: 100 }
+                },
+                { _id: false }
+            ),
+            default: () => ({})
+        },
         defaultLanguage: { type: String, trim: true, default: 'en' },
         enabledLanguages: { type: [String], default: ['en'] },
         paymentGateways: { type: [gatewaySchema], default: [] },

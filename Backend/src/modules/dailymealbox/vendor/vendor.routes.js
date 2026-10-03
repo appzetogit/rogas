@@ -11,6 +11,7 @@ import { DMBSubscription } from '../subscription/subscription.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { createInboxNotifications } from '../../../core/notifications/notification.service.js';
 import { logger } from '../../../utils/logger.js';
+import { getCityVatRates } from '../../food/admin/services/cityVat.service.js';
 import {
     getVendorDailyOrders,
     updateDailyOrderStatus,
@@ -447,7 +448,8 @@ router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, 
         else if (period === 'month') start.setDate(start.getDate() - 30);
         else start.setHours(0, 0, 0, 0);
 
-        const vendor = await FoodRestaurant.findById(vendorId).select('commissionRate vatRate');
+        const vendor = await FoodRestaurant.findById(vendorId).select('commissionRate zoneId city');
+        const { rates: cityVat } = await getCityVatRates({ zoneId: vendor?.zoneId, cityName: vendor?.city }, ['foodRestaurant']);
         const orders = await FoodOrder.find({
             restaurantId: vendorId,
             orderStatus: 'delivered',
@@ -457,8 +459,9 @@ router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, 
         let grossFoodRevenue = 0;
         orders.forEach(o => { grossFoodRevenue += o.pricing?.subtotal || 0; });
 
-        const vatRate = vendor?.vatRate || 0.08;
-        const commissionRate = vendor?.commissionRate || 0.15;
+        const vatRate = cityVat.foodRestaurant / 100;
+        const commissionRate = vendor?.commissionRate;
+        if (!Number.isFinite(commissionRate)) throw new Error('Commission rate is not set for this vendor');
 
         const foodNetRevenue = grossFoodRevenue / (1 + vatRate);
         const foodVatAmount = grossFoodRevenue - foodNetRevenue;
@@ -471,12 +474,23 @@ router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, 
             ordersCount: orders.length,
             earnings: {
                 grossFoodRevenue,
-                foodVatRate: `${vatRate * 100}%`,
+                foodVatRate: `${cityVat.foodRestaurant}%`,
                 foodVatAmount: foodVatAmount.toFixed(2),
                 platformCommission: commissionAmount.toFixed(2),
                 vendorNetPayout: vendorNetPayout.toFixed(2)
             }
         });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── VAT rates for the vendor's city (read-only; set by admin in City Management) ─────────────────────
+router.get('/vat-rates', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendor = await FoodRestaurant.findById(req.user.userId).select('zoneId city').lean();
+        const { cityName, rates } = await getCityVatRates({ zoneId: vendor?.zoneId, cityName: vendor?.city }, ['foodRestaurant', 'foodBasic']);
+        res.json({ success: true, city: cityName, rates });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

@@ -24,7 +24,7 @@ const fleetPartnerSchema = new mongoose.Schema(
         },
 
         /** Delivery VAT rate (Poland = 23%) — fleet partner declares this */
-        deliveryVatRate: { type: Number, default: 0.23 },
+        deliveryVatRate: { type: Number, required: true, min: 0, max: 1 },
 
         /** Drivers belonging to this fleet partner */
         drivers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }],

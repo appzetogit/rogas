@@ -336,7 +336,7 @@ const restaurantSchema = new mongoose.Schema(
     /** Platform commission rate (default 15%) */
     commissionRate: { type: Number, default: 0.15, min: 0, max: 1 },
     /** VAT rate for food (per city: Poland=0.08, Germany=0.07, France=0.10) */
-    vatRate: { type: Number, default: 0.08 },
+    vatRate: { type: Number, min: 0, max: 1 }, // unused legacy; VAT comes from the city config
     /** Vacation mode — pauses all subscriptions temporarily */
     vacationMode: { type: Boolean, default: false, index: true },
     vacationStart: { type: Date, default: null },

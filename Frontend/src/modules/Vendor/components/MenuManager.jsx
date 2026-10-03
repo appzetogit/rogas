@@ -270,7 +270,15 @@ export default function MenuManager({
   // Form states for Add/Edit Meal
   const [mealName, setMealName] = useState('');
   const [mealPrice, setMealPrice] = useState('');
-  const [mealVat, setMealVat] = useState('8% — Restaurant/processed food');
+  // Food VAT % of the vendor's city, set by admin in City Management (null until loaded / if not configured).
+  const [foodVatRate, setFoodVatRate] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    dmbVendorAPI.getVatRates()
+      .then((res) => { if (!cancelled) setFoodVatRate(res?.data?.rates?.foodRestaurant ?? null); })
+      .catch(() => { if (!cancelled) setFoodVatRate(null); });
+    return () => { cancelled = true; };
+  }, []);
   const [mealDesc, setMealDesc] = useState('');
   const [mealCal, setMealCal] = useState('');
   const [mealProt, setMealProt] = useState('');
@@ -347,7 +355,6 @@ export default function MenuManager({
     setEditingMeal(meal);
     setMealName(meal.name);
     setMealPrice(meal.price.toString());
-    setMealVat(meal.vat);
     setMealDesc(meal.description);
     setMealCal(meal.calories);
     setMealProt(meal.prot);
@@ -371,7 +378,6 @@ export default function MenuManager({
     setEditingMeal(null);
     setMealName('');
     setMealPrice('');
-    setMealVat('8% — Restaurant/processed food');
     setMealDesc('');
     setMealCal('');
     setMealProt('');
@@ -408,7 +414,6 @@ export default function MenuManager({
     const payload = {
       name: mealName || 'New Culinary Secret',
       price: priceNum,
-      vat: mealVat,
       description: mealDesc || 'Freshly prepared delicious item.',
       calories: mealCal || '300 kcal',
       prot: mealProt || '15g',
@@ -566,7 +571,9 @@ export default function MenuManager({
                                 </div>
                               )}
                               <p className="text-[14px] font-extrabold text-on-surface mt-0.5">
-                                <Trans t={t} i18nKey={"{{price}} PLN <0>· 8% VAT</0>"} defaults={"{{price}} PLN <0>· 8% VAT</0>"} values={{ price: meal.price.toFixed(2) }} components={[<span className="text-outline font-normal text-[11px]" />]} />
+                                {foodVatRate === null
+                                  ? t("{{price}} PLN", { price: meal.price.toFixed(2) })
+                                  : <Trans t={t} i18nKey={"{{price}} PLN <0>· {{rate}}% VAT</0>"} defaults={"{{price}} PLN <0>· {{rate}}% VAT</0>"} values={{ price: meal.price.toFixed(2), rate: foodVatRate }} components={[<span className="text-outline font-normal text-[11px]" />]} />}
                               </p>
                               <p className="text-[12px] text-outline font-medium">
                                 {t("{{calories}} · {{portions}} portions", { calories: meal.calories, portions: meal.portions })}
@@ -878,7 +885,7 @@ export default function MenuManager({
                 <label className="text-[10px] text-outline uppercase font-semibold">{t("VAT Category")}</label>
                 <div className="flex items-center gap-1.5 bg-primary-container/10 border border-primary-container/20 rounded-lg px-3 py-2.5">
                   <Info className="text-[18px] text-primary" />
-                  <span className="text-[11px] leading-tight text-primary font-semibold truncate">{t("8% — Restaurant")}</span>
+                  <span className="text-[11px] leading-tight text-primary font-semibold truncate">{foodVatRate === null ? t("Not set by admin") : t("{{rate}}% — Restaurant", { rate: foodVatRate })}</span>
                 </div>
               </div>
             </div>

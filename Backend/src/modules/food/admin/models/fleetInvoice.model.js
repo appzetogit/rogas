@@ -18,7 +18,7 @@ const fleetInvoiceSchema = new mongoose.Schema({
     lines: { type: [invoiceLineSchema], default: [] },
     totalDeliveries: { type: Number, default: 0 },
     grossServiceFee: { type: Number, default: 0 }, // PLN, before VAT
-    vatRate: { type: Number, default: 0.23 }, // 23% default
+    vatRate: { type: Number, required: true, min: 0, max: 1 }, // fraction, from the city delivery VAT
     vatAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, default: 0 }, // gross + VAT
     currency: { type: String, default: 'PLN' },

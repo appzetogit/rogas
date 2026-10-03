@@ -198,7 +198,7 @@ export default function FleetManagerDashboard() {
                           <p>ðŸ“§ {p.contactEmail || "â€”"}</p>
                           <p>ðŸ“ž {p.contactPhone || "â€”"}</p>
                           <p>ðŸ¦ {p.bankIban || "â€”"}</p>
-                          <p>VAT: {(p.deliveryVatRate * 100 || 23).toFixed(0)}%</p>
+                          <p>VAT: {Number.isFinite(p.deliveryVatRate) ? (p.deliveryVatRate * 100).toFixed(0) : "—"}%</p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">

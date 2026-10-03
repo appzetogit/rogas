@@ -8,6 +8,8 @@ import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FleetPartner } from '../../../dailymealbox/vendor/fleetPartner.model.js';
 import { writeAudit } from './prdAdmin.service.js';
+import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { getCityVatRates } from './cityVat.service.js';
 
 const objectIdOrNull = (v) =>
     v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null;
@@ -246,8 +248,15 @@ export async function issueComplaintRefund(id, body = {}, req) {
 
     const before = complaint.toObject();
     const refundType = body.refundType === 'full' ? 'full' : 'partial';
-    const vatRate = 0.08; // 8% VAT example
-    const vatAmount = Math.round(refundAmount * vatRate * 100) / 100;
+    // Food VAT of the vendor's city (PRD §2.1). Prices are VAT-inclusive, so the VAT inside the refund is
+    // gross − gross/(1+rate). If the vendor/city/rate isn't configured this throws rather than guessing.
+    const vendorDoc = complaint.vendorId
+        ? await FoodRestaurant.findById(complaint.vendorId).select('zoneId city').lean()
+        : null;
+    if (!vendorDoc) throw new ValidationError('Cannot compute refund VAT: this complaint has no vendor linked');
+    const { rates: cityVat } = await getCityVatRates({ zoneId: vendorDoc.zoneId, cityName: vendorDoc.city }, ['foodRestaurant']);
+    const vatRate = cityVat.foodRestaurant / 100;
+    const vatAmount = Math.round((refundAmount - refundAmount / (1 + vatRate)) * 100) / 100;
 
     complaint.refundType = refundType;
     complaint.refundAmount = refundAmount;

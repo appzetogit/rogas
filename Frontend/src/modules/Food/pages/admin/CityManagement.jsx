@@ -16,11 +16,22 @@ const CHECKLIST_ITEMS = [
   { key: "hasLanguage",       label: "Language file uploaded" },
 ];
 
+// VAT % per category (PRD §2.1). Left blank = not configured; calculations refuse to run without a rate.
+const VAT_FIELDS = [
+  { key: "foodRestaurant", label: "Food VAT — restaurant / processed (%)" },
+  { key: "foodBasic", label: "Food VAT — basic food (%)" },
+  { key: "delivery", label: "Delivery VAT (%)" },
+  { key: "service", label: "Service / commission VAT (%)" },
+  { key: "tips", label: "Tips VAT (%)" },
+];
+const EMPTY_VAT = { foodRestaurant: "", foodBasic: "", delivery: "", service: "", tips: "" };
+
 function CityForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState({
-    name: "", country: "", currency: "PLN", vatRate: 23, defaultLanguage: "en",
+    name: "", country: "", currency: "PLN", defaultLanguage: "en",
     status: "planned", enabledLanguages: ["en", "pl"],
-    ...(initial || {})
+    ...(initial || {}),
+    vat: { ...EMPTY_VAT, ...((initial && initial.vat) || {}) }
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -50,17 +61,23 @@ function CityForm({ initial, onSave, onCancel }) {
             </div>
           ))}
           <div>
-            <label className="block text-xs text-gray-400 mb-1">VAT Rate (%)</label>
-            <input type="number" value={form.vatRate} onChange={(e) => set("vatRate", Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
             <label className="block text-xs text-gray-400 mb-1">Status</label>
             <select value={form.status} onChange={(e) => set("status", e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               {Object.keys(STATUS_CONFIG).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
             </select>
           </div>
+        </div>
+        <p className="text-xs font-semibold text-gray-300 mb-2">VAT rates</p>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {VAT_FIELDS.map(({ key, label }) => (
+            <div key={key}>
+              <label className="block text-xs text-gray-400 mb-1">{label}</label>
+              <input type="number" min="0" max="100" step="0.01" value={form.vat[key] ?? ""}
+                onChange={(e) => setForm(prev => ({ ...prev, vat: { ...prev.vat, [key]: e.target.value } }))}
+                className="w-full px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          ))}
         </div>
         <div className="flex gap-3 pt-2">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 font-semibold">Cancel</button>
@@ -203,8 +220,10 @@ export default function CityManagement() {
                     <p className="font-bold text-white">{city.currency || "PLN"}</p>
                   </div>
                   <div className="bg-gray-800 rounded-xl p-3">
-                    <p className="text-xs text-gray-500">VAT Rate</p>
-                    <p className="font-bold text-white">{city.vatRate || 0}%</p>
+                    <p className="text-xs text-gray-500">VAT (food / delivery)</p>
+                    <p className="font-bold text-white">
+                      {city.vat?.foodRestaurant ?? "—"}% / {city.vat?.delivery ?? "—"}%
+                    </p>
                   </div>
                 </div>
 

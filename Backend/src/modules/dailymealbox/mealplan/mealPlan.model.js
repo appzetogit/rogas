@@ -72,7 +72,7 @@ const mealPlanSchema = new mongoose.Schema(
             enum: ['restaurant_processed', 'basic_food'],
             default: 'restaurant_processed'
         },
-        vatRate: { type: Number, default: 0.08 },
+        vatRate: { type: Number, min: 0, max: 1 }, // unused legacy; VAT comes from the city config
 
         // ─── Status ───────────────────────────────────────────────────────────
         /** pre_order = new meal launch customers can reserve until preorderCutoff (Gap M). */

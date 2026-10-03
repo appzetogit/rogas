@@ -10,6 +10,7 @@ import { FoodZone } from '../models/zone.model.js';
 import { FleetPartner } from '../../../dailymealbox/vendor/fleetPartner.model.js';
 import { AdminAuditLog } from '../models/auditLog.model.js';
 import { AdminCity } from '../models/adminCity.model.js';
+import { getCityVatRates, parseVatBody } from './cityVat.service.js';
 import { invalidateZoneCityCache } from '../../../dailymealbox/platform/platformConfig.service.js';
 import { AdminFeatureToggle } from '../models/featureToggle.model.js';
 import { AdminIntegrationSetting } from '../models/integrationSetting.model.js';
@@ -170,7 +171,7 @@ export async function createCity(body = {}, req) {
         country,
         status: body.status || 'planned',
         currency: String(body.currency || 'INR').trim().toUpperCase(),
-        vatRate: Number(body.vatRate || 0),
+        vat: parseVatBody(body.vat) || {},
         defaultLanguage: String(body.defaultLanguage || 'en').trim(),
         enabledLanguages: Array.isArray(body.enabledLanguages) ? body.enabledLanguages : ['en'],
         paymentGateways: Array.isArray(body.paymentGateways) ? body.paymentGateways : [],
@@ -193,7 +194,7 @@ export async function updateCity(id, body = {}, req) {
     ['name', 'country', 'status', 'currency', 'defaultLanguage'].forEach((field) => {
         if (body[field] !== undefined) city[field] = String(body[field]).trim();
     });
-    if (body.vatRate !== undefined) city.vatRate = Number(body.vatRate || 0);
+    if (body.vat !== undefined) city.vat = parseVatBody(body.vat);
     if (body.enabledLanguages !== undefined) city.enabledLanguages = Array.isArray(body.enabledLanguages) ? body.enabledLanguages : [];
     if (body.paymentGateways !== undefined) city.paymentGateways = Array.isArray(body.paymentGateways) ? body.paymentGateways : [];
     if (body.zoneIds !== undefined) city.zoneIds = Array.isArray(body.zoneIds) ? body.zoneIds.filter((zoneId) => objectIdOrNull(zoneId)) : [];
@@ -482,6 +483,13 @@ export async function createFleetPartner(body = {}, req) {
     const companyName = String(body.companyName || '').trim();
     const city = String(body.city || '').trim();
     if (!companyName || !city) throw new ValidationError('Company name and city are required');
+    // Delivery VAT comes from the city's configured rate unless the admin gives this partner its own (as a fraction).
+    const deliveryVatRate = body.deliveryVatRate !== undefined && body.deliveryVatRate !== ''
+        ? Number(body.deliveryVatRate)
+        : (await getCityVatRates({ cityName: city }, ['delivery'])).rates.delivery / 100;
+    if (!Number.isFinite(deliveryVatRate) || deliveryVatRate < 0 || deliveryVatRate > 1) {
+        throw new ValidationError('deliveryVatRate must be a fraction between 0 and 1');
+    }
     const partner = await FleetPartner.create({
         companyName,
         city,
@@ -491,7 +499,7 @@ export async function createFleetPartner(body = {}, req) {
         contactPhone: body.contactPhone || '',
         contactEmail: body.contactEmail || '',
         status: body.status || 'active',
-        deliveryVatRate: Number(body.deliveryVatRate ?? 0.23),
+        deliveryVatRate,
         approvedByAdminId: objectIdOrNull(req?.user?.userId)
     });
     await writeAudit(req, 'fleetPartner.create', 'FleetPartner', partner._id, null, partner.toObject(), body.reason);

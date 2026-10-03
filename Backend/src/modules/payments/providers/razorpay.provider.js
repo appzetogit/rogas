@@ -20,6 +20,20 @@ const client = () => {
     return new Razorpay({ key_id: c.keyId, key_secret: c.keySecret });
 };
 
+/**
+ * The Razorpay SDK rejects with a plain object ({ statusCode, error: { code, description, field } }), not an Error,
+ * so `err.message` is empty and logs end up as "[object Object]". Turn it into a real Error with the real reason.
+ */
+const asError = (err) => {
+    if (err instanceof Error) return err;
+    const e = err?.error || {};
+    const parts = [e.description || err?.message, e.code && `code=${e.code}`, e.field && `field=${e.field}`, err?.statusCode && `http=${err.statusCode}`].filter(Boolean);
+    const out = new Error(parts.join(' | ') || 'Razorpay request failed');
+    out.statusCode = err?.statusCode;
+    out.razorpay = e;
+    return out;
+};
+
 const safeEqual = (a, b) => {
     const x = Buffer.from(String(a));
     const y = Buffer.from(String(b));
@@ -42,7 +56,7 @@ export const razorpayProvider = {
             currency: tx.currency,
             receipt: tx.publicId,
             notes: { txId: tx.publicId, purpose: tx.purpose }
-        });
+        }).catch((err) => { throw asError(err); });
         return {
             providerOrderId: order.id,
             providerData: { orderId: order.id },
@@ -73,7 +87,7 @@ export const razorpayProvider = {
         if (!safeEqual(expected, signature)) throw new Error('Payment verification failed: invalid signature');
 
         try {
-            const payment = await client().payments.fetch(paymentId);
+            const payment = await client().payments.fetch(paymentId).catch((err) => { throw asError(err); });
             if (payment.order_id !== tx.providerOrderId) throw new Error('Payment belongs to a different order');
             if (!['captured', 'authorized'].includes(payment.status)) return { state: 'pending', providerPaymentId: paymentId, reason: `payment status ${payment.status}` };
             return { state: 'paid', providerPaymentId: paymentId, amountMinor: Number(payment.amount), currency: String(payment.currency).toUpperCase(), raw: { method: payment.method } };
@@ -87,7 +101,7 @@ export const razorpayProvider = {
 
     async getStatus(tx) {
         if (!tx.providerOrderId) return { state: 'pending' };
-        const list = await client().orders.fetchPayments(tx.providerOrderId);
+        const list = await client().orders.fetchPayments(tx.providerOrderId).catch((err) => { throw asError(err); });
         const items = list?.items || [];
         const captured = items.find((p) => p.status === 'captured');
         if (captured) return { state: 'paid', providerPaymentId: captured.id, amountMinor: Number(captured.amount), currency: String(captured.currency).toUpperCase() };
@@ -123,7 +137,7 @@ export const razorpayProvider = {
     },
 
     async refund(tx, amountMinor, reason) {
-        const refund = await client().payments.refund(tx.providerPaymentId, { amount: amountMinor, notes: { reason: String(reason || '').slice(0, 250), txId: tx.publicId } });
+        const refund = await client().payments.refund(tx.providerPaymentId, { amount: amountMinor, notes: { reason: String(reason || '').slice(0, 250), txId: tx.publicId } }).catch((err) => { throw asError(err); });
         return { providerRefundId: refund.id, status: refund.status === 'failed' ? 'failed' : 'processed' };
     },
 
