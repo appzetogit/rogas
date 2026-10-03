@@ -11,6 +11,7 @@ import { DMBSubscription } from '../subscription/subscription.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { createInboxNotifications } from '../../../core/notifications/notification.service.js';
 import { logger } from '../../../utils/logger.js';
+import { offerPickupToDrivers } from '../delivery/pickupOffer.service.js';
 import { getCityVatRates } from '../../food/admin/services/cityVat.service.js';
 import {
     getVendorDailyOrders,
@@ -1088,18 +1089,15 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         });
 
         if (batch) {
-            if (batch.status === 'driver_assigned') {
-                batch.driverId = null;
-                batch.status = 'pending';
-                batch.collectionPinHash = '';
-                await batch.save();
-
-                // Clear driverId on all daily orders in this batch
-                await DMBDailyOrder.updateMany(
-                    { _id: { $in: batch.orderIds } },
-                    { $set: { 'dispatch.deliveryPartnerId': null } }
-                );
+            // Resending is only for a request nobody has accepted yet. Once a driver holds the batch it must not be
+            // re-offered (that would silently strip the driver who already accepted it).
+            if (batch.status === 'driver_assigned' || batch.driverId) {
+                return res.status(409).json({ success: false, message: 'A delivery partner has already accepted this pickup, so the request cannot be resent.' });
             }
+            // Refresh the box list in case orders were added/changed since the first request.
+            batch.boxCount = readyOrders.length;
+            batch.orderIds = readyOrders.map(o => o._id);
+            await batch.save();
         } else {
             // Create a new batch for these ready orders!
             const crypto = await import('crypto');
@@ -1194,7 +1192,8 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             return res.status(400).json({ success: false, message: 'No online delivery partners found.' });
         }
 
-        if (io) {
+        let offerSummary = null;
+        {
             const ordersInBatch = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone');
             const ordersDetails = ordersInBatch.map(o => ({
                 _id: o._id,
@@ -1244,12 +1243,19 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                 totalOrders: batch.boxCount
             };
 
-            onlineDrivers.forEach(driver => {
-                io.to(`delivery:${driver._id.toString()}`).emit('new_delivery_request', payload);
+            offerSummary = await offerPickupToDrivers({
+                driverIds: onlineDrivers.map((d) => d._id),
+                batch,
+                vendor,
+                payload: { ...payload, totalEarnings },
+                mode: 'resend'
             });
         }
 
-        res.json({ success: true, message: `Request resent to ${onlineDrivers.length} online drivers.` });
+        const pushNote = offerSummary
+            ? ` (${offerSummary.socketLive} live in the app, ${offerSummary.pushDelivered} reached by push notification)`
+            : '';
+        res.json({ success: true, message: `Request resent to ${onlineDrivers.length} online drivers${pushNote}.`, summary: offerSummary });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

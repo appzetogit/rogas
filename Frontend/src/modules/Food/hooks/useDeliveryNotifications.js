@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
-import { deliveryAPI } from '@food/api';
+import { deliveryAPI, dmbDeliveryAPI } from '@food/api';
 import alertSound from '@food/assets/audio/alert.mp3';
 import originalSound from '@food/assets/audio/original.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
@@ -1106,6 +1106,38 @@ export const useDeliveryNotifications = () => {
       return true;
     }
     return false;
+  }, []);
+
+  // Pickup request that arrived as an FCM push (foreground message, or the app opened from the push with ?batch=<id>).
+  useEffect(() => {
+    let cancelled = false;
+    const openBatch = async (batchId) => {
+      if (!batchId || !isRiderOnline()) return;
+      try {
+        const res = await dmbDeliveryAPI.getBatchRequest(batchId);
+        if (cancelled || !res?.data?.batch) return;
+        setNewBatchRequest(res.data.batch);
+        playNotificationSound(res.data.batch);
+      } catch (err) {
+        debugLog('Pickup request from push is no longer available', err?.response?.data || err?.message);
+      }
+    };
+    const onPush = (e) => openBatch(e?.detail?.batchId);
+    window.addEventListener('dmb:batch-request-push', onPush);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromLink = params.get('batch');
+      if (fromLink) {
+        openBatch(fromLink);
+        params.delete('batch');
+        const qs = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+      }
+    } catch { /* ignore */ }
+    return () => {
+      cancelled = true;
+      window.removeEventListener('dmb:batch-request-push', onPush);
+    };
   }, []);
 
   return {

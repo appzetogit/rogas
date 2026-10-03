@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { dmbVendorAPI } from '../../../services/api';
-import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPin, ArrowRight, CheckCircle, BarChart, ChefHat } from 'lucide-react';
+import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPin, ArrowRight, CheckCircle, BarChart, ChefHat, Truck } from 'lucide-react';
 import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
 import { useTranslation } from "react-i18next";
 import { getCurrentLanguage } from "../../../shared/i18n";
@@ -96,8 +96,6 @@ export default function HomeDashboard({
       const res = await dmbVendorAPI.resendBatch(todayStr, getCurrentSlot());
       if (res.data?.success) {
         alert(t("Request resent to delivery boys successfully!"));
-        clearAcceptedBatch();
-        setLocalBatch(null);
       }
     } catch (err) {
       alert(err.response?.data?.message || t("Failed to resend request. Make sure you marked orders as ready."));
@@ -314,6 +312,16 @@ export default function HomeDashboard({
                   >
                     <MapPin className="w-3.5 h-3.5" />
                     {isTrackingDriver ? t("Loading...") : t("Track Driver")}
+                  </button>
+                )}
+                {displayBatch && displayBatch.status !== 'collected' && !displayBatch.driverName && (
+                  <button
+                    onClick={handleResendBatch}
+                    disabled={isResending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white font-bold text-[11px] rounded-lg shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap disabled:opacity-60"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    {isResending ? t("Sending request…") : t("Resend request")}
                   </button>
                 )}
               </div>

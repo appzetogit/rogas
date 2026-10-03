@@ -965,6 +965,60 @@ router.post('/delivery-photo', authMiddleware, requireRoles('DELIVERY_PARTNER'),
 });
 
 // ─── Accept Batch (Real-time Broadcast) ───────────────────────────────────
+// ─── Pickup request details (opened from the FCM push) ───────────────────────────────────────────────────
+// Returns the same shape the `new_delivery_request` socket event carries, but only while the batch is still unclaimed.
+router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const batch = await CollectionBatch.findOne({ batchId: req.params.batchId });
+        if (!batch) return res.status(404).json({ success: false, message: 'This pickup request no longer exists.' });
+        if (batch.driverId || batch.status !== 'pending') {
+            return res.status(409).json({ success: false, code: 'TAKEN', message: 'Another delivery partner already accepted this pickup.' });
+        }
+        const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+        const vendor = await FoodRestaurant.findById(batch.vendorId).select('restaurantName location zoneId addressLine1 phone').lean();
+        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone').lean();
+        const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
+        const vis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
+        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+        const feeCfg = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+        const feePerOrder = Number(feeCfg?.feePerOrder) || 0;
+        res.json({
+            success: true,
+            batch: {
+                batchId: batch.batchId,
+                slotType: batch.deliverySlot,
+                totalMealBoxCount: batch.boxCount,
+                vendorInfo: {
+                    vendorId: vendor?._id,
+                    vendorName: vendor?.restaurantName || '',
+                    vendorLocation: vendor?.location,
+                    vendorAddress: vendor?.addressLine1 || '',
+                    vendorPhone: vendor?.phone || ''
+                },
+                pickupStatus: batch.status,
+                orders: orders.map((o) => ({
+                    _id: o._id,
+                    orderId: o.orderId,
+                    status: o.status,
+                    deliveryAddress: o.deliveryAddress,
+                    meals: o.meals,
+                    customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, vis),
+                    pricing: driverPricingView(o.pricing || {}, vis)
+                })),
+                totalEarnings: feePerOrder * batch.boxCount,
+                vendorId: vendor?._id,
+                vendorName: vendor?.restaurantName || '',
+                vendorLocation: vendor?.location,
+                boxCount: batch.boxCount,
+                slot: batch.deliverySlot,
+                totalOrders: batch.boxCount
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
         const { batchId } = req.body;

@@ -1416,24 +1416,19 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
 
         const io = getIO();
         if (!io) {
-            logger.error(`[DRIVER-NOTIFY] Socket.IO instance not available — cannot emit`);
-            return;
+            // Push notifications below still go out; only the real-time socket events are unavailable.
+            logger.error(`[DRIVER-NOTIFY] Socket.IO instance not available — socket events skipped, FCM push still sent`);
         }
 
-        // Emit batch accepted/ready event directly to vendor room in real-time
-        const matchedDriver = onlineDrivers.length > 0 ? onlineDrivers[0] : null;
-        io.to(`vendor_${vendorId}`).emit('batch_accepted', {
+        // Tell the vendor the collection PIN is ready. No driver is named here: nobody has accepted yet, and the real
+        // `batch_accepted` (with the driver) is emitted by POST /dmb/driver/accept-batch.
+        io?.to(`vendor_${vendorId}`).emit('batch_accepted', {
             batchId: batch.batchId,
-            driver: matchedDriver ? {
-                _id: matchedDriver._id,
-                name: matchedDriver.name,
-                phone: matchedDriver.phone,
-                vehicleNumber: matchedDriver.vehicleNumber,
-                profilePhoto: matchedDriver.profilePhoto
-            } : null,
+            driver: null,
             otp: batch.collectionPinHash,
             boxCount: batch.boxCount,
-            slot: slot
+            slot: slot,
+            status: 'pending'
         });
         logger.info(`[DRIVER-NOTIFY] Emitted batch_accepted to vendor_${vendorId} with OTP/PIN ${batch.collectionPinHash}`);
 
@@ -1490,15 +1485,17 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                 totalOrders: batch.boxCount
             };
 
-            onlineDrivers.forEach(driver => {
-                // FIX: Use the same room name pattern that the driver client joins
-                // See client fix: socket.emit('join_driver_room', driverId) on connect
-                const roomName = `delivery:${driver._id.toString()}`;
-                io.to(roomName).emit('new_delivery_request', payload);
-                logger.info(`[DRIVER-NOTIFY] Emitted to room "${roomName}" (driver: ${driver._id})`);
+            // Socket pop-up AND an FCM push to every driver (the push covers closed apps / dropped sockets).
+            const { offerPickupToDrivers } = await import('../delivery/pickupOffer.service.js');
+            const offer = await offerPickupToDrivers({
+                driverIds: onlineDrivers.map((d) => d._id),
+                batch,
+                vendor,
+                payload,
+                mode: 'initial'
             });
 
-            logger.info(`[DRIVER-NOTIFY] Broadcast complete: batch ${batch.batchId}, slot ${slot}, ${onlineDrivers.length} drivers notified`);
+            logger.info(`[DRIVER-NOTIFY] Broadcast complete: batch ${batch.batchId}, slot ${slot}, ${onlineDrivers.length} drivers (${offer.socketLive} live on socket, ${offer.pushDelivered} push delivered)`);
         }
     } catch (err) {
         logger.error(`[DRIVER-NOTIFY] Error in triggerDriverNotificationIfAllReady: ${err.message}`, err);

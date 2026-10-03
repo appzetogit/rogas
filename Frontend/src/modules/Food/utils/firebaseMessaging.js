@@ -684,6 +684,14 @@ function attachServiceWorkerMessageListener() {
 }
 
 function scheduleForegroundNotification(payload, options = {}) {
+  // A pickup-request push: let the delivery app open its accept pop-up (same one the socket event opens).
+  try {
+    if (typeof window !== "undefined" && payload?.data?.event === "new_delivery_request" && payload?.data?.batch_id) {
+      window.dispatchEvent(new CustomEvent("dmb:batch-request-push", { detail: { batchId: payload.data.batch_id } }));
+    }
+  } catch {
+    // ignore
+  }
   // Keep message handlers fast to avoid Chrome [Violation] warnings.
   // Defer heavier work (toast, audio) to idle time / next tick.
   const run = () => showForegroundNotification(payload, options);

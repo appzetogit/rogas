@@ -232,6 +232,16 @@ export const activateSubscription = async (subscriptionId) => {
         }
     }
 
+    // Create today's/tomorrow's orders now, so the vendor sees this subscription immediately (the hourly job would
+    // otherwise leave it invisible for up to an hour). A failure here must not undo the activation.
+    try {
+        const { generateForSubscription } = await import('./orderGeneration.js');
+        const gen = await generateForSubscription(sub.toObject());
+        logger.info(`Subscription ${sub.subscriptionId} activated: ${gen.created} order(s) created for today/tomorrow`);
+    } catch (err) {
+        logger.warn(`Immediate order generation failed for ${sub.subscriptionId} (the hourly job will retry): ${err.message}`);
+    }
+
     // Notify vendor: new subscriber
     await sendNotificationToUser({
         recipientId: sub.vendorId,

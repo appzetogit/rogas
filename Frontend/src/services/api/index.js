@@ -1318,6 +1318,8 @@ const getDeliveryMeOnce = () => {
 /** Delivery API - OTP login + registration via new backend. */
 export const dmbDeliveryAPI = {
   acceptBatch: (batchId) => deliveryClient.post("/dmb/driver/accept-batch", { batchId }),
+  /** Details of a still-unclaimed pickup request (opened from the FCM push). 409 when another driver took it. */
+  getBatchRequest: (batchId) => deliveryClient.get(`/dmb/driver/batch-request/${encodeURIComponent(batchId)}`),
   /** NEW: Get slot-based route filtered by current meal time window (no CollectionBatch needed) */
   getSlotRoute: () => deliveryClient.get("/dmb/driver/slot-route"),
   getRoute: () => deliveryClient.get("/dmb/driver/my-route"),

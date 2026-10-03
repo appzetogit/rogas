@@ -377,6 +377,18 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
             </div>
           )}
 
+          {/* Resend: only while no delivery partner has accepted this slot's pickup */}
+          {pendingCount === 0 && filteredOrders.some((o) => o.status === 'ready' && !o.dispatch?.deliveryPartner) && (
+            <button
+              onClick={handleRequestDeliveryPartner}
+              disabled={isRequestingDelivery}
+              className="w-full border border-primary text-primary bg-white py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60"
+            >
+              <Truck className="text-[18px]" />
+              {isRequestingDelivery ? t("Sending request…") : t("Resend request to delivery partners")}
+            </button>
+          )}
+
           {/* Orders List */}
           {loading ? (
             <div className="flex items-center justify-center py-12 gap-2 text-on-surface-variant">

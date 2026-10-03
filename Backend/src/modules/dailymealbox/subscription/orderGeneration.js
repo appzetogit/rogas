@@ -107,6 +107,21 @@ export const generateForUser = async (userId, { days = 10 } = {}) => {
     return { created };
 };
 
+/**
+ * Orders for ONE subscription for today and tomorrow, created right away when it is activated so the vendor (and the
+ * driver dispatch) see it immediately instead of waiting for the hourly job. Same idempotent rules as the job.
+ */
+export const generateForSubscription = async (sub, { days = 2 } = {}) => {
+    const slotDefs = await listSlots();
+    const holidays = await holidaySetForZone(sub.zoneId);
+    const today = localToday();
+    let created = 0;
+    for (let i = 0; i < days; i++) {
+        created += await materializeDate(sub, addDays(today, i), { slotDefs, holidays });
+    }
+    return { created };
+};
+
 /** Scheduled job: makes sure today's and tomorrow's orders exist for every active subscription (vendors, drivers and
  *  dispatch read them; customers' calendars generate further ahead on demand). */
 export const generateUpcomingOrders = async (now = new Date()) => {

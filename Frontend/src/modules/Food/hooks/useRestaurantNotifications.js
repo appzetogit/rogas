@@ -804,7 +804,8 @@ export const useRestaurantNotifications = () => {
       // Normalize: backend sends data.driver.name but dashboard expects data.driverName
       const normalized = {
         ...data,
-        driverName: data.driver?.name || data.driverName || 'Driver',
+        // No driver object = the collection PIN is ready but nobody has accepted yet → keep the name empty.
+        driverName: (data.driver || data.driverName) ? (data.driver?.name || data.driverName || 'Driver') : '',
         driverPhone: data.driver?.phone || data.driverPhone || '',
         driverPhoto: data.driver?.profilePhoto || data.driverPhoto || null,
         driverVehicle: data.driver?.vehicleNumber || data.driverVehicle || '',

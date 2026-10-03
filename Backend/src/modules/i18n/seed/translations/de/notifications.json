@@ -1,6 +1,8 @@
 {
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} Box bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} Boxen bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
+ "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._one": "{{count}} Box zur Abholung bei {{vendor}} ({{slot}}). Öffne die App, um anzunehmen.",
+ "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._other": "{{count}} Boxen zur Abholung bei {{vendor}} ({{slot}}). Öffne die App, um anzunehmen.",
  "{{partner}} is now your preferred delivery partner.": "{{partner}} ist jetzt dein bevorzugter Lieferpartner.",
  "{{planName}} from your vendor is confirmed for tomorrow. Bon appétit!": "{{planName}} von Ihrem Partner ist für morgen bestätigt. Guten Appetit!",
  "{{planName}} will be delivered on {{date}}. Get ready!": "{{planName}} wird am {{date}} geliefert. Machen Sie sich bereit!",
@@ -36,6 +38,7 @@
  "Kitchen photos need another look": "Küchenfotos müssen nachgebessert werden",
  "Low stock: {{meal}}": "Geringer Bestand: {{meal}}",
  "Menu confirmed for {{date}}": "Menü für {{date}} bestätigt",
+ "New pickup request 🍱": "Neue Abholanfrage 🍱",
  "New single-meal order": "Neue Einzelbestellung",
  "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
  "No DailyMealBox delivery on {{date}} ({{name}}).": "Am {{date}} gibt es keine DailyMealBox-Lieferung ({{name}}).",

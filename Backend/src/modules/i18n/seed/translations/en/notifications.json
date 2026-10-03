@@ -1,6 +1,8 @@
 {
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} box ready. Collection PIN: {{pin}}. Tap to navigate.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate.",
+ "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._one": "{{count}} box to collect from {{vendor}} ({{slot}}). Open the app to accept.",
+ "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._other": "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept.",
  "Driver collected {{count}} boxes at {{time}}. PIN verified._one": "Driver collected {{count}} box at {{time}}. PIN verified.",
  "Driver collected {{count}} boxes at {{time}}. PIN verified._other": "Driver collected {{count}} boxes at {{time}}. PIN verified."
 }
