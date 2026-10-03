@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginOfficeAccountApi, registerOfficeAccountApi } from '../services/authApi';
+import { loginOfficeAccountApi, registerOfficeAccountApi, sendOfficeOtpApi } from '../services/authApi';
 import { getCompanyDetailsApi } from '../services/officeApi';
-import { Utensils, Mail, Lock, RefreshCw, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Utensils, Mail, Lock, RefreshCw, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
 
@@ -15,17 +15,30 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   
   // OTP States
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
   const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);
   const inputRefs = React.useRef([]);
+
+  useEffect(() => {
+    let interval;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Strict email validation
-    const lowerEmail = email.toLowerCase();
+    const lowerEmail = email.toLowerCase().trim();
     const strictEmailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*)*\.[a-zA-Z]{2,6}$/;
     
     if (!strictEmailRegex.test(lowerEmail)) {
@@ -40,19 +53,28 @@ export default function LoginPage() {
       return;
     }
 
-    if (!isLogin && otpValues.some(v => !v)) {
-      setError(t("Please enter the 6-digit OTP."));
-      return;
+    if (!isLogin) {
+      if (!isOtpSent) {
+        setError(t("Please click 'Send OTP' to receive your verification code first."));
+        return;
+      }
+      const otpCode = otpValues.join('');
+      if (otpCode.length !== 6 || otpValues.some(v => !v)) {
+        setError(t("Please enter the complete 6-digit OTP."));
+        return;
+      }
     }
 
     setIsSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
     try {
       let res;
       if (isLogin) {
-        res = await loginOfficeAccountApi(email, password);
+        res = await loginOfficeAccountApi(lowerEmail, password);
       } else {
-        res = await registerOfficeAccountApi(email, password);
+        const otpCode = otpValues.join('');
+        res = await registerOfficeAccountApi(lowerEmail, password, otpCode);
       }
       
       const token = res.data?.data?.accessToken || res.data?.accessToken;
@@ -112,15 +134,38 @@ export default function LoginPage() {
     }
   };
 
-  const handleSendOtp = () => {
-    if (!email) {
-      setError(t("Please enter your email address first."));
+  const handleSendOtp = async () => {
+    const lowerEmail = email.toLowerCase().trim();
+    const strictEmailRegex = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*(?:\.[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*)*\.[a-zA-Z]{2,6}$/;
+
+    if (!lowerEmail || !strictEmailRegex.test(lowerEmail)) {
+      setError(t("Please enter a valid email address first."));
       return;
     }
+
+    const forbiddenTlds = ['.co', '.comm', '.commm', '.con', '.c0m'];
+    if (forbiddenTlds.some(tld => lowerEmail.endsWith(tld))) {
+      setError(t("Please enter a valid email address. Typos like .co or .comm are not allowed."));
+      return;
+    }
+
     setError(null);
-    // Simulate sending OTP
-    setIsOtpSent(true);
-    alert(t("OTP sent to {{email}}", { email }));
+    setSuccessMessage(null);
+    setIsSendingOtp(true);
+
+    try {
+      await sendOfficeOtpApi(lowerEmail);
+      setIsOtpSent(true);
+      setSuccessMessage(t("Verification code sent to {{email}}. Please check your inbox.", { email: lowerEmail }));
+      setOtpTimer(60);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    } catch (err) {
+      setError(err.response?.data?.message || t("Failed to send OTP. Please check your email and try again."));
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   return (
@@ -198,8 +243,15 @@ export default function LoginPage() {
 
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 border border-red-100 flex items-center gap-2">
-                <AlertCircle className="text-[18px]" />
-                {error}
+                <AlertCircle className="text-[18px] shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-sm mb-6 border border-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="text-[18px] shrink-0" />
+                <span>{successMessage}</span>
               </div>
             )}
 
@@ -257,9 +309,13 @@ export default function LoginPage() {
                     <button 
                       type="button" 
                       onClick={handleSendOtp}
-                      className="text-sm font-bold text-[#287965] hover:underline"
+                      disabled={isSendingOtp || otpTimer > 0}
+                      className="text-sm font-bold text-[#287965] hover:underline disabled:text-[#9EA3AE] disabled:no-underline disabled:cursor-not-allowed flex items-center gap-1.5"
                     >
-                      {isOtpSent ? t("Resend OTP") : t("Send OTP")}
+                      {isSendingOtp && <RefreshCw className="animate-spin text-[14px]" />}
+                      {otpTimer > 0 
+                        ? `${t("Resend OTP")} (${otpTimer}s)` 
+                        : (isOtpSent ? t("Resend OTP") : t("Send OTP"))}
                     </button>
                   </div>
                   <div className="flex gap-2 justify-between pt-1">
@@ -297,7 +353,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-[#287965] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#1f6050] transition-colors flex items-center justify-center gap-2 mt-2"
+                className="w-full bg-[#287965] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#1f6050] transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <RefreshCw className="animate-spin text-[20px]" />
@@ -326,6 +382,9 @@ export default function LoginPage() {
                   onClick={() => {
                       setIsLogin(!isLogin);
                       setError(null);
+                      setSuccessMessage(null);
+                      setIsOtpSent(false);
+                      setOtpValues(['', '', '', '', '', '']);
                   }} 
                   className="text-[#287965] font-medium hover:underline focus:outline-none"
                 >

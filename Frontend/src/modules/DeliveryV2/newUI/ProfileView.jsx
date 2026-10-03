@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2, Calendar, Repeat } from "lucide-react";
+import { Award, Briefcase, FileText, Globe, BellRing, HelpCircle, LogOut, ChevronRight, CheckCircle2, ShieldAlert, Edit2, Camera, X, Save, MapPin, Mail, Phone, Car, Star, Loader2, Calendar, Repeat, User } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
@@ -14,6 +14,7 @@ const ProfileView = ({
   const navigate = useNavigate();
   const { t } = useTranslation("driver");
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({});
@@ -23,12 +24,15 @@ const ProfileView = ({
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        setLoading(true);
         const response = await deliveryAPI.getProfile();
         if (response?.data?.success && response?.data?.data?.profile) {
           setProfile(response.data.data.profile);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchProfile();
@@ -124,14 +128,66 @@ const ProfileView = ({
     }
   };
 
-  const name = profile?.name || "Jan Wisniewski";
-  const city = profile?.location?.city || "Warsaw, Poland";
-  const vehicleName = profile?.vehicle?.brand || "E-bike";
-  const vehicleType = profile?.vehicle?.type || "bike";
-  const rating = profile?.metrics?.rating || 4.90;
-  const ratingCount = profile?.metrics?.ratingCount || 1240;
-  const profileImage = profile?.profileImage?.url || profile?.documents?.photo || "https://lh3.googleusercontent.com/aida-public/AB6AXuDEjl512Xg8gioOiKCrNkzoFsPJOBpZ_FWH1I9NLqdANkO68ioiYVbGJP0lCuEzhuJUEOH6hHaQOjc6fe9vJQ7lK3v7iR_GQv857dAWMuxS2tvAnVJK-naM5eaoWYwQcIZevQpLdYOxa0llm9zUIwUztXYbbVNoYaAJTfyk4qT0ZqGXdcFJ7JJP2-YMHekgSppjlvckmf_yIcx_Ut04Rqcuhy38-DLDk3fY2C_8AdsnIKo1wOFHFhmGrrgs8RSyMn1OhVRSMMoac1Mm";
-  const bankAcc = profile?.documents?.bankDetails?.accountNumber?.slice(-4) || "4291";
+  if (loading && !profile) {
+    return (
+      <div className="space-y-4 pb-12 animate-fadeIn text-gray-800">
+        <div className="bg-white rounded-2xl p-10 border border-[#e0e3e0] shadow-xs flex flex-col items-center justify-center min-h-[260px] gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-[#00604c]" />
+          <p className="text-xs text-gray-400 font-medium">{t("Loading profile...")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const name = profile?.name || "";
+  const city = profile?.location?.city || profile?.city || profile?.address || "";
+  const vehicleName = profile?.vehicle?.brand || profile?.vehicleName || "";
+  const vehicleType = profile?.vehicle?.type || profile?.vehicleType || "bike";
+  const rating = profile?.metrics?.rating ?? profile?.rating ?? 5.0;
+  const ratingCount = profile?.deliveriesToday ?? profile?.metrics?.ratingCount ?? profile?.totalRatings ?? 0;
+  const profileImage = profile?.profileImage?.url || profile?.profilePhoto || profile?.documents?.photo || null;
+  const bankAcc = profile?.documents?.bankDetails?.accountNumber?.slice(-4) || "";
+
+  // Dynamic Document Statuses
+  const dlDoc = profile?.documents?.drivingLicense?.document || profile?.drivingLicensePhoto;
+  const dlExpiry = profile?.documents?.drivingLicense?.expiry || profile?.drivingLicenceExpiry;
+  const getDlStatus = () => {
+    if (!dlDoc) {
+      return { text: t("No license uploaded"), badge: t("Action Required"), color: "red" };
+    }
+    if (dlExpiry) {
+      const days = Math.ceil((new Date(dlExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+      if (days < 0) {
+        return { text: t("Expired {{days}} days ago", { days: Math.abs(days) }), badge: t("Expired"), color: "red" };
+      }
+      if (days <= 30) {
+        return { text: t("Expires in {{days}} days", { days }), badge: t("Expiring"), color: "orange" };
+      }
+      return { text: t("Valid until {{date}}", { date: new Date(dlExpiry).toLocaleDateString() }), badge: t("Valid"), color: "emerald" };
+    }
+    return { text: t("Verified on file"), badge: t("Valid"), color: "emerald" };
+  };
+
+  const nationalIdDoc = profile?.documents?.nationalId || profile?.nationalIdUrl || profile?.documents?.aadhar?.document || profile?.aadharPhoto;
+  const getIdStatus = () => {
+    if (!nationalIdDoc) {
+      return { text: t("No ID uploaded"), badge: t("Action Required"), color: "red" };
+    }
+    return { text: t("Verified on file"), badge: t("Valid"), color: "emerald" };
+  };
+
+  const regDoc = profile?.documents?.vehicleRegistration || profile?.vehicleRegistrationUrl;
+  const regNumber = profile?.vehicle?.number || profile?.vehicleNumber;
+  const getRegStatus = () => {
+    if (!regDoc && !regNumber) {
+      return { text: t("No registration document"), badge: t("Action Required"), color: "red" };
+    }
+    return { text: regNumber ? t("Reg: {{num}}", { num: regNumber }) : t("Verified on file"), badge: t("Valid"), color: "emerald" };
+  };
+
+  const dlInfo = getDlStatus();
+  const idInfo = getIdStatus();
+  const regInfo = getRegStatus();
 
   return <div className="space-y-4 pb-12 animate-fadeIn text-gray-800">
       {
@@ -149,13 +205,19 @@ const ProfileView = ({
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
           <div className="relative">
-            <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden border border-[#bec9c3] relative group">
-              <img
-                alt={t("{{name}} Profile", { name })}
-                className="w-full h-full object-cover"
-                src={photoPreview || profileImage}
-                referrerPolicy="no-referrer"
-              />
+            <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden border border-[#bec9c3] relative group bg-[#f1f4f1] flex items-center justify-center">
+              {(photoPreview || profileImage) ? (
+                <img
+                  alt={t("{{name}} Profile", { name })}
+                  className="w-full h-full object-cover"
+                  src={photoPreview || profileImage}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-xl font-extrabold text-[#00604c]">
+                  {name ? name.slice(0, 2).toUpperCase() : <User className="w-8 h-8 text-gray-400" />}
+                </span>
+              )}
               {isEditing && (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
@@ -335,73 +397,83 @@ const ProfileView = ({
         <h3 className="text-xs font-bold text-[#5d5f5b] uppercase tracking-wider px-1">{t("VEHICLE & DOCUMENTS")}</h3>
         <div className="bg-white rounded-2xl border border-[#bec9c3] overflow-hidden divide-y divide-[#bec9c3]/30 shadow-xs">
           
-          {
-            /* License */
-          }
+          {/* License */}
           <div 
             onClick={() => navigate("/food/delivery/profile/documents")}
             className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                dlInfo.color === "red" ? "bg-red-50 text-red-600" :
+                dlInfo.color === "orange" ? "bg-orange-50 text-orange-600" :
+                "bg-emerald-50 text-[#00604c]"
+              }`}>
                 <FileText className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-900">{t("Driving License")}</p>
-                <p className="text-[11px] text-[#5d5f5b]">{t("Expires in 12 days")}</p>
+                <p className={`text-[11px] ${dlInfo.color === "red" ? "text-red-600 font-semibold" : "text-[#5d5f5b]"}`}>{dlInfo.text}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-lg">
-                {t("Expiring")}
+              <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg ${
+                dlInfo.color === "red" ? "bg-red-100 text-red-800" :
+                dlInfo.color === "orange" ? "bg-orange-100 text-orange-800" :
+                "bg-[#9ef3d7] text-[#005140]"
+              }`}>
+                {dlInfo.badge}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
 
-          {
-            /* National ID */
-          }
+          {/* National ID */}
           <div 
             onClick={() => navigate("/food/delivery/profile/documents")}
             className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-[#00604c]">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                idInfo.color === "red" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-[#00604c]"
+              }`}>
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-900">{t("National ID")}</p>
-                <p className="text-[11px] text-[#5d5f5b]">{t("Verified on 12.01.2024")}</p>
+                <p className={`text-[11px] ${idInfo.color === "red" ? "text-red-600 font-semibold" : "text-[#5d5f5b]"}`}>{idInfo.text}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold bg-[#9ef3d7] text-[#005140] px-2.5 py-0.5 rounded-lg-sm">
-                {t("Valid")}
+              <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg ${
+                idInfo.color === "red" ? "bg-red-100 text-red-800" : "bg-[#9ef3d7] text-[#005140]"
+              }`}>
+                {idInfo.badge}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
 
-          {
-            /* Registration */
-          }
+          {/* Registration */}
           <div 
             onClick={() => navigate("/food/delivery/profile/documents")}
             className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
-                <ShieldAlert className="w-5 h-5" />
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                regInfo.color === "red" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-[#00604c]"
+              }`}>
+                {regInfo.color === "red" ? <ShieldAlert className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-900">{t("Vehicle Registration")}</p>
-                <p className="text-[11px] text-red-600 font-semibold">{t("Expired 2 days ago")}</p>
+                <p className={`text-[11px] ${regInfo.color === "red" ? "text-red-600 font-semibold" : "text-[#5d5f5b]"}`}>{regInfo.text}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded">
-                {t("Action Required")}
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                regInfo.color === "red" ? "bg-red-100 text-red-800" : "bg-[#9ef3d7] text-[#005140]"
+              }`}>
+                {regInfo.badge}
               </span>
               <ChevronRight className="w-4 h-4 text-[#bec9c3] group-hover:translate-x-0.5 transition-transform" />
             </div>
@@ -410,31 +482,30 @@ const ProfileView = ({
         </div>
       </section>
 
-      {
-    /* Fleet Partner Card */
-  }
-      <section className="bg-[#00604c] text-white rounded-2xl p-4 relative overflow-hidden border border-[#016b55] shadow-md-sm">
-        <div className="absolute -top-4 -right-4 p-4 opacity-10">
-          <Briefcase className="w-24 h-24 stroke-[1.5]" />
-        </div>
-        <div className="relative z-10 space-y-3">
-          <div>
-            <h3 className="text-[10px] uppercase font-bold tracking-widest opacity-80">{t("FLEET PARTNER")}</h3>
-            <p className="font-extrabold text-[#9ef3d7] text-base leading-snug">{t("Velo Courier Services Sp. z o.o.")}</p>
+      {/* Fleet Partner Card */}
+      {Boolean(profile?.fleetPartner || profile?.fleetPartnerId) && (
+        <section className="bg-[#00604c] text-white rounded-2xl p-4 relative overflow-hidden border border-[#016b55] shadow-md-sm">
+          <div className="absolute -top-4 -right-4 p-4 opacity-10">
+            <Briefcase className="w-24 h-24 stroke-[1.5]" />
           </div>
-          <div className="flex gap-3 pt-1">
-            <a
-    href="tel:+48500200300"
-    className="bg-white text-[#00604c] text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-transform"
-  >
-              {t("📞 Contact Manager")}
-            </a>
-            <button className="bg-[#1f7a63] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-[#005140] active:scale-95 transition-transform">
-              {t("📄 Agreement")}
-            </button>
+          <div className="relative z-10 space-y-3">
+            <div>
+              <h3 className="text-[10px] uppercase font-bold tracking-widest opacity-80">{t("FLEET PARTNER")}</h3>
+              <p className="font-extrabold text-[#9ef3d7] text-base leading-snug">{profile?.fleetPartner?.name || t("Partner Assigned")}</p>
+            </div>
+            {profile?.fleetPartner?.phone && (
+              <div className="flex gap-3 pt-1">
+                <a
+                  href={`tel:${profile.fleetPartner.phone}`}
+                  className="bg-white text-[#00604c] text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  {t("📞 Contact Manager")}
+                </a>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Ratings & Feedback Section */}
       <section className="space-y-2 animate-fadeIn">

@@ -9,10 +9,14 @@ export const authClient = axios.create({
     }
 });
 
+export const sendOfficeOtpApi = (email) => {
+    return authClient.post('/office/auth/send-otp', { email });
+};
+
 export const loginOfficeAccountApi = (email, password) => {
     return authClient.post('/office/auth/login', { email, password });
 };
 
-export const registerOfficeAccountApi = (email, password) => {
-    return authClient.post('/office/auth/register', { email, password });
+export const registerOfficeAccountApi = (email, password, otp) => {
+    return authClient.post('/office/auth/register', { email, password, otp });
 };

@@ -126,3 +126,70 @@ export async function sendRestaurantOnboardingEmail(to, restaurantName, pdfUrl) 
         return false;
     }
 }
+
+/**
+ * Send OTP email for Office Panel registration verification.
+ * @param {string} to - Recipient email
+ * @param {string} otp - 6-digit OTP
+ * @returns {Promise<boolean>} true if sent, false if failed/skipped
+ */
+export async function sendOfficeSignupOtpEmail(to, otp) {
+    const trans = getTransporter();
+    if (!trans) {
+        logger.warn('Office signup OTP email skipped: SMTP not configured');
+        return false;
+    }
+    const from = config.emailFrom || config.emailUser;
+    const subject = `Your DailyMealBox Verification Code: ${otp}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Code</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1a1c1e; max-width: 520px; margin: 0 auto; padding: 24px; background-color: #f8f9fa;">
+  <div style="background-color: #ffffff; border-radius: 16px; padding: 36px; border: 1px solid #e9ecef; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+    <div style="text-align: center; margin-bottom: 28px;">
+      <h2 style="color: #287965; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">DailyMealBox</h2>
+      <p style="color: #6c7278; font-size: 13px; margin-top: 4px;">Office Meal Subscription Management</p>
+    </div>
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h3 style="color: #1a1c1e; font-size: 20px; font-weight: 700; margin: 0 0 8px 0;">Verify your email address</h3>
+      <p style="color: #4a4c56; font-size: 14px; margin: 0;">Use the 6-digit code below to complete your corporate office registration:</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <div style="display: inline-block; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #287965; background: #eaf5f2; padding: 16px 28px; border-radius: 12px; border: 1.5px dashed #287965;">
+        ${otp}
+      </div>
+      <p style="color: #8b909a; font-size: 13px; margin-top: 14px;">This code will expire in <strong>10 minutes</strong>.</p>
+    </div>
+    <p style="color: #6c7278; font-size: 13px; text-align: center; margin: 24px 0 0 0;">
+      If you did not initiate this request, you can safely disregard this email.
+    </p>
+    <hr style="border: none; border-top: 1px solid #f1f3f5; margin: 28px 0 20px 0;">
+    <p style="color: #adb5bd; font-size: 12px; text-align: center; margin: 0;">
+      &copy; ${new Date().getFullYear()} DailyMealBox. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>`;
+    const text = `Your DailyMealBox verification code is: ${otp}. It is valid for 10 minutes. If you did not request this, you can ignore this email.`;
+
+    try {
+        await trans.sendMail({
+            from: typeof from === 'string' && from.includes('<') ? from : `DailyMealBox <${from}>`,
+            to,
+            subject,
+            text,
+            html
+        });
+        logger.info(`Office signup OTP email sent to ${to}`);
+        return true;
+    } catch (err) {
+        logger.error(`Failed to send office signup OTP email to ${to}:`, err.message);
+        return false;
+    }
+}
+

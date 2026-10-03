@@ -8,7 +8,6 @@ export default function AddDeliveryman() {
     firstName: "",
     lastName: "",
     email: "",
-    deliverymanType: "",
     zone: "",
     vehicle: "",
     identityType: "Passport",
@@ -41,7 +40,6 @@ export default function AddDeliveryman() {
     } else if (!EMAIL_REGEX.test(formData.email)) {
       errors.email = "Invalid email format"
     }
-    if (!formData.deliverymanType) errors.deliverymanType = "Deliveryman type is required"
     if (!formData.zone) errors.zone = "Zone is required"
     if (!formData.vehicle) errors.vehicle = "Vehicle is required"
     if (!formData.identityNumber.trim()) errors.identityNumber = "Identity number is required"
@@ -71,7 +69,6 @@ export default function AddDeliveryman() {
       firstName: "",
       lastName: "",
       email: "",
-      deliverymanType: "",
       zone: "",
       vehicle: "",
       identityType: "Passport",
@@ -148,20 +145,6 @@ export default function AddDeliveryman() {
                   {formErrors.email && <p className="text-xs text-red-500 mt-1">{formErrors.email}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Deliveryman Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.deliverymanType}
-                    onChange={(e) => handleInputChange("deliverymanType", e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Delivery man type</option>
-                    <option value="full-time">Full Time</option>
-                    <option value="part-time">Part Time</option>
-                  </select>
-                </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">

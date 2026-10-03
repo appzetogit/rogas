@@ -795,8 +795,13 @@ export const getProfile = async (userId, role) => {
             ? {
                 number: partner.drivingLicenseNumber || null,
                 document: partner.drivingLicensePhoto || null,
+                expiry: partner.drivingLicenceExpiry || null,
+                status: partner.drivingLicenceStatus || 'valid',
               }
             : null,
+          nationalId: partner.nationalIdUrl || null,
+          vehicleRegistration: partner.vehicleRegistrationUrl || null,
+          vehicleInsurance: partner.vehicleInsuranceUrl || null,
           bankDetails:
             partner.bankAccountHolderName ||
             partner.bankAccountNumber ||
