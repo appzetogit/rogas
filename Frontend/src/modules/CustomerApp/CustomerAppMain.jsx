@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import useKeyboardOpen from "../../shared/hooks/useKeyboardOpen";
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
@@ -105,11 +106,14 @@ export default function CustomerAppMain() {
             localStorage.setItem("user_user", JSON.stringify(u));
           }
         })
-        .catch(() => {
-          localStorage.removeItem("user_accessToken");
-          localStorage.removeItem("user_refreshToken");
-          localStorage.removeItem("user_user");
-          setCurrentUser(null);
+        .catch((err) => {
+          // Only a definite "not signed in" answer clears the session; network errors / 5xx keep it (retried next time).
+          if (err?.response?.status === 401) {
+            localStorage.removeItem("user_accessToken");
+            localStorage.removeItem("user_refreshToken");
+            localStorage.removeItem("user_user");
+            setCurrentUser(null);
+          }
         });
     }
   }, []);
@@ -365,6 +369,7 @@ export default function CustomerAppMain() {
   };
 
   // ─── Bottom Nav Visibility ───────────────────────────────────────────────────
+  const keyboardOpen = useKeyboardOpen();
   const currentPath = location.pathname;
   const showBottomNav = ["/user/home", "/user/plans", "/user/calendar", "/user/orders", "/user/profile"].includes(currentPath);
   const isAuthScreen = ["/user/welcome", "/user/auth/login", "/user/auth/signup", "/user/otp"].includes(currentPath);
@@ -373,7 +378,7 @@ export default function CustomerAppMain() {
   return (
     <PantryCartProvider>
       <PaymentResultHandler showToast={showToast} onSubscriptionPaid={handleConfirmSubscription} />
-      <div className="relative w-full min-h-screen bg-slate-50 shadow-2xl overflow-x-hidden flex flex-col md:flex-row font-sans transition-all duration-300">
+      <div className="relative w-full min-h-[100dvh] bg-slate-50 shadow-2xl overflow-x-hidden flex flex-col md:flex-row font-sans transition-all duration-300">
         
         {/* Desktop Sidebar */}
         {showDesktopNav && (
@@ -699,7 +704,7 @@ export default function CustomerAppMain() {
 
           <Route path="checkout" element={
             <CheckoutScreen
-              onGoBack={() => { setSelectedPlanDetails(null); navigate("/user/plans"); }}
+              onGoBack={() => { if (window.history.state?.idx > 0) navigate(-1); else navigate("/user/plans"); }}
               onGoToInvoiceSettings={() => navigate("/user/invoice-settings", { state: { from: 'checkout' } })}
               onShowNotificationToast={showToast}
               invoicePrefs={invoicePrefs}
@@ -769,7 +774,7 @@ export default function CustomerAppMain() {
 
       {/* Bottom Navigation (Mobile Only) */}
       {showBottomNav && (
-        <nav className="fixed bottom-0 left-0 w-full md:hidden z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 sm:px-8 pt-2.5 pb-5 flex justify-around items-center h-20">
+        <nav className={`fixed bottom-0 left-0 w-full md:hidden z-40 bg-white border-t border-[#bec9c3]/30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] px-4 sm:px-8 pt-2.5 pb-5 flex justify-around items-center h-20 ${keyboardOpen ? "hidden" : ""}`}>
           {[
             { path: "/user/home", icon: Home, label: "Home" },
             { path: "/user/plans", icon: ClipboardList, label: "Plans" },

@@ -20,3 +20,11 @@ export const loginOfficeAccountApi = (email, password) => {
 export const registerOfficeAccountApi = (email, password, otp) => {
     return authClient.post('/office/auth/register', { email, password, otp });
 };
+
+export const requestPasswordResetApi = (email) => {
+    return authClient.post('/office/auth/forgot-password', { email });
+};
+
+export const resetPasswordApi = (email, otp, newPassword) => {
+    return authClient.post('/office/auth/reset-password', { email, otp, newPassword });
+};

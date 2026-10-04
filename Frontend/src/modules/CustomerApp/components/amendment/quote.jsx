@@ -11,7 +11,7 @@ import { errorText, errorCode, Notice } from "./ui";
  * `input` null → nothing requested yet. Re-quotes 350 ms after the selection stops changing.
  */
 export function useQuote(input, { change } = {}) {
-  const [state, setState] = useState({ quote: null, preview: null, error: "", code: "", loading: false });
+  const [state, setState] = useState({ quote: null, preview: null, error: "", code: "", details: null, loading: false });
   const key = input ? JSON.stringify({ input, change }) : "";
   const seq = useRef(0);
 
@@ -32,7 +32,7 @@ export function useQuote(input, { change } = {}) {
         setState({ quote: preview ? preview.quote : res.data?.quote, preview, error: "", code: "", loading: false });
       } catch (err) {
         if (my !== seq.current) return;
-        setState({ quote: err?.response?.data?.quote || null, preview: null, error: errorText(err, "Could not calculate the price"), code: errorCode(err), loading: false });
+        setState({ quote: err?.response?.data?.quote || null, preview: null, error: errorText(err, "Could not calculate the price"), code: errorCode(err), details: err?.response?.data?.details || null, loading: false });
       }
     }, 350);
     return () => clearTimeout(timer);
@@ -96,7 +96,7 @@ export function QuoteSummary({ quote, loading, error, compact = false }) {
       {!compact && (
         <div className="flex justify-between text-[#6e7a74]">
           <span>{t("{{cycle}} plan · {{n}} delivery days", { cycle: cycleLabel, n: quote.deliveryDates })}</span>
-          <span className="font-semibold">{fmtDate(quote.startDate)} – {fmtDate(quote.endDate)}</span>
+          <span className="font-semibold">{fmtDate(quote.firstDeliveryDate || quote.startDate)} – {fmtDate(quote.lastDeliveryDate || quote.lastDate || quote.endDate)}</span>
         </div>
       )}
       {quote.lines.map((line) => (

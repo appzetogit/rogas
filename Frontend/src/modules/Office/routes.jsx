@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 import OfficeLayout from './components/OfficeLayout';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage';
 import OtpVerifyPage from './pages/OtpVerifyPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -14,6 +15,7 @@ const OfficeRoutes = () => {
     return (
         <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/verify-otp" element={<OtpVerifyPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/under-review" element={<UnderReviewPage />} />

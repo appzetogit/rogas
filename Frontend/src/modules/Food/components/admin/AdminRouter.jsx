@@ -404,6 +404,7 @@ export default function AdminRouter() {
             <Route path="integrations" element={<IntegrationSettings />} />
             {/* Office Approvals */}
             <Route path="office-approvals" element={<OfficeOnboardingRequests />} />
+            <Route path="office-approvals/:id" element={<OfficeOnboardingRequests />} />
             <Route path="approved-offices" element={<ApprovedOffices />} />
             <Route path="office-payments"  element={<OfficePayments />} />
             {/* SERVICE MANAGEMENT */}

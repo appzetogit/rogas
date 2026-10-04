@@ -87,36 +87,89 @@ const openDeliveryFilesDB = () => {
   });
 };
 
+// Photos are stored as compressed JPEG data-URL STRINGS (localStorage + IndexedDB). Strings survive page refreshes in
+// every browser and in app WebViews, whereas File/Blob objects stored in IndexedDB are lost in some WebViews.
+const FILE_LS_PREFIX = "deliverySignupFile:";
+
+const compressImageToDataUrl = (file, maxSide = 1280, quality = 0.78) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not read image"));
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+const dataUrlToFile = async (dataUrl, name) => {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], `${name}.jpg`, { type: blob.type || "image/jpeg" });
+};
+
+const idbPut = async (key, value) => {
+  const db = await openDeliveryFilesDB();
+  const tx = db.transaction(FILES_STORE, "readwrite");
+  tx.objectStore(FILES_STORE).put(value, key);
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+const idbGet = async (key) => {
+  const db = await openDeliveryFilesDB();
+  const tx = db.transaction(FILES_STORE, "readonly");
+  const request = tx.objectStore(FILES_STORE).get(key);
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => resolve(null);
+  });
+};
+
+/** Compresses and stores the photo; returns the compressed File to use for upload (or the original on failure). */
 const saveFileToDB = async (key, file) => {
-  if (!file) return;
+  if (!file) return file;
+  let dataUrl = null;
   try {
-    const db = await openDeliveryFilesDB();
-    const tx = db.transaction(FILES_STORE, "readwrite");
-    tx.objectStore(FILES_STORE).put(file, key);
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
+    dataUrl = await compressImageToDataUrl(file);
   } catch (err) {
-    // Ignore IndexedDB failures
+    return file;
   }
+  try { localStorage.setItem(FILE_LS_PREFIX + key, dataUrl); } catch (err) { /* quota: IndexedDB below still has it */ }
+  try { await idbPut(key, dataUrl); } catch (err) { /* ignore */ }
+  try { return await dataUrlToFile(dataUrl, key); } catch (err) { return file; }
 };
 
 const getFileFromDB = async (key) => {
-  try {
-    const db = await openDeliveryFilesDB();
-    const tx = db.transaction(FILES_STORE, "readonly");
-    const request = tx.objectStore(FILES_STORE).get(key);
-    return new Promise((resolve) => {
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
-  } catch (err) {
-    return null;
+  let dataUrl = null;
+  try { dataUrl = localStorage.getItem(FILE_LS_PREFIX + key); } catch (err) { /* ignore */ }
+  if (!dataUrl) {
+    try {
+      const stored = await idbGet(key);
+      if (typeof stored === "string") dataUrl = stored;
+      else if (stored instanceof Blob) return stored; // older drafts saved as File
+    } catch (err) { /* ignore */ }
   }
+  if (!dataUrl) return null;
+  try { return await dataUrlToFile(dataUrl, key); } catch (err) { return null; }
 };
 
 const deleteFileFromDB = async (key) => {
+  try { localStorage.removeItem(FILE_LS_PREFIX + key); } catch (err) { /* ignore */ }
   try {
     const db = await openDeliveryFilesDB();
     const tx = db.transaction(FILES_STORE, "readwrite");
@@ -131,6 +184,9 @@ const deleteFileFromDB = async (key) => {
 };
 
 const clearAllFilesFromDB = async () => {
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith(FILE_LS_PREFIX)).forEach((k) => localStorage.removeItem(k));
+  } catch (err) { /* ignore */ }
   try {
     const db = await openDeliveryFilesDB();
     const tx = db.transaction(FILES_STORE, "readwrite");
@@ -348,14 +404,14 @@ export default function SignupStep2() {
   });
 
   const [selectedVehicle, setSelectedVehicle] = useState(() => {
-    const saved = sessionStorage.getItem("deliverySignupDetails");
+    const saved = localStorage.getItem("deliverySignupDetails");
     if (saved) {
       try {
         const details = JSON.parse(saved);
-        if (details.vehicleType) return details.vehicleType;
+        if (VEHICLES.some((v) => v.id === details.vehicleType)) return details.vehicleType;
       } catch (e) {}
     }
-    return "ebike";
+    return "";
   });
 
   const [documents, setDocuments] = useState({
@@ -368,7 +424,7 @@ export default function SignupStep2() {
   });
 
   const [uploadedDocs, setUploadedDocs] = useState(() => {
-    const saved = sessionStorage.getItem("deliverySignupDocs");
+    const saved = localStorage.getItem("deliverySignupDocs");
     if (saved) {
       try {
         return sanitizeUploadedDocs(JSON.parse(saved));
@@ -392,6 +448,17 @@ export default function SignupStep2() {
         getFileFromDB("vehicleInsuranceUrl"),
       ]);
 
+      // The "uploaded" tick must reflect files that really exist, never a stale flag.
+      const found = { profilePhoto: prof, drivingLicensePhoto: dlFront, drivingLicenseBackPhoto: dlBack, nationalIdUrl: nationalId, vehicleRegistrationUrl: registration, vehicleInsuranceUrl: insurance };
+      setUploadedDocs((prev) => {
+        const next = { ...prev };
+        Object.keys(found).forEach((id) => {
+          if (found[id]) next[id] = next[id] && next[id].url ? next[id] : { file: true };
+          else if (next[id] && !next[id].url && typeof next[id] !== "string") next[id] = null;
+        });
+        return next;
+      });
+
       setDocuments((prev) => ({
         ...prev,
         ...(prof && { profilePhoto: prof }),
@@ -406,18 +473,18 @@ export default function SignupStep2() {
   }, []);
 
   useEffect(() => {
-    sessionStorage.setItem("deliverySignupDocs", JSON.stringify(uploadedDocs));
+    localStorage.setItem("deliverySignupDocs", JSON.stringify(uploadedDocs));
   }, [uploadedDocs]);
 
   // Sync selected vehicle type back to details
   const handleSelectVehicle = (vehicleId) => {
     setSelectedVehicle(vehicleId);
-    const saved = sessionStorage.getItem("deliverySignupDetails");
+    const saved = localStorage.getItem("deliverySignupDetails");
     if (saved) {
       try {
         const details = JSON.parse(saved);
         details.vehicleType = vehicleId;
-        sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
+        localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
       } catch (e) {}
     }
   };
@@ -449,9 +516,9 @@ export default function SignupStep2() {
       return;
     }
 
-    setDocuments((prev) => ({ ...prev, [docType]: file }));
+    const stored = await saveFileToDB(docType, file); // compressed copy (also what gets uploaded)
+    setDocuments((prev) => ({ ...prev, [docType]: stored }));
     setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }));
-    await saveFileToDB(docType, file);
     toast.success(tr("Document uploaded successfully"));
   };
 
@@ -483,7 +550,7 @@ export default function SignupStep2() {
       return;
     }
 
-    const raw = sessionStorage.getItem("deliverySignupDetails");
+    const raw = localStorage.getItem("deliverySignupDetails");
     if (!raw) {
       toast.error(tr("Session expired. Please start from Create Account."));
       navigate("/food/delivery/signup", { replace: true });
@@ -496,6 +563,11 @@ export default function SignupStep2() {
     } catch {
       toast.error(tr("Invalid session. Please start from Create Account."));
       navigate("/food/delivery/signup", { replace: true });
+      return;
+    }
+
+    if (!selectedVehicle) {
+      toast.error(tr("Please choose your vehicle type"));
       return;
     }
 
@@ -556,7 +628,7 @@ export default function SignupStep2() {
       formData.append("platform", platform);
     }
 
-    const isCompleteProfile = sessionStorage.getItem("deliveryNeedsRegistration") === "true";
+    const isCompleteProfile = localStorage.getItem("deliveryNeedsRegistration") === "true";
 
     try {
       const response = isCompleteProfile
@@ -565,17 +637,12 @@ export default function SignupStep2() {
 
       if (response?.data?.success) {
         setSubmitState("done");
-        sessionStorage.removeItem("deliverySignupDetails");
-        sessionStorage.removeItem("deliverySignupDocs");
+        localStorage.removeItem("deliverySignupDetails");
+        localStorage.removeItem("deliverySignupDocs");
         await clearAllFilesFromDB();
-        if (isCompleteProfile) {
-          sessionStorage.removeItem("deliveryNeedsRegistration");
-          toast.success(tr("Registration successful. Please login with OTP."));
-          setTimeout(() => navigate("/food/delivery/login", { replace: true }), 1500);
-        } else {
-          toast.success(tr("Profile submitted. Waiting for admin approval."));
-          setTimeout(() => navigate("/food/delivery", { replace: true }), 1500);
-        }
+        localStorage.removeItem("deliveryNeedsRegistration");
+        toast.success(tr("Registration submitted. Waiting for admin approval."));
+        setTimeout(() => navigate("/food/delivery/pending", { replace: true }), 800);
       } else {
         setSubmitState("idle");
       }
@@ -618,13 +685,18 @@ export default function SignupStep2() {
               {tr("Register as Driver")}
             </h1>
           </div>
-          <div style={{
-            width: "32px", height: "32px", borderRadius: "9999px",
-            background: COLORS.surfaceContainerHigh,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+          <button
+            type="button"
+            onClick={() => navigate("/food/delivery/support")}
+            aria-label={tr("Support")}
+            style={{
+              width: "32px", height: "32px", borderRadius: "9999px", border: "none", cursor: "pointer",
+              background: COLORS.surfaceContainerHigh,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
             <MaterialIcon name="help_outline" style={{ color: COLORS.outline }} />
-          </div>
+          </button>
         </header>
 
         <main style={{ padding: "24px 16px", maxWidth: "448px", margin: "0 auto" }}>

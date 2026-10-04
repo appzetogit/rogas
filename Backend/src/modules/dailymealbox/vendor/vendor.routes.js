@@ -486,6 +486,48 @@ router.get('/earnings', authMiddleware, requireRoles('RESTAURANT'), async (req, 
     }
 });
 
+// ─── Today's earnings (delivered subscription / one-time daily orders) ────────────────────────────────
+// Vendor share of an order = food price incl. food VAT (the vendor declares that VAT) minus the platform commission.
+router.get('/earnings/today', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId;
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        const { localToday, addDays } = await import('../../../utils/platformTime.js');
+        const today = localToday();
+        const vendor = await FoodRestaurant.findById(vendorId).select('commissionRate').lean();
+        const rate = Number(vendor?.commissionRate);
+        if (!Number.isFinite(rate)) return res.status(400).json({ success: false, message: 'Commission rate is not set for this vendor' });
+
+        const orders = await DMBDailyOrder.find({
+            vendorId,
+            deliveryDate: { $gte: today, $lt: addDays(today, 1) },
+            status: { $nin: ['skipped', 'failed'] }
+        }).select('status pricing.foodCost pricing.foodVatAmount pricing.currency').lean();
+
+        const share = (o) => {
+            const gross = (Number(o.pricing?.foodCost) || 0) + (Number(o.pricing?.foodVatAmount) || 0);
+            return { gross, commission: gross * rate, net: gross - gross * rate };
+        };
+        const sum = (list) => list.reduce((acc, o) => {
+            const x = share(o);
+            return { gross: acc.gross + x.gross, commission: acc.commission + x.commission, net: acc.net + x.net };
+        }, { gross: 0, commission: 0, net: 0 });
+        const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+        const delivered = orders.filter((o) => o.status === 'delivered');
+        const d = sum(delivered);
+        const all = sum(orders);
+        res.json({
+            success: true,
+            currency: orders.find((o) => o.pricing?.currency)?.pricing?.currency || null,
+            delivered: { orders: delivered.length, gross: r2(d.gross), commission: r2(d.commission), net: r2(d.net) },
+            expected: { orders: orders.length, net: r2(all.net) }
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── VAT rates for the vendor's city (read-only; set by admin in City Management) ─────────────────────
 router.get('/vat-rates', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
@@ -503,6 +545,7 @@ router.get('/subscribers', authMiddleware, requireRoles('RESTAURANT'), async (re
         const subs = await DMBSubscription.find({ vendorId: req.user.userId, status: 'active' })
             .populate('userId', 'name firstName lastName city deliverySlot phone')
             .populate('mealPlanId', 'name')
+            .populate('meals.mealPlanId', 'name')
             .sort({ createdAt: -1 })
             .lean();
 

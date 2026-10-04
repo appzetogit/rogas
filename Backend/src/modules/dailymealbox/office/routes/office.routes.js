@@ -17,7 +17,8 @@ import {
     updateOnboardingStep,
     completeOnboarding,
     getPayments,
-    deactivateCompanyAccount
+    deactivateCompanyAccount,
+    lookupCompanyByNip
 } from '../controllers/office.controller.js';
 
 const router = express.Router();
@@ -47,6 +48,7 @@ router.put('/company', updateCompanyDetails);
 router.put('/company/deactivate', deactivateCompanyAccount);
 
 // Onboarding
+router.get('/nip-lookup/:nip', lookupCompanyByNip);
 router.get('/onboarding/status', getOnboardingStatus);
 router.post('/onboarding/start', startOnboarding);
 router.put('/onboarding/step/:step', updateOnboardingStep);

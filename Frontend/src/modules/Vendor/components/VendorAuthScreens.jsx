@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { dmbVendorAPI, zoneAPI } from '../../../services/api/index';
+import { dmbVendorAPI, zoneAPI, publicAPI } from '../../../services/api/index';
 import { SUPPORTED_COUNTRIES } from '../../../config/countries';
 import CountrySelector from '../../../shared/components/CountrySelector';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
@@ -34,15 +34,15 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
   };
 
   return (
-    <div className="w-full md:max-w-md min-h-screen md:min-h-0 flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl md:rounded-2xl md:border md:border-outline-variant/15 font-sans">
-      <header className="px-5 h-14 flex items-center">
+    <div className="w-full md:max-w-md h-[100dvh] md:h-auto md:min-h-0 overflow-hidden flex flex-col bg-surface text-on-surface mx-auto relative shadow-xl md:rounded-2xl md:border md:border-outline-variant/15 font-sans">
+      <header className="px-5 h-14 shrink-0 flex items-center">
         <button onClick={onBack} className="active:scale-95 transition-transform hover:opacity-90">
           <ArrowLeft className="text-primary" />
         </button>
       </header>
 
-      <main className="px-5 flex-1 flex flex-col pb-6">
-        <div className="w-full h-56 rounded-2xl overflow-hidden mb-6 shadow-sm">
+      <main className="px-5 flex-1 min-h-0 flex flex-col pb-4">
+        <div className="w-full flex-1 min-h-[72px] max-h-56 md:flex-none md:h-56 rounded-2xl overflow-hidden mb-4 shadow-sm">
           <img
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ"
             alt={tr("Vendor Banner")}
@@ -53,12 +53,12 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
         <h1 className="text-[24px] font-extrabold text-on-surface tracking-tight">
           {mode === 'login' ? tr("Welcome back!") : tr("Create an account")}
         </h1>
-        <p className="text-[13px] text-outline mt-1 mb-6">
+        <p className="text-[13px] text-outline mt-1 mb-4">
           {mode === 'login' ? tr("Log in with your phone number") : tr("Sign up with your phone number")}
         </p>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-          <div className="mb-8">
+        <form onSubmit={handleSubmit} className="shrink-0 flex flex-col">
+          <div className="mb-4">
             <label className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2 block">
               {tr("Mobile Number")}
             </label>
@@ -79,7 +79,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
                   const val = e.target.value.replace(/\D/g, "").slice(0, selectedCountry.phoneLength);
                   setPhone(val);
                 }}
-                placeholder={selectedCountry.placeholder}
+                placeholder={tr("Enter {{n}}-digit number", { n: selectedCountry.phoneLength })}
                 className="flex-1 px-4 text-[14px] font-semibold text-on-surface focus:outline-none bg-white"
                 maxLength={selectedCountry.phoneLength}
                 autoFocus />
@@ -87,7 +87,7 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
             </div>
           </div>
 
-          <div className="mt-auto flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
             <button
               type="submit"
               disabled={phone.replace(/\D/g, "").length !== selectedCountry.phoneLength}
@@ -111,9 +111,19 @@ export function PhoneScreen({ mode, onBack, onSendOtp }) {
 
 
 
-export function OtpScreen({ phone, onVerify, onBack }) {
+export function OtpScreen({ phone, onVerify, onBack, onResend }) {
   const { t: tr } = useTranslation("vendor");
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [verifying, setVerifying] = useState(false);
+  const verifyingRef = useRef(false);
+  const [cooldown, setCooldown] = useState(30);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const id = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
   const inputRefs = [
     useRef(null),
     useRef(null),
@@ -140,8 +150,32 @@ export function OtpScreen({ phone, onVerify, onBack }) {
     }
   };
 
-  const handleSubmit = () => {
-    onVerify(otp.join(''));
+  // One request at a time: the OTP is single-use, so repeated taps must not send repeated verifications.
+  const handleSubmit = async () => {
+    if (verifyingRef.current) return;
+    verifyingRef.current = true;
+    setVerifying(true);
+    try {
+      await onVerify(otp.join(''));
+    } finally {
+      verifyingRef.current = false;
+      setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!onResend || resending || cooldown > 0) return;
+    setResending(true);
+    try {
+      const ok = await onResend();
+      if (ok !== false) {
+        setOtp(['', '', '', '', '', '']);
+        setCooldown(30);
+        inputRefs[0].current?.focus();
+      }
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -179,20 +213,22 @@ export function OtpScreen({ phone, onVerify, onBack }) {
           )}
         </div>
 
-        <p className="text-[12px] text-outline mb-10">
-          {tr("Hint: Try")} <span className="font-bold text-primary">123456</span>
-        </p>
+        
 
         <div className="w-full mt-auto mb-8 flex flex-col gap-5">
           <button
             onClick={handleSubmit}
-            disabled={otp.join('').length < 6}
+            disabled={otp.join('').length < 6 || verifying}
             className="w-full bg-primary disabled:opacity-50 text-on-primary font-bold h-12 rounded-xl active:scale-[0.98] transition-all shadow-md text-[14px]">
 
-            {tr("Verify OTP")}
+            {verifying ? tr("Verifying...") : tr("Verify OTP")}
           </button>
-          <button className="text-primary text-[13px] font-semibold hover:underline text-center">
-            {tr("Resend code")}
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || cooldown > 0}
+            className="text-primary disabled:text-outline text-[13px] font-semibold hover:underline text-center">
+            {cooldown > 0 ? tr("Resend code in {{s}}s", { s: cooldown }) : tr("Resend code")}
           </button>
         </div>
       </main>
@@ -205,10 +241,56 @@ export function OtpScreen({ phone, onVerify, onBack }) {
 
 
 
+/** Vendor Terms shown in a pop-up so the half-filled registration form is never lost. */
+function VendorTermsModal({ onClose }) {
+  const { t: tr } = useTranslation("vendor");
+  const [state, setState] = useState({ loading: true, title: '', content: '', error: '' });
+
+  useEffect(() => {
+    let cancelled = false;
+    publicAPI.getTerms("terms")
+      .then((res) => {
+        if (cancelled) return;
+        setState({ loading: false, title: res.data?.data?.title || tr("Terms and Conditions"), content: res.data?.data?.content || '', error: '' });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ loading: false, title: tr("Terms and Conditions"), content: '', error: tr("Failed to load content. Please try again later.") });
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="w-full md:max-w-xl max-h-[85vh] flex flex-col bg-white rounded-t-3xl md:rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 h-14 border-b border-outline-variant/30 shrink-0">
+          <h2 className="text-[15px] font-bold text-primary truncate">{state.title || tr("Terms and Conditions")}</h2>
+          <button type="button" onClick={onClose} className="text-[13px] font-bold text-primary px-2 py-1">{tr("Close")}</button>
+        </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+          {state.loading ? (
+            <p className="text-center text-sm text-outline py-10">{tr("Loading...")}</p>
+          ) : state.error ? (
+            <p className="text-center text-sm text-red-500 py-10">{state.error}</p>
+          ) : (
+            <div className="prose prose-sm max-w-none text-on-surface" dangerouslySetInnerHTML={{ __html: state.content }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) {
   const { t: tr } = useTranslation("vendor");
   const [kitchenName, setKitchenName] = useState('');
   const [phone, setPhone] = useState(initialPhone || '');
+  const [showTerms, setShowTerms] = useState(false);
+
+  // The number that was verified in the previous step; it follows the prop if it arrives late.
+  useEffect(() => {
+    if (initialPhone) setPhone(initialPhone);
+  }, [initialPhone]);
   const [type, setType] = useState('Home Cook');
   const [licenceFile, setLicenceFile] = useState(null);
   const [licenceFileName, setLicenceFileName] = useState('');
@@ -944,11 +1026,12 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
               <ArrowRight />
             </button>
             <p className="text-center text-[11px] text-outline mt-4 leading-relaxed">
-              <Trans t={tr} i18nKey={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} defaults={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} components={[<span className="text-primary font-semibold" />]} />
+              <Trans t={tr} i18nKey={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} defaults={"By continuing, you agree to our <0>Vendor Terms of Service</0> and acknowledge your responsibilities as a licensed food provider."} components={[<button type="button" onClick={() => setShowTerms(true)} className="text-primary font-semibold underline" />]} />
             </p>
           </div>
         </div>
       </div>
+      {showTerms && <VendorTermsModal onClose={() => setShowTerms(false)} />}
     </main>);
 
 }

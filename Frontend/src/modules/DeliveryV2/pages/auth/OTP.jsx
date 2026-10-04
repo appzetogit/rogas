@@ -54,7 +54,7 @@ export default function DeliveryOTP() {
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("deliveryAuthData");
+    const stored = localStorage.getItem("deliveryAuthData");
     if (stored) {
       const data = JSON.parse(stored);
       setAuthData(data);
@@ -222,7 +222,7 @@ export default function DeliveryOTP() {
       const data = response?.data?.data || response?.data || {};
 
       if (data.pendingApproval === true) {
-        sessionStorage.removeItem("deliveryAuthData");
+        localStorage.removeItem("deliveryAuthData");
         setIsLoading(false);
         setError("");
         setPendingMessage(data.message || tr("Your account is pending admin verification. You will be notified once approved."));
@@ -234,15 +234,15 @@ export default function DeliveryOTP() {
       const needsRegistration = data.needsRegistration === true;
 
       if (needsRegistration) {
-        sessionStorage.removeItem("deliveryAuthData");
-        sessionStorage.setItem("deliveryNeedsRegistration", "true");
+        localStorage.removeItem("deliveryAuthData");
+        localStorage.setItem("deliveryNeedsRegistration", "true");
         const digits = String(phone || "").replace(/\D/g, "");
         const details = {
           name: "",
           phone: digits.slice(-10),
           countryCode: "+91",
         };
-        sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
+        localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
         setIsLoading(false);
         navigate("/food/delivery/signup/details", { replace: true });
         return;
@@ -256,7 +256,7 @@ export default function DeliveryOTP() {
         throw new Error("Invalid response from server");
       }
 
-      sessionStorage.removeItem("deliveryAuthData");
+      localStorage.removeItem("deliveryAuthData");
 
       try {
         storeAuthData("delivery", accessToken, user, refreshToken);
@@ -333,7 +333,7 @@ export default function DeliveryOTP() {
         throw new Error("Invalid response from server");
       }
 
-      sessionStorage.removeItem("deliveryAuthData");
+      localStorage.removeItem("deliveryAuthData");
 
       try {
         storeAuthData("delivery", accessToken, user, refreshToken);
@@ -555,13 +555,13 @@ export default function DeliveryOTP() {
                       onClick={() => {
                         const phone = authData?.phone;
                         const digits = String(phone || "").replace(/\D/g, "");
-                        sessionStorage.setItem("deliveryNeedsRegistration", "true");
+                        localStorage.setItem("deliveryNeedsRegistration", "true");
                         const details = {
                           name: "",
                           phone: digits.slice(-10),
                           countryCode: "+91",
                         };
-                        sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
+                        localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
                         navigate("/food/delivery/signup/details", { replace: true });
                       }}
                       style={{

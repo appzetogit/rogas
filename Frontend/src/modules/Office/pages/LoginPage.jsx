@@ -277,9 +277,9 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-[#4A4C56]">{t("Password")}</label>
-                  <a href="#" className="text-sm font-medium text-[#287965] hover:underline">
+                  <Link to="/office/forgot-password" className="text-sm font-medium text-[#287965] hover:underline">
                     {t("Forgot Password?")}
-                  </a>
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9EA3AE] text-[20px]" />

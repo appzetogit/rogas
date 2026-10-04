@@ -99,6 +99,8 @@ const officeCompanySchema = new mongoose.Schema(
             type: String,
             trim: true
         },
+        // Why the admin rejected the application (shown to the company).
+        rejectionReason: { type: String, default: '', trim: true },
         status: {
             type: String,
             enum: ['under_review', 'approved', 'rejected', 'deactivated'],

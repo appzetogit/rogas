@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, UserCheck, Landmark, Check, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle, UserCheck, Landmark, Check, ShieldCheck } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 
 export default function StepContactDetails({ onNext, onBack, data, updateData }) {
@@ -65,18 +65,6 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
     }, 1500);
   };
 
-  const handleAutoFill = () => {
-    updateData({
-      contactName: 'Alexander Vance',
-      designation: 'Director of HR & Operations',
-      contactEmail: data.email || 'alexander.vance@company.com',
-      phone: '+1 (555) 782-9013',
-      bankName: 'Silicon Valley Business Bank',
-      accountName: data.companyName ? `${data.companyName} Corp` : 'Acme Logistics Services Ltd',
-      iban: 'US89 4002 9102 3847 9102 334',
-    });
-  };
-
   return (
     <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 border border-gray-100" id="onboarding_step3_container">
       {/* Left Visual Status Side */}
@@ -137,17 +125,6 @@ export default function StepContactDetails({ onNext, onBack, data, updateData })
           <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
             <div className="bg-[#287965] h-full rounded-full w-full transition-all duration-700 ease-out" />
           </div>
-        </div>
-
-        <div className="flex justify-end mb-3">
-          <button
-            type="button"
-            onClick={handleAutoFill}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#287965]/20 text-xs font-bold text-[#287965] hover:bg-[#287965]/5 transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{t("Auto-Fill Details")}</span>
-          </button>
         </div>
 
         {validationError && (

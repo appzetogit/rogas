@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { adminClient as adminAPI } from '@food/api/axios';
 import Loader from '@food/components/Loader';
 import { ArrowLeft, Building, Inbox } from 'lucide-react';
@@ -6,7 +7,12 @@ import { ArrowLeft, Building, Inbox } from 'lucide-react';
 export default function OfficeOnboardingRequests() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  // The opened request lives in the URL (/admin/food/office-approvals/:id) so a refresh or the back button keeps the page.
+  const { id: selectedId } = useParams();
+  const navigate = useNavigate();
+  const selectedRequest = selectedId ? requests.find((r) => r._id === selectedId) || null : null;
+  const setSelectedRequest = (req) =>
+    navigate(req ? `/admin/food/office-approvals/${req._id}` : '/admin/food/office-approvals');
 
   useEffect(() => {
     fetchRequests();
@@ -16,7 +22,8 @@ export default function OfficeOnboardingRequests() {
     setIsLoading(true);
     try {
       const res = await adminAPI.get('/food/admin/office-companies?status=under_review');
-      setRequests(res.data?.data || []);
+      const rows = res.data?.data || [];
+      setRequests(rows);
     } catch (err) {
       console.error(err);
       alert('Failed to load requests');
@@ -38,7 +45,9 @@ export default function OfficeOnboardingRequests() {
 
   const handleReject = async (id) => {
     try {
-      await adminAPI.put(`/food/admin/office-companies/${id}/reject`);
+      const reason = window.prompt('Reason for rejection (this is emailed to the company):', '');
+      if (reason === null) return; // cancelled
+      await adminAPI.put(`/food/admin/office-companies/${id}/reject`, { reason: reason.trim() });
       alert('Rejected successfully');
       setSelectedRequest(null);
       fetchRequests();
@@ -46,6 +55,12 @@ export default function OfficeOnboardingRequests() {
       alert('Failed to reject');
     }
   };
+
+  useEffect(() => {
+    if (!isLoading && selectedId && !requests.some((r) => r._id === selectedId)) {
+      navigate('/admin/food/office-approvals', { replace: true });
+    }
+  }, [isLoading, selectedId, requests, navigate]);
 
   if (isLoading) return <Loader />;
 
@@ -177,14 +192,20 @@ export default function OfficeOnboardingRequests() {
                              <p className="text-xs text-gray-500">{doc.size || 'Unknown size'}</p>
                            </div>
                          </div>
-                         <a 
-                           href={doc.url} 
-                           target="_blank" 
-                           rel="noopener noreferrer"
-                           className="ml-3 px-3 py-1.5 bg-white border border-gray-200 text-primary text-xs font-medium rounded hover:bg-gray-50 transition-colors shrink-0"
-                         >
-                           View
-                         </a>
+                         {doc.url ? (
+                           <a
+                             href={doc.url}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="ml-3 px-3 py-1.5 bg-white border border-gray-200 text-primary text-xs font-medium rounded hover:bg-gray-50 transition-colors shrink-0"
+                           >
+                             View
+                           </a>
+                         ) : (
+                           <span className="ml-3 px-3 py-1.5 text-gray-400 text-xs shrink-0" title="This document has no file attached">
+                             Not available
+                           </span>
+                         )}
                        </div>
                      ))
                    ) : (

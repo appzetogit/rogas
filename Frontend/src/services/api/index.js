@@ -2085,6 +2085,8 @@ export const dmbVendorAPI = {
   toggleMealStatus: (planId) => restaurantClient.put(`/dmb/vendor/meal-plans/${planId}/toggle-status`, {}),
   getEarnings: (params = {}) => restaurantClient.get("/dmb/vendor/earnings", { params }),
   getVatRates: () => restaurantClient.get("/dmb/vendor/vat-rates"),
+  getTodayEarnings: () => restaurantClient.get("/dmb/vendor/earnings/today"),
+  getSubscriberList: () => restaurantClient.get("/dmb/vendor/subscribers"),
   getSubscribers: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
   getSubscriberStats: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
   updateSettings: (data) => restaurantClient.put("/dmb/vendor/settings", data),

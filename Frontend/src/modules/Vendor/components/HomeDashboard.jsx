@@ -10,6 +10,8 @@ import { Bell, X, AlertTriangle, Activity, Clock, User, Phone, BadgeCheck, MapPi
 import useDeliverySlots, { pickCurrentSlot } from '../../../shared/hooks/useDeliverySlots';
 import { useTranslation } from "react-i18next";
 import { getCurrentLanguage } from "../../../shared/i18n";
+import useMoney from "@/shared/payments/money";
+import ScrollStickyBar from "../../../shared/components/ScrollStickyBar";
 
 export default function HomeDashboard({
   profile,
@@ -32,6 +34,20 @@ export default function HomeDashboard({
 
   const [timingConfig, setTimingConfig] = useState(null);
   const { slots: slotList } = useDeliverySlots();
+
+  // Today's earnings: the vendor's share (food + food VAT - commission) of today's DELIVERED orders, from the server.
+  const { money } = useMoney();
+  const [todayEarnings, setTodayEarnings] = useState({ loading: true, error: false, data: null });
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      dmbVendorAPI.getTodayEarnings()
+        .then((res) => { if (!cancelled) setTodayEarnings({ loading: false, error: false, data: res.data }); })
+        .catch(() => { if (!cancelled) setTodayEarnings((prev) => ({ loading: false, error: !prev.data, data: prev.data })); });
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Fetch admin timing config once on mount
   useEffect(() => {
@@ -153,6 +169,7 @@ export default function HomeDashboard({
 
   return (
     <div className="flex-grow pt-0 md:pt-6 pb-20 md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left">
+      <ScrollStickyBar title={profile?.name || profile?.restaurantName || t("Dashboard")} />
       {/* Premium Hero Header Banner */}
       <div className="bg-gradient-to-r from-[#00604c] via-[#056f59] to-[#0a7e65] rounded-b-3xl rounded-t-none md:rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden mb-6 -mx-4 md:mx-0">
         {/* Decorative glows */}
@@ -365,9 +382,15 @@ export default function HomeDashboard({
           <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100 flex justify-between items-center text-left hover:shadow-md transition-all duration-300">
             <div>
               <p className="text-[11px] text-slate-400 font-extrabold uppercase tracking-widest">{t("Today's Earnings")}</p>
-              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{t("Updated live")}</p>
+              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">
+                {todayEarnings.data
+                  ? t("{{count}} delivered · {{expected}} expected today", { count: todayEarnings.data.delivered.orders, expected: money(todayEarnings.data.expected.net, { compact: true }) })
+                  : t("Updated live")}
+              </p>
             </div>
-            <p className="text-2xl font-black text-primary">{t("337 PLN")}</p>
+            <p className="text-2xl font-black text-primary">
+              {todayEarnings.loading ? '…' : todayEarnings.data ? money(todayEarnings.data.delivered.net, { compact: true }) : '—'}
+            </p>
           </div>
 
           {/* Tomorrow forecast card */}

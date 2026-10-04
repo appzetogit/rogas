@@ -54,7 +54,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                 <div className="w-8" />
             </header>
 
-            <main className="pt-20 pb-[100px] px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
+            <main className="pt-20 pb-[calc(9rem+env(safe-area-inset-bottom))] px-4 sm:px-8 lg:px-10 w-full max-w-7xl mx-auto">
                 {/* Header Visual Accent */}
                 <div className="mb-6 relative overflow-hidden rounded-xl h-24 bg-[#1f7a63] flex items-center px-4 shadow-sm">
                     <div className="z-10">
@@ -120,7 +120,7 @@ export function DietAndAllergensScreen({ onBack, initialPrefs, onSave }) {
                 </section>
 
                 {/* Save Button */}
-                <div className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] px-5 pb-6 pt-6 bg-gradient-to-t from-[#F5F5F0] via-[#F5F5F0] to-transparent z-10">
+                <div className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 bg-gradient-to-t from-[#F5F5F0] via-[#F5F5F0] to-transparent z-10">
                     <button
                         onClick={handleSaveClick}
                         disabled={isSaving}

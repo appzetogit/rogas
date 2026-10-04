@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import useScrollLock from "../../../../shared/hooks/useScrollLock";
 import { useTranslation } from "react-i18next";
 import { X, CheckCircle, ShoppingCart, Users, Plus, Trash2, Clock } from "lucide-react";
 import { dmbExtraCustomerAPI } from "@food/api";
@@ -11,9 +12,8 @@ import { useQuote, QuoteSummary } from "./quote";
 import { AddressPicker } from "./addresses";
 import { PreOrderDialog } from "./oneTime";
 
-const tomorrowStr = () => {
+const todayStr = () => {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const PRESET_DAYS = { mon_fri: [1, 2, 3, 4, 5], full_week: [1, 2, 3, 4, 5, 6, 0] };
@@ -26,6 +26,7 @@ const CYCLE_OF = { day: "one_day", week: "weekly", fortnight: "fortnightly", mon
  * (ACM-172) and weekend days (ACM-177). The price is always the server's quote.
  */
 export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPrefs, matchDietary }) {
+  useScrollLock(); // the page behind the sheet must not scroll
   const { t } = useTranslation("customer");
   const { long: dayLong, short: dayShort } = useDayNames();
   const [address, setAddress] = useState(null);
@@ -41,13 +42,15 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
   const [mealId, setMealId] = useState("");
   const [planId, setPlanId] = useState("");
   const [customDays, setCustomDays] = useState(false);
-  const [days, setDays] = useState([1, 2, 3, 4, 5]);
+  const [days, setDays] = useState([]);
   const [slots, setSlots] = useState([]);
   const [perDay, setPerDay] = useState(false);
   const [daySlots, setDaySlots] = useState({});
   const [family, setFamily] = useState(false);
   const [members, setMembers] = useState([]);
-  const [startDate, setStartDate] = useState(tomorrowStr);
+  // Starts today when the slot's order cut-off allows it; the server answers with the earliest allowed date otherwise.
+  const [startDate, setStartDate] = useState(todayStr);
+  const [minStart, setMinStart] = useState(todayStr);
   const [preOrderMeal, setPreOrderMeal] = useState(null);
 
   useEffect(() => {
@@ -92,7 +95,11 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
   const perDayOn = isOn("perDaySlots");
   const familyCfg = get("familyBox");
   const maxSlots = Math.max(1, Number(get("maxSlotsPerDay").value) || 1);
-  const effectiveDays = customDays && customOn ? days : PRESET_DAYS[plan?.deliveryDays || "mon_fri"] || PRESET_DAYS.mon_fri;
+  // The plan's usual days, limited to the days this maker really delivers (and weekend days that are switched on).
+  const planPreset = PRESET_DAYS[plan?.deliveryDays || "mon_fri"] || PRESET_DAYS.mon_fri;
+  const presetDays = planPreset.filter((d) => allowedDays.includes(d));
+  const presetIsLimited = presetDays.length !== planPreset.length;
+  const effectiveDays = customDays && customOn ? days : presetDays;
 
   // Keep the selection valid when the admin's switches or the plan change.
   useEffect(() => {
@@ -141,10 +148,11 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
       zoneId: String(address.zoneId),
       startDate,
       subscriptionType: "dedicated",
-      deliveryDays: customDays && customOn ? "custom" : plan.deliveryDays || "mon_fri",
-      deliveryDaysList: customDays && customOn ? days : undefined,
+      // A maker that skips some of the plan's days is sent as a custom list so the price matches what is really delivered.
+      deliveryDays: customOn && (customDays || presetIsLimited) ? "custom" : plan.deliveryDays || "mon_fri",
+      deliveryDaysList: customOn && (customDays || presetIsLimited) ? (customDays ? days : presetDays) : undefined,
     };
-    if (customDays && customOn && !days.length) return null;
+    if (!effectiveDays.length) return null;
     if (family) {
       if (members.length < 2) return null;
       return { ...base, meals: members[0].meals, familyBox: { enabled: true, members }, deliverySlots: [...new Set(members.flatMap((m) => m.slots))] };
@@ -159,7 +167,19 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
     return { ...base, meals, deliverySlots: slots };
   }, [plan, address, vendor.id, startDate, customDays, customOn, days, family, members, mealId, perDay, perDayOn, effectiveDays, daySlots, slots]);
 
-  const { quote, error: quoteError, loading: quoting } = useQuote(quoteInput);
+  const { quote, error: quoteError, code: quoteCode, details: quoteDetails, loading: quoting } = useQuote(quoteInput);
+
+  // Today's cut-off passed -> move to the earliest date the server allows (usually tomorrow) and re-quote.
+  useEffect(() => {
+    const earliest = quoteCode === "START_TOO_EARLY" ? quoteDetails?.earliestStartDate : null;
+    if (earliest) {
+      setMinStart(earliest);
+      if (startDate < earliest) setStartDate(earliest);
+    } else if (quote?.earliestStartDate) {
+      setMinStart(quote.earliestStartDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteCode, quoteDetails, quote?.earliestStartDate]);
 
   const proceed = () => {
     if (!quote || !quoteInput) return;
@@ -284,9 +304,9 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
                   <>
                     <div className="flex gap-2">
                       <Chip active={!customDays} onClick={() => setCustomDays(false)}>
-                        {plan?.deliveryDays === "full_week" ? t("Every day") : t("Mon – Fri")}
+                        {presetDays.length === 7 ? t("Every day") : !presetIsLimited && plan?.deliveryDays !== "full_week" ? t("Mon – Fri") : presetDays.map((d) => dayShort[d]).join(", ") || t("No delivery days")}
                       </Chip>
-                      <Chip active={customDays} onClick={() => setCustomDays(true)}>{t("Choose my days")}</Chip>
+                      <Chip active={customDays} onClick={() => { setCustomDays(true); if (!days.length) setDays(presetDays); }}>{t("Choose my days")}</Chip>
                     </div>
                     {customDays && <DayPicker value={days} onChange={setDays} allowed={allowedDays} />}
                   </>
@@ -341,7 +361,7 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
                 <input
                   type="date"
                   value={startDate}
-                  min={tomorrowStr()}
+                  min={minStart}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-2.5 text-[14px] font-extrabold focus:outline-none focus:border-primary"
                 />

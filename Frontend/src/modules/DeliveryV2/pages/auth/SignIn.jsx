@@ -76,7 +76,7 @@ export default function DeliverySignIn() {
   const [selectedCountry, setSelectedCountry] = useState(() => {
     const draft = sessionStorage.getItem("delivery_draft_phone");
     if (draft) return matchCountryFromPhone(draft);
-    const stored = sessionStorage.getItem("deliveryAuthData");
+    const stored = localStorage.getItem("deliveryAuthData");
     if (stored) {
       try {
         const data = JSON.parse(stored);
@@ -89,7 +89,7 @@ export default function DeliverySignIn() {
   const [phone, setPhone] = useState(() => {
     let draft = sessionStorage.getItem("delivery_draft_phone") || "";
     if (!draft) {
-      const stored = sessionStorage.getItem("deliveryAuthData");
+      const stored = localStorage.getItem("deliveryAuthData");
       if (stored) {
         try {
           const data = JSON.parse(stored);
@@ -145,7 +145,7 @@ export default function DeliverySignIn() {
         purpose: "login",
         module: "delivery",
       };
-      sessionStorage.setItem("deliveryAuthData", JSON.stringify(authData));
+      localStorage.setItem("deliveryAuthData", JSON.stringify(authData));
       toast.success(t("Verification code sent to your phone!"));
       navigate("/food/delivery/otp");
     } catch (err) {
@@ -344,7 +344,7 @@ export default function DeliverySignIn() {
                 >
                   {t("Phone Number")}
                 </label>
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ display: "flex", gap: "8px", width: "100%", minWidth: 0 }}>
                   {/* Country Picker */}
                   <CountrySelector
                     selectedCountry={selectedCountry}
@@ -361,11 +361,14 @@ export default function DeliverySignIn() {
                     onChange={(e) => handlePhoneChange(e.target.value, selectedCountry)}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
-                    placeholder={selectedCountry.placeholder}
+                    placeholder={t("Enter {{n}}-digit number", { n: selectedCountry.phoneLength })}
                     maxLength={selectedCountry.phoneLength}
                     required
                     style={{
-                      flexGrow: 1,
+                      flex: "1 1 0%",
+                      minWidth: 0,
+                      width: "100%",
+                      boxSizing: "border-box",
                       height: "48px",
                       padding: "0 16px",
                       background: "#ffffff",

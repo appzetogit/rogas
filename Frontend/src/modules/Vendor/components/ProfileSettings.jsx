@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { restaurantAPI, uploadAPI, dmbVendorAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2, Star } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
@@ -360,7 +360,12 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
 function KitchenNameContactSettings({ profile, onBack, onSave, triggerToast }) {
   const { t: tr } = useTranslation("vendor");
   const [name, setName] = useState(profile?.name || profile?.restaurantName || '');
-  const [phone, setPhone] = useState(profile?.primaryContactNumber || profile?.ownerPhone || '');
+  const [phone, setPhone] = useState(profile?.primaryContactNumber || profile?.ownerPhone || profile?.phone || '');
+  // The profile can arrive after this screen mounted; fill the number in when it does (never overwrite typing).
+  useEffect(() => {
+    const real = profile?.primaryContactNumber || profile?.ownerPhone || profile?.phone || '';
+    setPhone((cur) => cur || real);
+  }, [profile?.primaryContactNumber, profile?.ownerPhone, profile?.phone]);
   
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(profile?.profileImage?.url || profile?.profileImage || '');
@@ -534,7 +539,19 @@ export default function ProfileSettings({
   const { t: tr } = useTranslation("vendor");
   const { money, symbol } = useMoney();
   const navigate = useNavigate();
-  const [subView, setSubView] = useState('profile');
+  // The open sub-screen (bank, support, ...) lives in the URL (?view=bank) so the phone's back button goes one
+  // screen back inside Profile instead of jumping to Home, and a refresh keeps you where you were.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subView = searchParams.get('view') || 'profile';
+  const setSubView = useCallback((next) => {
+    if (!next || next === 'profile') {
+      if (window.history.state?.idx > 0 && searchParams.get('view')) navigate(-1);
+      else setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ view: next });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   // ── Bank Account Details state & logic ──────────────────────────────────────
   const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
@@ -958,7 +975,7 @@ export default function ProfileSettings({
                 )}
               </div>
               <h2 className="text-[16px] font-bold text-on-surface">{profile.name}</h2>
-              <p className="text-on-surface-variant text-[12px]">{profile.type} · {profile.primaryContactNumber || profile.ownerPhone || tr("No Number")} · ★ {profile.rating}</p>
+              <p className="text-on-surface-variant text-[12px]">{profile.type} · {profile.primaryContactNumber || profile.ownerPhone || profile.phone || (typeof localStorage !== 'undefined' && localStorage.getItem('restaurant_register_phone')) || tr("No Number")} · ★ {profile.rating}</p>
               <div className="inline-flex items-center px-3.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[11px] font-bold mt-3 animate-pulse">
                 {tr("Approved ✓")}
               </div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ArrowRight, Info, HelpCircle, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Info, HelpCircle, ShieldCheck, Loader2, CheckCircle2 } from 'lucide-react';
+import { lookupNipApi } from '../../services/officeApi';
 import { useTranslation } from "react-i18next";
 
 export default function StepCompanyProfile({ onNext, data, updateData }) {
@@ -7,6 +8,40 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
   const [activeFocus, setActiveFocus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+
+  // NIP -> company details (official VAT registry). Fills the typable fields; the user can still edit them.
+  const [nipState, setNipState] = useState({ status: 'idle', message: '' }); // idle | loading | found | error
+  const lastLookedUp = useRef('');
+
+  useEffect(() => {
+    const nip = String(data.nip || '');
+    if (nip.length !== 10 || nip === lastLookedUp.current) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      lastLookedUp.current = nip;
+      setNipState({ status: 'loading', message: '' });
+      try {
+        const res = await lookupNipApi(nip);
+        if (cancelled) return;
+        const c = res.data?.data || {};
+        updateData({
+          companyName: c.companyName || data.companyName,
+          address: c.address || data.address,
+          regon: c.regon || data.regon,
+          // Bank fields are prefilled only when still empty (step 3 stays editable).
+          iban: data.iban || c.iban || '',
+          accountName: data.accountName || c.companyName || '',
+        });
+        setNipState({ status: 'found', message: c.vatStatus ? t("Details loaded from the official registry (VAT status: {{status}}). You can edit them.", { status: c.vatStatus }) : t("Details loaded from the official registry. You can edit them.") });
+      } catch (err) {
+        if (cancelled) return;
+        lastLookedUp.current = '';
+        setNipState({ status: 'error', message: err.response?.data?.message || t("Could not load company details. Please type them manually.") });
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.nip]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -153,9 +188,12 @@ export default function StepCompanyProfile({ onNext, data, updateData }) {
                   required
                 />
                 <span className="absolute right-3 top-3 text-gray-400" title={t("10-digit Tax Identification Number")}>
-                  <Info className="w-4.5 h-4.5" />
+                  {nipState.status === 'loading' ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : nipState.status === 'found' ? <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600" /> : <Info className="w-4.5 h-4.5" />}
                 </span>
               </div>
+              {nipState.message && (
+                <p className={`text-[11px] leading-snug ${nipState.status === 'error' ? 'text-red-600' : 'text-emerald-700'}`}>{nipState.message}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

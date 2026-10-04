@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, CloudUpload, Paperclip, Check, Loader2, Trash2, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CloudUpload, Paperclip, Check, Loader2, Trash2, ShieldCheck } from 'lucide-react';
 import { uploadDocumentApi } from '../../services/officeApi';
 import { useTranslation } from "react-i18next";
 import { tKey } from "../../../../shared/i18n";
@@ -100,31 +100,17 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
     updateData({ documents: updatedDocs });
   };
 
-  const handleAutoFill = () => {
-    const filledDocs = {};
-    DOCUMENT_LIST.forEach((doc) => {
-      filledDocs[doc.key] = {
-        name: doc.defaultName,
-        size: (1.0 + Math.random() * 2).toFixed(1) + ' MB',
-        status: 'completed',
-      };
-    });
-    updateData({ documents: filledDocs });
-  };
-
   const uploadedCount = Object.keys(docsState).length;
   const isAllUploaded = uploadedCount === DOCUMENT_LIST.length;
 
+  const [docError, setDocError] = useState('');
+
   const handleNext = () => {
     if (!isAllUploaded) {
-      if (confirm(t("For the full verification onboarding experience, we recommend uploading all files. Would you like to auto-fill them now and proceed?"))) {
-        handleAutoFill();
-        setTimeout(() => {
-          onNext('step3_final');
-        }, 300);
-      }
+      setDocError(t("Please upload all {{count}} required documents to continue.", { count: DOCUMENT_LIST.length }));
       return;
     }
+    setDocError('');
     onNext('step3_final');
   };
 
@@ -151,16 +137,6 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Auto Fill Trigger */}
-          <button
-            type="button"
-            onClick={handleAutoFill}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#287965]/20 text-xs font-bold text-[#287965] hover:bg-[#287965]/5 transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{t("Auto-Fill All Files")}</span>
-          </button>
-          
           <div className="flex flex-col items-end text-right">
             <span className="text-xs font-semibold text-gray-400 uppercase">{t("Progress")}</span>
             <span className="text-sm font-bold text-[#287965]">
@@ -291,6 +267,9 @@ export default function StepDocuments({ onNext, onBack, data, updateData }) {
           </span>
         </div>
 
+        {docError && (
+          <p className="basis-full text-center text-xs font-semibold text-red-600">{docError}</p>
+        )}
         <button
           type="button"
           onClick={handleNext}

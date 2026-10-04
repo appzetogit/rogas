@@ -154,12 +154,19 @@ export const buildPeriod = (sub, { cycle, slotDefs = null, holidays = null } = {
         }
         return { endDate: addDays(start, 1), dates, startDate: start };
     }
-    for (let i = 0; i < len; i++) {
+    // The period is counted from the FIRST DELIVERY day, not from a chosen start date on which nothing is delivered
+    // (e.g. a Mon-Fri plan picked on a Sunday starts on Monday), so a "5 days a week" plan really gets its 5 days.
+    let first = start;
+    for (let i = 0; i < 14; i++) {
         const day = addDays(start, i);
+        if (deliveriesOn(sub, day, { slotDefs, holidays, ignoreBounds: true }).length) { first = day; break; }
+    }
+    for (let i = 0; i < len; i++) {
+        const day = addDays(first, i);
         const deliveries = deliveriesOn(sub, day, { slotDefs, holidays, ignoreBounds: true });
         if (deliveries.length) dates.push({ date: day, deliveries });
     }
-    return { endDate: addDays(start, len), dates, startDate: start };
+    return { endDate: addDays(first, len), dates, startDate: first };
 };
 
 /**

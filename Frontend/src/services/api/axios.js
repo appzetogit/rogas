@@ -176,6 +176,9 @@ function createModuleClient(moduleName) {
 
         if (newAccessToken) {
           localStorage.setItem(`${moduleName}_accessToken`, newAccessToken);
+          // The server slides the session forward by sending a fresh refresh token now and then.
+          const rotatedRefresh = data?.data?.refreshToken || data?.refreshToken;
+          if (rotatedRefresh && rotatedRefresh !== refreshToken) localStorage.setItem(`${moduleName}_refreshToken`, rotatedRefresh);
           window.dispatchEvent(new CustomEvent("authRefreshed", { 
             detail: { module: moduleName, token: newAccessToken } 
           }));
@@ -183,14 +186,24 @@ function createModuleClient(moduleName) {
           original.headers.Authorization = `Bearer ${newAccessToken}`;
           return client(original);
         }
-      } catch (_) {
-        onRefreshFailed();
+      } catch (refreshErr) {
+        // Only a definite "this refresh token is not valid" answer from the server ends the session. A network error,
+        // timeout or 5xx must NOT sign anybody out: keep the tokens, fail this one request, the next one retries.
+        const status = refreshErr?.response?.status;
+        if (status === 400 || status === 401 || status === 403) {
+          onRefreshFailed();
+        } else {
+          subscribers.forEach((cb) => cb(null));
+          subscribers = [];
+        }
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }
 
-      onRefreshFailed();
+      // The refresh answer carried no access token: treat it as a failed attempt, but keep the session.
+      subscribers.forEach((cb) => cb(null));
+      subscribers = [];
       return Promise.reject(err);
     }
   );

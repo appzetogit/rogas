@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { adminAPI } from "@food/api";
+import { adminAPI, dmbExtraAdminAPI } from "@food/api";
+import { adminClient } from "@food/api/axios";
 import { getCurrentLanguage } from "@/shared/i18n";
 
 const STORAGE_KEY = "admin_notifications_dismissed_v1";
@@ -193,6 +194,36 @@ const mapExpiredFssai = (response) => {
   }));
 };
 
+const mapOfficeRequests = (response) => {
+  const rows = response?.data?.data || [];
+  return (Array.isArray(rows) ? rows : []).map((item) => ({
+    id: `approval-office-${String(item?._id || "")}`,
+    title: "Office Approval Pending",
+    message: `${item?.legalName || "A company"} submitted an office onboarding request. Contact: ${item?.contactName || "N/A"} (${item?.contactEmail || "N/A"}).`,
+    type: "approval",
+    category: "office_approval",
+    path: `/admin/food/office-approvals/${String(item?._id || "")}`,
+    createdAt: item?.createdAt || item?.updatedAt,
+    timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
+    metaLabel: joinMeta(item?.legalName, item?.contactName, item?.nip),
+  }));
+};
+
+const mapFleetRequests = (response) => {
+  const rows = response?.data?.data?.requests || response?.data?.requests || [];
+  return (Array.isArray(rows) ? rows : []).map((item) => ({
+    id: `approval-fleet-${String(item?._id || "")}`,
+    title: "Delivery Partner Request Pending",
+    message: `${item?.vendorId?.restaurantName || "A vendor"} asked to use its own delivery partner.`,
+    type: "approval",
+    category: "fleet_request",
+    path: "/admin/food/dmb/fleet-requests",
+    createdAt: item?.createdAt,
+    timeLabel: toDateLabel(item?.createdAt),
+    metaLabel: joinMeta(item?.vendorId?.restaurantName, item?.vendorId?.city),
+  }));
+};
+
 export default function useAdminNotifications(options = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(Boolean(options?.autoload !== false));
@@ -202,6 +233,17 @@ export default function useAdminNotifications(options = {}) {
       setLoading(true);
       const dismissed = new Set(getDismissedIds());
 
+      // allSettled: one failing endpoint must not wipe every other notification.
+      const settled = await Promise.allSettled([
+        adminAPI.getPendingRestaurants(),
+        adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
+        adminAPI.getPendingFoodApprovals({ page: 1, limit: 50 }),
+        adminAPI.getSupportTicketsAdmin({ page: 1, limit: 50, source: "all" }),
+        adminAPI.getDeliverySupportTickets({ page: 1, limit: 50 }),
+        adminAPI.getExpiredFssaiNotifications(),
+        adminClient.get("/food/admin/office-companies", { params: { status: "under_review" } }),
+        dmbExtraAdminAPI.fleetRequests({ status: "pending" }),
+      ]);
       const [
         restaurantsRes,
         deliveryJoinRes,
@@ -209,14 +251,9 @@ export default function useAdminNotifications(options = {}) {
         supportRes,
         deliverySupportRes,
         fssaiExpiredRes,
-      ] = await Promise.all([
-        adminAPI.getPendingRestaurants(),
-        adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
-        adminAPI.getPendingFoodApprovals({ page: 1, limit: 50 }),
-        adminAPI.getSupportTicketsAdmin({ page: 1, limit: 50, source: "all" }),
-        adminAPI.getDeliverySupportTickets({ page: 1, limit: 50 }),
-        adminAPI.getExpiredFssaiNotifications(),
-      ]);
+        officeRes,
+        fleetRes,
+      ] = settled.map((r) => (r.status === "fulfilled" ? r.value : null));
 
       const restaurantRows =
         restaurantsRes?.data?.data ||
@@ -230,6 +267,8 @@ export default function useAdminNotifications(options = {}) {
         ...mapUserRestaurantSupport(supportRes),
         ...mapDeliverySupport(deliverySupportRes),
         ...mapExpiredFssai(fssaiExpiredRes),
+        ...mapOfficeRequests(officeRes),
+        ...mapFleetRequests(fleetRes),
       ])
         .filter((item) => !dismissed.has(item.id))
         .sort((a, b) => toDateValue(b.createdAt) - toDateValue(a.createdAt));
@@ -259,7 +298,7 @@ export default function useAdminNotifications(options = {}) {
   useEffect(() => {
     const timer = window.setInterval(() => {
       loadNotifications();
-    }, 5 * 60 * 1000);
+    }, 60 * 1000);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
 

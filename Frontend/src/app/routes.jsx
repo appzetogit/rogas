@@ -1,7 +1,7 @@
 // Routing file
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
-import { AppShellSkeleton } from '@food/components/ui/loading-skeletons'
+import Loader from '@food/components/Loader'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -15,7 +15,7 @@ import ProtectedRoute from '@food/components/ProtectedRoute'
 import { applyDynamicTheme } from '../modules/Food/utils/themeSettings'
 import { Loader2 } from 'lucide-react';
 
-const PageLoader = () => <AppShellSkeleton />
+const PageLoader = () => <Loader />
 
 /**
  * FoodAppWrapper — Renders the FoodApp component with the /food prefix.

@@ -8,7 +8,7 @@ import { getControl, cityIdForZone } from '../platform/platformConfig.service.js
 import { holidaySetForCity } from '../platform/holiday.service.js';
 import { deliveryFeeForZone } from '../platform/zoneFee.js';
 import { offeredSlots } from '../deliverySlot/deliverySlot.service.js';
-import { addDays, dateOnlyFromStr, localToday, storageDateStr } from '../../../utils/platformTime.js';
+import { addDays, dateOnlyFromStr, localToday, storageDateStr, zonedInstant } from '../../../utils/platformTime.js';
 
 /**
  * Authoritative subscription pricing (server-side quote).
@@ -20,10 +20,11 @@ import { addDays, dateOnlyFromStr, localToday, storageDateStr } from '../../../u
  */
 
 export class QuoteError extends Error {
-    constructor(message, code = 'QUOTE_INVALID', statusCode = 400) {
+    constructor(message, code = 'QUOTE_INVALID', statusCode = 400, details = undefined) {
         super(message);
         this.code = code;
         this.statusCode = statusCode;
+        this.details = details;
     }
 }
 
@@ -88,6 +89,24 @@ const loadMeals = async (ids) => {
 const avgMenuPrice = async (vendorId) => {
     const plans = await DMBMealPlan.find({ vendorId, status: 'active' }).select('pricePerDay').lean();
     return plans.length ? plans.reduce((s, p) => s + (p.pricePerDay || 0), 0) / plans.length : 0;
+};
+
+/**
+ * Earliest allowed start date: TODAY while the order cut-off of every chosen slot is still ahead (cut-off = slot start
+ * minus its order-cut-off hours, at least 1 h — the same rule single-meal orders use), otherwise TOMORROW.
+ */
+export const earliestStartDate = (slotKeys, offeredMap, now = new Date()) => {
+    const today = localToday(now);
+    const tomorrow = addDays(today, 1);
+    if (!slotKeys.length) return tomorrow;
+    const todayStr = storageDateStr(today);
+    const open = slotKeys.every((key) => {
+        const slot = offeredMap.get(key);
+        if (!slot?.startTime) return false;
+        const deadline = zonedInstant(todayStr, slot.startTime).getTime() - Math.max(1, Number(slot.orderCutoffHours) || 0) * 3600_000;
+        return now.getTime() < deadline;
+    });
+    return open ? today : tomorrow;
 };
 
 /**
@@ -170,10 +189,17 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     deliverySlots.forEach(assertOffered);
 
     // ── Start date ────────────────────────────────────────────────────────────────────────────────────
-    const tomorrow = addDays(localToday(), 1);
-    let startDate = input.startDate ? dateOnlyFromStr(String(input.startDate)) : tomorrow;
+    const earliest = earliestStartDate(deliverySlots, offeredMap);
+    let startDate = input.startDate ? dateOnlyFromStr(String(input.startDate)) : earliest;
     if (!startDate) throw new QuoteError('Invalid start date');
-    if (startDate < tomorrow) throw new QuoteError('The start date must be tomorrow or later');
+    if (startDate < earliest) {
+        throw new QuoteError(
+            storageDateStr(earliest) === storageDateStr(localToday())
+                ? 'The start date cannot be in the past'
+                : "Today's order cut-off for your delivery slot has passed. The earliest start date is tomorrow.",
+            'START_TOO_EARLY', 400, { earliestStartDate: storageDateStr(earliest) }
+        );
+    }
     if (startDate > addDays(localToday(), 120)) throw new QuoteError('The start date can be at most 120 days ahead');
 
     // ── Makers & meals ────────────────────────────────────────────────────────────────────────────────
@@ -250,7 +276,13 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         familyBox: isFamily ? { enabled: true, members: familyMembers } : undefined
     };
     const holidays = await holidaySetForCity(cityId);
-    const period = buildPeriod(draft, { cycle, slotDefs: offered, holidays });
+    let period = buildPeriod(draft, { cycle, slotDefs: offered, holidays });
+    // The period counts from the first delivery day (see buildPeriod); rebuild so every later rule (fortnight weeks, trial
+    // window, slots already booked) uses that same start.
+    if (period.startDate && storageDateStr(period.startDate) !== storageDateStr(draft.startDate)) {
+        draft.startDate = period.startDate;
+        period = buildPeriod(draft, { cycle, slotDefs: offered, holidays });
+    }
     if (!period.dates.length) throw new QuoteError('None of your chosen days and slots deliver in this period — pick other days or slots', 'NO_DELIVERIES');
 
     // ACM-148: max concurrent slots per day across the customer's subscriptions.
@@ -343,7 +375,11 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         zoneId,
         cityId,
         startDate: storageDateStr(period.startDate),
-        endDate: storageDateStr(period.endDate),
+        endDate: storageDateStr(period.endDate), // exclusive: the day after the last day of the period
+        lastDate: storageDateStr(addDays(period.endDate, -1)),
+        firstDeliveryDate: storageDateStr(period.dates[0].date),
+        lastDeliveryDate: storageDateStr(period.dates[period.dates.length - 1].date),
+        earliestStartDate: storageDateStr(earliest),
         deliveryDays,
         deliveryDaysList: deliveryDays === 'custom' ? deliveryDaysList : DAY_PRESETS[deliveryDays],
         deliveryPattern: draft.deliveryPattern,

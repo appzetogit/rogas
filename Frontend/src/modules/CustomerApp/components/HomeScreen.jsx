@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import ScrollStickyBar from "../../../shared/components/ScrollStickyBar";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
@@ -320,7 +321,8 @@ export function HomeScreen({
     if (!meal) return null;
     const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
     const mealPhoto = meal.meals?.[0]?.photo || FALLBACK_MEAL_PHOTO;
-    const calories = meal.meals?.[0]?.nutrition?.calories ?? 450;
+    // Only show calories the vendor really entered (never an invented default).
+    const calories = meal.meals?.[0]?.nutrition?.calories || null;
 
     return (
       <section className="bg-white rounded-2xl p-5 shadow-md border border-[#e4e2e1] transition-all duration-300 space-y-4">
@@ -354,10 +356,12 @@ export function HomeScreen({
         </div>
 
         <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
-          <div className="flex items-center gap-1.5">
-            <Flame className="text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>{t("{{calories}} kcal", { calories })}</span>
-          </div>
+          {calories && (
+            <div className="flex items-center gap-1.5">
+              <Flame className="text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
+              <span>{t("{{calories}} kcal", { calories })}</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <Timer className="text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
             <span>{t("5 min prep")}</span>
@@ -441,6 +445,7 @@ export function HomeScreen({
 
   return (
     <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
+      <ScrollStickyBar title={`${greeting}, ${userName}`} right={<button onClick={onGoToProfile} className="w-8 h-8 rounded-full bg-white/20 text-white font-bold text-[14px]" aria-label={t("Profile")}>{userName ? userName.charAt(0).toUpperCase() : "U"}</button>} />
       {/* Top Header */}
       <header className="bg-primary px-5 pt-12 pb-8 rounded-b-[32px] shadow-md relative z-10 text-white">
         <div className="flex justify-between items-center mb-2">

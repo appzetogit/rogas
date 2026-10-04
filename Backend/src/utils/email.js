@@ -193,3 +193,47 @@ export async function sendOfficeSignupOtpEmail(to, otp) {
     }
 }
 
+
+
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Small branded notification email for the Office panel / admins (password reset, approval result, new request).
+ * `lines` is an array of plain-text paragraphs (escaped here). Returns true when sent.
+ */
+export async function sendOfficeNotificationEmail({ to, subject, heading, lines = [], code = '' }) {
+    const trans = getTransporter();
+    if (!trans) {
+        logger.warn(`Office notification email "${subject}" skipped: SMTP not configured`);
+        return false;
+    }
+    if (!to) return false;
+    const from = config.emailFrom || config.emailUser;
+    const paragraphs = lines.map((l) => `<p style="color:#4a4c56;font-size:14px;margin:0 0 12px 0;">${escapeHtml(l)}</p>`).join('');
+    const codeBlock = code
+        ? `<div style="text-align:center;margin:24px 0;"><div style="display:inline-block;font-size:30px;font-weight:800;letter-spacing:8px;color:#287965;background:#eaf5f2;padding:14px 26px;border-radius:12px;border:1.5px dashed #287965;">${escapeHtml(code)}</div></div>`
+        : '';
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:'Segoe UI',Tahoma,Verdana,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#f8f9fa;">
+<div style="background:#fff;border-radius:16px;padding:32px;border:1px solid #e9ecef;">
+<h2 style="color:#287965;font-size:24px;margin:0 0 4px 0;text-align:center;">DailyMealBox</h2>
+<h3 style="color:#1a1c1e;font-size:18px;margin:18px 0 14px 0;">${escapeHtml(heading)}</h3>
+${paragraphs}${codeBlock}
+<hr style="border:none;border-top:1px solid #f1f3f5;margin:24px 0 14px 0;">
+<p style="color:#adb5bd;font-size:12px;text-align:center;margin:0;">&copy; ${new Date().getFullYear()} DailyMealBox</p>
+</div></body></html>`;
+    try {
+        await trans.sendMail({
+            from: typeof from === 'string' && from.includes('<') ? from : `DailyMealBox <${from}>`,
+            to,
+            subject,
+            text: [heading, ...lines, code].filter(Boolean).join('\n\n'),
+            html
+        });
+        logger.info(`Office notification email "${subject}" sent to ${to}`);
+        return true;
+    } catch (err) {
+        logger.error(`Failed to send office notification email to ${to}: ${err.message}`);
+        return false;
+    }
+}

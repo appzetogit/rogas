@@ -28,6 +28,8 @@ import PantryMenuManager from './components/PantryMenuManager';
 import EarningsManager from './components/EarningsManager';
 import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
+import SubscribersScreen from './components/SubscribersScreen';
+import useKeyboardOpen from '../../shared/hooks/useKeyboardOpen';
 import VendorServicePage from './components/VendorServicePage';
 import { VendorLegalPage } from './components/VendorLegalPage';
 import VendorHub, { MenuCoverageNudge } from './components/amendment/VendorHub';
@@ -53,6 +55,44 @@ const amendmentMealPayload = (m) => ({
   temperatureType: m.temperatureType || null,
   reheatInstructions: m.temperatureType === 'cold' ? m.reheatInstructions || '' : '',
   ...(m.isPreOrder ? { launchDate: m.launchDate || null, preorderCutoff: m.preorderCutoff || null } : {}),
+});
+
+
+/** Legacy rows were saved with these invented defaults; treat exactly this combination as "not provided". */
+const isLegacyDefaultNutrition = (n) => n && n.calories === 300 && n.protein === 15 && n.carbs === 25 && n.fats === 10;
+const nutritionProvided = (n) => Boolean(n && n.isProvided && n.calories != null && !isLegacyDefaultNutrition(n));
+const nutritionText = (n, key, unit) => (nutritionProvided(n) && n[key] != null ? `${n[key]} ${unit}` : '');
+const numberOrNull = (v) => {
+  const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(n) ? n : null;
+};
+/** Builds the nutrition payload from what the vendor typed; null when nothing was entered. */
+const nutritionPayload = (m) => {
+  const calories = numberOrNull(m.calories);
+  const protein = numberOrNull(m.prot);
+  const carbs = numberOrNull(m.carb);
+  const fats = numberOrNull(m.fat);
+  if ([calories, protein, carbs, fats].every((x) => x === null)) return { calories: null, protein: null, carbs: null, fats: null, isProvided: false };
+  return { calories, protein, carbs, fats, isProvided: true };
+};
+
+/** Server meal plan -> the shape the Menu screens use. */
+const mapPlanToMeal = (p) => ({
+        id: p._id,
+        name: p.name,
+        price: p.pricePerDay || 15.00,
+        description: p.description,
+        imageUrl: p.photos?.[0] || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ',
+        calories: nutritionText(p.nutrition, 'calories', 'kcal'),
+        prot: nutritionText(p.nutrition, 'protein', 'g'),
+        carb: nutritionText(p.nutrition, 'carbs', 'g'),
+        fat: nutritionText(p.nutrition, 'fats', 'g'),
+        allergens: p.allergens || [],
+        dietType: (p.dietTags && p.dietTags.length > 0) ? p.dietTags[0].charAt(0).toUpperCase() + p.dietTags[0].slice(1) : 'No preference',
+        status: p.status === 'active' ? 'Active' : 'Draft',
+        portions: p.capacity || 10,
+        ...amendmentMealFields(p)
+
 });
 
 export default function App() {
@@ -82,8 +122,23 @@ export default function App() {
   const [timingConfig, setTimingConfig] = useState(null);
   const { slots: slotList } = useDeliverySlots();
 
-  const [authPhone, setAuthPhone] = useState('');
-  const [showSubView, setShowSubView] = useState(null);
+  // The verified phone survives refreshes (it is needed on the registration form and in the registration request).
+  const [authPhone, setAuthPhoneState] = useState(() => {
+    try { return sessionStorage.getItem('vendor_auth_phone') || localStorage.getItem('restaurant_register_phone') || ''; } catch (_) { return ''; }
+  });
+  const setAuthPhone = (p) => {
+    setAuthPhoneState(p);
+    try { sessionStorage.setItem('vendor_auth_phone', p || ''); } catch (_) { /* ignore */ }
+  };
+  // Sub-views (Ingredient planner / Food forecast) live in the URL so refresh and the phone's back button work.
+  const subViewMatch = location.pathname.match(/^\/vendor\/view\/([^/]+)$/);
+  const showSubView = subViewMatch ? subViewMatch[1] : null;
+  const setShowSubView = (v) => {
+    if (v) navigate(`/vendor/view/${v}`);
+    else if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/vendor/dashboard', { replace: true });
+  };
+  const keyboardOpen = useKeyboardOpen();
   const [appLogoUrl, setAppLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -162,12 +217,16 @@ export default function App() {
           }
         } catch (err) {
           console.error("Auth init failed:", err);
-          // Token expired or invalid
-          localStorage.removeItem('restaurant_accessToken');
-          localStorage.removeItem('restaurant_refreshToken');
-          localStorage.removeItem('restaurant_authenticated');
-          localStorage.removeItem('restaurant_user');
-          setProfile((prev) => ({ ...prev, isRegistered: false }));
+          // Only a definitive "not authenticated" answer ends the session. A network error, timeout or a 5xx must never
+          // log the vendor out — the saved session stays and the next request simply retries.
+          const code = err?.response?.status;
+          if (code === 401 || code === 404) {
+            localStorage.removeItem('restaurant_accessToken');
+            localStorage.removeItem('restaurant_refreshToken');
+            localStorage.removeItem('restaurant_authenticated');
+            localStorage.removeItem('restaurant_user');
+            setProfile((prev) => ({ ...prev, isRegistered: false }));
+          }
         }
       }
     };
@@ -238,22 +297,7 @@ export default function App() {
         if (plansRes.data?.plans) {
           const mappedMeals = plansRes.data.plans
             .filter(p => p.status !== 'archived')
-            .map(p => ({
-              id: p._id,
-              name: p.name,
-              price: p.pricePerDay || 15.00,
-              description: p.description,
-              imageUrl: p.photos?.[0] || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ',
-              calories: `${p.nutrition?.calories || 300} kcal`,
-              prot: `${p.nutrition?.protein || 15} g`,
-              carb: `${p.nutrition?.carbs || 25} g`,
-              fat: `${p.nutrition?.fats || 10} g`,
-              allergens: p.allergens || [],
-              dietType: (p.dietTags && p.dietTags.length > 0) ? p.dietTags[0].charAt(0).toUpperCase() + p.dietTags[0].slice(1) : 'No preference',
-              status: p.status === 'active' ? 'Active' : 'Draft',
-              portions: p.capacity || 10,
-              ...amendmentMealFields(p)
-            }));
+            .map(mapPlanToMeal);
           setMeals(mappedMeals);
         }
 
@@ -386,13 +430,7 @@ export default function App() {
         pricePerDay: newMeal.price,
         description: newMeal.description,
         capacity: newMeal.portions,
-        nutrition: {
-          calories: parseInt(newMeal.calories) || 300,
-          protein: parseInt(newMeal.prot) || 15,
-          carbs: parseInt(newMeal.carb) || 25,
-          fats: parseInt(newMeal.fat) || 10,
-          isProvided: true
-        },
+        nutrition: nutritionPayload(newMeal),
         allergens: newMeal.allergens,
         dietTags: newMeal.dietType && newMeal.dietType !== 'No preference' ? [newMeal.dietType.toLowerCase()] : [],
         photos: [newMeal.imageUrl],
@@ -412,16 +450,21 @@ export default function App() {
         price: created.pricePerDay || 15.00,
         description: created.description,
         imageUrl: created.photos?.[0] || newMeal.imageUrl,
-        calories: `${created.nutrition?.calories || 300} kcal`,
-        prot: `${created.nutrition?.protein || 15} g`,
-        carb: `${created.nutrition?.carbs || 25} g`,
-        fat: `${created.nutrition?.fats || 10} g`,
+        calories: nutritionText(created.nutrition, 'calories', 'kcal'),
+        prot: nutritionText(created.nutrition, 'protein', 'g'),
+        carb: nutritionText(created.nutrition, 'carbs', 'g'),
+        fat: nutritionText(created.nutrition, 'fats', 'g'),
         allergens: created.allergens || [],
         dietType: (created.dietTags && created.dietTags.length > 0) ? created.dietTags[0].charAt(0).toUpperCase() + created.dietTags[0].slice(1) : 'No preference',
         status: created.status === 'active' ? 'Active' : 'Draft',
         portions: created.capacity || 10,
         ...amendmentMealFields(created)
       }]);
+      // Re-read the list from the server so the new meal is shown exactly as saved.
+      try {
+        const fresh = await dmbVendorAPI.getMealPlans();
+        if (fresh.data?.plans) setMeals(fresh.data.plans.filter((p) => p.status !== 'archived').map(mapPlanToMeal));
+      } catch (_) { /* the optimistic row above stays */ }
       triggerGlobalToast(tr("Meal added successfully"));
       return true;
     } catch (err) {
@@ -444,14 +487,8 @@ export default function App() {
       if (updatedFields.dietType !== undefined) {
         payload.dietTags = updatedFields.dietType && updatedFields.dietType !== 'No preference' ? [updatedFields.dietType.toLowerCase()] : [];
       }
-      if (updatedFields.calories || updatedFields.prot || updatedFields.carb || updatedFields.fat) {
-        payload.nutrition = {
-          calories: parseInt(updatedFields.calories) || 300,
-          protein: parseInt(updatedFields.prot) || 15,
-          carbs: parseInt(updatedFields.carb) || 25,
-          fats: parseInt(updatedFields.fat) || 10,
-          isProvided: true
-        };
+      if (updatedFields.calories !== undefined || updatedFields.prot !== undefined || updatedFields.carb !== undefined || updatedFields.fat !== undefined) {
+        payload.nutrition = nutritionPayload(updatedFields);
       }
 
       const res = await dmbVendorAPI.editMealPlan(id, payload);
@@ -463,10 +500,10 @@ export default function App() {
         price: updated.pricePerDay || 15.00,
         description: updated.description,
         imageUrl: updated.photos?.[0] || m.imageUrl,
-        calories: `${updated.nutrition?.calories || 300} kcal`,
-        prot: `${updated.nutrition?.protein || 15} g`,
-        carb: `${updated.nutrition?.carbs || 25} g`,
-        fat: `${updated.nutrition?.fats || 10} g`,
+        calories: nutritionText(updated.nutrition, 'calories', 'kcal'),
+        prot: nutritionText(updated.nutrition, 'protein', 'g'),
+        carb: nutritionText(updated.nutrition, 'carbs', 'g'),
+        fat: nutritionText(updated.nutrition, 'fats', 'g'),
         allergens: updated.allergens || [],
         dietType: (updated.dietTags && updated.dietTags.length > 0) ? updated.dietTags[0].charAt(0).toUpperCase() + updated.dietTags[0].slice(1) : 'No preference',
         status: updated.status === 'active' ? 'Active' : 'Draft',
@@ -509,6 +546,17 @@ export default function App() {
       );
     } catch (err) {
       triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to toggle meal status"), 'error');
+    }
+  };
+
+  const resendAuthOtp = async () => {
+    try {
+      await requestRestaurantOtp(authPhone);
+      triggerGlobalToast(tr("OTP sent successfully!"));
+      return true;
+    } catch (err) {
+      triggerGlobalToast(err.response?.data?.message || err.message || tr("Failed to send OTP"), 'error');
+      return false;
     }
   };
 
@@ -561,7 +609,7 @@ export default function App() {
             }} />
           } />
           <Route path="/auth/login-otp" element={
-            <OtpScreen phone={authPhone} onBack={() => navigate('/vendor/auth/login-phone')} onVerify={async (otpCode) => {
+            <OtpScreen phone={authPhone} onResend={resendAuthOtp} onBack={() => navigate('/vendor/auth/login-phone')} onVerify={async (otpCode) => {
               try {
                 const res = await verifyRestaurantOtp(authPhone, otpCode);
                 const data = res.data?.data || res.data;
@@ -599,7 +647,7 @@ export default function App() {
             }} />
           } />
           <Route path="/auth/register-otp" element={
-            <OtpScreen phone={authPhone} onBack={() => navigate('/vendor/auth/register-phone')} onVerify={async (otpCode) => {
+            <OtpScreen phone={authPhone} onResend={resendAuthOtp} onBack={() => navigate('/vendor/auth/register-phone')} onVerify={async (otpCode) => {
               try {
                 const res = await verifyRestaurantOtp(authPhone, otpCode);
                 const data = res.data?.data || res.data;
@@ -863,6 +911,7 @@ export default function App() {
               )}
               <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
               <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
+              <Route path="/subscribers" element={<SubscribersScreen />} />
               <Route path="/service" element={<VendorServicePage />} />
               <Route path="/more" element={<VendorHub profile={profile} />} />
               <Route path="/more/:section" element={<VendorHub profile={profile} />} />
@@ -875,7 +924,7 @@ export default function App() {
         </div>
 
         {/* Mobile Navigation Bar (visible only on mobile) */}
-        <nav className="fixed bottom-0 left-0 right-0 w-full md:hidden z-50 h-[83px] bg-white border-t border-outline-variant/15 flex justify-around items-center px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <nav className={`fixed bottom-0 left-0 right-0 w-full md:hidden z-50 h-[83px] bg-white border-t border-outline-variant/15 flex justify-around items-center px-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)] ${keyboardOpen ? "hidden" : ""}`}>
           <button
             onClick={() => navigate('/vendor/dashboard')}
             className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-90 ${location.pathname.includes('/dashboard') ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>

@@ -30,7 +30,7 @@ const DashboardHome = ({
     {
       /* Top Welcome Header */
     }
-    <div className="flex items-center justify-between bg-white rounded-2xl p-4 border border-[#e0e3e0] shadow-sm">
+    <div className="sticky top-0 z-30 flex items-center justify-between bg-white rounded-2xl p-4 border border-[#e0e3e0] shadow-sm">
       <div className="flex items-center gap-3">
         <div className="relative">
           <img

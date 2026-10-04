@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -32,87 +31,9 @@ const MaterialIcon = ({ name, filled = false, className = "", style = {} }) => (
   </span>
 );
 
-const VehicleCard = ({ icon, label, rate, selected, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "16px",
-      borderRadius: "12px",
-      border: selected ? `1px solid ${COLORS.primary}` : `1px solid ${COLORS.outlineVariant}`,
-      background: selected ? COLORS.primary : COLORS.surfaceContainerLowest,
-      color: selected ? COLORS.onPrimary : COLORS.onSurface,
-      cursor: "pointer",
-      transition: "all 0.15s ease",
-      boxShadow: selected ? "0 4px 12px rgba(0,96,76,0.25)" : "none",
-      transform: "scale(1)",
-    }}
-    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
-    onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-  >
-    <MaterialIcon
-      name={icon}
-      filled={selected}
-      style={{
-        fontSize: "28px",
-        marginBottom: "6px",
-        color: selected ? COLORS.onPrimary : COLORS.primary,
-      }}
-    />
-    <span style={{ fontWeight: 700, fontSize: "14px", lineHeight: "20px" }}>{label}</span>
-  </button>
-);
-
-const FeatureCard = ({ icon, title, description }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "16px",
-      padding: "16px",
-      background: COLORS.surfaceContainerLowest,
-      border: `1px solid ${COLORS.outlineVariant}`,
-      borderRadius: "12px",
-    }}
-  >
-    <div
-      style={{
-        width: "40px",
-        height: "40px",
-        borderRadius: "8px",
-        background: "rgba(0,96,76,0.1)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <MaterialIcon name={icon} style={{ color: COLORS.primary }} />
-    </div>
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <span style={{ fontWeight: 700, fontSize: "14px", lineHeight: "20px", color: COLORS.onSurface }}>
-        {title}
-      </span>
-      <span style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, fontWeight: 400 }}>
-        {description}
-      </span>
-    </div>
-  </div>
-);
-
 export default function DeliveryWelcome() {
   const { t } = useTranslation("driver");
-  const [selectedVehicle, setSelectedVehicle] = useState("ebike");
   const navigate = useNavigate();
-
-  const vehicles = [
-    { id: "bicycle", icon: "pedal_bike", label: t("Bicycle"), rate: "18-22 PLN/h" },
-    { id: "ebike", icon: "electric_bolt", label: t("E-bike"), rate: "28-35 PLN/h" },
-  ];
 
   const features = [
     {
@@ -247,27 +168,6 @@ export default function DeliveryWelcome() {
             >
               {t("Delivery Partner")}
             </p>
-          </div>
-
-          {/* Vehicle Selection */}
-          <div
-            style={{
-              marginTop: "40px",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}
-          >
-            {vehicles.map((v) => (
-              <VehicleCard
-                key={v.id}
-                icon={v.icon}
-                label={v.label}
-                rate={v.rate}
-                selected={selectedVehicle === v.id}
-                onClick={() => setSelectedVehicle(v.id)}
-              />
-            ))}
           </div>
         </section>
 

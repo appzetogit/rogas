@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import useScrollLock from "../../../shared/hooks/useScrollLock";
 import { useNavigate } from "react-router-dom";
 import { PantryItemsList } from "./PantryItemsList";
 import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
@@ -38,6 +39,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
   const { money } = useMoney({ vendorId });
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
+  useScrollLock(); // the page behind the sheet must not scroll
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -56,7 +58,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md md:max-w-xl bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div className="relative z-10 w-full max-w-md md:max-w-xl bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300 overscroll-contain">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-[#e4e2e1] rounded-full" />
@@ -74,7 +76,7 @@ function MenuModal({ vendorId, vendorName, onClose }) {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1 px-4 py-4 space-y-3">
+        <div className="overflow-y-auto overscroll-contain flex-1 px-4 py-4 space-y-3">
           {loading ? (
             <div className="text-center py-12">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />

@@ -415,10 +415,11 @@ export default function MenuManager({
       name: mealName || 'New Culinary Secret',
       price: priceNum,
       description: mealDesc || 'Freshly prepared delicious item.',
-      calories: mealCal || '300 kcal',
-      prot: mealProt || '15g',
-      carb: mealCarb || '20g',
-      fat: mealFat || '10g',
+      // Nutrition is optional: send only what was typed (empty means "not provided", customers see nothing).
+      calories: mealCal,
+      prot: mealProt,
+      carb: mealCarb,
+      fat: mealFat,
       allergens: mealAllergens,
       dietType: mealDietType,
       imageUrl: mealImageUrl,
@@ -576,7 +577,7 @@ export default function MenuManager({
                                   : <Trans t={t} i18nKey={"{{price}} PLN <0>· {{rate}}% VAT</0>"} defaults={"{{price}} PLN <0>· {{rate}}% VAT</0>"} values={{ price: meal.price.toFixed(2), rate: foodVatRate }} components={[<span className="text-outline font-normal text-[11px]" />]} />}
                               </p>
                               <p className="text-[12px] text-outline font-medium">
-                                {t("{{calories}} · {{portions}} portions", { calories: meal.calories, portions: meal.portions })}
+                                {meal.calories ? t("{{calories}} · {{portions}} portions", { calories: meal.calories, portions: meal.portions }) : t("{{portions}} portions", { portions: meal.portions })}
                               </p>
                             </div>
                           </div>
@@ -592,7 +593,7 @@ export default function MenuManager({
                             </button>
                             <button
                               type="button"
-                              onClick={() => triggerToast(t("Nutrition facts: {{calories}} | Prot: {{prot}} | Carb: {{carb}} | Fat: {{fat}}", { calories: meal.calories, prot: meal.prot, carb: meal.carb, fat: meal.fat }))}
+                              onClick={() => triggerToast(meal.calories ? t("Nutrition facts: {{calories}} | Prot: {{prot}} | Carb: {{carb}} | Fat: {{fat}}", { calories: meal.calories, prot: meal.prot || '-', carb: meal.carb || '-', fat: meal.fat || '-' }) : t("No nutrition info added for this meal"))}
                               className="flex-1 py-1.5 rounded-lg border border-primary text-primary font-semibold text-[12px] hover:bg-primary/5 active:scale-95 transition-all text-center cursor-pointer"
                             >
                               {t("Nutrition")}
@@ -1446,7 +1447,9 @@ export default function MenuManager({
                         <h4 className="font-extrabold text-[13px] text-on-surface truncate">{meal.name}</h4>
                         <p className="text-[11px] text-outline mt-0.5 truncate font-medium">{meal.description}</p>
                         <p className="text-[11px] font-extrabold text-primary mt-1">
-                          <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
+                          {meal.calories
+                            ? <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
+                            : t("{{price}} PLN", { price: meal.price.toFixed(2) })}
                         </p>
                       </div>
                       <ChevronRight className="text-primary self-center text-[18px]" />
@@ -1515,7 +1518,9 @@ export default function MenuManager({
                         <h4 className="font-extrabold text-[14px] text-on-surface truncate">{meal.name}</h4>
                         <p className="text-[11px] text-outline mt-0.5 truncate font-medium">{meal.description}</p>
                         <p className="text-[11px] font-extrabold text-primary mt-1">
-                          <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
+                          {meal.calories
+                            ? <Trans t={t} i18nKey={"{{price}} PLN <0>· {{calories}}</0>"} defaults={"{{price}} PLN <0>· {{calories}}</0>"} values={{ price: meal.price.toFixed(2), calories: meal.calories }} components={[<span className="font-medium text-outline" />]} />
+                            : t("{{price}} PLN", { price: meal.price.toFixed(2) })}
                         </p>
                       </div>
                       <PlusCircle className="text-primary self-center text-[18px]" />

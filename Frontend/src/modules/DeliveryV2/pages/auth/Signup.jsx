@@ -59,7 +59,7 @@ export default function DeliverySignup() {
   const [searchParams] = useSearchParams()
 
   const [selectedCountry, setSelectedCountry] = useState(() => {
-    const stored = sessionStorage.getItem("deliveryAuthData");
+    const stored = localStorage.getItem("deliveryAuthData");
     if (stored) {
       try {
         const data = JSON.parse(stored);
@@ -91,7 +91,7 @@ export default function DeliverySignup() {
 
   // Pre-fill form from sessionStorage if data exists (e.g., when coming back from OTP)
   useEffect(() => {
-    const stored = sessionStorage.getItem("deliveryAuthData")
+    const stored = localStorage.getItem("deliveryAuthData")
     if (stored) {
       try {
         const data = JSON.parse(stored)
@@ -232,7 +232,7 @@ export default function DeliverySignup() {
         countryCode: selectedCountry.code,
         ref: String(searchParams.get("ref") || "").trim() || undefined,
       }
-      sessionStorage.setItem("deliverySignupDetails", JSON.stringify(signupDetails))
+      localStorage.setItem("deliverySignupDetails", JSON.stringify(signupDetails))
       clearModuleAuth("delivery")
 
       navigate("/food/delivery/signup/details")

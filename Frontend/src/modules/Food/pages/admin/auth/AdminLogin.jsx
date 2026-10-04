@@ -67,7 +67,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] flex flex-col relative overflow-hidden font-['Outfit',sans-serif]">
+    <div className="h-[100dvh] max-h-[100dvh] bg-[#F5F5F0] flex flex-col relative overflow-hidden font-['Outfit',sans-serif]">
       {/* Dynamic Animated Background */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#1F7A63]/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#1F7A63]/5 rounded-full blur-[120px] pointer-events-none opacity-60" />
@@ -83,7 +83,7 @@ export default function AdminLogin() {
         </Link>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 relative z-10">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-4 py-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -91,18 +91,18 @@ export default function AdminLogin() {
           className="w-full max-w-[460px]"
         >
           {/* Glassmorphism Card */}
-          <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_60px_-15px_rgba(31,122,99,0.1)] border border-white/60 relative overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_60px_-15px_rgba(31,122,99,0.1)] border border-white/60 relative overflow-hidden">
             
             {/* Glossy Top Highlight */}
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
             
             {/* Logo integrated into the card */}
-            <div className="flex flex-col items-center mb-10">
+            <div className="flex flex-col items-center mb-6">
               <motion.div
                 initial={{ scale: 0, rotate: -10 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
-                className="relative w-24 h-24 md:w-28 md:h-28 rounded-[1.25rem] shadow-sm overflow-hidden border border-gray-100 mb-6 bg-white flex items-center justify-center group"
+                className="relative w-20 h-20 md:w-24 md:h-24 rounded-[1.25rem] shadow-sm overflow-hidden border border-gray-100 mb-3 bg-white flex items-center justify-center group"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-[#1F7A63]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 {logoUrl ? (
@@ -124,7 +124,7 @@ export default function AdminLogin() {
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-5">
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-[#2B2B2B]/80 uppercase tracking-widest ml-1">Email Address</label>
@@ -193,7 +193,7 @@ export default function AdminLogin() {
             </form>
           </div>
 
-          <div className="mt-8 flex justify-center items-center gap-8 opacity-40 hover:opacity-70 transition-opacity">
+          <div className="mt-4 flex justify-center items-center gap-8 opacity-40 hover:opacity-70 transition-opacity">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#2B2B2B]/60" />
               <span className="text-[10px] font-bold text-[#2B2B2B]/60 uppercase tracking-widest">End-to-End Encrypted</span>

@@ -1,0 +1,4 @@
+{
+ "{{count}} delivered · {{expected}} expected today_one": "{{count}} delivered · {{expected}} expected today",
+ "{{count}} delivered · {{expected}} expected today_other": "{{count}} delivered · {{expected}} expected today"
+}

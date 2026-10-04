@@ -107,9 +107,12 @@ export function getCurrentUserRole(module = null) {
     if (!token) return null;
     
     if (isTokenExpired(token)) {
-      // Token expired, clear it
-      clearModuleAuth(module);
-      return null;
+      // An expired ACCESS token is normal: the refresh token renews it on the next request. Only a session with no
+      // refresh token left is really over.
+      if (!getModuleRefreshToken(module)) {
+        clearModuleAuth(module);
+        return null;
+      }
     }
     
     return getRoleFromToken(token);
@@ -138,8 +141,12 @@ export function isModuleAuthenticated(module) {
   if (!token) return false;
   
   if (isTokenExpired(token)) {
-    clearModuleAuth(module);
-    return false;
+    // Expired access token + a refresh token = still signed in (the API client refreshes it silently).
+    // The user is only signed out by pressing logout, or when the server itself rejects the refresh token.
+    if (!getModuleRefreshToken(module)) {
+      clearModuleAuth(module);
+      return false;
+    }
   }
   
   return true;

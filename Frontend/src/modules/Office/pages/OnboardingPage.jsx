@@ -7,7 +7,7 @@ import { startOnboardingApi, updateOnboardingStepApi, completeOnboardingApi } fr
 import { useTranslation } from "react-i18next";
 
 const INITIAL_ONBOARDING_DATA = {
-  email: 'j.doe@example.com', // Auto-fill standard mock email from mockup
+  email: '',
   companyName: '',
   address: '',
   nip: '',
@@ -31,7 +31,15 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     // Start onboarding session on mount
-    startOnboardingApi({ email: INITIAL_ONBOARDING_DATA.email }).catch(err => console.error(err));
+    startOnboardingApi({})
+      .then((res) => {
+        const accountEmail = res.data?.data?.email;
+        if (accountEmail) {
+          // The sign-in email is the default contact email (still editable in step 3).
+          setData((prev) => ({ ...prev, email: accountEmail, contactEmail: prev.contactEmail || accountEmail }));
+        }
+      })
+      .catch(err => console.error(err));
   }, []);
 
   const updateData = (fields) => {

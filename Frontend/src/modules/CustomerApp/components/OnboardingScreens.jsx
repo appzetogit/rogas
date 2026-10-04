@@ -24,10 +24,10 @@ export function WelcomeScreen({ onSignup, onLogin }) {
             <img 
               src={localStorage.getItem('user_app_logo')} 
               alt={t("App Logo")} 
-              className="w-full h-full object-contain bg-white p-4 rounded-[32px] shadow-xl rotate-[-2deg] transition-all hover:rotate-0 duration-300" 
+              className="w-full h-full object-contain bg-white p-4 rounded-[32px] shadow-xl" 
             />
           ) : (
-            <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden rotate-[-2deg] transition-all hover:rotate-0 duration-300 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+            <div className="w-full h-full bg-white shadow-xl rounded-[32px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
               <ShoppingBag className="text-[80px] text-primary/50" />
             </div>
           )}
@@ -102,7 +102,7 @@ export function GoalsScreen({ onBack, onNext }) {
       <div className="w-10"></div>
     </header>
 
-    <main className="flex-1 px-[20px] pb-12">
+    <main className="flex-1 px-[20px] pb-[max(3rem,env(safe-area-inset-bottom))]">
       {/* Progress Indicator */}
       <div className="mt-2 flex flex-col gap-1">
         <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
@@ -151,7 +151,7 @@ export function GoalsScreen({ onBack, onNext }) {
       </div>
     </main>
 
-    <footer className="p-[20px] pt-4 bg-[#F5F5F0]">
+    <footer className="p-[20px] pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-[#F5F5F0]">
       <button onClick={onNext} className="w-full bg-primary-container hover:bg-[#1b6b55] transition-all py-4 rounded-xl text-white font-bold text-center active:scale-95 shadow-md">
         {t("Continue")}
       </button>
@@ -204,7 +204,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
       <div className="w-10"></div>
     </header>
 
-    <main className="px-[20px] pb-32">
+    <main className="px-[20px] pb-[calc(9rem+env(safe-area-inset-bottom))]">
       {/* Headline */}
       <h1 className="text-[22px] font-extrabold mt-6 text-[#1b1c1c]">{t("Your dietary preferences")}</h1>
       <p className="text-on-surface-variant text-[14px] mt-1 text-[#3e4945]">
@@ -266,7 +266,7 @@ export function DietPrefsScreen({ onBack, onNext, initialPrefs }) {
     </main>
 
     {/* footer sticky actions */}
-    <footer className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom">
+    <footer className="fixed bottom-0 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] bg-white/80 backdrop-blur-md p-5 border-t border-[#bec9c3]/30 z-[100] safe-bottom pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <button onClick={handleContinue} className="w-full bg-primary-container text-white py-4 rounded-xl font-bold text-center shadow-lg active:scale-95 transition-all">
         {t("Continue")}
       </button>
@@ -409,7 +409,7 @@ export function ManualLocationScreen({ onBack, onConfirm }) {
         <div className="flex-1 px-4"></div>
         <div className="w-10"></div>
       </header>
-      <main className="px-[20px] flex-1 pb-10 max-w-xl w-full mx-auto">
+      <main className="px-[20px] flex-1 pb-[max(2.5rem,env(safe-area-inset-bottom))] max-w-xl w-full mx-auto">
         <h1 className="text-[24px] font-extrabold mt-6 text-[#1b1c1c]">{t("Enter your address")}</h1>
         <p className="text-[14px] mt-2 mb-6 text-[#3e4945]">{t("We need your address to find the best meal makers near you.")}</p>
         {/* Saved to the address book and checked against the delivery zones (Gap U) */}

@@ -1,4 +1,5 @@
 import useMoney from "@/shared/payments/money";
+import useKeyboardOpen from "../../../shared/hooks/useKeyboardOpen";
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -36,6 +37,7 @@ const dropBeforeFor = (slotKey) => {
 
 function NewDeliveryDashboard({ children }) {
   const { t: tr } = useTranslation("driver");
+  const keyboardOpen = useKeyboardOpen();
   const { money } = useMoney();
   useDMBTracking();
   const [stats, setStats] = useState(INITIAL_DRIVER_STATS);
@@ -792,7 +794,7 @@ function NewDeliveryDashboard({ children }) {
       )}
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center md:hidden">
+      <nav className={`fixed bottom-0 left-0 w-full z-45 bg-white pt-2.5 pb-4 border-t border-[#bec9c3] flex justify-around items-center md:hidden ${keyboardOpen ? "hidden" : ""}`}>
         <button
           onClick={() => {
             if (currentScreen === "cannot_deliver" && activeOrder?.status === "picked_up") {

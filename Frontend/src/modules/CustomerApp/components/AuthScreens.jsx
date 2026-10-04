@@ -32,7 +32,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
         <LanguageSwitcher className="ml-auto" selectClassName="rounded-lg border border-gray-300 bg-white/90 px-2 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer" />
       </header>
 
-      <main className="px-5 flex-1 flex flex-col pb-6">
+      <main className="px-5 flex-1 flex flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {localStorage.getItem('user_app_logo') ? (
           <img 
             src={localStorage.getItem('user_app_logo')} 
@@ -77,7 +77,7 @@ export function AuthPhoneScreen({ isLogin, onToggleMode, onSendOtp, onBack }) {
                   const val = e.target.value.replace(/\D/g, "").slice(0, selectedCountry.phoneLength);
                   setPhone(val);
                 }}
-                placeholder={selectedCountry.placeholder}
+                placeholder={t("Enter {{n}}-digit number", { n: selectedCountry.phoneLength })}
                 className="flex-1 px-4 text-[14px] font-semibold text-[#1b1c1c] focus:outline-none"
                 maxLength={selectedCountry.phoneLength}
                 autoFocus={isLogin}
@@ -181,9 +181,7 @@ export function OtpVerificationScreen({ phone, onVerify, onResend, onBack }) {
           ))}
         </div>
 
-        <p className="text-[12px] text-[#6e7a74] mb-10">
-          {t("Hint: Try")} <span className="font-bold text-[#1F7A63]">123456</span>
-        </p>
+        <div className="mb-10" />
 
         <div className="w-full mt-auto mb-8 flex flex-col gap-5">
           <button 
@@ -241,7 +239,7 @@ export function UserDetailsScreen({ onContinue, onBack }) {
         </div>
       </header>
 
-      <main className="px-5 flex-1 flex flex-col pb-6 pt-2">
+      <main className="px-5 flex-1 flex flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
         <h1 className="text-[24px] font-extrabold text-[#1b1c1c] tracking-tight">
           {t("About You")}
         </h1>

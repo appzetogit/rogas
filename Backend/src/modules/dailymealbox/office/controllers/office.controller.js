@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { OfficeEmployee } from '../models/officeEmployee.model.js';
 import { OfficeMealAssignment } from '../models/officeMealAssignment.model.js';
 import { OfficeCompany } from '../models/officeCompany.model.js';
+import { OfficeAccount } from '../models/officeAccount.model.js';
 import { OfficeOnboarding } from '../models/officeOnboarding.model.js';
 import { OfficePayment } from '../models/officePayment.model.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
@@ -14,6 +15,11 @@ import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsErr
 import { resolvePaymentContext, resolveProviders } from '../../../payments/payments.settings.js';
 import { PaymentTransaction } from '../../../payments/payments.models.js';
 import { fulfilOfficePayment, OfficeAssignError } from '../office.assignment.service.js';
+import { lookupNip, NipLookupError } from '../nipLookup.service.js';
+import { notifyAdminsSafely } from '../../../../core/notifications/firebase.service.js';
+import { sendOfficeNotificationEmail } from '../../../../utils/email.js';
+import { FoodAdmin } from '../../../../core/admin/admin.model.js';
+import { logger } from '../../../../utils/logger.js';
 
 // ─── Employee Controllers ─────────────────────────────────────────────────────
 
@@ -519,7 +525,8 @@ export const getOnboardingStatus = async (req, res) => {
 export const startOnboarding = async (req, res) => {
     try {
         const accountId = req.user.accountId;
-        const { email } = req.body;
+        const account = await OfficeAccount.findById(accountId).select('email').lean();
+        const email = account?.email || req.body?.email;
 
         let onboarding = await OfficeOnboarding.findOne({ accountId });
         if (!onboarding) {
@@ -604,6 +611,28 @@ export const completeOnboarding = async (req, res) => {
              await OfficeAccount.findByIdAndUpdate(accountId, { companyId: company._id, onboardingId: onboarding._id });
         });
 
+        // Tell the admins (bell + push + email) that a new office is waiting for approval. Never blocks the response.
+        try {
+            const name = company.legalName || 'A company';
+            void notifyAdminsSafely({
+                title: 'New Office Approval Request 🏢',
+                body: `${name} (NIP ${company.nip}) submitted its onboarding and is waiting for approval.`,
+                data: { type: 'approval', subType: 'office_company', id: String(company._id), targetUrl: '/admin/food/office-approvals' }
+            });
+            const admins = await FoodAdmin.find({ isActive: true }).select('email').lean();
+            for (const a of admins) {
+                if (!a.email) continue;
+                void sendOfficeNotificationEmail({
+                    to: a.email,
+                    subject: `New office approval request: ${name}`,
+                    heading: 'A new office is waiting for approval',
+                    lines: [`${name} (NIP ${company.nip}) has completed onboarding.`, 'Open Admin > Office Onboarding Requests to review the documents and approve or reject it.']
+                });
+            }
+        } catch (notifyErr) {
+            logger.warn(`Office approval notification failed: ${notifyErr.message}`);
+        }
+
         return sendResponse(res, 200, 'Onboarding completed successfully. Company is under review.', company);
     } catch (error) {
         return sendError(res, 500, error.message);
@@ -623,6 +652,18 @@ export const deactivateCompanyAccount = async (req, res) => {
         
         return sendResponse(res, 200, 'Company account deactivated successfully', company);
     } catch (error) {
+        return sendError(res, 500, error.message);
+    }
+};
+
+// ─── NIP lookup (pre-fills the typable company fields in onboarding) ─────────
+
+export const lookupCompanyByNip = async (req, res) => {
+    try {
+        const data = await lookupNip(req.params.nip);
+        return sendResponse(res, 200, 'Company found', data);
+    } catch (error) {
+        if (error instanceof NipLookupError) return sendError(res, error.status, error.message);
         return sendError(res, 500, error.message);
     }
 };

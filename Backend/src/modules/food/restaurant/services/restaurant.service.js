@@ -6,6 +6,15 @@ import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
 
+/** Fields that need admin re-approval when an approved vendor changes them (legal and financial documents). */
+const REAPPROVAL_FIELDS = new Set([
+    'panNumber', 'nameOnPan', 'panImage',
+    'gstRegistered', 'gstNumber', 'gstLegalName', 'gstAddress', 'gstImage',
+    'fssaiNumber', 'fssaiExpiry', 'fssaiImage',
+    'foodLicenceUrl', 'foodLicenceExpiry',
+    'accountNumber', 'ifscCode', 'accountHolderName', 'upiId', 'bankName', 'upiQrImage'
+]);
+
 const normalizeName = (value) =>
     String(value || '')
         .trim()
@@ -983,9 +992,15 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         (updatedFields.includes('pendingZoneId') || updatedFields.includes('zoneChangeStatus')) &&
         nonZoneFields.length === 0;
 
+    // Only legal/financial DOCUMENT changes send an already-approved vendor back to admin review. Everything else
+    // (name, phone, photos, timings, ...) is applied immediately and the vendor stays approved and logged in.
+    const needsReapproval = updatedFields.some((f) => REAPPROVAL_FIELDS.has(f));
+
     if (isZoneUpdateForApproved) {
         update.pendingUpdateReason = 'Zone Update';
         // Keep status as approved, do NOT set update.status = 'pending'
+    } else if (currentRestaurant.status === 'approved' && !needsReapproval) {
+        // Ordinary profile edit: no re-approval.
     } else {
         update.pendingUpdateReason = reason;
         update.status = 'pending';

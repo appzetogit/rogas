@@ -403,7 +403,7 @@ export default function UnifiedOTPFastLogin() {
                       maxLength={selectedCountry.phoneLength}
                       className="w-full bg-transparent border-0 outline-none focus:border-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-gray-800 dark:text-white font-semibold text-base placeholder:text-gray-400 placeholder:font-medium"
                       style={{ boxShadow: "none", border: "none", outline: "none" }}
-                      placeholder={selectedCountry.placeholder}
+                      placeholder={t("Enter {{n}}-digit number", { n: selectedCountry.phoneLength })}
                     />
                   </div>
                 </div>

@@ -40,7 +40,7 @@ export default function SignupStep1() {
   const [focusedField, setFocusedField] = useState(null);
 
   const [formData, setFormData] = useState(() => {
-    const saved = sessionStorage.getItem("deliverySignupDetails");
+    const saved = localStorage.getItem("deliverySignupDetails");
     const base = {
       name: "",
       phone: "",
@@ -50,7 +50,7 @@ export default function SignupStep1() {
       address: "",
       city: "",
       state: "",
-      vehicleType: "bike",
+      vehicleType: "",
       vehicleName: "",
       vehicleNumber: "",
       drivingLicenseNumber: "",
@@ -94,7 +94,7 @@ export default function SignupStep1() {
     value.replace(/\s/g, "").toLowerCase();
 
   useEffect(() => {
-    sessionStorage.setItem("deliverySignupDetails", JSON.stringify(formData));
+    localStorage.setItem("deliverySignupDetails", JSON.stringify(formData));
   }, [formData]);
 
   const handleChange = (e) => {
@@ -214,12 +214,12 @@ export default function SignupStep1() {
         address: formData.address.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
-        vehicleType: formData.vehicleType || "bike",
+        vehicleType: formData.vehicleType || "",
         vehicleName: formData.vehicleName?.trim() || "",
         vehicleNumber: formData.vehicleNumber.trim(),
         drivingLicenseNumber: formData.drivingLicenseNumber.trim().toUpperCase(),
       };
-      sessionStorage.setItem("deliverySignupDetails", JSON.stringify(details));
+      localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
       toast.success(t("Details saved"));
       navigate("/food/delivery/signup/documents");
     } catch (error) {
@@ -475,29 +475,6 @@ export default function SignupStep1() {
                   />
                   {errors.state && <p style={{ color: "#C5221F", fontSize: "12px", marginTop: "4px", margin: 0 }}>{errors.state}</p>}
                 </div>
-              </div>
-
-              {/* Vehicle Type */}
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: COLORS.onSurfaceVariant, marginBottom: "6px" }}>
-                  {t("Vehicle Type")} <span style={{ color: "#C5221F" }}>*</span>
-                </label>
-                <select
-                  name="vehicleType"
-                  value={formData.vehicleType}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField("vehicleType")}
-                  onBlur={() => setFocusedField(null)}
-                  style={{
-                    ...getInputStyle("vehicleType"),
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="bike">{t("Bike")}</option>
-                  <option value="scooter">{t("Scooter")}</option>
-                  <option value="bicycle">{t("Bicycle")}</option>
-                  <option value="car">{t("Car")}</option>
-                </select>
               </div>
 
               {/* Vehicle Name */}

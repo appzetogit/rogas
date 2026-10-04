@@ -52,6 +52,7 @@ export const updateCompanyDetailsApi = (data) => officeClient.put('/company', da
 export const deactivateCompanyAccountApi = () => officeClient.put('/company/deactivate');
 
 // Onboarding
+export const lookupNipApi = (nip) => officeClient.get(`/nip-lookup/${nip}`);
 export const getOnboardingStatusApi = () => officeClient.get('/onboarding/status');
 export const startOnboardingApi = (data) => officeClient.post('/onboarding/start', data);
 export const updateOnboardingStepApi = (step, data) => officeClient.put(`/onboarding/step/${step}`, data);

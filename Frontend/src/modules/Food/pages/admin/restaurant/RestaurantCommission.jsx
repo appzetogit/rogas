@@ -458,7 +458,18 @@ export default function RestaurantCommission() {
                         )}
                         {visibleColumns.restaurantId && (
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-slate-700">{commission.restaurantId || '-'}</span>
+                            {commission.restaurantId ? (
+                              <button
+                                type="button"
+                                title={`${commission.restaurantId} (click to copy)`}
+                                onClick={() => { try { navigator.clipboard?.writeText(String(commission.restaurantId)) } catch { /* ignore */ } }}
+                                className="text-sm text-slate-700 font-mono hover:text-slate-900"
+                              >
+                                {String(commission.restaurantId).length > 8 ? `…${String(commission.restaurantId).slice(-6)}` : commission.restaurantId}
+                              </button>
+                            ) : (
+                              <span className="text-sm text-slate-700">-</span>
+                            )}
                           </td>
                         )}
                         {visibleColumns.defaultCommission && (
