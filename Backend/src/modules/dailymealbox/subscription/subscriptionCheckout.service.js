@@ -317,8 +317,11 @@ export const expireEndedSubscriptions = async (now = new Date()) => {
     const ended = await DMBSubscription.find({ status: { $in: ['active', 'paused'] }, endDate: { $ne: null, $lte: today } });
     let expired = 0;
     for (const sub of ended) {
-        sub.status = sub.replacedBySubscriptionId ? 'cancelled' : 'expired';
+        // Customer-cancelled subscriptions end as "cancelled" (not "expired") once their paid period is over.
+        const customerCancelled = Boolean(sub.cancelRequestedAt) && !sub.replacedBySubscriptionId;
+        sub.status = sub.replacedBySubscriptionId || customerCancelled ? 'cancelled' : 'expired';
         sub.expiredAt = now;
+        if (customerCancelled && !sub.cancelledAt) sub.cancelledAt = now;
         if (sub.replacedBySubscriptionId && !sub.cancelledAt) {
             sub.cancelledAt = now;
             sub.cancellationReason = `Replaced by a ${sub.planChangePending?.changeType || 'plan change'}`;
@@ -326,7 +329,7 @@ export const expireEndedSubscriptions = async (now = new Date()) => {
         await sub.save();
         expired++;
         const live = await DMBSubscription.exists({ userId: sub.userId, status: { $in: ['active', 'paused'] } });
-        if (!live) await FoodUser.updateOne({ _id: sub.userId }, { subscriptionStatus: 'none' });
+        if (!live) await FoodUser.updateOne({ _id: sub.userId }, { subscriptionStatus: customerCancelled ? 'cancelled' : 'none' });
     }
     return { expired };
 };

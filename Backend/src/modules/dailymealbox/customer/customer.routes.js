@@ -165,6 +165,8 @@ router.get('/subscriptions/:id/detail', ...customer, send(async (req) => {
         subscription: {
             ...s,
             displayStatus: s.cancelAt && s.status === 'active' ? 'cancelling' : s.status,
+            cancelRequested: Boolean(s.cancelRequestedAt),
+            lastDeliveryDate: s.cancelRequestedAt && s.cancelAt ? new Date(new Date(s.cancelAt).getTime() - 86_400_000).toISOString().slice(0, 10) : null,
             quote: s.quote ? { lines: s.quote.lines, totals: s.quote.totals, currency: s.quote.currency, discounts: s.quote.discounts, cycle: s.quote.cycle } : null
         }
     };
@@ -240,6 +242,17 @@ router.get('/rotation/vendors', send(async (req) => {
     const { browseVendors } = await import('./browse.service.js');
     const res = await browseVendors({ zoneId: req.query.zoneId || req.zoneId, filters: { rotation: 'true' } });
     return { enabled: res.filtersAvailable.rotation, vendors: res.vendors };
+}));
+
+// ─── Amendment 1 #17: GDPR account deletion request (30-day deadline) ────────────────────────────────
+router.post('/gdpr/deletion-request', ...customer, send(async (req) => {
+    const { requestDeletion } = await import('../gdpr/gdpr.service.js');
+    const { request, alreadyRequested } = await requestDeletion(uid(req));
+    return { alreadyRequested, requestedAt: request.requestedAt, dueAt: request.dueAt };
+}));
+router.get('/gdpr/status', ...customer, send(async (req) => {
+    const { statusForUser } = await import('../gdpr/gdpr.service.js');
+    return statusForUser(uid(req));
 }));
 
 // ─── Gap AC: legal documents (all app roles) ───────────────────────────────────────────────────────────

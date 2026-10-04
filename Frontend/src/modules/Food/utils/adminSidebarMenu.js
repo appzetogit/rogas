@@ -106,6 +106,8 @@ export const adminSidebarMenu = [
         roles: ["SUPER_ADMIN", "CITY_MANAGER", "CUSTOMER_SERVICE", "MARKETING_MANAGER", "WEB_MANAGER"],
         subItems: [
           { label: "Bad-Debt Customers", path: "/admin/food/dmb/bad-debt" },
+          { label: "Credit Notes", path: "/admin/food/dmb/credit-notes" },
+          { label: "GDPR Requests", path: "/admin/food/dmb/gdpr" },
           { label: "Customer Segments", path: "/admin/food/dmb/segments" },
           { label: "Legal Documents", path: "/admin/food/dmb/legal" },
         ],

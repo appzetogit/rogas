@@ -159,6 +159,18 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 
         notes: { type: String, default: '' },
 
+        /** Customer note to the kitchen + the vendor's acknowledgement (Amendment 1 #7). Preparing is blocked until acknowledged. */
+        /** Where the driver confirmed the delivery, and whether that was > 500 m from the address (flag for admin review). */
+        deliveryGps: { lat: { type: Number, default: null }, lng: { type: Number, default: null } },
+        gpsMismatch: { type: Boolean, default: false },
+        proofMethod: { type: String, default: '' },
+        /** Set when the customer's account was deleted (GDPR): the order stays for tax law, without personal data. */
+        anonymisedAs: { type: String, default: '' },
+        specialInstructions: { type: String, default: '' },
+        specialInstructionsAllergen: { type: Boolean, default: false },
+        specialInstructionsAckAt: { type: Date, default: null },
+        specialInstructionsAckBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant', default: null },
+
         /** One-off address for this delivery only (Gap V) — the subscription's day assignment is unchanged. */
         addressOverridden: { type: Boolean, default: false },
         /** Failed delivery report (DA-07) incl. what happened to the box (Gap P). */

@@ -446,18 +446,46 @@ export const resumeSubscription = async (subscriptionId, { userId } = {}) => {
 };
 
 // ─── Cancel Subscription (PRD ACM-15 — EU Law, max 2-tap) ─────────────────
+/**
+ * Cancel (Amendment 1 #4): the subscription keeps delivering until the end of the period the customer already paid
+ * for - no pro-rata refund, no new charge. Without a running paid period (paused, or no end date) it ends immediately.
+ * Returns { subscription, cancellation: { atPeriodEnd, endsOn, remainingDeliveries } }.
+ */
 export const cancelSubscription = async ({ subscriptionId, userId, reason }) => {
-    const sub = await DMBSubscription.findOneAndUpdate(
-        findSubQuery(subscriptionId, { userId, status: { $in: ['active', 'paused'] } }),
-        { status: 'cancelled', cancelledAt: new Date(), cancellationReason: reason || '', autoRenew: false },
-        { new: true }
-    );
-    if (!sub) throw new Error('Subscription not found or already cancelled');
+    const { localToday, addDays, storageDateStr } = await import('../../../utils/platformTime.js');
+    const current = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId, status: { $in: ['active', 'paused'] } }));
+    if (!current) throw new Error('Subscription not found or already cancelled');
+    if (current.cancelRequestedAt) throw new Error('This subscription is already set to end');
 
-    // Update user status
-    const hasOtherActive = await DMBSubscription.exists({ userId, status: 'active', _id: { $ne: sub._id } });
-    if (!hasOtherActive) {
-        await FoodUser.findByIdAndUpdate(userId, { subscriptionStatus: 'cancelled' });
+    const today = localToday();
+    const atPeriodEnd = current.status === 'active' && current.endDate && new Date(current.endDate) > today;
+    let sub;
+    let cancellation = { atPeriodEnd: false, endsOn: storageDateStr(today), remainingDeliveries: 0 };
+
+    if (atPeriodEnd) {
+        const remaining = await deliveryDatesBetween(current.toObject(), today, new Date(current.endDate));
+        current.cancelAt = current.endDate;
+        current.cancelRequestedAt = new Date();
+        current.cancellationReason = reason || '';
+        current.autoRenew = false;
+        await current.save();
+        sub = current;
+        cancellation = {
+            atPeriodEnd: true,
+            endsOn: storageDateStr(addDays(new Date(current.endDate), -1)),
+            remainingDeliveries: remaining.length
+        };
+    } else {
+        sub = await DMBSubscription.findOneAndUpdate(
+            { _id: current._id },
+            { status: 'cancelled', cancelledAt: new Date(), cancellationReason: reason || '', autoRenew: false },
+            { new: true }
+        );
+        // Update user status
+        const hasOtherActive = await DMBSubscription.exists({ userId, status: 'active', _id: { $ne: sub._id } });
+        if (!hasOtherActive) {
+            await FoodUser.findByIdAndUpdate(userId, { subscriptionStatus: 'cancelled' });
+        }
     }
 
     // Notify vendor
@@ -474,13 +502,22 @@ export const cancelSubscription = async ({ subscriptionId, userId, reason }) => 
     ]);
     if (user?.email) {
         await emailSafe(
-            queueEmail({
-                to: user.email,
-                subjectKey: 'Your subscription has been cancelled',
-                bodyKey: "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.",
-                ownerType: 'USER',
-                ownerId: userId
-            }),
+            cancellation.atPeriodEnd
+                ? queueEmail({
+                    to: user.email,
+                    subjectKey: 'Your subscription will end soon',
+                    bodyKey: 'Your DailyMealBox subscription will end on {{date}}. You will still receive your remaining deliveries until then and you will not be charged again.\n\nChanged your mind? Open your subscription in the app and tap "Keep my subscription".',
+                    vars: { date: cancellation.endsOn },
+                    ownerType: 'USER',
+                    ownerId: userId
+                })
+                : queueEmail({
+                    to: user.email,
+                    subjectKey: 'Your subscription has been cancelled',
+                    bodyKey: "We've cancelled your DailyMealBox subscription as requested. No more deliveries will be scheduled and you will not be charged again.\n\nYou can start a new subscription any time from the Plans tab.",
+                    ownerType: 'USER',
+                    ownerId: userId
+                }),
             `Cancellation email for user ${userId}`
         );
     }
@@ -498,7 +535,7 @@ export const cancelSubscription = async ({ subscriptionId, userId, reason }) => 
     }
 
     logger.info(`Subscription cancelled: ${subscriptionId} by user ${userId}`);
-    return sub;
+    return { subscription: sub, cancellation };
 };
 
 // ─── Auto-Resume CRON (runs daily) ────────────────────────────────────────
@@ -579,4 +616,17 @@ export const seedDurationPlans = async () => {
     } catch (err) {
         logger.error(`Failed to seed DMB duration plans: ${err.message}`);
     }
+};
+
+/** "Keep my subscription": undoes a cancellation that has not taken effect yet (no payment is taken now). */
+export const keepSubscription = async ({ subscriptionId, userId }) => {
+    const sub = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId, status: 'active' }));
+    if (!sub || !sub.cancelRequestedAt || sub.replacedBySubscriptionId) throw new Error('This subscription is not set to end');
+    sub.cancelAt = null;
+    sub.cancelRequestedAt = null;
+    sub.cancellationReason = '';
+    sub.autoRenew = true;
+    await sub.save();
+    await FoodUser.updateOne({ _id: userId }, { subscriptionStatus: 'active' });
+    return sub;
 };

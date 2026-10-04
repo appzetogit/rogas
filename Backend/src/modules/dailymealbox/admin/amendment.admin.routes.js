@@ -137,6 +137,36 @@ router.post('/integrations/whatsapp/test', requirePermission('systemSettings', '
 }));
 router.get('/integrations/whatsapp/logs', requirePermission('systemSettings', 'view'), send(async (req) => ({ logs: await (await import('../integrations/whatsapp.service.js')).recentWhatsAppLogs(req.query.limit) })));
 
+// ─── Amendment 1 #17: GDPR deletion requests (AP-04 inbox) ────────────────────────────────────────────
+router.get('/gdpr', requirePermission('customerManagement', 'view'), send(async (req) => {
+    const { listRequests } = await import('../gdpr/gdpr.service.js');
+    return { requests: await listRequests({ status: req.query.status || undefined }) };
+}));
+router.post('/gdpr/:id/execute', requirePermission('customerManagement', 'edit'), requireAdminRoles('CUSTOMER_SERVICE'), send(async (req) => {
+    const { executeDeletion } = await import('../gdpr/gdpr.service.js');
+    const admin = await loadAdmin(req);
+    const result = await executeDeletion(req.params.id, { adminId: admin.email || String(admin._id), acknowledgeBalance: req.body?.acknowledgeBalance === true });
+    await audit(req, 'gdpr.execute', 'DMBGdprRequest', req.params.id, null, { status: result.request.status, anonId: result.request.anonId });
+    return { request: result.request, alreadyCompleted: result.alreadyCompleted };
+}));
+
+// ─── Amendment 1 #12: credit notes for refunded B2B VAT invoices ─────────────────────────────────────────
+router.get('/credit-notes', requirePermission('customerManagement', 'view'), send(async (req) => {
+    const { listCreditNotes } = await import('../billing/creditNote.service.js');
+    return { creditNotes: await listCreditNotes({ limit: req.query.limit, subscriptionId: req.query.subscriptionId || undefined }) };
+}));
+router.get('/credit-notes/:id/pdf', requirePermission('customerManagement', 'view'), async (req, res) => {
+    try {
+        const { renderCreditNotePdf } = await import('../billing/creditNote.service.js');
+        const { doc, filename } = await renderCreditNotePdf(req.params.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        doc.pipe(res);
+    } catch (err) {
+        res.status(404).json({ success: false, message: err.message });
+    }
+});
+
 // ─── Gap F: bad-debt customers (AP-11) ───────────────────────────────────────────────────────────────────
 router.get('/bad-debt', requirePermission('customerManagement', 'view'), send(async (req) => {
     const admin = await loadAdmin(req);

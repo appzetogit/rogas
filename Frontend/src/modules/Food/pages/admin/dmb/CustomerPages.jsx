@@ -238,3 +238,90 @@ function LegalEditor({ doc, onClose }) {
     </Card>
   );
 }
+
+/** Amendment 1 #12 - credit notes issued automatically when a B2B VAT invoice is refunded (kept 7 years, never editable). */
+export function CreditNotesPage() {
+  const { data, error } = useLoad(() => dmbExtraAdminAPI.creditNotes({ limit: 200 }), []);
+  const [busyId, setBusyId] = useState(null);
+  const download = async (n) => {
+    setBusyId(n._id);
+    try {
+      const res = await dmbExtraAdminAPI.creditNotePdf(n._id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${n.creditNoteNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBusyId(null);
+    }
+  };
+  return (
+    <Page title="Credit notes" subtitle="Issued automatically when a refund is made on a B2B VAT invoice. They reference the original invoice, carry negative amounts with the VAT corrected pro rata, and are kept for 7 years.">
+      <ErrorBox error={error} />
+      <Card>
+        <Table
+          rows={data?.creditNotes}
+          rowKey={(n) => n._id}
+          columns={[
+            { label: "Credit note", render: (n) => <span className="font-mono font-semibold">{n.creditNoteNumber}</span> },
+            { label: "Issued", render: (n) => fmtDate(n.issuedAt) },
+            { label: "Original invoice", key: "invoiceNumber" },
+            { label: "Buyer", render: (n) => <div><p className="font-semibold">{n.buyer?.name || "—"}</p><p className="text-xs text-slate-500">NIP {n.buyer?.nip || "—"}</p></div> },
+            { label: "Credited", right: true, render: (n) => money(n.totals?.gross, n.currency) },
+            { label: "VAT", right: true, render: (n) => money(n.totals?.vat, n.currency) },
+            { label: "Share", right: true, render: (n) => `${Math.round((n.ratio || 0) * 100)}%` },
+            { label: "", render: (n) => <Btn size="sm" variant="outline" busy={busyId === n._id} onClick={() => download(n)}>PDF</Btn> },
+          ]}
+          empty="No credit notes yet."
+        />
+      </Card>
+    </Page>
+  );
+}
+
+/** Amendment 1 #17 - GDPR deletion requests (30-day EU deadline). Customer Service executes them with one action. */
+export function GdprRequestsPage() {
+  const { data, error, reload } = useLoad(() => dmbExtraAdminAPI.gdprRequests(), []);
+  const { busy, run } = useAction();
+  const execute = (r) => {
+    if (!window.confirm("Delete this customer's personal data now? Orders and invoices are kept in anonymous form. This cannot be undone.")) return;
+    run(r._id, async () => {
+      try {
+        await dmbExtraAdminAPI.executeGdpr(r._id, {});
+      } catch (e) {
+        if (e?.response?.data?.code === "WALLET_BALANCE" && window.confirm(`${e.response.data.message}\n\nDelete anyway and forfeit the balance?`)) {
+          await dmbExtraAdminAPI.executeGdpr(r._id, { acknowledgeBalance: true });
+        } else {
+          throw e;
+        }
+      }
+      await reload();
+    }, "Deletion completed");
+  };
+  return (
+    <Page title="GDPR deletion requests" subtitle="Customers who asked to delete their account. The EU deadline is 30 days; requests still open after 25 days are escalated to the Super Admin automatically.">
+      <ErrorBox error={error} />
+      <Card>
+        <Table
+          rows={data?.requests}
+          rowKey={(r) => r._id}
+          columns={[
+            { label: "Customer", render: (r) => (r.customer ? <div><p className="font-semibold">{r.customer.name || "—"}</p><p className="text-xs text-slate-500">{r.customer.phone} {r.customer.email}</p></div> : <span className="text-slate-400">{r.anonId}</span>) },
+            { label: "Requested", render: (r) => fmtDate(r.requestedAt) },
+            { label: "Deadline", render: (r) => fmtDate(r.dueAt) },
+            { label: "Status", render: (r) => (
+              r.status === "completed"
+                ? <Badge tone="green">Completed {fmtDate(r.completedAt)}</Badge>
+                : <div className="flex flex-wrap gap-1"><Badge tone={r.overdue ? "red" : r.daysLeft <= 5 ? "amber" : "slate"}>{r.overdue ? "Overdue" : `${r.daysLeft} day(s) left`}</Badge>{r.escalatedAt && <Badge tone="violet">Escalated</Badge>}</div>
+            ) },
+            { label: "Checklist", render: (r) => (r.status === "completed" ? <span className="text-xs text-slate-500">PII deleted · orders anonymised · invoices kept{r.checklist?.confirmationSent ? " · e-mail sent" : ""}</span> : <span className="text-xs text-slate-400">1 Delete PII · 2 Anonymise orders · 3 Keep invoices · 4 Confirmation e-mail</span>) },
+            { label: "", render: (r) => (r.status === "pending" ? <Btn size="sm" variant="outline" busy={busy === r._id} onClick={() => execute(r)}>Execute deletion</Btn> : null) },
+          ]}
+          empty="No deletion requests."
+        />
+      </Card>
+    </Page>
+  );
+}

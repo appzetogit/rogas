@@ -451,6 +451,11 @@ export const refundTransaction = async (publicId, { amount, reason = '', actor =
             { $set: { 'refunds.$.status': out.status, 'refunds.$.providerRefundId': out.providerRefundId || '', status: total >= tx.amountMinor ? 'refunded' : 'partially_refunded' } }
         );
         const refunded = await reload(tx);
+        // Amendment 1 #12: a refunded B2B VAT invoice gets a credit note (best effort, never undoes the refund).
+        if (out.status !== 'failed') {
+            const { issueCreditNoteForRefund } = await import('../dailymealbox/billing/creditNote.service.js');
+            await issueCreditNoteForRefund({ tx: refunded, amountMinor, refundKey, reason, actor });
+        }
         const refundedAmount = fromMinor(amountMinor, tx.currency).toFixed(2);
         const refundReason = String(reason || 'not given');
         if (refunded.customer?.email) {

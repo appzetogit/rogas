@@ -208,6 +208,16 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     }
   };
 
+  // Amendment 1 #7: the customer's note must be acknowledged before the order can be prepared.
+  const handleAcknowledge = async (orderId) => {
+    try {
+      const res = await dmbVendorAPI.acknowledgeInstructions(orderId);
+      setDailyOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, specialInstructionsAckAt: res.data?.specialInstructionsAckAt || new Date().toISOString() } : o)));
+    } catch (err) {
+      showToast(err.response?.data?.message || t("Failed to acknowledge"));
+    }
+  };
+
   const handleRequestDeliveryPartner = async () => {
     try {
       setIsRequestingDelivery(true);
@@ -413,8 +423,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                 const sc = STATUS_CONFIG[order.status] || STATUS_CONFIG.scheduled;
                 const mealName = order.meals?.[0]?.mealPlanName || order.meals?.[0]?.name || 'Meal';
                 const extraMeals = (order.meals?.length || 1) - 1;
-                const canPrepare = order.status === 'scheduled';
-                const canReady = order.status === 'preparing';
+                const needsAck = Boolean(order.specialInstructions) && !order.specialInstructionsAckAt;
+                const canPrepare = order.status === 'scheduled' && !needsAck;
+                const canReady = order.status === 'preparing' && !needsAck;
 
                 return (
                   <div
@@ -449,6 +460,27 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                         <Tag className="text-[12px] text-slate-400" />
                         <span className="text-[11px] font-mono font-semibold text-slate-500">{order.orderId || '—'}</span>
                       </div>
+
+                      {/* Customer special instructions (red = allergen/intolerance, amber = other) */}
+                      {order.specialInstructions && (
+                        <div className={`mb-3 rounded-lg border p-3 ${order.specialInstructionsAllergen ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
+                          <p className={`text-[11px] font-extrabold uppercase tracking-wide ${order.specialInstructionsAllergen ? 'text-red-700' : 'text-amber-700'}`}>
+                            ⚠ {order.specialInstructionsAllergen ? t("Allergen note from customer") : t("Note from customer")}
+                          </p>
+                          <p className="text-[13px] text-slate-800 font-medium mt-1 break-words">{order.specialInstructions}</p>
+                          {needsAck ? (
+                            <button
+                              type="button"
+                              onClick={() => handleAcknowledge(order._id)}
+                              className="mt-2 w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-[12px] active:scale-95 transition-transform"
+                            >
+                              {t("Acknowledged ✓")}
+                            </button>
+                          ) : (
+                            <p className="mt-1 text-[11px] font-bold text-emerald-700">{t("Acknowledged ✓")}</p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Action Buttons */}
                       {order.status !== 'delivered' && order.status !== 'skipped' && (

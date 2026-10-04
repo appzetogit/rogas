@@ -12,6 +12,7 @@ import * as foodTransactionService from '../../food/orders/services/foodTransact
 import { FoodTransaction } from '../../food/orders/models/foodTransaction.model.js';
 import { msg } from '../../i18n/i18n.service.js';
 
+const GPS_FLAG_METERS = parseInt(process.env.GPS_MISMATCH_THRESHOLD_METERS || '500');
 const COLLECTION_PIN_EXPIRY_SECONDS = parseInt(process.env.COLLECTION_PIN_EXPIRY_SECONDS || '7200'); // 2 hours
 const MAX_PIN_ATTEMPTS = 3;
 
@@ -306,24 +307,47 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
     };
 
     // Check if it is a DMB Daily Order
-    const dmbOrder = await DMBDailyOrder.findById(orderId).select('status dispatch.deliveryPartnerId').lean();
+    const dmbOrder = await DMBDailyOrder.findById(orderId).select('status dispatch.deliveryPartnerId deliveryAddress.location orderId').lean();
 
     let order;
     if (dmbOrder) {
         assertDriver(dmbOrder.dispatch?.deliveryPartnerId);
         if (['delivered', 'failed', 'skipped'].includes(dmbOrder.status)) throw new Error(`This delivery is already ${dmbOrder.status}`);
+        let dmbMismatch = Boolean(gpsMismatch);
+        const dest = dmbOrder.deliveryAddress?.location?.coordinates;
+        if (!dmbMismatch && deliveryGps && Array.isArray(dest) && dest.length === 2 && (dest[0] || dest[1])) {
+            const dist = haversineDistance(Number(deliveryGps.lat), Number(deliveryGps.lng), dest[1], dest[0]);
+            dmbMismatch = Number.isFinite(dist) && dist > GPS_FLAG_METERS;
+        }
         order = await DMBDailyOrder.findOneAndUpdate(
             { _id: orderId, status: { $nin: ['delivered', 'failed', 'skipped'] }, 'dispatch.deliveryPartnerId': dmbOrder.dispatch.deliveryPartnerId },
             {
                 $set: {
                     status: 'delivered',
-                    deliveredAt: new Date()
+                    deliveredAt: new Date(),
+                    proofMethod: method || '',
+                    ...(deliveryGps && Number.isFinite(Number(deliveryGps.lat)) && Number.isFinite(Number(deliveryGps.lng))
+                        ? { deliveryGps: { lat: Number(deliveryGps.lat), lng: Number(deliveryGps.lng) } }
+                        : {}),
+                    gpsMismatch: dmbMismatch
                 }
             },
             { new: true }
         );
 
         if (!order) throw new Error('This delivery was updated meanwhile — refresh your route');
+
+        // GPS far from the address never blocks the delivery, it only flags it for admin review.
+        if (dmbMismatch) {
+            import('../platform/platformConfig.service.js')
+                .then((m) => m.raiseAdminAlert({
+                    type: 'delivery_gps_mismatch', severity: 'warning',
+                    title: `Delivery confirmed far from the address (${dmbOrder.orderId || orderId})`,
+                    message: `The driver confirmed this delivery more than ${GPS_FLAG_METERS} m from the customer's address.`,
+                    entityType: 'DMBDailyOrder', entityId: orderId, link: '/admin/food/dmb/alerts', dedupeKey: `gps:${orderId}`
+                }))
+                .catch(() => {});
+        }
 
         // Select mode → "Enjoyed your meal? Subscribe…" prompt (Amendment v2 Gap AG). Never blocks the delivery.
         if (order.orderType === 'one_time_select') {

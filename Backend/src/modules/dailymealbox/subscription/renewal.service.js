@@ -22,6 +22,7 @@ export const sendRenewalReminders = async (now = new Date()) => {
             renewalReminderSentAt: null,
             renewedBySubscriptionId: null,
             replacedBySubscriptionId: null,
+            cancelRequestedAt: null,
             source: { $ne: 'office' }
         }).select('userId subscriptionId endDate').lean();
         for (const sub of subs) {

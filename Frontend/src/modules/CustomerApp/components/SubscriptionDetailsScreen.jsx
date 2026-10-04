@@ -30,6 +30,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
   const [pauseDays, setPauseDays] = useState(1);
   const [pauseReason, setPauseReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelResult, setCancelResult] = useState(null); // { endsOn, remainingDeliveries } after cancelling at period end
 
   const fetchSubscriptions = async () => {
     setLoading(true);
@@ -82,16 +83,39 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
     }
   };
 
+  const handleKeep = async (sub) => {
+    setActionLoading(true);
+    try {
+      await dmbCustomerAPI.keepSubscription(sub.subscriptionId || sub._id);
+      onShowNotificationToast(" " + t("Your subscription continues."));
+      fetchSubscriptions();
+    } catch (err) {
+      onShowNotificationToast(err.response?.data?.message || err.message || t("Could not keep your subscription."));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // A customer-cancelled subscription still runs until the end of the paid period ("Cancelling").
+  const isCancelling = (sub) => sub.status === "active" && Boolean(sub.cancelRequestedAt);
+  const lastDeliveryOf = (sub) => (sub.cancelAt ? new Date(new Date(sub.cancelAt).getTime() - 86400000).toLocaleDateString(getCurrentLanguage(), { day: "numeric", month: "short", year: "numeric" }) : "");
+
   const handleCancel = async (e) => {
     e.preventDefault();
     if (!showCancelModal) return;
     setActionLoading(true);
     try {
-      await dmbCustomerAPI.cancelSubscription(
+      const res = await dmbCustomerAPI.cancelSubscription(
         showCancelModal.subscriptionId,
         cancelReason
       );
-      onShowNotificationToast(" " + t("Subscription cancelled successfully."));
+      const info = res?.data?.cancellation;
+      if (info?.atPeriodEnd) {
+        // Amendment 1 #4: the subscription keeps delivering until the end of the paid period.
+        setCancelResult({ endsOn: info.endsOn, remainingDeliveries: info.remainingDeliveries });
+      } else {
+        onShowNotificationToast(" " + t("Subscription cancelled successfully."));
+      }
       setShowCancelModal(null);
       setCancelReason("");
       fetchSubscriptions();
@@ -305,9 +329,15 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                         {t("ID:")} {sub.subscriptionId || t("N/A")}
                       </span>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeClass(sub.status)}`}>
-                      {getStatusLabel(sub.status)}
-                    </span>
+                    {isCancelling(sub) ? (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-amber-300 bg-amber-50 text-amber-700">
+                        {t("Cancelling — last delivery {{date}}", { date: lastDeliveryOf(sub) })}
+                      </span>
+                    ) : (
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeClass(sub.status)}`}>
+                        {getStatusLabel(sub.status)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Info Grid */}
@@ -349,7 +379,16 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
 
                   {/* Actions Row */}
                   <div className="flex flex-wrap gap-3 pt-3 border-t border-[#f2eff0]">
-                    {(sub.status === "active" || sub.status === "paused") && (
+                    {isCancelling(sub) && (
+                      <button
+                        onClick={() => handleKeep(sub)}
+                        disabled={actionLoading}
+                        className="flex-1 py-2.5 rounded-xl bg-primary text-white hover:bg-[#155a49] text-xs font-bold active:scale-95 transition-all text-center shadow-md"
+                      >
+                        {t("Keep my subscription")}
+                      </button>
+                    )}
+                    {(sub.status === "active" || sub.status === "paused") && !isCancelling(sub) && (
                       <>
                         {sub.status === "active" ? (
                           <>
@@ -583,6 +622,28 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
         </div>
       )}
 
+      {/* CANCELLATION CONFIRMED (cancel at end of paid period) */}
+      {cancelResult && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[110]">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <h3 className="text-lg font-extrabold text-on-surface">{t("Your subscription is ending")}</h3>
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              {t("Your subscription ends on {{date}}.", { date: new Date(`${cancelResult.endsOn}T12:00:00`).toLocaleDateString(getCurrentLanguage(), { day: "numeric", month: "long", year: "numeric" }) })}
+            </p>
+            <p className="text-sm font-bold text-primary">
+              {t("You will receive {{count}} more deliveries.", { count: cancelResult.remainingDeliveries })}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setCancelResult(null); fetchSubscriptions(); }}
+              className="w-full bg-[#1F7A63] text-white py-3 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+            >
+              {t("Got it")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* CANCEL CONFIRMATION WARNING MODAL */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
@@ -597,7 +658,7 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
             </p>
 
             <div className="p-3 bg-red-50 border border-red-100 rounded-2xl text-[11px] text-brand-red font-semibold leading-relaxed">
-              {t("⚠️ Warning: This is an immediate action. Auto-renewal will be turned off and upcoming deliveries for this cycle will stop.")}
+              {t("Your subscription continues until the end of the period you have already paid for. Auto-renewal will be turned off, there is no refund for the remaining days and you will not be charged again.")}
             </div>
 
             <div className="space-y-1 pt-2">

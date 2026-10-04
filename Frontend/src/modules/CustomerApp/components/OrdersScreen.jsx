@@ -265,6 +265,7 @@ const OrderCard = memo(function OrderCard({
           </button>
         ) : isPast && order.status === "delivered" ? (
           <div className="flex gap-2">
+            {(order.isRated || !order.deliveredAt || Date.now() - new Date(order.deliveredAt).getTime() <= 24 * 3600 * 1000) && (
             <button
               onClick={() => onRate(order)}
               className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${order.isRated
@@ -276,6 +277,7 @@ const OrderCard = memo(function OrderCard({
               <span>{order.isRated ? tr("Rated ({{deliveryRating}})", { deliveryRating: order.ratings?.overall ?? order.ratings?.mealQuality ?? order.deliveryRating }) : tr("Rate")}</span>
               {order.vendorResponse?.text && <span className="text-[10px] font-bold text-[#006a5c]" title={tr("The maker replied")}>💬</span>}
             </button>
+            )}
             <button
               onClick={() => onTip(order)}
               className={`border rounded-xl px-3 py-1.5 text-[13px] font-medium active:scale-95 transition-all flex items-center gap-1.5 ${order.driverTip > 0

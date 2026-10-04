@@ -20,6 +20,9 @@ export const registerAmendmentJobs = () => {
     registerJob({ name: 'renewal-reminders', description: 'Remind customers before their subscription ends (annual: 30 days)', ...dailyAt('10:00'), run: lazy('../subscription/renewal.service.js', 'sendRenewalReminders') });
     registerJob({ name: 'daily-orders', description: "Create today's and tomorrow's subscription orders", ...every(60), run: lazy('../subscription/orderGeneration.js', 'generateUpcomingOrders') });
 
+    // Amendment 1 #17 - GDPR deletion requests still open after 25 days are escalated to the Super Admin.
+    registerJob({ name: 'gdpr-escalation', description: 'Escalate GDPR deletion requests that are close to the 30-day deadline', ...dailyAt('09:00'), run: lazy('../gdpr/gdpr.service.js', 'escalateOverdueRequests') });
+
     // Gap E / M — stock alerts and pre-order launches.
     registerJob({ name: 'low-stock', description: 'Alert vendors whose prepared stock is running low', ...every(15), run: lazy('../orders/stock.service.js', 'lowStockSweep') });
     registerJob({ name: 'preorder-launch', description: 'Launch pre-order meals on their launch date', ...dailyAt('00:01'), run: lazy('../orders/oneTimeOrder.service.js', 'processLaunches') });

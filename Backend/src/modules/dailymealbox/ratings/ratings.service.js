@@ -31,6 +31,9 @@ const star = (v) => {
     return n;
 };
 
+const RATING_WINDOW_MS = 24 * 3600_000;
+const VENDOR_ALERT_THRESHOLD = 3.8;
+const VENDOR_ALERT_MIN_COUNT = 50;
 const DRIVER_ALERT_THRESHOLD = 3.5;
 const DRIVER_ALERT_MIN_COUNT = 20;
 
@@ -53,6 +56,21 @@ export const refreshVendorRating = async (vendorId) => {
     await FoodRestaurant.updateOne({ _id: vendorId }, {
         $set: { mealRating: meal, rating: meal.average, totalRatings: meal.count, reviewStats: { total, responded } }
     });
+    // Amendment 1 #18: vendor average below 3.8 over 50+ rated orders -> alert for the City Manager.
+    if (meal.count >= VENDOR_ALERT_MIN_COUNT && meal.average < VENDOR_ALERT_THRESHOLD) {
+        try {
+            const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName').lean();
+            const month = new Date().toISOString().slice(0, 7);
+            await raiseAdminAlert({
+                type: 'vendor_low_rating', severity: 'warning',
+                title: `Low meal rating: ${vendor?.restaurantName || 'vendor'} (${meal.average}★)`,
+                message: `${vendor?.restaurantName || 'A vendor'} averages ${meal.average}★ over ${meal.count} rated orders (threshold ${VENDOR_ALERT_THRESHOLD}).`,
+                entityType: 'FoodRestaurant', entityId: vendorId, link: '/admin/food/restaurants', dedupeKey: `vendor_low_rating:${vendorId}:${month}`
+            });
+        } catch (alertErr) {
+            logger.warn(`[ratings] vendor low-rating alert failed: ${alertErr.message}`);
+        }
+    }
     return meal;
 };
 
@@ -89,6 +107,10 @@ export const rateOrder = async ({ userId, orderId, body = {} }) => {
     const order = await DMBDailyOrder.findOne({ _id: orderId, userId });
     if (!order) throw new RatingError('Order not found', 404, 'NOT_FOUND');
     if (order.status !== 'delivered') throw new RatingError('Can only rate delivered orders');
+    // The rating prompt exists for 24 hours after the confirmed delivery.
+    if (order.deliveredAt && Date.now() - new Date(order.deliveredAt).getTime() > RATING_WINDOW_MS) {
+        throw new RatingError('The rating window (24 hours after delivery) has closed', 403, 'RATING_WINDOW_CLOSED');
+    }
     if (order.isRated) throw new RatingError('Order has already been rated', 409, 'ALREADY_RATED');
 
     const split = await isEnabled('splitRatings');

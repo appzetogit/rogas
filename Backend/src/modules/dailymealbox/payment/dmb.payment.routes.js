@@ -1,4 +1,5 @@
 import express from 'express';
+import { cleanInstructions } from '../mealplan/specialInstructions.js';
 import { authMiddleware } from '../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { FoodUser } from '../../../core/users/user.model.js';
@@ -141,7 +142,8 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
             dayAddresses: b.dayAddresses,
             expectedTotal: expected,
             paymentMethod: b.provider === 'mock' ? 'cash' : (b.provider || undefined),
-            invoice: { invoiceType: b.invoiceType || 'receipt', companyNip: b.companyNip, companyName: b.companyName, billingEmail: b.billingEmail }
+            invoice: { invoiceType: b.invoiceType || 'receipt', companyNip: b.companyNip, companyName: b.companyName, billingEmail: b.billingEmail },
+            extra: { specialInstructions: cleanInstructions(b.specialInstructions) }
         });
         subscription = created.subscription;
 

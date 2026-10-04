@@ -3,6 +3,7 @@ import { IMAGES } from "../types";
 import { dmbCustomerAPI } from "@food/api";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
 import { ArrowLeft, CheckCircle, Lock } from 'lucide-react';
+import { dmbLegalAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
@@ -72,6 +73,20 @@ export function CheckoutScreen({
   const slotKeys = plan.quoteInput?.deliverySlots || plan.deliverySlots || (plan.deliverySlot ? [plan.deliverySlot] : []);
   const slotLabel = slotKeys.map(describeSlot).join(" + ");
 
+  // Amendment 1 #3 (EU consumer law): the Terms of Sale must be accepted with an UNTICKED checkbox before subscribing,
+  // and the acceptance (version + time) is logged. #7: optional note to the kitchen (allergies).
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsDoc, setTermsDoc] = useState(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  useEffect(() => {
+    let alive = true;
+    dmbLegalAPI.user.document("terms_of_sale", getCurrentLanguage())
+      .then((res) => { if (alive) setTermsDoc(res.data?.document || null); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const handlePayment = async () => {
     if (paying) return;
     const token = localStorage.getItem("user_accessToken");
@@ -80,8 +95,27 @@ export function CheckoutScreen({
       return;
     }
 
+    if (!termsAccepted) {
+      onShowNotificationToast(t("Please accept the Terms of Sale to continue"));
+      return;
+    }
+
     setPaying(true);
     try {
+      // Log the acceptance (document version + timestamp). Never blocks the purchase if no document is published yet.
+      if (termsDoc?.version) {
+        try {
+          await dmbLegalAPI.user.accept({ docType: "terms_of_sale", version: termsDoc.version, language: getCurrentLanguage() });
+        } catch (legalErr) {
+          if (legalErr?.response?.status === 409) {
+            onShowNotificationToast(t("The Terms of Sale were updated. Please read and accept them again."));
+            setTermsAccepted(false);
+            setPaying(false);
+            dmbLegalAPI.user.document("terms_of_sale", getCurrentLanguage()).then((r) => setTermsDoc(r.data?.document || null)).catch(() => {});
+            return;
+          }
+        }
+      }
       // Step 1: Create the order on the backend. The server picks the payment provider for the customer's country
       // (or uses the one they chose) and returns what to do next.
       if (!quote) {
@@ -92,6 +126,7 @@ export function CheckoutScreen({
         ...quoteInput,
         ...(plan.addressId ? { addressId: plan.addressId } : { deliveryAddress: plan.deliveryAddress }),
         expectedTotal: quote.totals.total, // the server refuses a different price (409 PRICE_CHANGED)
+        specialInstructions: specialInstructions.trim() || undefined,
         invoiceType: invoicePrefs?.receiptType === "vat" ? "b2b_vat" : "receipt",
         companyNip: invoicePrefs?.nipVat || undefined,
         companyName: invoicePrefs?.companyName || undefined,
@@ -320,11 +355,37 @@ export function CheckoutScreen({
           />
         </section>
 
+        {/* Special instructions for the kitchen */}
+        <section className="space-y-2">
+          <h2 className="text-[13px] font-bold text-[#6e7a74] uppercase tracking-widest">{t("Note for the kitchen (optional)")}</h2>
+          <textarea
+            value={specialInstructions}
+            onChange={(e) => setSpecialInstructions(e.target.value.slice(0, 300))}
+            rows={3}
+            maxLength={300}
+            placeholder={t("Allergies, intolerances or other instructions for the kitchen")}
+            className="w-full bg-white border-2 border-[#e4e2e1] rounded-xl px-4 py-3 text-[14px] focus:outline-none focus:border-primary resize-none"
+          />
+          <p className="text-[11px] text-[#6e7a74]">{t("The kitchen must confirm they have read it before preparing your meals.")}</p>
+        </section>
+
         {/* CTA */}
         <div className="pt-2 space-y-4">
+          <label className="flex items-start gap-3 text-[13px] text-[#3e4945] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 w-5 h-5 accent-[#1F7A63] shrink-0"
+            />
+            <span>
+              {t("I have read and accept the Terms of Sale")}{" "}
+              <button type="button" onClick={() => setShowTerms(true)} className="text-primary font-bold underline">{t("Read")}</button>
+            </span>
+          </label>
           <button
             onClick={handlePayment}
-            disabled={paying || !plan.vendorId || methods.loading || !methods.providers.length || !quote || quoting || Boolean(quoteError)}
+            disabled={paying || !termsAccepted || !plan.vendorId || methods.loading || !methods.providers.length || !quote || quoting || Boolean(quoteError)}
             className="w-full bg-[#1F7A63] disabled:opacity-60 hover:bg-[#155a49] text-white py-4 rounded-2xl font-extrabold text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             {paying ? (
@@ -344,6 +405,22 @@ export function CheckoutScreen({
           </p>
         </div>
       </main>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center bg-black/50" onClick={() => setShowTerms(false)} role="dialog" aria-modal="true">
+          <div className="w-full md:max-w-xl max-h-[85vh] flex flex-col bg-white rounded-t-3xl md:rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 h-14 border-b border-[#f0eded] shrink-0">
+              <h2 className="text-[15px] font-bold text-primary truncate">{termsDoc?.title || t("Terms of Sale")}</h2>
+              <button type="button" onClick={() => setShowTerms(false)} className="text-[13px] font-bold text-primary px-2 py-1">{t("Close")}</button>
+            </div>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 text-[13px] text-[#3e4945]">
+              {termsDoc?.body
+                ? <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: termsDoc.body }} />
+                : <p>{t("The Terms of Sale are not available right now. Please try again later.")}</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

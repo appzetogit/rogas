@@ -134,6 +134,10 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+        /** GDPR deletion tombstone (Amendment 1 #17): no personal data left, the id stays so orders keep working. */
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date, default: null },
+        anonId: { type: String, default: '' },
         isActive: {
             type: Boolean,
             default: true,

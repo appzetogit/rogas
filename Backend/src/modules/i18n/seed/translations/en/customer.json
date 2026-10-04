@@ -14,5 +14,7 @@
  "Pause {{count}} Day_one": "Pause {{count}} Day",
  "Pause {{count}} Day_other": "Pause {{count}} Days",
  "Subscription paused for {{count}} day._one": "Subscription paused for {{count}} day.",
- "Subscription paused for {{count}} day._other": "Subscription paused for {{count}} days."
+ "Subscription paused for {{count}} day._other": "Subscription paused for {{count}} days.",
+ "You will receive {{count}} more deliveries._one": "You will receive {{count}} more delivery.",
+ "You will receive {{count}} more deliveries._other": "You will receive {{count}} more deliveries."
 }

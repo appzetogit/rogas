@@ -4,6 +4,7 @@ import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { markVendorReady, verifyCollectionPin, verifyDeliveryPin } from '../delivery/collectionPin.service.js';
 import { handleDriverLocationUpdate, driverGoOnline, driverGoOffline } from '../tracking/tracking.service.js';
 import { getIO } from '../../../config/socket.js';
+import { logger } from '../../../utils/logger.js';
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { FoodOrder } from '../../food/orders/models/order.model.js';
 import { CollectionBatch } from '../delivery/collectionBatch.model.js';
@@ -788,11 +789,35 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
         }
 
         if (batch) {
+            // Amendment 1 #9: after 3 wrong attempts the PIN is locked until the vendor generates a new one.
+            const MAX_PIN_ATTEMPTS = 3;
+            if ((batch.pinAttempts || 0) >= MAX_PIN_ATTEMPTS) {
+                return res.status(423).json({ success: false, code: 'PIN_LOCKED', message: 'Too many wrong PIN attempts. Ask the vendor to generate a new PIN.' });
+            }
+
             // Verify PIN against batch
             if (batch.collectionPinHash !== String(pin)) {
                 batch.pinAttempts = (batch.pinAttempts || 0) + 1;
+                const locked = batch.pinAttempts >= MAX_PIN_ATTEMPTS;
+                if (locked) batch.pinAlertSent = true;
                 await batch.save();
-                return res.status(400).json({ success: false, message: 'Invalid Collection PIN' });
+                if (locked) {
+                    try {
+                        const { raiseAdminAlert } = await import('../platform/platformConfig.service.js');
+                        await raiseAdminAlert({
+                            type: 'collection_pin_locked', severity: 'warning',
+                            title: `Collection PIN locked (${batch.batchId})`,
+                            message: `A driver entered a wrong collection PIN ${MAX_PIN_ATTEMPTS} times. The vendor must generate a new PIN.`,
+                            entityType: 'CollectionBatch', entityId: batch._id, link: '/admin/food/dmb/alerts', dedupeKey: `pinlock:${batch._id}:${batch.pinAttempts}`
+                        });
+                        const io = getIO();
+                        io?.to(`vendor_${batch.vendorId}`).emit('batch_pin_locked', { batchId: batch.batchId });
+                    } catch (alertErr) {
+                        logger.warn(`PIN-lock alert failed: ${alertErr.message}`);
+                    }
+                    return res.status(423).json({ success: false, code: 'PIN_LOCKED', message: 'Too many wrong PIN attempts. Ask the vendor to generate a new PIN.' });
+                }
+                return res.status(400).json({ success: false, message: `Invalid Collection PIN. ${MAX_PIN_ATTEMPTS - batch.pinAttempts} attempt(s) left.` });
             }
 
             // Mark batch collected

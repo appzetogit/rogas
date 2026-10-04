@@ -5,6 +5,7 @@ import { holidaySetForZone } from '../platform/holiday.service.js';
 import { listSlots } from '../deliverySlot/deliverySlot.service.js';
 import { addDays, localToday, storageDateStr } from '../../../utils/platformTime.js';
 import { logger } from '../../../utils/logger.js';
+import { isAllergenNote } from '../mealplan/specialInstructions.js';
 
 /**
  * Turns a subscription's schedule into DMBDailyOrder rows. Idempotent (one row per subscription/date/slot, enforced by
@@ -60,7 +61,9 @@ export const materializeDate = async (sub, date, { slotDefs, holidays }) => {
                 deliverySlot: dv.slot,
                 status: 'scheduled',
                 pricing: priceDailyOrder(sub, date, dv),
-                deliveryAddress: dv.address || sub.deliveryAddress
+                deliveryAddress: dv.address || sub.deliveryAddress,
+                specialInstructions: sub.specialInstructions || '',
+                specialInstructionsAllergen: isAllergenNote(sub.specialInstructions)
             });
             created++;
         } catch (err) {

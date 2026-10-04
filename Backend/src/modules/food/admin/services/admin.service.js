@@ -3843,6 +3843,11 @@ export async function rejectRestaurant(id, reason) {
     let update = {};
     let isZoneChange = restaurant.zoneChangeStatus === 'pending';
 
+    // Amendment 1 #6: an application cannot be rejected without a real reason (min 20 characters) - the vendor reads it.
+    if (!isZoneChange && String(reason || '').trim().length < 20) {
+        throw new ValidationError('A rejection reason of at least 20 characters is required');
+    }
+
     if (isZoneChange) {
         update = {
             zoneChangeStatus: 'rejected',

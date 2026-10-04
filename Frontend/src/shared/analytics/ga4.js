@@ -9,8 +9,30 @@ const CONSENT_KEY = "dmb_analytics_consent"; // "granted" | "denied"
 const ID_RE = /^G-[A-Z0-9]{4,20}$/;
 let loadedId = null;
 
+// Amendment 1 #2: the choice is remembered for 12 months, per category (essential is always on; analytics and marketing
+// default to OFF). Stored as { essential, analytics, marketing, timestamp, expiry } next to the simple analytics flag.
+const PREFS_KEY = "dmb_cookie_prefs";
+const TWELVE_MONTHS_MS = 365 * 24 * 3600 * 1000;
+
+export const getCookiePrefs = () => {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || "null");
+    if (prefs && typeof prefs === "object") return prefs;
+  } catch {
+    /* fall through */
+  }
+  return null;
+};
+
 const readConsent = () => {
   try {
+    const prefs = getCookiePrefs();
+    if (prefs && prefs.expiry && Date.now() > prefs.expiry) {
+      // Older than 12 months: ask again.
+      localStorage.removeItem(PREFS_KEY);
+      localStorage.removeItem(CONSENT_KEY);
+      return null;
+    }
     return localStorage.getItem(CONSENT_KEY);
   } catch {
     return null;
@@ -19,9 +41,29 @@ const readConsent = () => {
 
 export const getAnalyticsConsent = () => readConsent();
 
+/** Saves the per-category choice. `analytics`/`marketing` are booleans. */
+export const setCookiePrefs = ({ analytics, marketing }) => {
+  const now = Date.now();
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ essential: true, analytics: Boolean(analytics), marketing: Boolean(marketing), timestamp: now, expiry: now + TWELVE_MONTHS_MS }));
+  } catch {
+    /* storage blocked: the choice lasts for this page only */
+  }
+  setAnalyticsConsent(analytics ? "granted" : "denied");
+};
+
 export const setAnalyticsConsent = (value) => {
   try {
     localStorage.setItem(CONSENT_KEY, value);
+    const prefs = getCookiePrefs();
+    const now = Date.now();
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      essential: true,
+      analytics: value === "granted",
+      marketing: Boolean(prefs?.marketing),
+      timestamp: now,
+      expiry: now + TWELVE_MONTHS_MS
+    }));
   } catch {
     /* storage blocked: consent lasts for this page only */
   }

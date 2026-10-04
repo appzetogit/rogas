@@ -2086,6 +2086,8 @@ export const dmbVendorAPI = {
   getEarnings: (params = {}) => restaurantClient.get("/dmb/vendor/earnings", { params }),
   getVatRates: () => restaurantClient.get("/dmb/vendor/vat-rates"),
   getTodayEarnings: () => restaurantClient.get("/dmb/vendor/earnings/today"),
+  /** Vendor acknowledges the customer's special instructions on a daily order (needed before preparing). */
+  acknowledgeInstructions: (orderId) => restaurantClient.post(`/dmb/vendor/daily-orders/${orderId}/acknowledge`),
   getSubscriberList: () => restaurantClient.get("/dmb/vendor/subscribers"),
   getSubscribers: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
   getSubscriberStats: () => restaurantClient.get("/dmb/vendor/subscriber-stats"),
@@ -2098,6 +2100,8 @@ export const dmbVendorAPI = {
   /** NEW: Mark all orders for a slot as ready */
   markAllDailyOrdersReady: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/mark-all-ready", { date, slot }),
   resendBatch: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/resend-batch", { date, slot }),
+  /** New collection PIN for a batch (e.g. after the old one was locked by 3 wrong attempts). */
+  regenerateBatchPin: (batchId) => restaurantClient.post("/dmb/vendor/daily-orders/regenerate-pin", { batchId }),
   getDailyMenus: (params = {}) => restaurantClient.get("/dmb/vendor/daily-menus", { params }),
   saveDailyMenu: (data) => restaurantClient.post("/dmb/vendor/daily-menus", data),
   deleteDailyMenu: (params) => restaurantClient.delete("/dmb/vendor/daily-menus", { params }),
@@ -2188,6 +2192,10 @@ export const dmbCustomerAPI = {
   resumeSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/resume`, {}),
   /** Cancel a subscription */
   cancelSubscription: (subscriptionId, reason = "") => userClient.patch(`/dmb/subscriptions/${subscriptionId}/cancel`, { reason }),
+  /** Undo a cancellation that has not ended the subscription yet ("Keep my subscription"). */
+  keepSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/keep`),
+  /** GDPR: asks for the account (and personal data) to be deleted within 30 days. */
+  requestAccountDeletion: () => userClient.post("/dmb/customer/gdpr/deletion-request"),
   /** Get vendor's available meal plans (for change-meal selection) */
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
   /** Rate a delivered order (rating + optional feedback + tip) */
@@ -2385,6 +2393,10 @@ export const dmbExtraAdminAPI = {
   whatsAppLogs: () => adminClient.get(dmbAdmin("/integrations/whatsapp/logs")),
   // Bad debt (F) and segments (Y)
   badDebt: (params) => adminClient.get(dmbAdmin("/bad-debt"), { params }),
+  creditNotes: (params) => adminClient.get(dmbAdmin("/credit-notes"), { params }),
+  gdprRequests: (params) => adminClient.get(dmbAdmin("/gdpr"), { params }),
+  executeGdpr: (id, body) => adminClient.post(dmbAdmin(`/gdpr/${id}/execute`), body || {}),
+  creditNotePdf: (id) => adminClient.get(dmbAdmin(`/credit-notes/${id}/pdf`), { responseType: "blob" }),
   runBadDebt: () => adminClient.post(dmbAdmin("/bad-debt/run")),
   badDebtAction: (userId, body) => adminClient.post(dmbAdmin(`/bad-debt/${userId}/action`), body),
   segments: () => adminClient.get(dmbAdmin("/segments")),

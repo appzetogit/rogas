@@ -120,6 +120,20 @@ export default function HomeDashboard({
     }
   };
 
+  const [isRegeneratingPin, setIsRegeneratingPin] = useState(false);
+  const handleRegeneratePin = async () => {
+    if (!displayBatch?.batchId || isRegeneratingPin) return;
+    setIsRegeneratingPin(true);
+    try {
+      const res = await dmbVendorAPI.regenerateBatchPin(displayBatch.batchId);
+      if (res.data?.success) setLocalBatch((prev) => (prev ? { ...prev, otp: res.data.otp } : prev));
+    } catch (err) {
+      alert(err.response?.data?.message || t("Could not generate a new PIN."));
+    } finally {
+      setIsRegeneratingPin(false);
+    }
+  };
+
   const handleVerifyOtp = async () => {
     if (!acceptedBatch || !otpInput) return;
     try {
@@ -329,6 +343,15 @@ export default function HomeDashboard({
                   >
                     <MapPin className="w-3.5 h-3.5" />
                     {isTrackingDriver ? t("Loading...") : t("Track Driver")}
+                  </button>
+                )}
+                {displayBatch && displayBatch.status !== 'collected' && displayBatch.batchId && (
+                  <button
+                    onClick={handleRegeneratePin}
+                    disabled={isRegeneratingPin}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-primary/20 text-primary font-bold text-[11px] rounded-lg shadow-xs hover:bg-primary/5 active:scale-95 transition-all cursor-pointer whitespace-nowrap disabled:opacity-60"
+                  >
+                    {isRegeneratingPin ? t("Generating...") : t("New PIN")}
                   </button>
                 )}
                 {displayBatch && displayBatch.status !== 'collected' && !displayBatch.driverName && (

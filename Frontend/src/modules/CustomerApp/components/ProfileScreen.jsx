@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { getCurrentLanguage } from "@/shared/i18n";
 import { IMAGES } from "../types";
-import { userAPI } from "@food/api";
+import { userAPI, dmbCustomerAPI } from "@food/api";
 import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
@@ -146,7 +147,21 @@ export function ProfileScreen({
     onShowNotificationToast(t("Referral link copied to clipboard! Share with friends to earn PLN 15."));
   };
 
-  const handleDangerActionConfirm = (action) => {
+  const handleDangerActionConfirm = async (action) => {
+    // Amendment 1 #17: a deletion request starts the 30-day GDPR process (it was only a toast before).
+    if (action === "Delete My Account") {
+      try {
+        const res = await dmbCustomerAPI.requestAccountDeletion();
+        const due = res?.data?.dueAt ? new Date(res.data.dueAt).toLocaleDateString(getCurrentLanguage(), { day: "numeric", month: "long", year: "numeric" }) : "";
+        onShowNotificationToast(res?.data?.alreadyRequested
+          ? t("Your deletion request is already being processed.")
+          : t("Deletion requested. Your personal data will be deleted by {{date}}.", { date: due }));
+      } catch (err) {
+        onShowNotificationToast(err?.response?.data?.message || t("Could not send your deletion request. Please try again."));
+      }
+      setShowDangerDialog(null);
+      return;
+    }
     onShowNotificationToast(t("Action '{{action}}' requested and sent to support division.", { action }));
     setShowDangerDialog(null);
   };
@@ -709,6 +724,11 @@ export function ProfileScreen({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
             <h4 className="text-[18px] font-extrabold text-on-surface">{t("Confirm Action")}</h4>
+            {showDangerDialog === "Delete My Account" && (
+              <p className="text-[13px] text-brand-red font-semibold leading-relaxed">
+                {t("Your personal data will be deleted within 30 days. Financial records are kept in anonymous form, as EU tax law requires.")}
+              </p>
+            )}
             <p className="text-[13px] text-on-surface-variant font-medium leading-relaxed">
               <Trans t={t} i18nKey={"Are you sure you want to proceed with <0>\"{{showDangerDialog}}\"</0>? This may affect your automated weekly billing cycle."} defaults={"Are you sure you want to proceed with <0>\"{{showDangerDialog}}\"</0>? This may affect your automated weekly billing cycle."} values={{ showDangerDialog }} components={[<strong />]} />
             </p>

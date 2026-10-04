@@ -220,6 +220,11 @@ const subscriptionSchema = new mongoose.Schema(
 
         /** Plan changes (Gap S). */
         cancelAt: { type: Date, default: null },
+        /** Set when the customer cancelled: deliveries continue until cancelAt (end of the paid period), then it ends. */
+        cancelRequestedAt: { type: Date, default: null },
+        anonymisedAs: { type: String, default: '' },
+        /** Customer's note to the kitchen (allergies etc.), copied onto every daily order (Amendment 1 #7). */
+        specialInstructions: { type: String, default: '', trim: true, maxlength: 300 },
         changeType: { type: String, enum: ['upgrade', 'downgrade', 'change_plan', 'switch_vendor', 'add_slot', 'renew', null], default: null },
         /** Rotation edited by the customer, applied from the next period (Gap AK). */
         pendingRotation: { type: mongoose.Schema.Types.Mixed, default: undefined },

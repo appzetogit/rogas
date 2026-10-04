@@ -216,8 +216,8 @@ export default function JoiningRequest() {
   }
 
   const confirmReject = async () => {
-    if (!selectedRequest || !rejectionReason.trim()) {
-      alert("Please provide a rejection reason")
+    if (!selectedRequest || rejectionReason.trim().length < 20) {
+      alert("Please give a rejection reason of at least 20 characters (the vendor sees it)")
       return
     }
 
@@ -673,6 +673,9 @@ export default function JoiningRequest() {
                   className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                   rows={4}
                 />
+                <p className={`mt-1 text-xs ${rejectionReason.trim().length >= 20 ? "text-slate-400" : "text-amber-600"}`}>
+                  {rejectionReason.trim().length}/20 characters minimum - the vendor sees this reason.
+                </p>
               </div>
 
               <div className="flex items-center gap-3">
@@ -689,7 +692,7 @@ export default function JoiningRequest() {
                 </button>
                 <button
                   onClick={confirmReject}
-                  disabled={processing || !rejectionReason.trim()}
+                  disabled={processing || rejectionReason.trim().length < 20}
                   className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {processing ? (

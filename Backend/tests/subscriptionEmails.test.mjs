@@ -76,9 +76,10 @@ test('a vendor with no email on file is simply skipped, activation still succeed
 
 test('cancelling a subscription emails both the customer and the vendor', async () => {
     const { user, vendor, sub } = await makeFixture();
-    await DMBSubscription.updateOne({ _id: sub._id }, { status: 'active' });
+    // No running paid period (no end date): the cancellation takes effect at once. The paid-period case is covered in amendment1.test.mjs.
+    await DMBSubscription.updateOne({ _id: sub._id }, { status: 'active', endDate: null });
 
-    const cancelled = await subSvc.cancelSubscription({ subscriptionId: sub.subscriptionId, userId: user._id, reason: 'Moving city' });
+    const { subscription: cancelled } = await subSvc.cancelSubscription({ subscriptionId: sub.subscriptionId, userId: user._id, reason: 'Moving city' });
     assert.equal(cancelled.status, 'cancelled');
 
     const customerLog = await emailModels.EmailLog.findOne({ to: 'customer@example.test', templateKey: 'Your subscription has been cancelled' });

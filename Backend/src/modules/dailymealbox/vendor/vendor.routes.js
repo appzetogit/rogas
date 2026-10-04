@@ -981,6 +981,38 @@ router.patch('/daily-orders/:orderId/status', authMiddleware, requireRoles('REST
 // ─── NEW: Mark ALL orders ready for a slot (batch) ─────────────────────────
 // POST /api/v1/dmb/vendor/daily-orders/mark-all-ready
 // Body: { date, slot }
+router.post('/daily-orders/:orderId/acknowledge', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const { acknowledgeSpecialInstructions } = await import('../subscription/dmb.dailyOrder.service.js');
+        const order = await acknowledgeSpecialInstructions(req.user.userId || req.user._id, req.params.orderId);
+        res.json({ success: true, specialInstructionsAckAt: order.specialInstructionsAckAt });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/daily-orders/regenerate-pin', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const { batchId } = req.body || {};
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const batch = await CollectionBatch.findOne({ batchId, vendorId });
+        if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+        if (['collected', 'failed'].includes(batch.status)) return res.status(409).json({ success: false, message: 'This batch has already been collected' });
+        const crypto = await import('crypto');
+        batch.collectionPinHash = String(crypto.randomInt(1000, 10000));
+        batch.pinAttempts = 0;
+        batch.pinAlertSent = false;
+        await batch.save();
+        const { getIO } = await import('../../../config/socket.js');
+        const payload = { batchId: batch.batchId, driver: null, otp: batch.collectionPinHash, boxCount: batch.boxCount, slot: batch.deliverySlot, status: batch.status };
+        getIO()?.to(`vendor_${vendorId}`).emit('batch_accepted', payload);
+        res.json({ success: true, otp: batch.collectionPinHash });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 router.post('/daily-orders/mark-all-ready', authMiddleware, requireRoles('RESTAURANT'), cookAgreementGate, async (req, res) => {
     try {
         const vendorId = req.user.userId || req.user._id;

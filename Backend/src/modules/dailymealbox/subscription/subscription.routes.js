@@ -9,6 +9,7 @@ import {
     pauseSubscription,
     resumeSubscription,
     cancelSubscription,
+    keepSubscription,
     getUserSubscriptions
 } from './subscription.service.js';
 import {
@@ -356,12 +357,27 @@ router.patch('/:subscriptionId/resume', authMiddleware, requireRoles('USER', 'EM
 // ─── Cancel Subscription (PRD ACM-15 — EU Law, always accessible) ─────────
 router.patch('/:subscriptionId/cancel', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     try {
-        const sub = await cancelSubscription({
+        const { subscription, cancellation } = await cancelSubscription({
             subscriptionId: req.params.subscriptionId,
             userId: req.user._id || req.user.userId,
             reason: req.body.reason
         });
-        res.json({ success: true, message: 'Subscription cancelled', subscription: sub });
+        res.json({
+            success: true,
+            message: cancellation.atPeriodEnd ? 'Subscription will end at the end of your paid period' : 'Subscription cancelled',
+            subscription,
+            cancellation
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Keep my subscription (undo a cancellation that has not ended the subscription yet) ───────────────
+router.patch('/:subscriptionId/keep', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
+    try {
+        const sub = await keepSubscription({ subscriptionId: req.params.subscriptionId, userId: req.user._id || req.user.userId });
+        res.json({ success: true, message: 'Your subscription continues', subscription: sub });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

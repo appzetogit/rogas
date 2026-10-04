@@ -1177,7 +1177,10 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
         })),
         pricing: o.pricing,
         deliveryAddress: o.deliveryAddress,
-        collectionPin: o.collectionPin
+        collectionPin: o.collectionPin,
+        specialInstructions: o.specialInstructions || '',
+        specialInstructionsAllergen: Boolean(o.specialInstructionsAllergen),
+        specialInstructionsAckAt: o.specialInstructionsAckAt || null
     }));
 };
 
@@ -1539,6 +1542,11 @@ export const updateDailyOrderStatus = async (orderId, status, vendorId) => {
         throw new Error(`Cannot transition from ${order.status} to ${status}`);
     }
 
+    // Amendment 1 #7: a customer's note to the kitchen must be acknowledged before the order is prepared.
+    if ((status === 'preparing' || status === 'ready') && order.specialInstructions && !order.specialInstructionsAckAt) {
+        throw new Error("Acknowledge the customer's special instructions before preparing this order");
+    }
+
     // ─── Enforce admin-configured timing window ───────────────────────────────
     if (status === 'preparing' || status === 'ready') {
         const timingCheck = await checkAdminTimingWindow(order.deliverySlot);
@@ -1619,6 +1627,10 @@ export const markAllOrdersReady = async (vendorId, { date, slot }) => {
     if (slot) filter.deliverySlot = slot;
 
     const orders = await DMBDailyOrder.find(filter);
+    const unacknowledged = orders.filter((o) => o.specialInstructions && !o.specialInstructionsAckAt);
+    if (unacknowledged.length) {
+        throw new Error(`${unacknowledged.length} order(s) have customer special instructions you have not acknowledged yet. Open them and tap "Acknowledged" first.`);
+    }
     if (orders.length === 0) {
         // Orders may already be in 'ready' status from a previous call.
         // Still trigger batch creation in case the OTP/batch was never generated.
@@ -1703,6 +1715,7 @@ const formatOrderCard = (order) => ({
     addressOverridden: Boolean(order.addressOverridden),
     ratings: order.ratings || null,
     ratedAt: order.ratedAt || null,
+    deliveredAt: order.deliveredAt || null,
     // A reply hidden by an admin is not shown to the customer (Gap T).
     vendorResponse: order.vendorResponse?.createdAt && !order.vendorResponse.hidden
         ? { text: order.vendorResponse.text, createdAt: order.vendorResponse.createdAt, editedAt: order.vendorResponse.editedAt }
@@ -1801,3 +1814,15 @@ export async function notifyVendorsOfDriverUpdate(driver) {
         logger.error(`[REALTIME-DRIVER-ASSIGN] Error notifying vendors of driver update: ${err.message}`);
     }
 }
+/** Vendor acknowledges the customer's note (logged with time and vendor id for the complaint audit trail). */
+export const acknowledgeSpecialInstructions = async (vendorId, orderId) => {
+    const order = await DMBDailyOrder.findOne({ _id: orderId, vendorId });
+    if (!order) throw new Error('Order not found or not authorized');
+    if (!order.specialInstructions) return order;
+    if (!order.specialInstructionsAckAt) {
+        order.specialInstructionsAckAt = new Date();
+        order.specialInstructionsAckBy = vendorId;
+        await order.save();
+    }
+    return order;
+};

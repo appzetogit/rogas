@@ -173,6 +173,8 @@ const DmbJobs = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then(
 const DmbHolidays = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.HolidaysPage })));
 const DmbZoneFees = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.ZoneFeesPage })));
 const DmbExpansion = lazy(() => import("@food/pages/admin/dmb/OperationsPages").then((m) => ({ default: m.ExpansionDemandPage })));
+const DmbGdpr = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.GdprRequestsPage })));
+const DmbCreditNotes = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.CreditNotesPage })));
 const DmbBadDebt = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.BadDebtPage })));
 const DmbSegments = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.SegmentsPage })));
 const DmbLegal = lazy(() => import("@food/pages/admin/dmb/CustomerPages").then((m) => ({ default: m.LegalPage })));
@@ -421,6 +423,8 @@ export default function AdminRouter() {
             <Route path="dmb/zone-fees" element={<DmbZoneFees />} />
             <Route path="dmb/expansion-demand" element={<DmbExpansion />} />
             <Route path="dmb/bad-debt" element={<DmbBadDebt />} />
+            <Route path="dmb/credit-notes" element={<DmbCreditNotes />} />
+            <Route path="dmb/gdpr" element={<DmbGdpr />} />
             <Route path="dmb/segments" element={<DmbSegments />} />
             <Route path="dmb/legal" element={<DmbLegal />} />
             <Route path="dmb/home-cooks" element={<DmbHomeCooks />} />
