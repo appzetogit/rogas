@@ -80,7 +80,7 @@ export default function FinancialManagement() {
               {formatCurrency(adminTotalEarnings)}
             </h2>
             <p className="text-xs font-semibold !text-emerald-100">
-              Total Admin Net Commission & Platform Share Earned
+              Platform earnings: vendor commission + platform fees (VAT is not included)
             </p>
           </div>
 
@@ -152,8 +152,12 @@ export default function FinancialManagement() {
 
           <div className="space-y-3">
             <div className="flex justify-between items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-              <span className="text-xs font-bold text-slate-600">Total Delivery Boys Earned</span>
+              <span className="text-xs font-bold text-slate-600">Total Delivery Boys Earned (delivery fees + tips)</span>
               <span className="text-sm font-black text-slate-800">{formatCurrency(deliveryStats.totalEarned)}</span>
+            </div>
+            <div className="flex justify-between items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span className="text-xs font-bold text-slate-600">Bonuses Given by Admin (extra, not order earnings)</span>
+              <span className="text-sm font-black text-slate-800">{formatCurrency(deliveryStats.totalBonus || 0)}</span>
             </div>
             <div className="flex justify-between items-center bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200/80">
               <span className="text-xs font-bold text-blue-900">Paid by Admin to Drivers</span>

@@ -171,7 +171,23 @@ export default function VendorSubscriberDetails({ propId, propSubId, onClose, is
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 mb-0.5">Total Meals</p>
-                  <p className="text-sm font-medium text-slate-900">{data.totalMealsCount || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900">{data.totalMealsCount ?? "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-500 mb-0.5">Delivery Slots</p>
+                  <div className="flex gap-1 flex-wrap mt-1">
+                    {(data.deliverySlotsInfo || []).length ? data.deliverySlotsInfo.map((sl) => (
+                      <span key={sl.key} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">{sl.name}</span>
+                    )) : <span className="text-sm text-slate-500">-</span>}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-500 mb-0.5">Meals per delivery</p>
+                  <div className="flex gap-1 flex-wrap mt-1">
+                    {(data.mealsInfo || []).length ? data.mealsInfo.map((m, i) => (
+                      <span key={i} className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">{m.name} × {m.quantity}</span>
+                    )) : <span className="text-sm text-slate-500">-</span>}
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 mb-0.5">Start Date</p>
@@ -233,8 +249,12 @@ export default function VendorSubscriberDetails({ propId, propSubId, onClose, is
                           </td>
                           <td className="py-3 capitalize text-slate-700">{delivery.mealType}</td>
                           <td className="py-3">
-                            <p className="font-medium text-slate-900">{delivery.driverName}</p>
-                            <p className="text-xs text-slate-500">{delivery.driverPhone}</p>
+                            {delivery.driverName ? (
+                              <>
+                                <p className="font-medium text-slate-900">{delivery.driverName}</p>
+                                <p className="text-xs text-slate-500">{delivery.driverPhone}</p>
+                              </>
+                            ) : <span className="text-xs text-slate-400">-</span>}
                           </td>
                           <td className="py-3">
                             {delivery.status === "delivered" ? (
@@ -247,7 +267,7 @@ export default function VendorSubscriberDetails({ propId, propSubId, onClose, is
                               </span>
                             ) : (
                               <span className="flex items-center gap-1 text-slate-600 text-xs font-medium bg-slate-50 px-2 py-1 rounded border border-slate-200 w-fit capitalize">
-                                <Clock className="w-3 h-3" /> {delivery.status}
+                                <Clock className="w-3 h-3" /> {String(delivery.status || "").replace(/_/g, " ")}
                               </span>
                             )}
                           </td>

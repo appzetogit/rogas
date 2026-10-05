@@ -257,7 +257,8 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
         }
     }
 
-    if (!storedPin || pinEntered !== storedPin) {
+    // Compared as trimmed text: the PIN is stored and typed as digits, never as a number.
+    if (!storedPin || String(pinEntered ?? '').trim() !== String(storedPin).trim()) {
         throw new Error('Incorrect delivery PIN');
     }
 

@@ -29,7 +29,6 @@ import { PickupActionModal } from '@/modules/DeliveryV2/components/modals/Pickup
 import { DeliveryVerificationModal } from '@/modules/DeliveryV2/components/modals/DeliveryVerificationModal';
 import { OrderSummaryModal } from '@/modules/DeliveryV2/components/modals/OrderSummaryModal';
 import { PhotoUploadModal } from '@/modules/DeliveryV2/components/modals/PhotoUploadModal';
-import ActionSlider from '@/modules/DeliveryV2/components/ui/ActionSlider';
 
 // Sub Pages
 import PocketV2 from '@/modules/DeliveryV2/pages/PocketV2';
@@ -1216,7 +1215,6 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                              </div>
                            )}
                         </div>
-                        <ActionSlider label="Slide to Arrive" successLabel="Arrived ✓" disabled={!isWithinRange} onConfirm={reachDrop} color="bg-blue-600" />
                       </div>
                     ) : (
                       <button 

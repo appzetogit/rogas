@@ -44,7 +44,7 @@ export const deleteAssignmentApi = (id) => officeClient.delete(`/assignments/${i
 export const getPaymentsApi = () => officeClient.get('/payments');
 
 // Subscription Plans
-export const getSubscriptionPlansApi = () => axios.get(`${baseURL}/dmb/subscriptions/plans`);
+export const getSubscriptionPlansApi = (vendorId) => axios.get(`${baseURL}/dmb/subscriptions/plans`, { params: vendorId ? { vendorId } : {} });
 
 // Company
 export const getCompanyDetailsApi = () => officeClient.get('/company');

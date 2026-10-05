@@ -12,6 +12,8 @@ export function AlertsPage() {
   const { data, error, reload } = useLoad(() => dmbExtraAdminAPI.alerts({ status, limit: 200 }), [status]);
   const { busy, run } = useAction();
   const set = (a, next) => run(a._id, async () => { await dmbExtraAdminAPI.updateAlert(a._id, next); await reload(); });
+  // Answer for a driver's problem at a vendor: let the driver carry on, or take the driver off the pickup.
+  const answerPickup = (a, action) => run(a._id, async () => { await dmbExtraAdminAPI.updateAlert(a._id, undefined, action); await reload(); });
   return (
     <Page title="Alerts" subtitle="Things that need an admin: unconfirmed driver shifts, no-shows, failed deliveries, home-cook thresholds, bad-debt escalations and more.">
       <ErrorBox error={error} />
@@ -25,12 +27,18 @@ export function AlertsPage() {
           columns={[
             { label: "When", render: (a) => <span className="whitespace-nowrap text-slate-500">{fmtDateTime(a.createdAt)}</span> },
             { label: "Severity", render: (a) => <Badge tone={SEVERITY[a.severity]}>{a.severity}</Badge> },
-            { label: "Alert", render: (a) => (<div><p className="font-semibold text-slate-800">{a.title}</p><p className="text-xs text-slate-500">{a.message}</p>{a.link && <Link to={a.link} className="text-xs text-emerald-700 underline">Open</Link>}</div>) },
+            { label: "Alert", render: (a) => (<div><p className="font-semibold text-slate-800">{a.title}</p><p className="text-xs text-slate-500">{a.message}</p>{a.data?.note && <p className="text-xs text-slate-600 mt-0.5">Driver's note: {a.data.note}</p>}{a.data?.photoUrl && <a href={a.data.photoUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline mr-3">View photo</a>}{a.link && <Link to={a.link} className="text-xs text-emerald-700 underline">Open</Link>}</div>) },
             { label: "Status", render: (a) => <Badge tone={a.status === "open" ? "amber" : a.status === "resolved" ? "green" : "gray"}>{a.status}</Badge> },
             { label: "", right: true, render: (a) => (
               <div className="flex gap-1 justify-end">
                 {a.status === "open" && <Btn size="sm" variant="outline" busy={busy === a._id} onClick={() => set(a, "acknowledged")}>Acknowledge</Btn>}
-                {a.status !== "resolved" && <Btn size="sm" busy={busy === a._id} onClick={() => set(a, "resolved")}><CheckCircle className="w-3.5 h-3.5" /> Resolve</Btn>}
+                {a.type === "pickup_problem" && a.status !== "resolved" && (
+                  <>
+                    <Btn size="sm" variant="outline" busy={busy === a._id} onClick={() => answerPickup(a, "resume")}>Let driver continue</Btn>
+                    <Btn size="sm" variant="outline" busy={busy === a._id} onClick={() => answerPickup(a, "release_driver")}>Release driver</Btn>
+                  </>
+                )}
+                {a.type !== "pickup_problem" && a.status !== "resolved" && <Btn size="sm" busy={busy === a._id} onClick={() => set(a, "resolved")}><CheckCircle className="w-3.5 h-3.5" /> Resolve</Btn>}
               </div>
             ) },
           ]}

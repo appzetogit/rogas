@@ -29,6 +29,7 @@ import EarningsManager from './components/EarningsManager';
 import ProfileSettings from './components/ProfileSettings';
 import SubViewsOverlay from './components/SubViewsOverlay';
 import SubscribersScreen from './components/SubscribersScreen';
+import SubscriptionPlansScreen from './components/SubscriptionPlansScreen';
 import useKeyboardOpen from '../../shared/hooks/useKeyboardOpen';
 import VendorServicePage from './components/VendorServicePage';
 import { VendorLegalPage } from './components/VendorLegalPage';
@@ -912,6 +913,7 @@ export default function App() {
               <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
               <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
               <Route path="/subscribers" element={<SubscribersScreen />} />
+              <Route path="/subscription-plans" element={<SubscriptionPlansScreen />} />
               <Route path="/service" element={<VendorServicePage />} />
               <Route path="/more" element={<VendorHub profile={profile} />} />
               <Route path="/more/:section" element={<VendorHub profile={profile} />} />

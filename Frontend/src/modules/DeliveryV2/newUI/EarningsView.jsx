@@ -466,20 +466,8 @@ const EarningsView = ({ stats }) => {
       </section>
 
       {
-    /* Visual Anchor Poster: Courier on the road */
+    /* (a stock photo and an invented 4.95 rating used to be shown here) */
   }
-      <div className="relative w-full h-40 rounded-2xl overflow-hidden shadow-sm grayscale hover:grayscale-0 transition-all duration-700">
-        <img
-    alt={t("Driver on bike delivering food")}
-    className="w-full h-full object-cover"
-    src="https://images.unsplash.com/photo-1593950315186-76a92975b60c?auto=format&fit=crop&q=80&w=600"
-  />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-        <div className="absolute bottom-4 left-4 right-4">
-          <p className="text-white text-base font-extrabold tracking-wide">{t("Keep it fresh")}</p>
-          <p className="text-gray-200 text-xs mt-0.5">{t("Your average delivery rating: 4.95 ★")}</p>
-        </div>
-      </div>
     </div>;
 };
 export {

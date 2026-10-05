@@ -1,14 +1,36 @@
 import mongoose from 'mongoose';
 
 /**
- * VendorSubscriptionPlan — duration + fee template shared by every vendor (e.g. "Weekly", "Monthly").
- * Admin sets the things that are genuinely platform-wide policy: which durations exist, VAT rates and the
- * platform fee. The food price itself is NOT set here — it comes from the vendor's own DMBMealPlan.pricePerDay
- * (Menu Management), multiplied by this plan's day count. `price` is kept only so old records keep whatever
- * value they were created with; nothing reads it to charge a customer any more.
+ * VendorSubscriptionPlan — a subscription plan (e.g. "Weekly", "Monthly").
+ * Vendors create their OWN plans (vendorId set): name, duration, delivery days, description and an optional plan discount.
+ * Their VAT rates and platform fee are not typed by the vendor: they are copied from the platform terms when the plan is
+ * created (see vendorPlans.service.js). Plans with vendorId = null are the old platform-wide templates; they are no longer
+ * edited anywhere, and only serve as the platform terms (VAT / fee) for one-off orders, rotations and office assignments.
+ * The food price itself is NOT set here — it comes from the vendor's own DMBMealPlan.pricePerDay (Menu Management),
+ * multiplied by this plan's day count. `price` is kept only so old records keep whatever value they were created with;
+ * nothing reads it to charge a customer any more.
  */
 const vendorSubscriptionPlanSchema = new mongoose.Schema(
     {
+        /** Owner of the plan. null = old platform-wide template (see file comment). */
+        vendorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodRestaurant',
+            default: null,
+            index: true
+        },
+        /** Plan discount on the food price, set by the vendor (0-50 %). */
+        discountPercent: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 50
+        },
+        /** Set on the per-vendor copies made from an old platform template, so the copy runs once. */
+        copiedFromId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null
+        },
         name: {
             type: String,
             required: true,
@@ -78,5 +100,6 @@ const vendorSubscriptionPlanSchema = new mongoose.Schema(
 
 // Index for status and sorted creation lookup
 vendorSubscriptionPlanSchema.index({ status: 1, createdAt: -1 });
+vendorSubscriptionPlanSchema.index({ vendorId: 1, status: 1 });
 
 export const VendorSubscriptionPlan = mongoose.model('VendorSubscriptionPlan', vendorSubscriptionPlanSchema);

@@ -5,6 +5,7 @@ import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { DMBSubscription } from '../subscription/subscription.model.js';
 import { VendorSubscriptionPlan } from '../subscription/vendorSubscriptionPlan.model.js';
+import { effectivePlatformFee } from '../subscription/vendorPlans.service.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
 import { logger } from '../../../utils/logger.js';
 import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
@@ -40,7 +41,9 @@ export const assertPriceFloor = async ({ subscriptionPlanId, slots, pricing, mea
     const mealDocs = await DMBMealPlan.find({ _id: { $in: (meals || []).map((m) => m.mealPlanId) } }).select('pricePerDay').lean();
     const priceById = Object.fromEntries(mealDocs.map((d) => [String(d._id), d.pricePerDay]));
     const foodPerDay = (meals || []).reduce((sum, m) => sum + (priceById[String(m.mealPlanId)] || 0) * (Number(m.quantity) || 1), 0);
-    const floor = round2(foodPerDay * days * slots + days * slots * feePerOrder + (Number(plan.platformFee) || 0));
+    // The vendor's own plan discount lowers the food part, so the floor must allow for it.
+    const planFactor = 1 - Math.max(0, Math.min(50, Number(plan.discountPercent) || 0)) / 100;
+    const floor = round2(foodPerDay * days * slots * planFactor + days * slots * feePerOrder + (await effectivePlatformFee(plan)));
     const total = Number(pricing.totalPrice !== undefined ? pricing.totalPrice : pricing.totalPerWeek);
     if (!Number.isFinite(total) || total + 0.01 < floor) {
         throw new Error('The price has changed. Please reload the plan and try again.');

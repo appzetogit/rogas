@@ -33,12 +33,18 @@ const DashboardHome = ({
     <div className="sticky top-0 z-30 flex items-center justify-between bg-white rounded-2xl p-4 border border-[#e0e3e0] shadow-sm">
       <div className="flex items-center gap-3">
         <div className="relative">
-          <img
-            alt={stats?.name || t("Delivery Partner")}
-            className="w-12 h-12 rounded-full border border-[#bec9c3] object-cover"
-            src={stats?.profileImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuDD2_lMXh8dhOlTWeYSkHItytPk5uzDBhawYjfPwJs-PtVgUhSwqy36J6R-4DoKas8gpTeiha4dx5AHukgQKjXvMgqXpnMdn1EC7sPE4E9WhiieZ5DvKcSezk8FwQxV4aVeUEjoymn9M17VrWwTIIPYsDzhXS704LBs998TQfmDJAxCIrqiuDZY-EnsVhc5nySTdKZPztVoEhGkiihaO1DJaMlHwFO4uD5li-43YQ49fK6OUt3xSRLLc4_CP6OGpXnptuQRok-hK_Ih"}
-            referrerPolicy="no-referrer"
-          />
+          {stats?.profileImage ? (
+            <img
+              alt={stats?.name || ""}
+              className="w-12 h-12 rounded-full border border-[#bec9c3] object-cover"
+              src={stats.profileImage}
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full border border-[#bec9c3] bg-[#e4e2e1] flex items-center justify-center font-bold text-slate-600">
+              {(stats?.name || "").charAt(0).toUpperCase()}
+            </div>
+          )}
           {stats.online && <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00604c] border-2 border-white rounded-full" />}
         </div>
         <div>

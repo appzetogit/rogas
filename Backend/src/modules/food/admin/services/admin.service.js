@@ -1,7 +1,7 @@
+import { logger } from '../../../../utils/logger.js';
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
-import { VendorSubscriptionPlan } from '../../../dailymealbox/subscription/vendorSubscriptionPlan.model.js';
 import { buildRawDownloadUrlFromFileUrl } from '../../../../services/cloudinary.service.js';
 import { queueEmail } from '../../../email/email.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
@@ -988,6 +988,57 @@ export async function getTransactionReport(query = {}) {
             // Count number of refunded transactions according to old logic or sum them
             refundedTransaction += tx.amounts?.totalCustomerPaid || 0;
         }
+    }
+
+    // The DailyMealBox money (subscriptions, single meals, pantry, tips, office, wallet top-ups) is not in the food order
+    // ledger above; it lives in the payment transactions. They are listed here too, so the report shows every payment.
+    try {
+        const { PaymentTransaction } = await import('../../../payments/payments.models.js');
+        const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
+        const payMatch = { status: { $in: ['paid', 'partially_refunded', 'refunded'] } };
+        if (match.createdAt) payMatch.createdAt = match.createdAt;
+        if (search) payMatch.publicId = { $regex: new RegExp(String(search).trim(), 'i') };
+        const payments = await PaymentTransaction.find(payMatch).sort({ createdAt: -1 }).lean();
+
+        // A payment points to its subscription by the business id (e.g. DMB-SUB-123456789), not by the database id.
+        const subIds = payments.map((x) => x.refs?.subscriptionId).filter(Boolean).map(String);
+        const subs = await DMBSubscription.find({ subscriptionId: { $in: subIds } }).select('subscriptionId vendorId quote.totals pricing').populate('vendorId', 'restaurantName').lean();
+        const subById = new Map(subs.map((x) => [String(x.subscriptionId), x]));
+        const PURPOSE_LABEL = { subscription: 'Subscription', pantry: 'Pantry box', wallet_topup: 'Wallet top-up', tip: 'Driver tip', office: 'Office payment', driver_deposit: 'Driver cash deposit', one_time_order: 'Single meal' };
+
+        for (const pay of payments) {
+            const sub = subById.get(String(pay.refs?.subscriptionId || ''));
+            const vendorName = sub?.vendorId?.restaurantName || '';
+            // With a zone / restaurant filter only the payments of those restaurants are shown.
+            if (restaurantIds && !(sub?.vendorId?._id && restaurantIds.some((r) => String(r) === String(sub.vendorId._id)))) continue;
+            const amount = (pay.amountMinor || 0) / 100;
+            const refunded = (pay.refundedMinor || 0) / 100;
+            const totals = sub?.quote?.totals || {};
+            transactions.push({
+                id: pay._id,
+                orderId: pay.publicId,
+                restaurant: vendorName || PURPOSE_LABEL[pay.purpose] || pay.purpose,
+                customerName: pay.customer?.name || 'Guest',
+                totalItemAmount: Number(totals.foodGross ?? totals.food ?? 0) || (sub ? 0 : amount),
+                itemDiscount: Number(totals.discount || 0),
+                couponDiscount: 0,
+                referralDiscount: 0,
+                discountedAmount: Number(totals.food || 0),
+                vatTax: (Number(totals.foodVat) || 0) + (Number(totals.deliveryVat) || 0),
+                deliveryCharge: Number(totals.delivery || 0),
+                platformFee: Number(totals.platformFee || 0),
+                orderAmount: amount,
+                currency: pay.currency,
+                type: PURPOSE_LABEL[pay.purpose] || pay.purpose,
+                createdAt: pay.createdAt,
+                status: pay.status === 'paid' ? 'captured' : pay.status
+            });
+            if (pay.status === 'paid' || pay.status === 'partially_refunded') completedTransaction += amount - refunded;
+            if (refunded > 0) refundedTransaction += refunded;
+        }
+        transactions.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } catch (err) {
+        logger.warn(`Transaction report: payment transactions could not be added: ${err.message}`);
     }
 
     const summary = {
@@ -3800,6 +3851,15 @@ export async function approveRestaurant(id) {
     if (updated) {
         if (!isZoneChange) {
             const isHomeCook = updated.vendorType === 'home_cook' && !!updated.kitchenPartnerId;
+            if (restaurant.status !== 'approved' && updated.status === 'approved') {
+                // A newly approved kitchen starts with the platform's plans (the vendor edits them in My Subscription Plans).
+                try {
+                    const { giveStarterPlans } = await import('../../../dailymealbox/subscription/vendorPlans.service.js');
+                    await giveStarterPlans(updated._id);
+                } catch (err) {
+                    logger.warn(`Starter plans for vendor ${updated._id} failed: ${err.message}`);
+                }
+            }
             if (isHomeCook && restaurant.status !== 'approved' && updated.status === 'approved') {
                 await KitchenPartner.findByIdAndUpdate(updated.kitchenPartnerId, { 
                     $push: { homeCooks: { homeKitchenId: updated._id, homeKitchenName: updated.restaurantName } } 
@@ -5534,6 +5594,7 @@ export async function getFinancialOverviewSummary() {
     let totalVendorPaid = 0;
     let totalVendorWalletBalance = 0;
     let totalVendorCommissionVat = 0; // The platform tax/commission deducted from vendors
+    let totalVendorPlatformFee = 0; // Platform fee deducted from vendors (ledger + subscription orders)
     try {
         const restaurants = await FoodRestaurant.find({}).select('_id').lean();
         for (const rest of restaurants) {
@@ -5547,6 +5608,7 @@ export async function getFinancialOverviewSummary() {
             totalVendorPaid += paid;
             totalVendorWalletBalance += available;
             totalVendorCommissionVat += commVat;
+            totalVendorPlatformFee += Number(summaryObj?.summary?.platformCommissionVatDeduction || 0);
         }
     } catch (_) {}
 
@@ -5561,7 +5623,8 @@ export async function getFinancialOverviewSummary() {
     totalVendorPaid = Math.max(totalVendorPaid, directVendorPaid);
 
     // 2. Calculate Delivery Driver Wallet Balances & Total Driver Earnings
-    let totalDriverEarned = 0;
+    let totalDriverEarned = 0; // delivery fees + tips from delivered orders only
+    let totalDriverBonus = 0; // admin bonuses are paid on top and are not order earnings
     let totalDriverPaid = 0;
     let totalDriverWalletBalance = 0;
     try {
@@ -5575,8 +5638,9 @@ export async function getFinancialOverviewSummary() {
         for (const p of partners) {
             try {
                 const w = await getDeliveryPartnerWalletEnhanced(p._id);
-                // totalBalance = Gross lifetime earnings (totalEarned + totalBonus)
-                totalDriverEarned += Number(w?.totalBalance || 0); 
+                // Earnings from delivered orders (fees + tips); the bonuses admin gave are counted separately.
+                totalDriverEarned += Number(w?.totalEarned || 0);
+                totalDriverBonus += Number(w?.totalBonus || 0);
                 // totalWithdrawn = Actually paid out
                 totalDriverPaid += Number(w?.totalWithdrawn || 0);
                 // pocketBalance = Available to withdraw (Wallet Balance)
@@ -5599,13 +5663,15 @@ export async function getFinancialOverviewSummary() {
             ]);
             
             totalDriverWalletBalance = Number(walletAgg[0]?.totalBalance || 0);
-            totalDriverEarned = Number(walletAgg[0]?.totalEarnings || 0) + Number(walletAgg[0]?.totalBonus || 0);
+            totalDriverEarned = Number(walletAgg[0]?.totalEarnings || 0);
+            totalDriverBonus = Number(walletAgg[0]?.totalBonus || 0);
             totalDriverPaid = Number(walletAgg[0]?.totalSettled || 0);
         }
     } catch (_) {}
 
     // 3. Platform Revenue (Admin Commission) & Orders Gross Payments & Tax
     let adminCommission = 0;
+    let unledgeredCommission = 0;
     let totalCustomerPayments = 0;
     let totalTaxCollected = 0;
 
@@ -5642,13 +5708,28 @@ export async function getFinancialOverviewSummary() {
         const o = orderPricingAgg[0] || {};
         const t = txAgg[0] || {};
 
-        adminCommission = totalVendorCommissionVat + Math.max(Number(o.totalComm || 0), Number(t.totalComm || 0));
+        // Delivered food orders that have no ledger row yet are missing from the per-vendor figures above: add their
+        // vendor share and commission here (orders WITH a ledger row are already inside the per-vendor totals).
+        const [unledgered] = await FoodOrder.aggregate([
+            { $match: { orderStatus: 'delivered' } },
+            { $lookup: { from: 'food_transactions', localField: '_id', foreignField: 'orderId', as: 'tx' } },
+            { $match: { tx: { $size: 0 } } },
+            {
+                $group: {
+                    _id: null,
+                    vendorShare: { $sum: { $subtract: [{ $ifNull: ['$pricing.subtotal', 0] }, { $ifNull: ['$pricing.restaurantCommission', 0] }] } },
+                    commission: { $sum: { $ifNull: ['$pricing.restaurantCommission', 0] } },
+                    platformFee: { $sum: { $ifNull: ['$pricing.platformFee', 0] } },
+                    riderShare: { $sum: { $ifNull: ['$pricing.deliveryFee', 0] } }
+                }
+            }
+        ]);
+        totalVendorEarned += Number(unledgered?.vendorShare || 0);
+        unledgeredCommission = Number(unledgered?.commission || 0) + Number(unledgered?.platformFee || 0);
+
         totalCustomerPayments = Math.max(Number(o.totalCust || 0), Number(t.totalCust || 0));
         totalTaxCollected = totalVendorCommissionVat + Math.max(Number(o.totalTax || 0), Number(t.totalTax || 0));
 
-        if (totalVendorEarned === 0) {
-            totalVendorEarned = Math.max(Number(o.totalVendorShare || 0), Number(t.totalVendorShare || 0));
-        }
         if (totalDriverEarned === 0) {
             totalDriverEarned = Math.max(Number(o.totalRiderShare || 0), Number(t.totalRiderShare || 0));
         }
@@ -5658,6 +5739,7 @@ export async function getFinancialOverviewSummary() {
     let subRevenueWithTax = 0;
     let subCount = 0;
     let subTax = 0;
+    let subPlatformFee = 0;
     try {
         const subAgg = await DMBSubscription.aggregate([
             {
@@ -5669,22 +5751,28 @@ export async function getFinancialOverviewSummary() {
                 $group: {
                     _id: null,
                     total: { $sum: { $ifNull: ['$pricing.totalPrice', 0] } },
-                    totalTax: { $sum: { $ifNull: ['$pricing.foodVatAmount', 0] } },
+                    totalTax: { $sum: { $add: [{ $ifNull: ['$pricing.foodVatAmount', 0] }, { $ifNull: ['$pricing.deliveryVatAmount', 0] }] } },
+                    totalPlatformFee: { $sum: { $ifNull: ['$pricing.platformFeeAmount', 0] } },
                     count: { $sum: 1 }
                 }
             }
         ]);
         subRevenueWithTax = Number(subAgg[0]?.total || 0);
         subTax = Number(subAgg[0]?.totalTax || 0);
+        subPlatformFee = Number(subAgg[0]?.totalPlatformFee || 0);
         subCount = Number(subAgg[0]?.count || 0);
     } catch (_) {}
 
     // Calculate final summary totals
     const finalTotalCustomerPayments = totalCustomerPayments + subRevenueWithTax;
-    const finalTotalFoodTaxCollected = totalTaxCollected;
+    const finalTotalFoodTaxCollected = totalTaxCollected + subTax;
+
+    // What the platform itself earns: commission and platform fees only. The customer total (which already contains VAT)
+    // and the VAT collected for the tax office are shown separately and are not platform earnings.
+    adminCommission = totalVendorCommissionVat + totalVendorPlatformFee + unledgeredCommission + subPlatformFee;
 
     return {
-        adminTotalEarnings: finalTotalCustomerPayments + finalTotalFoodTaxCollected,
+        adminTotalEarnings: adminCommission,
         vendorStats: {
             totalEarned: totalVendorEarned,
             totalPaidByAdmin: totalVendorPaid,
@@ -5693,6 +5781,7 @@ export async function getFinancialOverviewSummary() {
         },
         deliveryStats: {
             totalEarned: totalDriverEarned,
+            totalBonus: totalDriverBonus,
             totalPaidByAdmin: totalDriverPaid,
             pendingBalance: totalDriverWalletBalance,
             walletBalance: totalDriverWalletBalance
@@ -6065,146 +6154,6 @@ export async function updateRestaurantZoneRank(restaurantId, rank) {
     return restaurant;
 }
 
-// ─── Vendor Subscription Plans CRUD ──────────────────────────────────────────
-export async function getVendorSubscriptionPlans(query = {}) {
-    const filter = {};
-    if (query.status) {
-        filter.status = query.status;
-    }
-    const plans = await VendorSubscriptionPlan.find(filter).sort({ createdAt: -1 });
-    return plans;
-}
-
-export async function createVendorSubscriptionPlan(body) {
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) throw new ValidationError('Plan name is required');
-
-    const duration = typeof body.duration === 'string' ? body.duration.trim().toLowerCase() : '';
-    if (!duration || !['day', 'week', 'month'].includes(duration)) {
-        throw new ValidationError('Duration must be day, week, or month');
-    }
-
-    const foodVat = toFiniteNumber(body.foodVat) !== null ? Math.max(0, toFiniteNumber(body.foodVat)) : 0;
-    const deliveryVat = toFiniteNumber(body.deliveryVat) !== null ? Math.max(0, toFiniteNumber(body.deliveryVat)) : 0;
-    const platformFee = toFiniteNumber(body.platformFee) !== null ? Math.max(0, toFiniteNumber(body.platformFee)) : 0;
-    const deliveryDays = typeof body.deliveryDays === 'string' && ['mon_fri', 'full_week'].includes(body.deliveryDays) ? body.deliveryDays : 'full_week';
-    const applyFoodVatOnMenu = body.applyFoodVatOnMenu === true || body.applyFoodVatOnMenu === 'true';
-
-    let daysCount = 0;
-    if (duration === 'day') {
-        daysCount = 1;
-    } else if (duration === 'week') {
-        daysCount = deliveryDays === 'mon_fri' ? 5 : 7;
-    } else if (duration === 'month') {
-        daysCount = deliveryDays === 'mon_fri' ? 20 : 30;
-    }
-
-    const plan = new VendorSubscriptionPlan({
-        name,
-        duration,
-        description: typeof body.description === 'string' ? body.description.trim() : '',
-        features: Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [],
-        foodVat,
-        deliveryVat,
-        platformFee,
-        deliveryDays,
-        daysCount,
-        applyFoodVatOnMenu,
-        status: body.status === 'inactive' ? 'inactive' : 'active'
-    });
-
-    await plan.save();
-    return plan.toObject();
-}
-
-export async function updateVendorSubscriptionPlan(id, body) {
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid plan id');
-    
-    const plan = await VendorSubscriptionPlan.findById(id);
-    if (!plan) return null;
-
-    if (body.name !== undefined) {
-        const name = typeof body.name === 'string' ? body.name.trim() : '';
-        if (!name) throw new ValidationError('Plan name cannot be empty');
-        plan.name = name;
-    }
-    
-    if (body.duration !== undefined) {
-        const duration = typeof body.duration === 'string' ? body.duration.trim().toLowerCase() : '';
-        if (!duration || !['day', 'week', 'month'].includes(duration)) {
-            throw new ValidationError('Duration must be day, week, or month');
-        }
-        plan.duration = duration;
-    }
-    
-    if (body.description !== undefined) {
-        plan.description = typeof body.description === 'string' ? body.description.trim() : '';
-    }
-    
-    if (body.features !== undefined) {
-        plan.features = Array.isArray(body.features) ? body.features.filter((f) => typeof f === 'string' && f.trim() !== '') : [];
-    }
-
-    if (body.foodVat !== undefined) {
-        const foodVat = toFiniteNumber(body.foodVat);
-        if (foodVat === null || foodVat < 0) {
-            throw new ValidationError('Food VAT must be a non-negative number');
-        }
-        plan.foodVat = foodVat;
-    }
-
-    if (body.deliveryVat !== undefined) {
-        const deliveryVat = toFiniteNumber(body.deliveryVat);
-        if (deliveryVat === null || deliveryVat < 0) {
-            throw new ValidationError('Delivery VAT must be a non-negative number');
-        }
-        plan.deliveryVat = deliveryVat;
-    }
-
-    if (body.platformFee !== undefined) {
-        const platformFee = toFiniteNumber(body.platformFee);
-        if (platformFee === null || platformFee < 0) {
-            throw new ValidationError('Platform Fee must be a non-negative number');
-        }
-        plan.platformFee = platformFee;
-    }
-
-    if (body.deliveryDays !== undefined) {
-        if (!['mon_fri', 'full_week'].includes(body.deliveryDays)) {
-            throw new ValidationError('Delivery days must be mon_fri or full_week');
-        }
-        plan.deliveryDays = body.deliveryDays;
-    }
-
-    if (body.applyFoodVatOnMenu !== undefined) {
-        plan.applyFoodVatOnMenu = body.applyFoodVatOnMenu === true || body.applyFoodVatOnMenu === 'true';
-    }
-    
-    if (body.status !== undefined) {
-        if (!['active', 'inactive'].includes(body.status)) {
-            throw new ValidationError('Status must be active or inactive');
-        }
-        plan.status = body.status;
-    }
-
-    if (plan.duration === 'day') {
-        plan.daysCount = 1;
-    } else if (plan.duration === 'week') {
-        plan.daysCount = plan.deliveryDays === 'mon_fri' ? 5 : 7;
-    } else if (plan.duration === 'month') {
-        plan.daysCount = plan.deliveryDays === 'mon_fri' ? 20 : 30;
-    }
-
-    await plan.save();
-    return plan.toObject();
-}
-
-export async function deleteVendorSubscriptionPlan(id) {
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid plan id');
-    const plan = await VendorSubscriptionPlan.findByIdAndDelete(id);
-    return plan;
-}
-
 // ─── Delivery Order Fee Settings & Commission Audit ────────────────────────────
 export async function getDeliveryOrderFeeSettings() {
     const { DeliveryOrderFeeSettings } = await import('../models/deliveryOrderFeeSettings.model.js');
@@ -6446,17 +6395,19 @@ export async function getVendorSubscriberDetails(vendorId, subId) {
     }
     const { DMBSubscription } = await import('../../../dailymealbox/subscription/subscription.model.js');
     const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
+    const { deliveriesOn } = await import('../../../dailymealbox/subscription/schedule.js');
+    const { storageDateStr, addDays } = await import('../../../../utils/platformTime.js');
+    const { listSlots, getSlotLabel } = await import('../../../dailymealbox/deliverySlot/deliverySlot.service.js');
 
     const subscription = await DMBSubscription.findOne({ _id: subId, vendorId })
         .populate('mealPlanId', 'name')
+        .populate('meals.mealPlanId', 'name')
         .populate('userId', 'name phone email addresses')
         .lean();
 
     if (!subscription) return null;
 
-    // Fetch delivery history
     const dailyOrders = await DMBDailyOrder.find({ subscriptionId: subId })
-        .sort({ deliveryDate: -1 })
         .populate('dispatch.deliveryPartnerId', 'name phone')
         .lean();
 
@@ -6466,7 +6417,6 @@ export async function getVendorSubscriberDetails(vendorId, subId) {
         remainingDays = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
     }
 
-    // Process address
     const user = subscription.userId || {};
     let address = {};
     if (subscription.deliveryAddress) {
@@ -6475,19 +6425,53 @@ export async function getVendorSubscriberDetails(vendorId, subId) {
         address = user.addresses.find(a => a.isDefault) || user.addresses[0];
     }
 
+    // Every delivery of the subscription, not only the days whose order has already been generated: the full schedule from
+    // the start to the end of the paid period, each date/slot joined with its real order (status, driver, proof) when it exists.
+    const slotDefs = await listSlots();
+    const slotName = (key) => getSlotLabel(slotDefs, key) || key;
+    const rows = [];
+    let totalMeals = 0;
+    const seen = new Set();
+    const orderAt = new Map(dailyOrders.map((o) => [`${storageDateStr(o.deliveryDate)}|${o.deliverySlot}`, o]));
+    if (subscription.startDate) {
+        const from = new Date(storageDateStr(subscription.startDate));
+        const to = subscription.endDate ? new Date(storageDateStr(subscription.endDate)) : addDays(from, 60);
+        for (let day = from, guard = 0; day < to && guard < 400; day = addDays(day, 1), guard++) {
+            for (const d of deliveriesOn(subscription, day)) {
+                const key = `${storageDateStr(day)}|${d.slot}`;
+                const order = orderAt.get(key);
+                seen.add(key);
+                totalMeals += (d.meals || []).reduce((sum, m) => sum + (Number(m.quantity) || 1), 0);
+                rows.push({ day, slot: d.slot, order });
+            }
+        }
+    }
+    // Orders that exist but fall outside the computed schedule (moved or manual) are still listed.
+    for (const o of dailyOrders) {
+        const key = `${storageDateStr(o.deliveryDate)}|${o.deliverySlot}`;
+        if (!seen.has(key)) rows.push({ day: new Date(o.deliveryDate), slot: o.deliverySlot, order: o });
+    }
+    rows.sort((x, y) => new Date(y.day) - new Date(x.day));
+
+    const slotKeys = subscription.deliverySlots?.length ? subscription.deliverySlots : (subscription.deliverySlot ? [subscription.deliverySlot] : []);
+    const todayStr = storageDateStr(new Date());
+
     return {
         ...subscription,
         userId: user,
         deliveryAddress: address,
         remainingDays,
-        deliveryHistory: dailyOrders.map(order => ({
-            _id: order._id,
-            deliveryDate: order.deliveryDate,
-            mealType: order.mealType,
-            status: order.status,
-            driverName: order.dispatch?.deliveryPartnerId?.name || 'Unassigned',
-            driverPhone: order.dispatch?.deliveryPartnerId?.phone || 'N/A',
-            podImage: order.proofOfDelivery || null
+        totalMealsCount: totalMeals,
+        deliverySlotsInfo: slotKeys.map((k) => ({ key: k, name: slotName(k) })),
+        mealsInfo: (subscription.meals || []).map((m) => ({ name: m.mealPlanId?.name || m.name || '', quantity: m.quantity || 1 })),
+        deliveryHistory: rows.map(({ day, slot, order }) => ({
+            _id: order?._id || `${storageDateStr(day)}|${slot}`,
+            deliveryDate: day,
+            mealType: slotName(slot),
+            status: order?.status || (storageDateStr(day) < todayStr ? 'no_order' : 'scheduled'),
+            driverName: order?.dispatch?.deliveryPartnerId?.name || '',
+            driverPhone: order?.dispatch?.deliveryPartnerId?.phone || '',
+            podImage: order?.proofPhotoUrl || order?.proofOfDelivery || null
         }))
     };
 }

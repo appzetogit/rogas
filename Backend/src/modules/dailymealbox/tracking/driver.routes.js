@@ -13,8 +13,20 @@ import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { notifyDriverOfRouteUpdate } from '../subscription/dmb.dailyOrder.service.js';
 import { listShiftsForDriver, confirmShift } from '../../food/delivery/services/attendance.service.js';
 import crypto from 'crypto';
+import { PICKUP_REASONS, PickupProblemError, reportPickupProblem, openBlockingIssue } from './pickupProblem.service.js';
 
 const router = express.Router();
+
+/** Meal boxes in one order: every meal counts by its quantity (2 meals = 2 boxes); a pantry bag counts as one. */
+const mealBoxesOf = (o) => (Array.isArray(o?.meals) && o.meals.length ? o.meals.reduce((sum, m) => sum + (Number(m.quantity) || 1), 0) : 1);
+
+/** The delivery fee admin set in Fee Settings (what a driver earns per delivery), or null when none is set. Never invented. */
+const configuredDriverFee = async () => {
+    const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+    const cfg = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+    const fee = Number(cfg?.feePerOrder);
+    return Number.isFinite(fee) && fee > 0 ? fee : null;
+};
 
 /**
  * DailyMealBox Driver Routes
@@ -351,6 +363,12 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
             // Pickup stop status: 'completed' if all orders are picked up, else 'pending'
             const pickupStopStatus = allPickedUp ? 'completed' : 'pending';
 
+            // An open problem reported at this vendor (so the app keeps showing it after a reload).
+            const issueBatch = await CollectionBatch.findOne({
+                vendorId: vendor?._id || vendorId, deliveryDate: today, deliverySlot: targetSlot, status: { $nin: ['collected', 'failed'] }
+            }).select('pickupIssues').lean();
+            const openIssue = (issueBatch?.pickupIssues || []).find((i) => i.status === 'open');
+
             stops.push({
                 stopIndex: stopIdx++,
                 id: `pickup_${vendorId}_${targetSlot}`,
@@ -364,7 +382,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                 slot: targetSlot,
                 vendorStatus,  // scheduled | preparing | ready | picked
                 collectionPin,
+                pickupIssue: openIssue ? { reason: openIssue.reason, blocking: Boolean(openIssue.blocking) } : null,
                 orderCount: vendorOrders.length,
+                boxCount: vendorOrders.reduce((sum, o) => sum + mealBoxesOf(o), 0),
                 status: pickupStopStatus,  // 'completed' when all orders picked up
                 isSlotActive
             });
@@ -390,6 +410,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         lat: custLat,
                         lng: custLng,
                         orderId: order._id,
+                        boxCount: mealBoxesOf(order),
                         deliveryPin: order.deliveryPin || '',
                         status: order.status === 'delivered' ? 'completed' : 'pending',
                         isSlotActive,
@@ -415,6 +436,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         lat: custLat,
                         lng: custLng,
                         orderId: order._id,
+                        boxCount: mealBoxesOf(order),
                         deliveryPin: order.deliveryPin || '',
                         status: 'pending',
                         awaitingPickup: true,  // customer stop locked until vendor pickup done
@@ -524,6 +546,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 .sort({ deliverySlot: 1 });
 
             const mappedPantryOrders = [];
+            const pantryDriverFee = candidatePantryOrders.length ? await configuredDriverFee() : null;
             for (const po of candidatePantryOrders) {
                 const delivery = po.dailyDeliveries.find(d => candidate.orderIds.some(id => id.toString() === d._id.toString()));
                 if (delivery) {
@@ -537,7 +560,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                         deliveryAddress: po.deliveryAddress,
                         deliverySlot: po.deliverySlot,
                         deliveryPin: delivery.deliveryPin || po.deliveryPin,
-                        riderEarning: 5, // fallback
+                        riderEarning: pantryDriverFee || 0,
                         parentOrderId: po._id
                     });
                 }
@@ -583,7 +606,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         const ordersWithPins = [];
         for (const order of allOrders) {
             const orderObj = order.toObject ? order.toObject() : order;
-            orderObj.pin = batchOtpMap.get(orderObj._id.toString()) || '4901';
+            orderObj.pin = batchOtpMap.get(orderObj._id.toString()) || '';
             
             // Assign Admin-configured delivery fee to riderEarning
             orderObj.riderEarning = orderObj.riderEarning || riderEarningSetting;
@@ -606,12 +629,13 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         }
 
         const vendorName = batch.vendorId?.restaurantName || '';
-        const vendorAddress = batch.vendorId?.addressLine1 || 'Vendor Address';
+        const vendorAddress = batch.vendorId?.addressLine1 || '';
         const vendorPhone = batch.vendorId?.phone || '';
         const vendorLocation = batch.vendorId?.location || null;
         const { listSlots: _listSlots, getSlotLabel: _getSlotLabel } = await import('../deliverySlot/deliverySlot.service.js');
         const slotType = _getSlotLabel(await _listSlots(), batch.deliverySlot);
-        const totalMealBoxCount = batch.boxCount || 0;
+        // Meal boxes the driver carries (a 2-meal order is 2 boxes), not the number of orders.
+        const totalMealBoxCount = allOrders.reduce((sum, o) => sum + mealBoxesOf(o), 0);
         const stopsCount = allOrders.length;
 
         // Delivery timer: 3 hours countdown from collectedAt (when vendor pickup is verified)
@@ -634,6 +658,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     address: vendorAddress,
                     status: 'READY',
                     orderId: orders[0]?._id,
+                    // The pickup is ONE stop for every order in the batch: all customers of this vendor and slot.
+                    orderCount: ordersWithPins.length,
+                    boxCount: ordersWithPins.reduce((sum, o) => sum + mealBoxesOf(o), 0),
                     vendorLat,
                     vendorLng,
                     vendorId: batch.vendorId?._id || batch.vendorId,
@@ -649,6 +676,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                     customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
                     customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
                     boxNumber: idx + 1,
+                    boxCount: mealBoxesOf(order),
                     vendorId: order.vendorId?._id || order.vendorId,
                     slot: order.deliverySlot,
                     riderEarning: order.riderEarning
@@ -789,6 +817,11 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
         }
 
         if (batch) {
+            // A problem the driver reported at the vendor blocks the collection until an admin clears it.
+            const blocking = openBlockingIssue(batch);
+            if (blocking) {
+                return res.status(423).json({ success: false, code: 'PICKUP_BLOCKED', reason: blocking.reason, message: 'A problem was reported for this pickup. Please wait: support will contact you and clear it or release you from this pickup.' });
+            }
             // Amendment 1 #9: after 3 wrong attempts the PIN is locked until the vendor generates a new one.
             const MAX_PIN_ATTEMPTS = 3;
             if ((batch.pinAttempts || 0) >= MAX_PIN_ATTEMPTS) {
@@ -846,112 +879,30 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
             return res.json({ success: true, message: 'Collection verified. Orders are now out for delivery.' });
         }
 
-        // ─── Strategy 2: No batch — verify against vendor's ready orders directly ─
-        if (!vendorId || !slot) {
-            return res.status(404).json({ success: false, message: 'No active pickup batch found. Please provide vendorId and slot.' });
-        }
-
-        // Find all ready orders for this vendor+slot
-        const readyOrders = await DMBDailyOrder.find({
-            vendorId,
-            deliveryDate: { $gte: today, $lt: tomorrow },
-            deliverySlot: slot,
-            status: { $in: ['ready', 'scheduled', 'preparing'] }
-        });
-
-        // Find ready PantryOrders
-        const startOfDay = new Date(today);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(today);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const readyPantryOrders = await PantryOrder.find({
-            vendorId,
-            deliverySlot: slot,
-            status: { $nin: ['pending_payment', 'cancelled'] },
-            'dailyDeliveries': {
-                $elemMatch: {
-                    date: { $gte: startOfDay, $lte: endOfDay },
-                    status: { $in: ['ready', 'scheduled', 'preparing'] }
-                }
-            }
-        });
-        
-        let pantryDailyDeliveryIds = [];
-        for (const po of readyPantryOrders) {
-            const dIdx = po.dailyDeliveries.findIndex(d => 
-                new Date(d.date).getTime() >= startOfDay.getTime() && 
-                new Date(d.date).getTime() <= endOfDay.getTime()
-            );
-            if (dIdx > -1) {
-                pantryDailyDeliveryIds.push(po.dailyDeliveries[dIdx]._id);
-            }
-        }
-
-        if (readyOrders.length === 0 && pantryDailyDeliveryIds.length === 0) {
-            return res.status(404).json({ success: false, message: 'No ready orders found for this vendor and slot.' });
-        }
-
-        // Verify PIN against collectionPin on the first order (or use the 4-digit auto-pin)
-        const expectedPin = readyOrders[0]?.collectionPin || '4901';
-
-        if (String(expectedPin) !== String(pin) && String(pin) !== '4901') {
-            return res.status(400).json({ success: false, message: 'Invalid Collection PIN' });
-        }
-
-        // Create a batch record for audit trail
-        const newBatch = await CollectionBatch.create({
-            vendorId,
-            driverId,
-            deliveryDate: today,
-            deliverySlot: slot,
-            collectionPinHash: String(pin),
-            pinVerified: true,
-            status: 'collected',
-            collectedAt: new Date(),
-            collectionGps: collectionGps || {},
-            boxCount: readyOrders.length + pantryDailyDeliveryIds.length,
-            orderIds: [...readyOrders.map(o => o._id), ...pantryDailyDeliveryIds]
-        });
-
-        // Update orders to out_for_delivery
-        if (readyOrders.length > 0) {
-            await DMBDailyOrder.updateMany(
-                { _id: { $in: readyOrders.map(o => o._id) } },
-                { $set: { status: 'out_for_delivery', pickedUpAt: new Date(), 'dispatch.deliveryPartnerId': driverId } }
-            );
-        }
-
-        // Update pantry orders to out_for_delivery
-        for (const po of readyPantryOrders) {
-            const dIdx = po.dailyDeliveries.findIndex(d => 
-                new Date(d.date).getTime() >= startOfDay.getTime() && 
-                new Date(d.date).getTime() <= endOfDay.getTime()
-            );
-            if (dIdx > -1) {
-                po.dailyDeliveries[dIdx].status = 'out_for_delivery';
-                po.dailyDeliveries[dIdx].driverId = driverId;
-                await po.save();
-            }
-        }
-
-        // Notify Vendor
-        const io = getIO();
-        if (io) {
-            io.to(`vendor_${vendorId}`).emit('batch_collected_success', {
-                batchId: newBatch.batchId,
-                message: 'Driver collected the batch successfully'
-            });
-        }
-
-        notifyDriverOfRouteUpdate(driverId);
-        return res.json({ success: true, message: 'Collection verified. Orders are now out for delivery.' });
+        // No batch means the vendor has not marked the orders ready (that is when the collection PIN is created), so there is
+        // nothing to collect yet. There is no built-in PIN.
+        return res.status(404).json({ success: false, message: 'There is nothing to collect yet: the vendor has not marked the orders ready.' });
 
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
 });
 
+
+// ─── Problem at the vendor (before pickup) ───────────────────────────────
+router.get('/pickup-problem-options', authMiddleware, requireRoles('DELIVERY_PARTNER'), (req, res) => {
+    res.json({ success: true, reasons: Object.entries(PICKUP_REASONS).map(([key, v]) => ({ key, blocking: v.blocking, photoRequired: v.photoRequired, noteRequired: v.noteRequired })) });
+});
+
+router.post('/report-pickup-problem', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const { vendorId, slot, reason, note, photoUrl } = req.body;
+        const result = await reportPickupProblem({ driverId: (req.user.userId || req.user._id), vendorId, slot, reason, note, photoUrl });
+        res.json({ success: true, ...result });
+    } catch (err) {
+        res.status(err instanceof PickupProblemError ? err.statusCode : 400).json({ success: false, code: err.code, message: err.message });
+    }
+});
 
 // ─── Verify Delivery PIN (at customer) ────────────────────────────────────
 router.post('/verify-delivery-pin', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
@@ -1129,7 +1080,6 @@ router.post('/confirm-payment', authMiddleware, requireRoles('DELIVERY_PARTNER')
         const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
         const { FoodOrder } = await import('../../food/orders/models/order.model.js');
         const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
 
         // Check if it has already been paid/confirmed to prevent double earnings
         let order = await DMBDailyOrder.findById(orderId);
@@ -1145,15 +1095,19 @@ router.post('/confirm-payment', authMiddleware, requireRoles('DELIVERY_PARTNER')
             return res.status(400).json({ success: false, message: 'Payment already confirmed for this order' });
         }
 
-        // Fetch dynamic delivery fee configured by Admin
-        let riderEarning = 18; // fallback default
-        try {
-            const orderFeeSettings = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-            if (orderFeeSettings && Number(orderFeeSettings.feePerOrder) > 0) {
-                riderEarning = Number(orderFeeSettings.feePerOrder);
-            }
-        } catch (err) {
-            console.error("Failed to fetch DeliveryOrderFeeSettings", err);
+        // The driver earns the order's own fee when it already has one, otherwise the fee admin configured. There is no
+        // built-in default: without a configured fee nothing is credited and admin is told to set it.
+        const riderEarning = Number(order.riderEarning) > 0 ? Number(order.riderEarning) : await configuredDriverFee();
+        if (!riderEarning) {
+            import('../platform/platformConfig.service.js')
+                .then((m) => m.raiseAdminAlert({
+                    type: 'driver_fee_missing', severity: 'critical',
+                    title: 'Driver delivery fee is not configured',
+                    message: 'A driver could not be credited for a delivery because no delivery fee per order is set. Set it in Fee Settings.',
+                    entityType: 'DMBDailyOrder', entityId: orderId, link: '/admin/food/fee-settings', dedupeKey: 'driver-fee-missing'
+                }))
+                .catch(() => {});
+            return res.status(409).json({ success: false, code: 'DRIVER_FEE_NOT_SET', message: 'The delivery fee for drivers is not configured yet. Admin has been told; please try again later.' });
         }
 
         // Apply earning to driver

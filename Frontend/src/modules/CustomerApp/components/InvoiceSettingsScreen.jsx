@@ -1,14 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IMAGES } from "../types";
 import { ArrowLeft, Download } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { dmbCustomerAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
-import useMoney from "../../../shared/payments/money";
+const fieldCls = "w-full h-12 px-4 bg-white border border-[#bec9c3] focus:border-primary rounded-xl text-sm text-on-surface outline-none";
 export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, currentUser, selectedPlanDetails }) {
   const { t } = useTranslation("customer");
-  const { currency } = useMoney({ zoneId: selectedPlanDetails?.zoneId });
   const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
   const [companyName, setCompanyName] = useState(initialSettings.companyName || currentUser?.companyName || '');
   const [nipVat, setNipVat] = useState(initialSettings.nipVat || currentUser?.companyNip || '');
@@ -24,132 +21,44 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
     });
   };
 
+  // The invoice that can be downloaded is the one of a real, paid subscription (built by the server from what was charged).
+  const [invoiceSub, setInvoiceSub] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    let alive = true;
+    dmbCustomerAPI.getMySubscriptions()
+      .then((res) => {
+        const list = (res.data?.subscriptions || []).filter((s) => s.status !== "pending_payment");
+        if (alive) setInvoiceSub(list.find((s) => s.status === "active") || list[0] || null);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const handleDownload = async () => {
-    // Also save preference first
-    handleSave();
-
-    // Try to fetch actual active subscription if selectedPlanDetails is missing (e.g. accessed from Profile)
-    let planData = selectedPlanDetails;
-    let vendorData = selectedPlanDetails?.vendor || null;
-    if (!planData) {
-      try {
-        const res = await dmbCustomerAPI.getMySubscriptions();
-        if (res.data?.success && res.data.subscriptions?.length > 0) {
-          const activeSub = res.data.subscriptions.find(s => s.status === 'active') || res.data.subscriptions[0];
-          vendorData = activeSub.vendorId;
-          // Map it to match the expected structure
-          planData = {
-            mealPlan: {
-              name: activeSub.meals?.[0]?.mealPlanName || "Standard Box Plan",
-              type: activeSub.duration || "Weekly"
-            },
-            startDate: activeSub.startDate,
-            endDate: activeSub.expiryDate || activeSub.endDate,
-            days: activeSub.deliveryDays === 'full_week' ? 7 : 5,
-            pricing: {
-              totalPrice: activeSub.pricing?.totalPrice ?? activeSub.amountPaid ?? 0
-            }
-          };
-        }
-      } catch (err) {
-        console.error("Failed to fetch active subscription for receipt", err);
-      }
+    if (!invoiceSub?._id) return;
+    setDownloading(true);
+    setMessage("");
+    try {
+      handleSave(); // the VAT details typed here are what the next invoice uses
+      const res = await dmbCustomerAPI.downloadInvoice(invoiceSub._id);
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Invoice-${invoiceSub.subscriptionId || invoiceSub._id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      // A failed download comes back as a blob holding the server's JSON message.
+      let text = "";
+      try { text = JSON.parse(await err?.response?.data?.text?.())?.message || ""; } catch { /* not JSON */ }
+      setMessage(text || t("Could not download the invoice. Please try again."));
+    } finally {
+      setDownloading(false);
     }
-
-    // Generate PDF using jsPDF
-    const doc = new jsPDF();
-    const invoiceNumber = `INV-DMB-SUB-${Math.floor(Math.random() * 1000000000)}`;
-
-    // 1. Title & Header
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text(receiptType === 'vat' ? "VAT INVOICE" : "SUBSCRIPTION RECEIPT", 14, 22);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Invoice Number: ${invoiceNumber}`, 14, 30);
-    doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 35);
-
-    // 2. Vendor & Customer Details Table (Side by Side layout)
-    const finalCustName = currentUser?.name || 'Customer Name';
-    const finalCustEmail = currentUser?.email || 'customer@example.com';
-
-    let customerLines = [];
-    if (receiptType === 'vat') {
-      customerLines = [
-        `Customer Name: ${finalCustName}`,
-        `Company Name: ${companyName || 'Not Provided'}`,
-        `NIP/VAT: ${nipVat || 'Not Provided'}`,
-        `Email: ${billingEmail || 'Not Provided'}`,
-        `Address: ${companyAddress || 'Not Provided'}`
-      ];
-    } else {
-      customerLines = [
-        `Name: ${finalCustName}`,
-        `Email: ${finalCustEmail}`
-      ];
-    }
-
-    const vendorName = vendorData?.restaurantName || vendorData?.name || "DailyMealBox Kitchen Partner";
-    const vendorContact = vendorData?.ownerPhone || vendorData?.phone || "";
-    const vendorAddress = vendorData?.location?.address || vendorData?.address || vendorData?.city || "Warsaw, Poland";
-    const vendorLines = [
-      vendorName,
-      vendorContact ? `Contact: ${vendorContact}` : null,
-      `Address: ${vendorAddress}`
-    ].filter(Boolean).join('\n');
-
-    autoTable(doc, {
-      startY: 45,
-      theme: 'plain',
-      head: [['Vendor Details', receiptType === 'vat' ? 'Company Details' : 'Customer Details']],
-      body: [[
-        vendorLines,
-        customerLines.join('\n')
-      ]],
-      headStyles: { fillColor: false, textColor: [40, 121, 101], fontStyle: 'bold', fontSize: 12 },
-      styles: { cellPadding: 1, fontSize: 10, valign: 'top' },
-      columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } }
-    });
-
-    // 3. Subscription Details Table
-    const planName = planData?.mealPlan?.name || "Standard Box Plan";
-    const planType = planData?.mealPlan?.type || "Weekly";
-    const startDate = planData?.startDate ? new Date(planData.startDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
-    const endDate = planData?.endDate ? new Date(planData.endDate).toLocaleDateString('en-GB') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB');
-    const validityDays = planData?.days || 7;
-    const totalPrice = planData?.pricing?.totalPrice ?? 0;
-
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 15,
-      theme: 'striped',
-      head: [['Plan Name', 'Type', 'Start Date', 'End Date', 'Validity', 'Status']],
-      body: [
-        [planName, planType, startDate, endDate, `${validityDays} days`, "Active"]
-      ],
-      headStyles: { fillColor: [40, 121, 101] }, // Brand primary color
-    });
-
-    // 4. Billing Details Table
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 15,
-      theme: 'grid',
-      head: [['Description', 'Payment Method', 'Amount']],
-      body: [
-        ['Subscription Amount', 'Prepaid/Wallet', `${currency} ${totalPrice.toFixed(2)}`]
-      ],
-      foot: [['Total Paid Amount', '', `${currency} ${totalPrice.toFixed(2)}`]],
-      headStyles: { fillColor: [40, 121, 101] },
-      footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
-    });
-
-    // Footer Message
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "italic");
-    doc.text("Thank you for choosing DailyMealBox!", 14, doc.lastAutoTable.finalY + 20);
-
-    // Save the PDF
-    doc.save(`${invoiceNumber}.pdf`);
   };
   return (<div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
     {/* Header element bar */}
@@ -219,7 +128,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("Company Name")}
               </label>
-              <input type="text" readOnly value={companyName} placeholder={t("Acme Corp Sp. z o.o.")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={fieldCls} />
             </div>
 
             {/* Input 2 */}
@@ -227,7 +136,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("NIP VAT Number")}
               </label>
-              <input type="text" readOnly value={nipVat} placeholder="123-456-78-90" className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="text" inputMode="numeric" value={nipVat} onChange={(e) => setNipVat(e.target.value)} className={fieldCls} />
             </div>
 
             {/* Input 3 */}
@@ -235,7 +144,7 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("Company Address")}
               </label>
-              <input type="text" readOnly value={companyAddress} placeholder={t("ul. Wiejska 10, Warsaw")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="text" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} className={fieldCls} />
             </div>
 
             {/* Input 4 */}
@@ -243,18 +152,26 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("Billing Email")}
               </label>
-              <input type="email" readOnly value={billingEmail} placeholder={t("accounting@acmecorp.pl")} className="w-full h-12 px-4 bg-[#f4f6f5] border border-[#bec9c3] rounded-xl text-sm text-[#6e7a74] cursor-not-allowed outline-none" />
+              <input type="email" value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} className={fieldCls} />
             </div>
           </div>
         </section>
       )}
 
       {/* Buttons Action bar */}
-      <div className="pt-4">
-        <button onClick={handleDownload} className="w-full bg-[#287965] hover:bg-[#1f6050] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm flex items-center justify-center gap-2">
-          <Download className="text-[20px]" />
-          {receiptType === 'simple' ? t("Download Subscription Receipt") : t("Download VAT Invoice")}
+      <div className="pt-4 space-y-3">
+        <button onClick={() => { handleSave(); setMessage(t("Invoice preferences saved.")); }} className="w-full bg-[#287965] hover:bg-[#1f6050] text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition-transform duration-200 text-sm">
+          {t("Save preferences")}
         </button>
+        {invoiceSub ? (
+          <button onClick={handleDownload} disabled={downloading} className="w-full border border-[#287965] text-[#287965] font-bold py-4 rounded-xl active:scale-95 transition-transform duration-200 text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+            <Download className="text-[20px]" />
+            {downloading ? t("Preparing...") : (receiptType === 'simple' ? t("Download Subscription Receipt") : t("Download VAT Invoice"))}
+          </button>
+        ) : (
+          <p className="text-xs text-center text-[#6e7a74]">{t("Your invoice is available for download once your subscription is paid.")}</p>
+        )}
+        {message && <p className="text-xs text-center font-semibold text-[#287965]">{message}</p>}
       </div>
     </main>
   </div>);

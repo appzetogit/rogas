@@ -55,15 +55,17 @@ export default function VendorsTab({
   React.useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const res = await getSubscriptionPlansApi();
+        // The plans the selected vendor offers (before a vendor is picked: the platform plans, only for the delivery fee).
+        const res = await getSubscriptionPlansApi(selectedVendor?.id);
         setSubscriptionPlans(res.data.plans || []);
+        setSelectedMealPlan(null);
         setFeePerOrder(Number(res.data.feePerOrder || 0));
       } catch (err) {
         console.error('Failed to fetch subscription plans', err);
       }
     };
     fetchPlans();
-  }, []);
+  }, [selectedVendor?.id]);
 
   // Reactively calculate pending tasks (unassigned active employees)
   const pendingCount = useMemo(() => {

@@ -282,6 +282,7 @@ export const createAssignmentOrder = async (req, res) => {
             DMBMealPlan.findById(mealPlanId).select('pricePerDay vendorId').lean()
         ]);
         if (!subPlan) return sendError(res, 404, 'Subscription plan not found');
+        if (subPlan.vendorId && vendorId && String(subPlan.vendorId) !== String(vendorId)) return sendError(res, 400, 'That plan belongs to another vendor');
         if (!mealPlan) return sendError(res, 404, 'Meal plan not found');
         if (vendorId && String(mealPlan.vendorId) !== String(vendorId)) return sendError(res, 400, 'That meal plan does not belong to the selected vendor');
 

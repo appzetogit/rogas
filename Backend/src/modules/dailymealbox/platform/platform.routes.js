@@ -71,6 +71,11 @@ adminPlatformRouter.get('/alerts', send(async (req) => {
 
 adminPlatformRouter.patch('/alerts/:id', send(async (req) => {
     const admin = await loadAdmin(req);
+    // A pickup-problem alert is answered with an action (let the driver continue / release the driver), not just a status.
+    if (req.body?.action) {
+        const { resolvePickupProblem } = await import('../tracking/pickupProblem.service.js');
+        return { alert: await resolvePickupProblem({ alertId: req.params.id, action: req.body.action, adminId: admin._id }) };
+    }
     return { alert: await updateAdminAlertStatus(req.params.id, req.body?.status, admin._id) };
 }));
 

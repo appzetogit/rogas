@@ -625,16 +625,6 @@ export const adminAPI = {
     adminClient.patch(`/food/admin/addons/${String(id)}/approve`, {}),
   rejectRestaurantAddon: (id, reason) =>
     adminClient.patch(`/food/admin/addons/${String(id)}/reject`, { reason: String(reason || "").trim() }),
-  /** Vendor Subscription Plans (admin) */
-  getVendorSubscriptionPlans: (params = {}) =>
-    adminClient.get("/food/admin/vendor-subscription-plans", { params }),
-  createVendorSubscriptionPlan: (body) =>
-    adminClient.post("/food/admin/vendor-subscription-plans", body ?? {}),
-  updateVendorSubscriptionPlan: (id, body) =>
-    adminClient.put(`/food/admin/vendor-subscription-plans/${String(id)}`, body ?? {}),
-  deleteVendorSubscriptionPlan: (id) =>
-    adminClient.delete(`/food/admin/vendor-subscription-plans/${String(id)}`),
-
   /** Vendor Timing Settings (admin) */
   getVendorTimingSettings: () =>
     adminClient.get("/food/admin/vendor-timing-settings"),
@@ -2083,6 +2073,11 @@ export const dmbVendorAPI = {
   createMealPlan: (data) => restaurantClient.post("/dmb/vendor/meal-plans", data),
   editMealPlan: (planId, data) => restaurantClient.put(`/dmb/vendor/meal-plans/${planId}`, data),
   toggleMealStatus: (planId) => restaurantClient.put(`/dmb/vendor/meal-plans/${planId}/toggle-status`, {}),
+  /** The vendor's own subscription plans (duration, days, discount). */
+  getSubscriptionPlans: () => restaurantClient.get("/dmb/vendor/subscription-plans"),
+  createSubscriptionPlan: (data) => restaurantClient.post("/dmb/vendor/subscription-plans", data),
+  updateSubscriptionPlan: (planId, data) => restaurantClient.put(`/dmb/vendor/subscription-plans/${planId}`, data),
+  deleteSubscriptionPlan: (planId) => restaurantClient.delete(`/dmb/vendor/subscription-plans/${planId}`),
   getEarnings: (params = {}) => restaurantClient.get("/dmb/vendor/earnings", { params }),
   getVatRates: () => restaurantClient.get("/dmb/vendor/vat-rates"),
   getTodayEarnings: () => restaurantClient.get("/dmb/vendor/earnings/today"),
@@ -2163,6 +2158,8 @@ export const dmbCustomerAPI = {
   },
   /** Get my subscriptions (auth: USER) */
   getMySubscriptions: (status) => userClient.get("/dmb/subscriptions/my", { params: status ? { status } : {} }),
+  /** The real invoice / receipt PDF of a paid subscription, built by the server from what was charged. */
+  downloadInvoice: (subscriptionId) => userClient.get(`/food/user/invoices/${subscriptionId}/download`, { responseType: "blob" }),
   /** Get active duration plans (public) */
   getDurationPlans: () => userClient.get("/dmb/subscriptions/durations"),
   /** Get active vendor subscription plans (public) */
@@ -2252,7 +2249,8 @@ export const serviceManagementAPI = {
 export const dmbExtraCustomerAPI = {
   // Pricing & checkout (server quote is authoritative; checkout sends the total the customer saw as expectedTotal)
   quote: (body) => userClient.post("/dmb/payments/quote", body),
-  plans: (zoneId) => userClient.get("/dmb/subscriptions/plans", { params: zoneId ? { zoneId } : {} }),
+  /** vendorId: the plans that maker created. Without it: the platform plans (used by rotations). */
+  plans: (zoneId, vendorId) => userClient.get("/dmb/subscriptions/plans", { params: { ...(zoneId ? { zoneId } : {}), ...(vendorId ? { vendorId } : {}) } }),
   previewChange: (subscriptionId, type, input = {}) => userClient.post("/dmb/payments/change/preview", { subscriptionId, type, input }),
   applyChange: (body) => userClient.post("/dmb/payments/change", body),
   // Browse (Gap X / AI / AJ / AH / AL / AK)
@@ -2346,6 +2344,9 @@ export const dmbExtraDriverAPI = {
   unconfirmShift: (id) => deliveryClient.post(`/dmb/driver/shifts/${id}/unconfirm`),
   failedDeliveryOptions: () => deliveryClient.get("/dmb/driver/failed-delivery-options"),
   reportFailedDelivery: (id, body) => deliveryClient.post(`/dmb/driver/stops/${id}/fail`, body),
+  /** Problem at the vendor before pickup (not ready, items missing, closed ...). */
+  pickupProblemOptions: () => deliveryClient.get("/dmb/driver/pickup-problem-options"),
+  reportPickupProblem: (body) => deliveryClient.post("/dmb/driver/report-pickup-problem", body),
   uploadPhoto: (file) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -2362,7 +2363,8 @@ export const dmbExtraAdminAPI = {
   setControl: (key, value, cityId) => adminClient.put(dmbAdmin(`/controls/${key}`), { value, cityId: cityId || undefined }),
   clearCityOverride: (key, cityId) => adminClient.delete(dmbAdmin(`/controls/${key}/city/${cityId}`)),
   alerts: (params) => adminClient.get(dmbAdmin("/alerts"), { params }),
-  updateAlert: (id, status) => adminClient.patch(dmbAdmin(`/alerts/${id}`), { status }),
+  /** `action` answers a pickup-problem alert: "resume" (driver carries on) or "release_driver". */
+  updateAlert: (id, status, action) => adminClient.patch(dmbAdmin(`/alerts/${id}`), action ? { action } : { status }),
   jobs: () => adminClient.get(dmbAdmin("/jobs")),
   runJob: (name) => adminClient.post(dmbAdmin(`/jobs/${name}/run`)),
   // Delivery slot lifecycle (Gap A)

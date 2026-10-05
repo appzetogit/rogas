@@ -230,6 +230,21 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
  * Used by the new /earnings endpoint in the Vendor Panel.
  * Does NOT affect or replace getRestaurantFinance.
  */
+/**
+ * What a vendor earns from one delivered subscription order: the food price minus the platform commission the admin set for
+ * this vendor (percentage of the food price; VAT is collected for the tax office and is not vendor income). One place, so the
+ * home page "today's earnings" and the Earnings page can never disagree.
+ */
+export const dmbOrderShare = (order, commissionPercent) => {
+    let mealPriceSum = 0;
+    for (const m of order.meals || []) {
+        if (m.mealPlanId && m.mealPlanId.pricePerDay) mealPriceSum += m.mealPlanId.pricePerDay * (m.quantity || 1);
+    }
+    const foodCost = mealPriceSum > 0 ? mealPriceSum : (order.pricing?.foodCost || order.pricing?.totalPrice || 0);
+    const commission = Number(commissionPercent) > 0 ? Math.round(foodCost * (Number(commissionPercent) / 100) * 100) / 100 : 0;
+    return { foodCost, commission, net: Math.max(0, Math.round((foodCost - commission) * 100) / 100) };
+};
+
 export async function getVendorEarningsSummary(restaurantId, tab, page = 1, limit = 10) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
     const rid = new mongoose.Types.ObjectId(restaurantId);
@@ -327,30 +342,13 @@ export async function getVendorEarningsSummary(restaurantId, tab, page = 1, limi
     for (const order of dmbOrders) {
         totalOrders++;
         
-        // Calculate foodCost based on the actual vendor meal price (product price)
-        let mealPriceSum = 0;
-        if (order.meals && order.meals.length > 0) {
-            for (const m of order.meals) {
-                if (m.mealPlanId && m.mealPlanId.pricePerDay) {
-                    mealPriceSum += m.mealPlanId.pricePerDay * (m.quantity || 1);
-                }
-            }
-        }
-        
-        const foodCost = mealPriceSum > 0 ? mealPriceSum : (order.pricing?.foodCost || order.pricing?.totalPrice || 0);
-        
+        const { foodCost, commission: commissionAmount, net: restaurantShare } = dmbOrderShare(order, commissionVatRate);
+
         const foodVat = order.pricing?.foodVat || 0;
         const foodVatAmount = order.pricing?.foodVatAmount || 0;
         const deliveryFee = order.pricing?.deliveryFee || 0;
         const deliveryVatAmount = order.pricing?.deliveryVatAmount || 0;
         const platformFeeAmount = order.pricing?.platformFee || 0;
-
-        let commissionAmount = 0;
-        if (commissionVatRate > 0) {
-            commissionAmount = Math.round((foodCost * (commissionVatRate / 100)) * 100) / 100;
-        }
-        
-        const restaurantShare = Math.max(0, Math.round((foodCost - commissionAmount) * 100) / 100);
 
         // Gross for vendor should just be foodCost
         const gross = foodCost;

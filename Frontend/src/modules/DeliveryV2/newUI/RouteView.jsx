@@ -2,6 +2,7 @@ import useMoney from "@/shared/payments/money";
 import { useState, useEffect } from "react";
 import { ArrowRight, ChevronRight, Check, Navigation, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionSlider } from "../components/ui/ActionSlider";
 
 const RouteView = ({
     stops,
@@ -10,16 +11,13 @@ const RouteView = ({
     onNextStep,
     activeOrder,
     routeMetadata,
-    totalEarnings
+    totalEarnings,
+    loading = false
 }) => {
     const { t } = useTranslation("driver");
     const { money } = useMoney();
-    const [sliderPosition, setSliderPosition] = useState(0);
     const [justAccepted, setJustAccepted] = useState(isAccepted);
-    const [dragging, setDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
     const [timeRemaining, setTimeRemaining] = useState("");
-    const maxDrag = 220;
 
     // Countdown timer logic for the 3-hour window
     useEffect(() => {
@@ -53,6 +51,14 @@ const RouteView = ({
         setJustAccepted(isAccepted);
     }, [isAccepted]);
 
+    if (loading && (!stops || stops.length === 0)) {
+        return (
+            <div className="flex items-center justify-center min-h-[300px] text-[#1F7A63]">
+                <div className="w-8 h-8 border-4 border-[#1F7A63] border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     if (!stops || stops.length === 0) {
         return (
             <div className="bg-white border border-dashed border-[#bec9c3] rounded-2xl p-8 text-center flex flex-col items-center justify-center space-y-4 min-h-[350px] animate-fadeIn my-4">
@@ -71,35 +77,15 @@ const RouteView = ({
 
     const currentStop = stops[0];
 
-    const handleTouchStart = (e) => {
-        if (justAccepted || isAccepted) return;
-        setDragging(true);
-        const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-        setStartX(clientX);
+    const isPickupStop = (st) => st?.type === 'pickup' || st?.type === 'P';
+    const targetLat = currentStop?.lat ?? (isPickupStop(currentStop) ? (currentStop?.vendorLat ?? routeMetadata?.vendorLocation?.latitude) : currentStop?.customerLat);
+    const targetLng = currentStop?.lng ?? (isPickupStop(currentStop) ? (currentStop?.vendorLng ?? routeMetadata?.vendorLocation?.longitude) : currentStop?.customerLng);
+    const dialable = (p) => (String(p || "").replace(/\D/g, "").length >= 6 ? String(p).replace(/[^\d+]/g, "") : null);
+    const statusOf = (st) => {
+        if (st.status === 'completed' || st.status === 'COMPLETED') return { label: t("Done"), cls: "bg-green-100 text-green-700" };
+        if (st.awaitingPickup) return { label: t("After pickup"), cls: "bg-[#ffdad5] text-[#ba1a1a]" };
+        return { label: t("To do"), cls: "bg-gray-100 text-gray-600" };
     };
-
-    const handleTouchMove = (e) => {
-        if (!dragging) return;
-        const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-        const diff = clientX - startX;
-        const pos = Math.max(0, Math.min(diff, maxDrag));
-        setSliderPosition(pos);
-    };
-
-    const handleTouchEnd = () => {
-        if (!dragging) return;
-        setDragging(false);
-        if (sliderPosition >= maxDrag * 0.85) {
-            setSliderPosition(maxDrag);
-            setJustAccepted(true);
-            onAcceptRoute();
-        } else {
-            setSliderPosition(0);
-        }
-    };
-
-    const targetLat = currentStop?.type === 'P' ? (currentStop?.vendorLat || routeMetadata?.vendorLocation?.latitude) : currentStop?.customerLat;
-    const targetLng = currentStop?.type === 'P' ? (currentStop?.vendorLng || routeMetadata?.vendorLocation?.longitude) : currentStop?.customerLng;
 
     const handleOpenGoogleMaps = (e) => {
         e.stopPropagation();
@@ -159,7 +145,7 @@ const RouteView = ({
                     <div className="bg-white border border-[#e0e3e0] rounded-xl px-2.5 py-1 flex items-center justify-between shadow-sm text-left">
                         <span className="text-[9px] font-bold text-[#3e4945] uppercase tracking-wider font-sans">{t("TIME LEFT")}</span>
                         <span className={`font-mono text-[11px] font-black ${timeRemaining ? 'text-rose-600 font-extrabold' : 'text-[#1F7A63]'}`}>
-                            {timeRemaining || t("3h 00m")}
+                            {timeRemaining || "—"}
                         </span>
                     </div>
 
@@ -193,21 +179,15 @@ const RouteView = ({
                         </div>
 
                         <div className="w-11 h-11 bg-[#1F7A63] text-white rounded-full flex items-center justify-center font-bold text-base shadow-sm">
-                            {currentStop?.type || 'P'}
+                            {isPickupStop(currentStop) ? 'P' : 'D'}
                         </div>
                     </div>
 
                     {/* Map Preview Block with Directions Button */}
                     <div 
                         onClick={onNextStep}
-                        className="w-full h-36 rounded-xl bg-gray-900 overflow-hidden mb-4 relative border border-gray-100 cursor-pointer group shadow-inner"
+                        className="w-full h-36 rounded-xl bg-[#1f3d36] overflow-hidden mb-4 relative border border-gray-100 cursor-pointer group shadow-inner"
                     >
-                        <img
-                            alt={t("Street map routing overview")}
-                            className="w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-300"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFm1z0cbR-ro9wKCDpsH-rTQEMEvlGTuFF_BrTJyJ1vmPINaDOpNQIQihBzUifn80AYEyCHxwrVs8mS6KLosE-UDl2l-Gv5swaLKKvnvMRupEUCC8DlTTBJ5CFd1ysVjdPjOlNcja4KWSnWqkw_EBf-Xm98mJq_7vrenDvZoMAIBgHR7uD6vutPIZg3XA0hkTdCnXZNPekeI3s049OdjI7fkhcVIwJ-SC5gTtmo2oS2QGxRUsIL8BXhGUNK-4bOLGehKu9X2nITAAq"
-                            referrerPolicy="no-referrer"
-                        />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                         <div className="absolute bottom-2.5 left-3 flex items-center gap-2">
@@ -228,37 +208,15 @@ const RouteView = ({
 
                     {/* Accept Slide Gesture vs Next Target */}
                     {!isAccepted && !justAccepted ? (
-                        <div
-                            className="relative h-[52px] bg-[#e0e3e0] rounded-xl flex items-center justify-center select-none overflow-hidden touch-none border border-gray-300"
-                            onMouseMove={handleTouchMove}
-                            onTouchMove={handleTouchMove}
-                            onMouseUp={handleTouchEnd}
-                            onTouchEnd={handleTouchEnd}
-                            onMouseLeave={handleTouchEnd}
-                        >
-                            {/* Green Progress Backdrop */}
-                            <div
-                                className="absolute left-0 top-0 bottom-0 bg-[#1F7A63]/15 transition-all"
-                                style={{ width: `${(sliderPosition / maxDrag) * 100}%` }}
-                            />
-
-                            <span
-                                className="text-xs uppercase font-extrabold tracking-wider transition-opacity select-none"
-                                style={{ opacity: 1 - sliderPosition / maxDrag, color: "#3e4945" }}
-                            >
-                                {t("Slide to Accept Route")}
-                            </span>
-
-                            {/* Slider Handle */}
-                            <div
-                                onMouseDown={handleTouchStart}
-                                touchStart={handleTouchStart}
-                                className="absolute left-1 w-11 h-11 bg-[#1F7A63] text-white rounded-lg flex items-center justify-center cursor-ew-resize hover:bg-[#1F7A63]/90 transition-transform active:scale-95 shadow-md flex-shrink-0 z-10"
-                                style={{ transform: `translateX(${sliderPosition}px)` }}
-                            >
-                                <ChevronRight className="w-6 h-6 stroke-[3]" />
-                            </div>
-                        </div>
+                        <ActionSlider
+                            label={t("Slide to Accept Route")}
+                            successLabel={t("Route accepted")}
+                            color="bg-[#1F7A63]"
+                            onConfirm={() => {
+                                setJustAccepted(true);
+                                onAcceptRoute();
+                            }}
+                        />
                     ) : (
                         <button
                             onClick={onNextStep}
@@ -274,44 +232,40 @@ const RouteView = ({
             <div>
                 <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1 mb-3">{t("UPCOMING STOPS")}</h3>
                 <div className="space-y-3">
-                    {stops.slice(1).map((stop) => (
-                        <div
-                            key={stop.id}
-                            className="bg-white border border-[#e0e3e0] rounded-xl p-4 flex items-center justify-between shadow-xs hover:border-[#bec9c3] cursor-pointer transition-colors"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${stop.type === "P" ? "bg-[#1F7A63]/10 text-[#1F7A63]" : "bg-[#3B82F6]/10 text-[#3B82F6]"
-                                        }`}
-                                >
-                                    {stop.type}
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-semibold text-gray-900 text-sm">{stop.name}</h4>
-                                        <span
-                                            className={`text-[9px] font-bold px-2 py-0.5 rounded tracking-wide uppercase ${stop.status === "WAITING"
-                                                ? "bg-[#ffdad5] text-[#ba1a1a]"
-                                                : stop.status === "COMPLETED"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-gray-100 text-gray-600"
-                                                }`}
-                                        >
-                                            {stop.status}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-[#3e4945] mt-0.5">{stop.address}</p>
-                                    {(stop.isFamilyBox || stop.hasColdMeal) && (
-                                        <div className="flex gap-1.5 mt-1">
-                                            {stop.isFamilyBox && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">{t("Family Box × {{n}} sets", { n: stop.setCount || 1 })}</span>}
-                                            {stop.hasColdMeal && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">{t("❄️ Cold")}</span>}
+                    {stops.slice(1).map((stop) => {
+                        const pickup = isPickupStop(stop);
+                        const st = statusOf(stop);
+                        const phone = dialable(stop.phone);
+                        return (
+                            <div
+                                key={stop.id}
+                                className="bg-white border border-[#e0e3e0] rounded-xl p-4 shadow-xs text-left"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3 min-w-0">
+                                        <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${pickup ? "bg-[#1F7A63]/10 text-[#1F7A63]" : "bg-[#3B82F6]/10 text-[#3B82F6]"}`}>
+                                            {pickup ? 'P' : 'D'}
                                         </div>
-                                    )}
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#3e4945]">{pickup ? t("Pickup at vendor") : t("Delivery to customer")}</p>
+                                            <h4 className="font-semibold text-gray-900 text-sm">{stop.name || ""}</h4>
+                                            <p className="text-xs text-[#3e4945] mt-0.5">{stop.address || ""}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded tracking-wide uppercase shrink-0 ${st.cls}`}>{st.label}</span>
                                 </div>
+                                <div className="flex flex-wrap gap-1.5 mt-3">
+                                    {stop.slot && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{stop.slot}</span>}
+                                    {Number(stop.boxCount) > 0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1F7A63]/10 text-[#1F7A63]">{t("{{n}} meal box(es)", { n: stop.boxCount })}</span>}
+                                    {stop.isFamilyBox && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">{t("Family Box × {{n}} sets", { n: stop.setCount || 1 })}</span>}
+                                    {stop.hasColdMeal && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">{t("❄️ Cold")}</span>}
+                                </div>
+                                {phone && (
+                                    <a href={`tel:${phone}`} className="inline-block mt-2 text-[11px] font-bold text-[#1F7A63] hover:underline">📞 {stop.phone}</a>
+                                )}
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#bec9c3]" />
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>

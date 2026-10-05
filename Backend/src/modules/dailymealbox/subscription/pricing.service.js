@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { vendorHasValidLocation } from '../zones/zoneGeo.service.js';
+import { effectivePlatformFee } from './vendorPlans.service.js';
 import { VendorSubscriptionPlan } from './vendorSubscriptionPlan.model.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
@@ -240,6 +241,9 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     if (!mealIds.length) throw new QuoteError('Choose a meal');
     const mealMap = await loadMeals(mealIds);
     const vendorIds = [...new Set([vendorId, ...(rotation || []).map((r) => r.vendorId)])];
+    // A plan a vendor created belongs to that vendor's menu (in a rotation: to one of its makers). Old platform plans
+    // (no vendorId) can still be used by everybody.
+    if (plan.vendorId && !vendorIds.includes(String(plan.vendorId))) throw new QuoteError('This plan belongs to another maker. Choose one of the plans this maker offers.', 'PLAN_VENDOR_MISMATCH');
     const vendors = await FoodRestaurant.find({ _id: { $in: vendorIds } }).select('restaurantName status vendorType zoneId location deliveryZoneIds vacationMode isAcceptingOrders deliveryWeekdays cookTrack track1Paused').lean();
     const vendorMap = new Map(vendors.map((v) => [String(v._id), v]));
     const allowedTypes = rotTypes.allowed || [];
@@ -306,6 +310,7 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     const deliveryVatRate = Number(plan.deliveryVat) || 0;
     const familyPct = isFamily ? Math.max(0, Math.min(50, Number(family.discountPct) || 0)) : 0;
     const annualPct = cycle === 'annual' ? Math.max(0, Math.min(50, Number(annual.discountPct) || 0)) : 0;
+    const planPct = Math.max(0, Math.min(50, Number(plan.discountPercent) || 0)); // the vendor's own plan discount
     const avgByVendor = new Map();
     if (plan.applyFoodVatOnMenu) for (const v of vendorIds) avgByVendor.set(v, await avgMenuPrice(v));
 
@@ -321,12 +326,13 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     const priceOne = (date, dv, pct) => {
         const food = dv.meals.reduce((s, m) => s + (unitPrices[String(m.mealPlanId)] || 0) * (m.quantity || 1), 0);
         const foodAfterFamily = food * (1 - familyPct / 100);
+        const foodAfterPlan = foodAfterFamily * (1 - planPct / 100);
         const factor = 1 - pct / 100;
-        const foodNet = foodAfterFamily * factor;
+        const foodNet = foodAfterPlan * factor;
         const fee = deliveryFee * factor;
         const qty = dv.meals.reduce((s, m) => s + (m.quantity || 1), 0);
-        const vatBase = plan.applyFoodVatOnMenu ? (avgByVendor.get(String(dv.vendorId)) || 0) * qty * (1 - familyPct / 100) * factor : foodNet;
-        return { date: storageDateStr(date), slot: dv.slot, vendorId: String(dv.vendorId), food, foodNet, fee, foodVat: vatBase * foodVatRate / 100, deliveryVat: fee * deliveryVatRate / 100 };
+        const vatBase = plan.applyFoodVatOnMenu ? (avgByVendor.get(String(dv.vendorId)) || 0) * qty * (1 - familyPct / 100) * (1 - planPct / 100) * factor : foodNet;
+        return { date: storageDateStr(date), slot: dv.slot, vendorId: String(dv.vendorId), food, foodAfterPlan, foodNet, fee, foodVat: vatBase * foodVatRate / 100, deliveryVat: fee * deliveryVatRate / 100 };
     };
 
     // Trial min order check uses the undiscounted first week.
@@ -338,7 +344,7 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     const trialApplied = trialPct > 0 && firstWeekGross >= (Number(trial.minOrderAmount) || 0);
 
     const lines = [];
-    let foodGross = 0, foodAfterFamily = 0, foodNet = 0, deliveryGross = 0, deliveryNet = 0, foodVat = 0, deliveryVat = 0, orders = 0;
+    let foodGross = 0, foodAfterFamily = 0, foodAfterPlanSum = 0, foodNet = 0, deliveryGross = 0, deliveryNet = 0, foodVat = 0, deliveryVat = 0, orders = 0;
     for (const { date, deliveries } of period.dates) {
         const pct = Math.max(annualPct, trialApplied && date < trialWindowEnd ? trialPct : 0);
         for (const dv of deliveries) {
@@ -346,6 +352,7 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
             orders++;
             foodGross += p.food;
             foodAfterFamily += p.food * (1 - familyPct / 100);
+            foodAfterPlanSum += p.foodAfterPlan;
             foodNet += p.foodNet;
             deliveryGross += deliveryFee;
             deliveryNet += p.fee;
@@ -353,11 +360,13 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
             deliveryVat += p.deliveryVat;
         }
     }
-    const platformFee = Number(plan.platformFee) || 0;
+    const platformFee = await effectivePlatformFee(plan);
     const familyDiscount = foodGross - foodAfterFamily;
-    const periodDiscount = (foodAfterFamily - foodNet) + (deliveryGross - deliveryNet);
+    const planDiscount = foodAfterFamily - foodAfterPlanSum;
+    const periodDiscount = (foodAfterPlanSum - foodNet) + (deliveryGross - deliveryNet);
     lines.push({ key: 'food', label: 'Meals', amount: r2(foodGross) });
     if (familyDiscount > 0.004) lines.push({ key: 'family_discount', label: 'Family Box discount', amount: -r2(familyDiscount) });
+    if (planDiscount > 0.004) lines.push({ key: 'plan_discount', label: `Plan discount (${planPct}%)`, amount: -r2(planDiscount) });
     if (periodDiscount > 0.004) lines.push({ key: annualPct > 0 ? 'annual_discount' : 'trial_discount', label: annualPct > 0 ? 'Annual plan discount' : 'First-week trial discount', amount: -r2(periodDiscount) });
     if (foodVat > 0.004) lines.push({ key: 'food_vat', label: `Food VAT (${foodVatRate}%)`, amount: r2(foodVat), rate: foodVatRate });
     lines.push({ key: 'delivery', label: 'Delivery', amount: r2(deliveryGross) });
@@ -400,9 +409,9 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         foodVatRate,
         deliveryVatRate,
         applyFoodVatOnMenu: Boolean(plan.applyFoodVatOnMenu),
-        discounts: { familyPct, annualPct, trial: { eligible: trialEligible, applied: trialApplied, pct: trialApplied ? trialPct : 0, endsAt: trialApplied ? storageDateStr(trialWindowEnd) : null, minOrderAmount: Number(trial.minOrderAmount) || 0 } },
+        discounts: { familyPct, annualPct, planPct, trial: { eligible: trialEligible, applied: trialApplied, pct: trialApplied ? trialPct : 0, endsAt: trialApplied ? storageDateStr(trialWindowEnd) : null, minOrderAmount: Number(trial.minOrderAmount) || 0 } },
         lines,
-        totals: { food: r2(foodNet), foodGross: r2(foodGross), foodVat: r2(foodVat), delivery: r2(deliveryNet), deliveryVat: r2(deliveryVat), platformFee: r2(platformFee), discount: r2(familyDiscount + periodDiscount), total },
+        totals: { food: r2(foodNet), foodGross: r2(foodGross), foodVat: r2(foodVat), delivery: r2(deliveryNet), deliveryVat: r2(deliveryVat), platformFee: r2(platformFee), discount: r2(familyDiscount + planDiscount + periodDiscount), total },
         preview: period.dates.slice(0, 14).map((x) => ({ date: storageDateStr(x.date), slots: x.deliveries.map((d) => d.slot), vendorId: String(x.deliveries[0]?.vendorId || '') }))
     };
 };
@@ -420,7 +429,8 @@ export const priceDailyOrder = (sub, date, delivery) => {
     const inTrial = sub.isTrial && sub.trialEndsAt && new Date(date) < new Date(sub.trialEndsAt);
     const pct = Math.max(Number(sub.annualDiscountPct) || 0, inTrial ? Number(sub.trialDiscountPct) || 0 : 0);
     const factor = 1 - pct / 100;
-    const foodCost = r2(food * (1 - familyPct / 100) * factor);
+    const planPct = Number(q.discounts?.planPct) || 0;
+    const foodCost = r2(food * (1 - familyPct / 100) * (1 - planPct / 100) * factor);
     const deliveryFee = r2((Number(sub.pricing?.deliveryFeePerDay) || 0) * factor);
     const foodVat = Number(sub.pricing?.foodVat) || 0;
     const deliveryVat = Number(sub.pricing?.deliveryVat) || 0;

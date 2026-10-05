@@ -13,6 +13,7 @@ import { RouteView } from "./RouteView";
 import { PickupVerification } from "./PickupVerification";
 import { DeliveryConfirmation } from "./DeliveryConfirmation";
 import { CannotDeliverReport } from "./CannotDeliverReport";
+import PickupProblemReport from "./PickupProblemReport";
 import { EarningsView } from "./EarningsView";
 import { ProfileView } from "./ProfileView";
 import { MyShiftsView } from "./MyShiftsView";
@@ -87,11 +88,18 @@ function NewDeliveryDashboard({ children }) {
   };
 
   const [currentScreen, setCurrentScreen] = useState(getScreenFromPath(location.pathname));
-  const [isRouteAccepted, setIsRouteAccepted] = useState(false);
+  // The route is accepted once per day on this device; it must survive a reload (coming back from the maps app reloads the page).
+  const acceptedKey = `dmb_route_accepted_${new Date().toISOString().slice(0, 10)}`;
+  const [isRouteAccepted, setIsRouteAccepted] = useState(() => {
+    try { return sessionStorage.getItem(acceptedKey) === "1"; } catch { return false; }
+  });
+  const [routeLoading, setRouteLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const selectedOrderIdRef = useRef(null);
   const [backScreen, setBackScreen] = useState("route");
   const [selectedRouteStop, setSelectedRouteStop] = useState(null);
+  // Problems the driver reported at a vendor, by vendor+slot (the server also sends the open one with the route).
+  const [pickupProblems, setPickupProblems] = useState({});
 
   useEffect(() => {
     selectedOrderIdRef.current = selectedOrderId;
@@ -106,7 +114,7 @@ function NewDeliveryDashboard({ children }) {
           // Vendor fields (for PickupVerification)
           vendorName: isPickup ? stop.name : (stop.vendorName || ''),
           vendorAddress: isPickup ? stop.address : (stop.vendorAddress || ''),
-          vendorPhone: stop.phone || 'N/A',
+          vendorPhone: stop.phone || '',
           vendorLat: stop.lat || null,
           vendorLng: stop.lng || null,
           // New slot-based fields
@@ -115,18 +123,19 @@ function NewDeliveryDashboard({ children }) {
           vendorStatus: stop.vendorStatus || 'scheduled',
           orderCount: stop.orderCount || 1,
           collectionPin: stop.collectionPin || null,
+          pickupIssue: stop.pickupIssue || null,
           // Customer fields (for DeliveryConfirmation)
-          customerName: !isPickup ? stop.name : 'Customer',
+          customerName: !isPickup ? stop.name : '',
           customerAddress: !isPickup ? stop.address : '',
-          customerPhone: stop.phone || 'N/A',
+          customerPhone: !isPickup ? (stop.phone || '') : '',
           customerLat: stop.lat || null,
           customerLng: stop.lng || null,
           // Common fields
           status: isPickup ? 'ready_for_pickup' : 'picked_up',
-          pin: stop.collectionPin || '----',
-          deliveryPin: stop.deliveryPin || '----',
+          pin: stop.collectionPin || null,
+          deliveryPin: stop.deliveryPin || null,
           riderEarning: stop.riderEarning || 0,
-          boxCount: stop.orderCount || 1,
+          boxCount: stop.boxCount ?? stop.orderCount ?? 0,
           items: stop.orderCount
             ? [{ id: 1, name: 'Meal Boxes', quantity: stop.orderCount, checked: false }]
             : [{ id: 1, name: 'Meal Box', quantity: 1, checked: false }]
@@ -212,15 +221,15 @@ function NewDeliveryDashboard({ children }) {
           const mappedOrders = res.data.orders.map(o => ({
             id: o._id,
             vendorName: o.vendorId?.restaurantName || '',
-            vendorAddress: o.vendorId?.addressLine1 || 'Vendor Address',
-            vendorPhone: o.vendorId?.phone || "N/A",
+            vendorAddress: o.vendorId?.addressLine1 || '',
+            vendorPhone: o.vendorId?.phone || '',
             vendorLat: o.vendorId?.location?.latitude || o.vendorId?.location?.coordinates?.[1] || null,
             vendorLng: o.vendorId?.location?.longitude || o.vendorId?.location?.coordinates?.[0] || null,
             customerName: o.userId?.name || '',
-            customerAddress: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.city || 'Customer Address',
+            customerAddress: o.deliveryAddress?.addressLine1 || o.deliveryAddress?.street || o.deliveryAddress?.city || '',
             customerLat: o.deliveryAddress?.location?.latitude || o.deliveryAddress?.location?.coordinates?.[1] || null,
             customerLng: o.deliveryAddress?.location?.longitude || o.deliveryAddress?.location?.coordinates?.[0] || null,
-            customerPhone: o.userId?.phone || "N/A",
+            customerPhone: o.userId?.phone || '',
             deliveryInstructions: o.deliveryInstructions || "",
             boxCount: o.meals?.reduce((acc, m) => acc + (m.quantity || 1), 0) || 1,
             status: o.status,
@@ -276,6 +285,8 @@ function NewDeliveryDashboard({ children }) {
       }
     } catch (err) {
       console.error("Failed to fetch dynamic route:", err);
+    } finally {
+      setRouteLoading(false);
     }
   };
 
@@ -343,6 +354,7 @@ function NewDeliveryDashboard({ children }) {
 
   const handleAcceptRoute = () => {
     setIsRouteAccepted(true);
+    try { sessionStorage.setItem(acceptedKey, "1"); } catch { /* private mode: the slider simply shows again */ }
     setStops(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: "READY" } : s));
   };
 
@@ -398,6 +410,8 @@ function NewDeliveryDashboard({ children }) {
   };
 
   const handleReportIssue = () => setCurrentScreen("cannot_deliver");
+  const handleReportPickupProblem = () => setCurrentScreen("pickup_problem");
+  const pickupKey = (o) => `${o?.vendorId || ""}_${o?.slot || o?.deliverySlot || ""}`;
 
   const handleSubmitFailure = (report) => {
     if (!activeOrder) return;
@@ -536,13 +550,30 @@ function NewDeliveryDashboard({ children }) {
           activeOrder={activeOrder}
           routeMetadata={routeMetadata}
           totalEarnings={totalEarnings}
+          loading={routeLoading}
         />;
-      case "pickup":
+      case "pickup": {
+        const collectsAll = activeOrder && !["picked_up", "out_for_delivery"].includes(activeOrder.status);
+        const pickupOrder = collectsAll
+          ? { ...activeOrder, boxCount: routeMetadata?.totalMealBoxCount || activeOrder.boxCount, orderCount: routeMetadata?.stopsCount || activeOrder.orderCount }
+          : activeOrder;
         return <PickupVerification
-          order={activeOrder}
+          order={pickupOrder}
+          batchOrders={collectsAll ? orders.filter((o) => !["picked_up", "out_for_delivery", "delivered", "failed", "skipped"].includes(o.status) && (!activeOrder.vendorId || String(o.vendorId) === String(activeOrder.vendorId))) : []}
           onGoBack={() => setCurrentScreen(backScreen)}
           onConfirmPickup={handleConfirmPickup}
-          onReportIssue={handleReportIssue}
+          onReportIssue={handleReportPickupProblem}
+          problem={pickupProblems[pickupKey(activeOrder)] || activeOrder?.pickupIssue || null}
+        />;
+      }
+      case "pickup_problem":
+        return <PickupProblemReport
+          order={activeOrder}
+          onGoBack={() => setCurrentScreen("pickup")}
+          onSubmitted={(result) => {
+            setPickupProblems((prev) => ({ ...prev, [pickupKey(activeOrder)]: result }));
+            setCurrentScreen("pickup");
+          }}
         />;
       case "delivery":
         return <DeliveryConfirmation

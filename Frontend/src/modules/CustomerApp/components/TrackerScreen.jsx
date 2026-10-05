@@ -2,11 +2,16 @@ import { useState, useEffect, useMemo } from "react";
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
 import { ArrowLeft, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import { dmbCustomerAPI } from "@food/api";
 
-export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder, socket }) {
+export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder: initialOrder, socket }) {
   const { t } = useTranslation("customer");
+  // The order as it was when "Track Live" was tapped goes stale (the driver gets assigned, the order is delivered). The
+  // latest copy is fetched from the server on open, every few seconds while the order is open, and on every status event.
+  const [freshOrder, setFreshOrder] = useState(null);
+  const trackedOrder = freshOrder || initialOrder;
   const [arrivingMin, setArrivingMin] = useState(null);
-  const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
+  const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "");
 
   const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || "";
   const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto;
@@ -20,9 +25,39 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
     ? { icon: "🚴", title: t("🚴 Driver on the way!") }
     : orderStatus === "ready"
       ? { icon: "📦", title: hasDriver ? t("📦 Your meal is ready - your driver is picking it up") : t("📦 Your meal is ready - we are assigning a driver") }
+      : orderStatus === "failed"
+        ? { icon: "⚠️", title: t("⚠️ We could not deliver your meal") }
       : orderStatus === "preparing"
         ? { icon: "👨‍🍳", title: t("👨‍🍳 Your meal is being prepared") }
         : { icon: "🕒", title: t("🕒 Your meal is scheduled") };
+
+  const orderId = initialOrder?._id;
+  const refreshOrder = async () => {
+    if (!orderId) return;
+    try {
+      const same = (o) => String(o._id) === String(orderId);
+      const upcoming = await dmbCustomerAPI.getMyOrders("upcoming");
+      let found = (upcoming.data?.orders || []).find(same);
+      if (!found) {
+        const past = await dmbCustomerAPI.getMyOrders({ type: "past", page: 1, limit: 20 });
+        found = (past.data?.orders || []).find(same);
+      }
+      if (found) {
+        setFreshOrder(found);
+        if (found.status) setOrderStatus(found.status);
+      }
+    } catch {
+      /* keep what is on screen; the next refresh tries again */
+    }
+  };
+
+  useEffect(() => {
+    refreshOrder();
+    if (["delivered", "failed", "skipped", "cancelled"].includes(orderStatus)) return undefined;
+    const timer = setInterval(refreshOrder, 10000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, ["delivered", "failed", "skipped", "cancelled"].includes(orderStatus)]);
 
   // Subscribe to real-time status updates via Socket
   useEffect(() => {
@@ -34,6 +69,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
       if (String(data.orderId) === String(trackedOrder._id) || String(data._id) === String(trackedOrder._id)) {
         if (data.status) {
           setOrderStatus(data.status);
+          refreshOrder();
           if (data.status === "delivered") {
             onShowNotificationToast?.(t("🎉 Order has been delivered!"));
           }

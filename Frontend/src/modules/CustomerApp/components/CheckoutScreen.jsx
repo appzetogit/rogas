@@ -64,7 +64,12 @@ export function CheckoutScreen({
     if (plan.vendorId) trackEvent("checkout_began", { vendor_id: plan.vendorId, value: plan.expectedTotal || undefined });
   }, [plan.vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
   const totalPrice = quote?.totals?.total ?? 0;
-  const deliveryDays = plan.quoteInput?.deliveryDays === "custom" ? t("Custom days") : plan.deliveryDays === "full_week" || plan.quoteInput?.deliveryDays === "full_week" ? t("Full Week") : t("Mon – Fri");
+  // Custom days are listed by name (Mon, Wed, Fri) instead of the word "custom".
+  const dayName = (d) => new Date(Date.UTC(2024, 0, 7 + Number(d))).toLocaleDateString(getCurrentLanguage(), { weekday: "short", timeZone: "UTC" });
+  const customDayList = quote?.deliveryDaysList || plan.quoteInput?.deliveryDaysList || plan.deliveryDaysList || [];
+  const deliveryDays = (plan.quoteInput?.deliveryDays === "custom" || plan.deliveryDays === "custom")
+    ? (customDayList.length ? [...customDayList].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(dayName).join(", ") : t("Custom days"))
+    : plan.deliveryDays === "full_week" || plan.quoteInput?.deliveryDays === "full_week" ? t("Full Week") : t("Mon – Fri");
   const describeSlot = (key) => {
     if (!key) return "";
     const win = slotWindow(key);
@@ -227,9 +232,7 @@ export function CheckoutScreen({
           <ArrowLeft className="text-[24px]" />
         </button>
         <h1 className="text-[17px] font-extrabold text-[#1b1c1c]">{t("Checkout")}</h1>
-        <div className="w-9 h-9 rounded-full overflow-hidden border border-[#bec9c3]/50 bg-primary/10 flex items-center justify-center text-primary font-bold text-[14px]">
-          U
-        </div>
+        <div className="w-9 h-9" />
       </header>
 
       <main className="px-5 mt-5 space-y-5">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getCurrentLanguage } from "@/shared/i18n";
 import useScrollLock from "../../../shared/hooks/useScrollLock";
 import { useNavigate } from "react-router-dom";
 import { PantryItemsList } from "./PantryItemsList";
@@ -415,7 +416,7 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                       alt={plan.name}
                       className="w-full h-full object-cover"
                       src={plan.image}
-                      onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"; }}
+                      onError={(e) => { e.target.style.display = "none"; }}
                     />
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
@@ -446,6 +447,15 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                         </span>
                       ))}
                     </div>
+
+                    {/* The days this maker delivers (a maker that delivers only on 3 days says so here, before the customer picks a plan) */}
+                    {Array.isArray(plan.deliveryWeekdays) && plan.deliveryWeekdays.length > 0 && (
+                      <p className="text-[12px] font-semibold text-[#3e4945] mb-4">
+                        🚚 {plan.deliveryWeekdays.length >= 7
+                          ? t("Delivers every day")
+                          : t("Delivers on: {{days}}", { days: [...plan.deliveryWeekdays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => new Date(Date.UTC(2024, 0, 7 + Number(d))).toLocaleDateString(getCurrentLanguage(), { weekday: "short", timeZone: "UTC" })).join(", ") })}
+                      </p>
+                    )}
 
                     {/* Action Buttons Row */}
                     <div className="flex gap-2">

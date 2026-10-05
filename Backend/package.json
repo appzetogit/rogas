@@ -20,6 +20,8 @@
     "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",
     "test:i18n": "node --test tests/i18n.test.mjs",
     "test:amendment1": "node --test tests/amendment1.test.mjs",
+    "test:vendor-plans": "node --test tests/vendorPlans.test.mjs",
+    "test:pickup-problem": "node --test tests/pickupProblem.test.mjs",
     "test:payments": "node --test tests/payments.test.mjs",
     "test:plan-pricing": "node --test tests/planPricing.test.mjs",
     "test:email": "node --test tests/email.test.mjs",

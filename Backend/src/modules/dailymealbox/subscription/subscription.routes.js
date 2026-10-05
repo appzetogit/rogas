@@ -399,7 +399,12 @@ router.patch('/:subscriptionId/activate', authMiddleware, async (req, res) => {
 router.get('/plans', async (req, res) => {
     try {
         const { VendorSubscriptionPlan } = await import('./vendorSubscriptionPlan.model.js');
-        const all = await VendorSubscriptionPlan.find({ status: 'active' }).sort({ createdAt: -1 }).lean();
+        // ?vendorId=X -> the plans that maker created. Without it: the old platform plans (rotation and office orders choose
+        // their plan before the makers are known).
+        const mongooseLib = (await import('mongoose')).default;
+        const wanted = req.query.vendorId;
+        const planFilter = { status: 'active', vendorId: wanted && mongooseLib.Types.ObjectId.isValid(String(wanted)) ? wanted : null };
+        const all = await VendorSubscriptionPlan.find(planFilter).sort({ createdAt: -1 }).lean();
         // Annual (ACM-149), fortnightly (ACM-151) and weekend (ACM-177) plans are offered only where switched on.
         const { getControl } = await import('../platform/platformConfig.service.js');
         const ctx = { zoneId: req.query.zoneId || req.zoneId };

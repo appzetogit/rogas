@@ -587,14 +587,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       {/* Quick Actions (at the bottom of OrdersManager) */}
       <section className="space-y-2 text-left pt-6 mt-8 border-t border-slate-100">
         <h3 className="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{t("Quick Actions")}</h3>
-        <div className="grid grid-cols-2 gap-3 pb-4">
-          <button
-            onClick={() => onBatchUpdateStatus('any', 'Ready')}
-            className="bg-primary text-on-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-md hover:brightness-110 transition-all cursor-pointer">
-            <CheckCircle className="text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>{t("Mark All Ready")}</span>
-          </button>
-
+        <div className="grid grid-cols-1 gap-3 pb-4">
           <button
             onClick={() => navigate('/vendor/earnings')}
             className="bg-white border border-primary text-primary h-[48px] rounded-lg font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 shadow-xs hover:bg-primary/5 transition-all cursor-pointer">

@@ -27,7 +27,7 @@ const getDriverId = () => {
  *
  * IMPORTANT: This hook does NOT create its own watchPosition.
  * GPS coordinates come from the Zustand store (riderLocation), which is
- * already kept fresh by the watchPosition in DeliveryHomeV2.
+ * already kept fresh by the location watch of the delivery dashboard.
  *
  * This ensures the delivery boy LiveMap and Admin LiveOperationsMap
  * always display the EXACT same coordinates (no dual-GPS mismatch).

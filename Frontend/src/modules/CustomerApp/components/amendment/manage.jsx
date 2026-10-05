@@ -391,11 +391,16 @@ export function ChangeSubscriptionScreen({ subscriptionId, initialType, onGoBack
       .then((res) => setDetail(res.data.subscription))
       .catch((err) => setError(errorText(err, t("Could not load the subscription"))));
   }, [subscriptionId, t]);
+  const subVendorId = detail?.vendorId?._id || detail?.vendorId || null;
   useEffect(() => {
     if (!zoneId) return;
-    dmbExtraCustomerAPI.plans(zoneId).then((res) => setPlans(res.data?.plans || [])).catch(() => {});
     dmbExtraCustomerAPI.browseVendors({ zoneId }).then((res) => setVendors(res.data?.vendors || [])).catch(() => {});
   }, [zoneId]);
+  // "Change plan" offers the plans of the maker this subscription is with.
+  useEffect(() => {
+    if (!zoneId || !subVendorId) return;
+    dmbExtraCustomerAPI.plans(zoneId, subVendorId).then((res) => setPlans(res.data?.plans || [])).catch(() => {});
+  }, [zoneId, subVendorId]);
   useEffect(() => {
     if (!vendorId) return;
     dmbExtraCustomerAPI

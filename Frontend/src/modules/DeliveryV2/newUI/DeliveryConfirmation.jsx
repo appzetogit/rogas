@@ -1,10 +1,10 @@
-import useMoney from "@/shared/payments/money";
 import { useState, useEffect, useRef } from "react";
 import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { dmbDeliveryAPI, deliveryAPI, uploadAPI } from "../../../services/api";
 import { ActionSlider } from "../components/ui/ActionSlider";
 import { Trans, useTranslation } from "react-i18next";
+import useMoney from "@/shared/payments/money";
 
 const mapContainerStyle = {
   width: "100%",
@@ -22,6 +22,8 @@ const DeliveryConfirmation = ({
   onReportIssue
 }) => {
   const { t } = useTranslation("driver");
+  // A phone number is only offered when the order really has one.
+  const dialable = (p) => (String(p || "").replace(/\D/g, "").length >= 6 ? String(p).replace(/[^\d+]/g, "") : null);
   const { money } = useMoney();
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [photoCaptured, setPhotoCaptured] = useState(false);
@@ -42,7 +44,6 @@ const DeliveryConfirmation = ({
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [loadingQr, setLoadingQr] = useState(false);
   const [qrError, setQrError] = useState("");
-  console.log("order-------------->:", order)
 
 
   useEffect(() => {
@@ -157,17 +158,11 @@ const DeliveryConfirmation = ({
       if (res.data?.success && res.data?.imageUrl) {
         setQrCodeUrl(res.data.imageUrl);
       } else {
-        const amount = order.cashAmount || order.pricing?.total || 15;
-        const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "")}&am=${amount}&cu=INR`;
-        const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
-        setQrCodeUrl(fallbackUrl);
+        // No made-up payment details: if the server cannot create the QR code, the driver is told so.
+        setQrError(res.data?.message || t("Could not create the payment QR code. Try again or ask for cash."));
       }
     } catch (err) {
-      console.warn("Failed to generate Razorpay QR code:", err);
-      const amount = order.cashAmount || order.pricing?.total || 15;
-      const upiUrl = `upi://pay?pa=vendor@razorpay&pn=${encodeURIComponent(order.vendorName || "")}&am=${amount}&cu=INR`;
-      const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
-      setQrCodeUrl(fallbackUrl);
+      setQrError(err.response?.data?.message || t("Could not create the payment QR code. Try again or ask for cash."));
     } finally {
       setLoadingQr(false);
     }
@@ -186,7 +181,7 @@ const DeliveryConfirmation = ({
       }, 1000);
     } catch (err) {
       console.error(err);
-      setErrorText(t("Error confirming payment on server."));
+      setErrorText(err.response?.data?.message || t("Error confirming payment on server."));
       setSuccess(false);
     }
   };
@@ -211,21 +206,18 @@ const DeliveryConfirmation = ({
 
   const deliveryStops = (orders || [order])
     .filter(o => o && o.status !== "delivered")
-    .map((o, idx) => {
-      const lat = o.customerLat || (52.21 + idx * 0.005);
-      const lng = o.customerLng || (20.98 + idx * 0.004);
-      return {
-        id: o.id,
-        name: o.customerName || "",
-        address: o.customerAddress || "",
-        lat,
-        lng
-      };
-    });
+    // Only real coordinates are drawn: a stop without a location is left off the map instead of being placed somewhere made up.
+    .filter(o => Number.isFinite(Number(o.customerLat)) && Number.isFinite(Number(o.customerLng)) && (Number(o.customerLat) || Number(o.customerLng)))
+    .map((o) => ({
+      id: o.id,
+      name: o.customerName || "",
+      address: o.customerAddress || "",
+      lat: Number(o.customerLat),
+      lng: Number(o.customerLng)
+    }));
 
-  const centerLat = order?.customerLat || (deliveryStops.find(s => s.id === order?.id)?.lat) || 52.21;
-  const centerLng = order?.customerLng || (deliveryStops.find(s => s.id === order?.id)?.lng) || 20.98;
-  const center = { lat: centerLat, lng: centerLng };
+  const ownStop = deliveryStops.find(s => s.id === order?.id) || deliveryStops[0];
+  const center = ownStop ? { lat: ownStop.lat, lng: ownStop.lng } : null;
 
   const handlePinChange = (index, val) => {
     const cleaned = val.replace(/[^0-9]/g, "").slice(-1);
@@ -304,9 +296,10 @@ const DeliveryConfirmation = ({
         }
       }
     } else {
-      const expectedPin = order?.deliveryPin || order?.pin || "1234";
-      if (!photoCaptured && pinStr !== expectedPin) {
-        setErrorText(t("Please enter correct customer PIN ({{expectedPin}}) or capture a delivery photo first.", { expectedPin }));
+      // Offline / demo stop: only the stop's own PIN counts, and it is never shown to the driver.
+      const expectedPin = order?.deliveryPin && order.deliveryPin !== "----" ? String(order.deliveryPin) : "";
+      if (!photoCaptured && (!expectedPin || pinStr !== expectedPin)) {
+        setErrorText(t("Please enter the correct customer PIN or capture a delivery photo first."));
         return;
       }
       setPaymentScreenOpen(true);
@@ -341,7 +334,7 @@ const DeliveryConfirmation = ({
         <div className="bg-white border border-[#e0e3e0] rounded-xl p-6 shadow-sm text-center space-y-2">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{t("Amount to Collect")}</p>
           <p className="text-3xl font-black text-[#00604c]">
-            {t("{{riderEarning}} PLN", { riderEarning: order?.riderEarning || 0 })}
+            {money(order?.riderEarning || 0)}
           </p>
           <p className="text-xs text-gray-400">{t("Please choose a payment method below to verify collection.")}</p>
         </div>
@@ -410,7 +403,7 @@ const DeliveryConfirmation = ({
           <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm space-y-4 animate-slideUp">
             <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">{t("Confirm Cash Collection")}</h3>
             <p className="text-xs text-gray-500">
-              <Trans t={t} i18nKey={"Please count and verify that you have collected exactly <0>{{riderEarning}} PLN</0> in cash."} defaults={"Please count and verify that you have collected exactly <0>{{riderEarning}} PLN</0> in cash."} values={{ riderEarning: order.riderEarning || 0 }} components={[<span className="font-extrabold text-gray-900" />]} />
+              <Trans t={t} i18nKey={"Please count and verify that you have collected exactly <0>{{amount}}</0> in cash."} defaults={"Please count and verify that you have collected exactly <0>{{amount}}</0> in cash."} values={{ amount: money(order.riderEarning || 0) }} components={[<span className="font-extrabold text-gray-900" />]} />
             </p>
 
             <div className="pt-2">
@@ -442,21 +435,14 @@ const DeliveryConfirmation = ({
         <p className="text-[10px] text-[#3e4945] font-extrabold uppercase">{t("Delivery Dropoff")}</p>
         <h2 className="text-sm font-bold text-gray-900">{t("Delivery - Order #")}{order?.id?.slice(-6) || t("Payment")}</h2>
       </div>
-      <div className="w-8 h-8 rounded-full overflow-hidden border border-[#e0e3e0]">
-        <img
-          alt={t("Jan Wisniewski Profile")}
-          className="w-full h-full object-cover"
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsfrq_0ZjpgdHuNrT-iHoHJIUmjDGQw9kLQ8CWwL5t08A99XVq3Qml0_dqJCnug2otKGKy_FzVDNiFLRDupl6Bx81pLpQhMWXbJWg1eaLT2tMExu5FoJVqAamFTuaQewI2pJmtY3e-Db8KJKMoKZQ6w3QrYfgmjXrHjgCtB6lUxuSqI2qbuMXswZAD1Bbfkn0cY9odKH7b7zcMghtsqjyeZOmIrsWU4OJOry9HN_GRn95yAyq_7C3YpNM5UpV94AZdmoDHcFVcL2Kf text-xs"
-          referrerPolicy="no-referrer"
-        />
-      </div>
+      <div className="w-8 h-8" />
     </div>
 
     {
       /* Map View Frame with Warsaw Background and ETA */
     }
     <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-[#bec9c3] shadow-inner bg-slate-200">
-      {isLoaded && !loadError && apiKey ? (
+      {isLoaded && !loadError && apiKey && center ? (
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={center}
@@ -493,18 +479,9 @@ const DeliveryConfirmation = ({
           })}
         </GoogleMap>
       ) : (
-        <>
-          <img
-            alt={t("Map tracking Warsaw, Ochota district")}
-            className="absolute inset-0 w-full h-full object-cover opacity-75"
-            src="https://lh3.googleusercontent.com/placeholder-map-warsaw"
-            onError={(e) => {
-              e.currentTarget.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDtYSr4ztK_ia4wuzQms16XegAIPcDr5q0PSCJUMcXwoMsNSW0m8eHCyAEyvoz6B3zTE1im1B7ZsA7e3sRtvElbkKBCqhxZ-notSZ2Ud_P0fdCuS40cHP-oqOsaIkP-WAohcnJ9nkyCnkI_Uu_DJb9SI7yel6NC2Gpe4hRhRlr6e2dDjm-dLvv10k5FmcKr4_R9gXPW1jiwe_2FqOs27LnLCnWitwGmrdpPc5VbinMWwOGrs5t_sGtJwHQ8BpVSbYaGK5jgzBPnWNPY";
-            }}
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#F5F5F0] to-transparent opacity-40" />
-        </>
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-xs font-semibold text-slate-500 px-6 text-center">
+          {t("The map is not available for this stop.")}
+        </div>
       )}
 
       <div className="absolute top-3 left-3 bg-[#00604c] text-white px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md z-10">
@@ -522,23 +499,25 @@ const DeliveryConfirmation = ({
           <h3 className="font-extrabold text-[#181d1b] text-lg">{order?.customerName || ""}</h3>
           <p className="text-xs text-[#3e4945] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
-            {order?.deliveryAddress || t("Customer Address")}
+            {order?.customerAddress || ""}
           </p>
-          {centerLat && centerLng && (
+          {center && (
             <p className="text-[10px] text-gray-500 font-semibold mt-0.5 ml-4.5 flex items-center gap-1">
               <span>📍</span>
-              <span>{t("Coordinates:")} {parseFloat(centerLat).toFixed(6)}, {parseFloat(centerLng).toFixed(6)}</span>
+              <span>{t("Coordinates:")} {center.lat.toFixed(6)}, {center.lng.toFixed(6)}</span>
             </p>
           )}
         </div>
 
         <div className="flex gap-2">
-          <a
-            href="tel:+48987654321"
-            className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
-          >
-            <Phone className="w-4 h-4" />
-          </a>
+          {dialable(order?.customerPhone) && (
+            <a
+              href={`tel:${dialable(order.customerPhone)}`}
+              className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
+            >
+              <Phone className="w-4 h-4" />
+            </a>
+          )}
           <button
             onClick={onOpenChat}
             className="w-10 h-10 rounded-full border border-[#00604c] text-[#00604c] flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
@@ -567,7 +546,7 @@ const DeliveryConfirmation = ({
         <span className="text-xl">💰</span>
         <div>
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-85 text-[#93000a]">{t("Payment Method")}</p>
-          <p className="text-base font-extrabold">{t("Collect {{riderEarning}} PLN Cash", { riderEarning: order?.riderEarning || 0 })}</p>
+          <p className="text-base font-extrabold">{t("Collect {{amount}} in cash", { amount: money(order?.riderEarning || 0) })}</p>
         </div>
       </div>
       <div className="bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
@@ -614,9 +593,6 @@ const DeliveryConfirmation = ({
             placeholder="•"
           />)}
         </div>
-        <p className="text-[10px] text-[#5d5f5b] font-medium italic">
-          <Trans t={t} i18nKey={"Tip: Share PIN <0>{{deliveryPin}}</0> with customer."} defaults={"Tip: Share PIN <0>{{deliveryPin}}</0> with customer."} values={{ deliveryPin: order?.deliveryPin || order?.pin || "1234" }} components={[<span className="font-bold underline text-[#00604c] text-xs" />]} />
-        </p>
       </div>
 
       <div className="relative py-1">

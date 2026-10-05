@@ -374,11 +374,6 @@ router.patch('/app-intro-ads/:id', requirePermission('promotionsManagement', 'ed
 router.patch('/app-intro-ads/:id/toggle', requirePermission('promotionsManagement', 'edit'), appIntroAdController.toggleAppIntroAdStatus);
 router.delete('/app-intro-ads/:id', requirePermission('promotionsManagement', 'delete'), appIntroAdController.deleteAppIntroAd);
 
-// ----- Vendor Subscription Plans -----
-router.get('/vendor-subscription-plans', requirePermission('vendorManagement', 'view'), adminController.getVendorSubscriptionPlans);
-router.post('/vendor-subscription-plans', requirePermission('vendorManagement', 'create'), adminController.createVendorSubscriptionPlan);
-router.put('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'edit'), adminController.updateVendorSubscriptionPlan);
-router.delete('/vendor-subscription-plans/:id', requirePermission('vendorManagement', 'delete'), adminController.deleteVendorSubscriptionPlan);
 
 // ----- Languages & translations (multi-language management) -----
 router.use('/i18n', adminI18nRouter);

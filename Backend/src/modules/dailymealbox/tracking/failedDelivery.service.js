@@ -55,7 +55,7 @@ export const reportFailedDelivery = async ({ driverId, stopType = 'dmb', id, ...
             });
         }
         await notify({ to: 'customer', id: order.userId, event: 'delivery_failed', title: msg('We could not deliver your Pantry Box'), body: msg('Our driver could not complete the delivery. Customer support will contact you.'), link: '/user/orders' });
-        await raiseAdminAlert({ type: 'delivery_failed', severity: 'warning', title: `Pantry delivery failed (${order.orderId})`, message: `${data.reason} — ${data.disposition}`, entityType: 'PantryOrder', entityId: order._id, link: '/admin/food/dmb/pantry-returns' });
+        await raiseAdminAlert({ type: 'delivery_failed', severity: 'warning', title: `Pantry delivery failed (${order.orderId})`, message: `${data.reason} — ${data.disposition}`, entityType: 'PantryOrder', entityId: order._id, link: '/admin/food/dmb/pantry-returns', data: { reason: data.reason, disposition: data.disposition, note: data.note, photoUrl: data.photoUrl } });
         return { type: 'pantry', status: 'failed', returnStatus: dd.returnStatus };
     }
 
@@ -79,7 +79,7 @@ export const reportFailedDelivery = async ({ driverId, stopType = 'dmb', id, ...
     if (data.disposition === 'returned_to_vendor') {
         await notify({ to: 'vendor', id: order.vendorId, event: 'delivery_returned', title: msg('A box is coming back to you'), body: msg('Order {{order}} could not be delivered and is being returned.', { order: order.orderId }) });
     }
-    await raiseAdminAlert({ type: 'delivery_failed', severity: 'warning', title: `Delivery failed (${order.orderId})`, message: `${data.reason} — ${data.disposition}`, entityType: 'DMBDailyOrder', entityId: order._id, link: '/admin/food/dmb/alerts' });
+    await raiseAdminAlert({ type: 'delivery_failed', severity: 'warning', title: `Delivery failed (${order.orderId})`, message: `${data.reason} — ${data.disposition}`, entityType: 'DMBDailyOrder', entityId: order._id, link: '/admin/food/dmb/alerts', data: { reason: data.reason, disposition: data.disposition, note: data.note, photoUrl: data.photoUrl } });
     try {
         const { getIO } = await import('../../../config/socket.js');
         const io = getIO();

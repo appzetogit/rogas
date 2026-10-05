@@ -117,7 +117,10 @@ export const ACM_CONTROLS = [
 
     // ─── Addendum 6 — AL ──────────────────────────────────────────────────────────────────────────────────
     { acm: 182, key: 'temperatureLabels', group: 'vendor', label: 'Which 🔥 Hot / ❄ Cold labels customers see', fields: { display: { type: 'enum', options: ['both', 'hot_only', 'cold_only', 'hidden'], default: 'both' } }, perCity: true, roles: ['CITY_MANAGER'] },
-    { acm: 183, key: 'temperatureMandatory', group: 'vendor', label: 'Vendors must choose Hot or Cold before publishing a meal', fields: { enabled: bool(true) }, roles: [] }
+    { acm: 183, key: 'temperatureMandatory', group: 'vendor', label: 'Vendors must choose Hot or Cold before publishing a meal', fields: { enabled: bool(true) }, roles: [] },
+
+    // ─── Subscription plans owned by vendors ──────────────────────────────────────────────────────────────
+    { acm: 184, key: 'subscriptionPlatformFee', group: 'plans', label: 'One-time platform fee per subscription (on = this amount for every plan; off = the fee stored on each plan)', fields: { enabled: bool(false), amount: num(0, 0, 1000, { step: 0.5 }) }, roles: [] }
 ];
 
 /** Information that can never be hidden (EU law) — shown locked in the visibility matrix. */

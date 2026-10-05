@@ -66,6 +66,25 @@ const collectionBatchSchema = new mongoose.Schema(
         assignedAt: { type: Date, default: null },
         collectedAt: { type: Date, default: null },
 
+        /**
+         * Problems the driver reported at the vendor (not ready, items missing, closed ...). A blocking problem that is still
+         * open stops the collection PIN from being accepted until an admin clears it (see tracking/pickupProblem.service.js).
+         */
+        pickupIssues: [
+            {
+                reason: { type: String, required: true },
+                blocking: { type: Boolean, default: false },
+                note: { type: String, default: '' },
+                photoUrl: { type: String, default: '' },
+                status: { type: String, enum: ['open', 'resolved'], default: 'open' },
+                reportedAt: { type: Date, default: () => new Date() },
+                reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
+                resolvedAt: { type: Date, default: null },
+                resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+                resolution: { type: String, default: '' }
+            }
+        ],
+
         /** GPS location of driver when collection PIN was verified */
         collectionGps: {
             lat: { type: Number, default: null },

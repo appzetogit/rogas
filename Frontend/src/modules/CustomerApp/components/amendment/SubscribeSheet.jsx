@@ -56,7 +56,7 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    Promise.all([dmbExtraCustomerAPI.vendorMeals(vendor.id, zoneId ? { zoneId } : {}), dmbExtraCustomerAPI.plans(zoneId)])
+    Promise.all([dmbExtraCustomerAPI.vendorMeals(vendor.id, zoneId ? { zoneId } : {}), dmbExtraCustomerAPI.plans(zoneId, vendor.id)])
       .then(([mealsRes, plansRes]) => {
         if (!alive) return;
         setMeals(mealsRes.data?.meals || []);
@@ -273,7 +273,7 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
               )}
 
               <Section title={t("Select Subscription Plan")}>
-                {plans.length === 0 && <Notice tone="info">{t("No active plans configured by admin")}</Notice>}
+                {plans.length === 0 && <Notice tone="info">{t("This maker has not set up any subscription plans yet.")}</Notice>}
                 <div className="space-y-2.5">
                   {plans.map((p) => (
                     <button
@@ -287,6 +287,11 @@ export function SubscribeSheet({ vendor, onClose, onProceedToCheckout, dietaryPr
                         <p className="text-[12px] text-[#6e7a74] mt-0.5">
                           {cycleLabel(p)} · {p.deliveryDays === "full_week" ? t("Full Week") : t("Monday–Friday")}
                         </p>
+                        {Number(p.discountPercent) > 0 && (
+                          <span className="inline-block mt-1.5 mr-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            {t("Save {{pct}}%", { pct: Number(p.discountPercent) })}
+                          </span>
+                        )}
                         {CYCLE_OF[p.duration] === "annual" && Number(get("annualPlan").discountPct) > 0 && (
                           <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                             {t("Save {{pct}}%", { pct: Number(get("annualPlan").discountPct) })}

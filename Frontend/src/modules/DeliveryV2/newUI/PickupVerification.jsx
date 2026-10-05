@@ -3,7 +3,7 @@ import { MapPin, Phone, CheckSquare, Square, Box, AlertTriangle, ArrowLeft, Navi
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useDeliveryStore } from "../store/useDeliveryStore";
 import { dmbDeliveryAPI } from "../../../services/api";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 const mapContainerStyle = {
   width: "100%",
@@ -14,7 +14,9 @@ const PickupVerification = ({
   order,
   onGoBack,
   onConfirmPickup,
-  onReportIssue
+  onReportIssue,
+  problem = null,
+  batchOrders = []
 }) => {
   const { t } = useTranslation("driver");
   const { riderLocation } = useDeliveryStore();
@@ -65,8 +67,26 @@ const PickupVerification = ({
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${vendorLat},${vendorLng}`, "_blank");
   };
 
-  const defaultItems = order?.items || [{ id: 1, name: 'Meal Boxes', quantity: order?.boxCount || 1, checked: false }];
-  const [items, setItems] = useState(defaultItems);
+  // One manifest line per customer order in this pickup (two customers of the same vendor and slot = two lines), so the driver
+  // checks every box before leaving. Without the order list, one line with the total number of boxes.
+  const buildItems = () => {
+    if (batchOrders.length) {
+      return batchOrders.map((o) => ({
+        id: o.id,
+        name: [o.orderNumber, o.customerName].filter(Boolean).join(" · ") || t("Meal Boxes"),
+        quantity: o.boxCount || 1,
+        checked: false
+      }));
+    }
+    return order?.items || [{ id: 1, name: t("Meal Boxes"), quantity: order?.boxCount || 0, checked: false }];
+  };
+  const [items, setItems] = useState(buildItems);
+  // The route loads after this screen opens: the manifest follows the real orders when they arrive.
+  const manifestKey = batchOrders.map((o) => `${o.id}:${o.boxCount}`).join(",") + `|${order?.boxCount}`;
+  useEffect(() => {
+    setItems(buildItems());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manifestKey]);
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [showError, setShowError] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -99,7 +119,11 @@ const PickupVerification = ({
     }
   };
   const [isVerifying, setIsVerifying] = useState(false);
+  // A problem reported at this vendor that stops the collection until support clears it. "Check again" asks the server.
+  const [blocked, setBlocked] = useState(Boolean(problem?.blocking));
+  useEffect(() => { setBlocked(Boolean(problem?.blocking)); }, [problem?.blocking, problem?.reason]);
   const handleConfirm = async () => {
+    if (blocked) return;
     const finalPin = pinDigits.join("");
     if (finalPin.length === 4) {
       if (!allChecked) {
@@ -121,6 +145,7 @@ const PickupVerification = ({
           setShowError(res.data?.message || t("Invalid Collection PIN"));
         }
       } catch (err) {
+        if (err.response?.data?.code === "PICKUP_BLOCKED") setBlocked(true);
         setShowError(err.response?.data?.message || t("Invalid Collection PIN"));
       } finally {
         setIsVerifying(false);
@@ -131,6 +156,17 @@ const PickupVerification = ({
   };
 
   return <div className="space-y-4 pb-16 animate-fadeIn text-gray-800">
+    {blocked && (
+      <div className="bg-[#ffdad6] text-[#93000a] p-3 rounded-xl border border-[#ba1a1a]/30 text-xs font-bold space-y-2">
+        <p>{t("A problem was reported for this pickup. You cannot collect the order until support clears it or releases you. Support has been told.")}</p>
+        <button onClick={() => setBlocked(false)} className="underline">{t("Check again")}</button>
+      </div>
+    )}
+    {!blocked && problem && !problem.blocking && (
+      <div className="bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-bold">
+        {t("Support and the vendor have been told about the problem. You can collect the order as soon as it is handed over.")}
+      </div>
+    )}
     {
       /* Header Info Banner containing back navigation button */
     }
@@ -222,7 +258,7 @@ const PickupVerification = ({
           <h3 className="font-extrabold text-gray-900 text-lg">{order?.vendorName || ""}</h3>
           <p className="text-xs text-[#5d5f5b] flex items-center gap-1 mt-1">
             <MapPin className="w-3.5 h-3.5 text-[#00604c]" />
-            {order?.pickupAddress || order?.vendorAddress || t("Vendor Address")}
+            {order?.pickupAddress || order?.vendorAddress || ""}
           </p>
         </div>
         <span className="bg-[#9ef3d7] text-[#005140] px-3 py-1 rounded-full text-[10px] font-bold tracking-wider">
@@ -238,13 +274,15 @@ const PickupVerification = ({
           <Navigation className="w-4 h-4 fill-white" />
           {t("NAVIGATE")}
         </button>
-        <a
-          href="tel:+48123456789"
-          className="flex items-center justify-center gap-2 border border-[#00604c] text-[#00604c] h-11 rounded-lg text-xs font-bold active:scale-95 transition-transform"
-        >
-          <Phone className="w-4 h-4" />
-          {t("CALL VENDOR")}
-        </a>
+        {String(order?.vendorPhone || "").replace(/\D/g, "").length >= 6 && (
+          <a
+            href={`tel:${String(order.vendorPhone).replace(/[^\d+]/g, "")}`}
+            className="flex items-center justify-center gap-2 border border-[#00604c] text-[#00604c] h-11 rounded-lg text-xs font-bold active:scale-95 transition-transform"
+          >
+            <Phone className="w-4 h-4" />
+            {t("CALL VENDOR")}
+          </a>
+        )}
       </div>
     </div>
 
@@ -297,13 +335,6 @@ const PickupVerification = ({
           placeholder="•"
         />)}
       </div>
-
-      {
-        /* Informative Help / Tip */
-      }
-      <p className="text-center text-[10px] font-bold text-amber-600 bg-amber-50 rounded-md py-1 border border-amber-100">
-        <Trans t={t} i18nKey={"Hint: The merchant collection PIN is <0>{{pin}}</0>"} defaults={"Hint: The merchant collection PIN is <0>{{pin}}</0>"} values={{ pin: order?.pin || "4901" }} components={[<span className="font-black underline scale-110 px-1 inline-block" />]} />
-      </p>
 
       {
         /* Live Errors Alert Banner matching the Wrong PIN screenshot strictly */

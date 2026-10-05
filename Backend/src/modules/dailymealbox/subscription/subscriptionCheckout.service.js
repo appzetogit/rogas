@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { VendorSubscriptionPlan } from './vendorSubscriptionPlan.model.js';
 import { DMBSubscription } from './subscription.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { quoteSubscription, subscriptionFieldsFromQuote, QuoteError, vendorServesZone } from './pricing.service.js';
@@ -210,7 +211,16 @@ export const previewChange = async ({ userId, subscriptionId, type, input = {} }
         changeType = 'switch_vendor';
         effective = nextMonday(today);
         if (currentEnd && currentEnd < effective) effective = currentEnd;
-        quoteInput = { ...base, subscriptionType: 'dedicated', rotation: undefined, familyBox: undefined, vendorId: input.vendorId, meals: input.meals, subscriptionPlanId: input.subscriptionPlanId || base.subscriptionPlanId, deliverySlots: input.deliverySlots || base.deliverySlots, replacesSubscriptionId: String(sub._id) };
+        // Plans belong to a maker: moving to another maker means taking that maker's plan with the same duration and days.
+        let planForNewMaker = input.subscriptionPlanId || base.subscriptionPlanId;
+        const currentPlan = planForNewMaker ? await VendorSubscriptionPlan.findById(planForNewMaker).select('vendorId duration deliveryDays').lean() : null;
+        if (currentPlan?.vendorId && String(currentPlan.vendorId) !== String(input.vendorId)) {
+            const sameShape = { vendorId: input.vendorId, status: 'active', duration: currentPlan.duration };
+            const match = await VendorSubscriptionPlan.findOne({ ...sameShape, deliveryDays: currentPlan.deliveryDays }).lean() || await VendorSubscriptionPlan.findOne(sameShape).lean();
+            if (!match) throw new QuoteError('This maker does not offer a plan with the same duration yet. Choose another maker.', 'PLAN_UNAVAILABLE');
+            planForNewMaker = String(match._id);
+        }
+        quoteInput = { ...base, subscriptionType: 'dedicated', rotation: undefined, familyBox: undefined, vendorId: input.vendorId, meals: input.meals, subscriptionPlanId: planForNewMaker, deliverySlots: input.deliverySlots || base.deliverySlots, replacesSubscriptionId: String(sub._id) };
     } else if (type === 'renew') {
         // Renewal: same plan and preferences for the next period, starting when the current one ends.
         changeType = 'renew';

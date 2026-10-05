@@ -53,12 +53,6 @@ export const adminSidebarMenu = [
       },
       {
         type: "link",
-        label: "Subscription Plans",
-        path: "/admin/food/subscription-plans",
-        icon: "Award",
-      },
-      {
-        type: "link",
         label: "Subscribers",
         path: "/admin/food/subscribers",
         icon: "Users",

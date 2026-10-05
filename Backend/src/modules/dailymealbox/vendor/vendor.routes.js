@@ -493,24 +493,23 @@ router.get('/earnings/today', authMiddleware, requireRoles('RESTAURANT'), async 
         const vendorId = req.user.userId;
         const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
         const { localToday, addDays } = await import('../../../utils/platformTime.js');
+        const { dmbOrderShare } = await import('../../food/restaurant/services/restaurantFinance.service.js');
+        const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
         const today = localToday();
-        const vendor = await FoodRestaurant.findById(vendorId).select('commissionRate').lean();
-        const rate = Number(vendor?.commissionRate);
-        if (!Number.isFinite(rate)) return res.status(400).json({ success: false, message: 'Commission rate is not set for this vendor' });
+
+        // The same commission the Earnings page uses: the one admin set for this vendor (a percentage of the food price).
+        const config = await FoodRestaurantCommission.findOne({ restaurantId: vendorId, status: { $ne: false } }).lean();
+        const percent = Number(config?.defaultCommission?.value) || 0;
 
         const orders = await DMBDailyOrder.find({
             vendorId,
             deliveryDate: { $gte: today, $lt: addDays(today, 1) },
             status: { $nin: ['skipped', 'failed'] }
-        }).select('status pricing.foodCost pricing.foodVatAmount pricing.currency').lean();
+        }).populate('meals.mealPlanId', 'pricePerDay').select('status meals pricing.foodCost pricing.totalPrice pricing.currency').lean();
 
-        const share = (o) => {
-            const gross = (Number(o.pricing?.foodCost) || 0) + (Number(o.pricing?.foodVatAmount) || 0);
-            return { gross, commission: gross * rate, net: gross - gross * rate };
-        };
         const sum = (list) => list.reduce((acc, o) => {
-            const x = share(o);
-            return { gross: acc.gross + x.gross, commission: acc.commission + x.commission, net: acc.net + x.net };
+            const x = dmbOrderShare(o, percent);
+            return { gross: acc.gross + x.foodCost, commission: acc.commission + x.commission, net: acc.net + x.net };
         }, { gross: 0, commission: 0, net: 0 });
         const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 

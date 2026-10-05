@@ -138,7 +138,11 @@ export function getCurrentUser(module) {
  */
 export function isModuleAuthenticated(module) {
   const token = getModuleToken(module);
-  return !!token && !isTokenExpired(token);
+  if (!token) return false;
+  // An expired ACCESS token is normal: the API client renews it silently with the refresh token on the next request.
+  // The session is only over when there is no refresh token left (logout, or the server rejected it).
+  if (isTokenExpired(token)) return !!getModuleRefreshToken(module);
+  return true;
 }
 
 /**
