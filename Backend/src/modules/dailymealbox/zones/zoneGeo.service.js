@@ -123,6 +123,58 @@ export const validatePoint = async ({ lat, lng, source = 'address_add', userId =
     };
 };
 
+/** A vendor's pin as { lat, lng } from either stored shape ([lng, lat] GeoJSON or latitude/longitude). */
+export const vendorPoint = (vendor) => {
+    const loc = vendor?.location;
+    if (!loc) return null;
+    const c = loc.coordinates;
+    if (Array.isArray(c) && c.length === 2 && num(c[0]) !== null && num(c[1]) !== null) return { lat: num(c[1]), lng: num(c[0]) };
+    const lat = num(loc.latitude);
+    const lng = num(loc.longitude);
+    return lat !== null && lng !== null ? { lat, lng } : null;
+};
+
+/**
+ * Checks a kitchen's pin against its service zone. Returns null when fine, otherwise
+ * { code, message, zoneId?, zoneName? } - the message is safe to show to the vendor / admin.
+ *  - NO_COORDINATES : no pin was set
+ *  - OUTSIDE_ZONES  : the pin is in no active zone (we do not operate there)
+ *  - ZONE_MISMATCH  : the pin is inside another zone than the selected one (zoneId/zoneName = the zone that really covers it)
+ */
+export const vendorLocationProblem = async ({ lat, lng, zoneId }) => {
+    if (lat === null || lat === undefined || lng === null || lng === undefined || !Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) {
+        return { code: 'NO_COORDINATES', message: 'Set the kitchen location pin on the map so we can place it in a delivery zone.' };
+    }
+    if (Number(lat) === 0 && Number(lng) === 0) {
+        return { code: 'NO_COORDINATES', message: 'Set the kitchen location pin on the map so we can place it in a delivery zone.' };
+    }
+    const found = await detectZone(Number(lat), Number(lng));
+    if (!found) {
+        return { code: 'OUTSIDE_ZONES', message: 'We do not deliver from this location yet: it is not inside any of our service zones.' };
+    }
+    if (zoneId && String(found._id) !== String(zoneId)) {
+        const name = found.name || found.zoneName || '';
+        return { code: 'ZONE_MISMATCH', zoneId: String(found._id), zoneName: name, message: `This location is inside the "${name}" zone, not the selected zone. Select "${name}" or move the pin.` };
+    }
+    return null;
+};
+
+export const assertVendorLocation = async ({ lat, lng, zoneId }) => {
+    const problem = await vendorLocationProblem({ lat, lng, zoneId });
+    if (problem) {
+        const { ValidationError } = await import('../../../core/auth/errors.js');
+        throw new ValidationError(problem.message);
+    }
+    return true;
+};
+
+/** True when the vendor's saved pin lies inside its own zone (used before showing / selling a vendor to customers). */
+export const vendorHasValidLocation = async (vendor) => {
+    const p = vendorPoint(vendor);
+    if (!p) return false;
+    return !(await vendorLocationProblem({ lat: p.lat, lng: p.lng, zoneId: vendor?.zoneId }));
+};
+
 export class ZoneError extends Error {
     constructor(message, details = {}) {
         super(message);

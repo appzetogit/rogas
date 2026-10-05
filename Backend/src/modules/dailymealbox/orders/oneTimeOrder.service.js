@@ -6,7 +6,7 @@ import { deliveryFeeForZone } from '../platform/zoneFee.js';
 import { holidaySetForCity } from '../platform/holiday.service.js';
 import { offeredSlots, listSlots } from '../deliverySlot/deliverySlot.service.js';
 import { servedZoneIds, vendorServesZone } from '../subscription/pricing.service.js';
-import { assertAddressInZone, coordsOf } from '../zones/zoneGeo.service.js';
+import { assertAddressInZone, coordsOf, vendorHasValidLocation } from '../zones/zoneGeo.service.js';
 import { notify } from '../notifications/notify.js';
 import { msg } from '../../i18n/i18n.service.js';
 import { addDays, dateOnlyFromStr, localToday, storageDateStr, zonedInstant, localDateStr } from '../../../utils/platformTime.js';
@@ -139,9 +139,10 @@ export const createSelectOrder = async ({ userId, mealPlanId, quantity = 1, date
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
     const meal = await DMBMealPlan.findById(mealPlanId).lean();
     if (!meal || meal.status !== 'active') throw new OneTimeError('This meal is not available');
-    const vendor = await FoodRestaurant.findById(meal.vendorId).select('status zoneId deliveryZoneIds restaurantName vacationMode').lean();
+    const vendor = await FoodRestaurant.findById(meal.vendorId).select('status zoneId location deliveryZoneIds restaurantName vacationMode').lean();
     if (!vendor || vendor.status !== 'approved' || vendor.vacationMode) throw new OneTimeError('This maker is not taking orders');
     if (!vendorServesZone(vendor, zoneId)) throw new OneTimeError(`${vendor.restaurantName} does not deliver to your address`, 409, 'ZONE_MISMATCH');
+    if (!(await vendorHasValidLocation(vendor))) throw new OneTimeError(`${vendor.restaurantName} is not available right now`, 409, 'VENDOR_LOCATION_INVALID');
     const stock = await canSell(meal, day, qty);
     if (!stock.ok) throw new OneTimeError(stock.soldOut ? 'Sold out' : `Only ${stock.remaining} portion(s) left`, 409, 'SOLD_OUT');
 
@@ -225,8 +226,9 @@ export const reservePreOrder = async ({ userId, mealPlanId, quantity = 1, slot, 
     if (localToday() > new Date(cutoff)) throw new OneTimeError('Pre-orders for this meal have closed', 400, 'PREORDER_CLOSED');
     const { address, zoneId } = await resolveAddress(userId, addressId, 'checkout');
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
-    const vendor = await FoodRestaurant.findById(meal.vendorId).select('restaurantName zoneId deliveryZoneIds').lean();
+    const vendor = await FoodRestaurant.findById(meal.vendorId).select('restaurantName zoneId location deliveryZoneIds').lean();
     if (!vendorServesZone(vendor, zoneId)) throw new OneTimeError(`${vendor?.restaurantName || 'This maker'} does not deliver to your address`, 409, 'ZONE_MISMATCH');
+    if (!(await vendorHasValidLocation(vendor))) throw new OneTimeError(`${vendor?.restaurantName || 'This maker'} is not available right now`, 409, 'VENDOR_LOCATION_INVALID');
     const slots = await listSlots();
     const slotDef = slots.find((s) => s.key === slot && s.status === 'active') || slots.find((s) => s.status === 'active' && (!meal.availableSlots?.length || meal.availableSlots.includes(s.key)));
     if (!slotDef) throw new OneTimeError('Choose a delivery slot');

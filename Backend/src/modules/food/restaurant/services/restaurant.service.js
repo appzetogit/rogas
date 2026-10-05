@@ -411,6 +411,12 @@ export const registerRestaurant = async (payload, files) => {
             }
         }
 
+        // The kitchen pin must be set and lie inside the selected service zone (no default location, no far-away vendors).
+        {
+            const { assertVendorLocation } = await import('../../../dailymealbox/zones/zoneGeo.service.js');
+            await assertVendorLocation({ lat: latNum, lng: lngNum, zoneId: zoneId ? String(zoneId).trim() : null });
+        }
+
         let zoneName = "";
         if (zoneId && mongoose.Types.ObjectId.isValid(String(zoneId).trim())) {
             const zoneDoc = await FoodZone.findById(String(zoneId).trim()).lean();
@@ -922,6 +928,14 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     }
     if (body.fssaiImage !== undefined) {
         update.fssaiImage = toUrl(body.fssaiImage) || '';
+    }
+
+    // A new location and/or zone must agree with each other: the pin has to be inside the (new) zone.
+    if (body.location !== undefined || body.zoneId !== undefined) {
+        const { assertVendorLocation, vendorPoint } = await import('../../../dailymealbox/zones/zoneGeo.service.js');
+        const point = update.location ? vendorPoint({ location: update.location }) : vendorPoint(currentRestaurant);
+        const zoneToCheck = body.zoneId !== undefined ? String(body.zoneId || '').trim() : (currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '');
+        await assertVendorLocation({ lat: point?.lat ?? null, lng: point?.lng ?? null, zoneId: zoneToCheck || null });
     }
 
     const hasZoneChange = body.zoneId !== undefined && String(body.zoneId || '').trim() !== (currentRestaurant.zoneId ? String(currentRestaurant.zoneId) : '');

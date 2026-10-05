@@ -1,17 +1,28 @@
 import { useState, useEffect, useMemo } from "react";
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap";
-import { ArrowLeft, Star, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BellRing, Phone, MessageSquare } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 
 export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal, trackedOrder, socket }) {
   const { t } = useTranslation("customer");
-  const [arrivingMin, setArrivingMin] = useState(8);
+  const [arrivingMin, setArrivingMin] = useState(null);
   const [orderStatus, setOrderStatus] = useState(trackedOrder?.status || "preparing");
 
-  const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || t("Delivery Partner");
+  const driverName = trackedOrder?.dispatch?.deliveryPartner?.name || "";
   const driverPhoto = trackedOrder?.dispatch?.deliveryPartner?.profilePhoto;
   const driverVehicle = trackedOrder?.dispatch?.deliveryPartner?.vehicleType || "";
   const driverPhone = trackedOrder?.dispatch?.deliveryPartner?.phone || "";
+  // A driver exists only after one accepted the pickup; before that nothing may claim "driver on the way".
+  const hasDriver = Boolean(driverName);
+  const onTheWay = orderStatus === "out_for_delivery";
+  const kitchenName = trackedOrder?.vendor?.name || trackedOrder?.vendor?.restaurantName || trackedOrder?.vendorId?.restaurantName || t("Kitchen Partner");
+  const stage = onTheWay
+    ? { icon: "🚴", title: t("🚴 Driver on the way!") }
+    : orderStatus === "ready"
+      ? { icon: "📦", title: hasDriver ? t("📦 Your meal is ready - your driver is picking it up") : t("📦 Your meal is ready - we are assigning a driver") }
+      : orderStatus === "preparing"
+        ? { icon: "👨‍🍳", title: t("👨‍🍳 Your meal is being prepared") }
+        : { icon: "🕒", title: t("🕒 Your meal is scheduled") };
 
   // Subscribe to real-time status updates via Socket
   useEffect(() => {
@@ -44,7 +55,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
     if (Array.isArray(coords) && coords.length === 2) {
       return { lat: Number(coords[1]), lng: Number(coords[0]) };
     }
-    return { lat: 52.2297, lng: 21.0122 };
+    return null; // no real position: the map is not drawn (a made-up default would show a wrong route)
   }, [trackedOrder]);
 
   const customerCoords = useMemo(() => {
@@ -52,10 +63,11 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
     if (Array.isArray(coords) && coords.length === 2) {
       return { lat: Number(coords[1]), lng: Number(coords[0]) };
     }
-    return { lat: 52.235, lng: 21.018 };
+    return null;
   }, [trackedOrder]);
 
   const handleCall = () => {
+    if (!hasDriver) return;
     if (driverPhone) {
       onShowNotificationToast(t("📞 Initiating secure telephone call to {{driverName}} ({{driverPhone}})...", { driverName, driverPhone }));
     } else {
@@ -86,43 +98,56 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-[#e4e2e1] flex items-center justify-center font-bold text-slate-500 border border-slate-200">
-              {driverPhoto ? (
+              {hasDriver && driverPhoto ? (
                 <img alt={t("Driver {{driverName}}", { driverName })} className="w-full h-full object-cover" src={driverPhoto} />
+              ) : hasDriver ? (
+                driverName.charAt(0).toUpperCase()
               ) : (
-                driverName ? driverName.charAt(0).toUpperCase() : "D"
+                <span className="text-xl">{stage.icon}</span>
               )}
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 leading-tight">{driverName} · {driverVehicle}</h3>
-              <div className="flex items-center gap-1 mt-0.5">
-                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span className="text-xs font-bold text-slate-600">{t("4.9 Rating")}</span>
-              </div>
+              {hasDriver ? (
+                <h3 className="text-sm font-extrabold text-slate-900 leading-tight">{driverVehicle ? `${driverName} · ${driverVehicle}` : driverName}</h3>
+              ) : (
+                <>
+                  <h3 className="text-sm font-extrabold text-slate-900 leading-tight">{kitchenName}</h3>
+                  <p className="text-xs font-medium text-slate-500 mt-0.5">{t("Driver not assigned yet")}</p>
+                </>
+              )}
             </div>
           </div>
 
           <div className="text-right">
-            <span className="inline-block bg-[#1F7A63]/10 text-[#1F7A63] px-3 py-1 rounded-full text-xs font-extrabold mb-0.5">
-              {orderStatus === "delivered" ? t("DONE") : "12:47"}
-            </span>
-            <p className="text-xs font-bold text-slate-500">
-              {orderStatus === "delivered" ? t("Delivered") : t("~{{arrivingMin}} min away", { arrivingMin })}
-            </p>
+            {orderStatus === "delivered" ? (
+              <>
+                <span className="inline-block bg-[#1F7A63]/10 text-[#1F7A63] px-3 py-1 rounded-full text-xs font-extrabold mb-0.5">{t("DONE")}</span>
+                <p className="text-xs font-bold text-slate-500">{t("Delivered")}</p>
+              </>
+            ) : onTheWay && arrivingMin !== null ? (
+              <p className="text-xs font-bold text-slate-500">{t("~{{arrivingMin}} min away", { arrivingMin })}</p>
+            ) : null}
           </div>
         </div>
 
         {/* Live Map Area */}
         <div className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-md border border-slate-200/80 bg-slate-200 z-0">
-          <DeliveryTrackingMap
-            orderId={trackedOrder?._id}
-            restaurantCoords={restaurantCoords}
-            customerCoords={customerCoords}
-            order={trackedOrder}
-            onEtaUpdate={(eta) => {
-              const minutes = parseInt(eta) || 8;
-              setArrivingMin(minutes);
-            }}
-          />
+          {restaurantCoords && customerCoords ? (
+            <DeliveryTrackingMap
+              orderId={trackedOrder?._id}
+              restaurantCoords={restaurantCoords}
+              customerCoords={customerCoords}
+              order={trackedOrder}
+              onEtaUpdate={(eta) => {
+                const minutes = parseInt(eta);
+                if (Number.isFinite(minutes)) setArrivingMin(minutes);
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-sm font-medium text-slate-500 px-6 text-center">
+              {t("Live map is not available for this order.")}
+            </div>
+          )}
         </div>
 
         {/* Delivery Details Card */}
@@ -158,9 +183,9 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">{t("🚴 Driver on the way!")}</h2>
+                  <h2 className="text-lg font-extrabold text-slate-900">{stage.title}</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: trackedOrder?.vendor?.name || trackedOrder?.vendor?.restaurantName || trackedOrder?.vendorId?.restaurantName || t("Kitchen Partner") })}
+                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: kitchenName })}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-[#1F7A63]/10 rounded-2xl flex items-center justify-center text-[#1F7A63]">
@@ -182,6 +207,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
               </div>
 
               {/* Action Buttons */}
+              {hasDriver && (
               <div className="flex gap-3">
                 <button 
                   onClick={handleCall} 
@@ -198,6 +224,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                   <MessageSquare className="w-5 h-5" />
                 </button>
               </div>
+              )}
             </>
           )}
         </div>

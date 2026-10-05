@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { vendorHasValidLocation } from '../zones/zoneGeo.service.js';
 import { VendorSubscriptionPlan } from './vendorSubscriptionPlan.model.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
@@ -239,7 +240,7 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     if (!mealIds.length) throw new QuoteError('Choose a meal');
     const mealMap = await loadMeals(mealIds);
     const vendorIds = [...new Set([vendorId, ...(rotation || []).map((r) => r.vendorId)])];
-    const vendors = await FoodRestaurant.find({ _id: { $in: vendorIds } }).select('restaurantName status vendorType zoneId deliveryZoneIds vacationMode isAcceptingOrders deliveryWeekdays cookTrack track1Paused').lean();
+    const vendors = await FoodRestaurant.find({ _id: { $in: vendorIds } }).select('restaurantName status vendorType zoneId location deliveryZoneIds vacationMode isAcceptingOrders deliveryWeekdays cookTrack track1Paused').lean();
     const vendorMap = new Map(vendors.map((v) => [String(v._id), v]));
     const allowedTypes = rotTypes.allowed || [];
     const { blockedCookIds } = await import('../legal/legal.service.js');
@@ -248,6 +249,7 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         const v = vendorMap.get(id);
         if (!v || v.status !== 'approved' || blockedCooks.has(id)) throw new QuoteError('This maker is not available', 'VENDOR_UNAVAILABLE');
         if (!vendorServesZone(v, zoneId)) throw new QuoteError(`${v.restaurantName} does not deliver to your zone`, 'ZONE_MISMATCH');
+        if (!(await vendorHasValidLocation(v))) throw new QuoteError(`${v.restaurantName} is not available right now (its kitchen location is not set up correctly).`, 'VENDOR_LOCATION_INVALID');
         if (isRotation && v.vendorType && !allowedTypes.includes(v.vendorType)) throw new QuoteError(`${v.restaurantName} cannot be part of a rotation`, 'ROTATION_TYPE');
         const vendorDays = Array.isArray(v.deliveryWeekdays) && v.deliveryWeekdays.length ? v.deliveryWeekdays : null;
         const mustCover = isRotation ? rotation.find((r) => r.vendorId === id).days : weekdays;

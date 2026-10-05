@@ -37,9 +37,16 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
     const display = tempCfg.display || 'both';
 
     let vendors = (await FoodRestaurant.find({ status: 'approved', vendorType: { $ne: 'pantry_shop' } })
-        .select('restaurantName ownerName profileImage coverImages cuisines city vendorType zoneId deliveryZoneIds deliveryWeekdays ecoPackaging specialisms mealRating rating totalRatings vacationMode isAcceptingOrders rotationAvailable cookTrack track1Paused')
+        .select('restaurantName ownerName profileImage coverImages cuisines city vendorType zoneId location deliveryZoneIds deliveryWeekdays ecoPackaging specialisms mealRating rating totalRatings vacationMode isAcceptingOrders rotationAvailable cookTrack track1Paused')
         .lean())
         .filter((v) => servedZoneIds(v).includes(zone));
+    // A kitchen whose saved pin is missing or outside its zone (e.g. a default location) must not be offered: its distance,
+    // ETA and driver matching would all be wrong.
+    {
+        const { vendorHasValidLocation } = await import('../zones/zoneGeo.service.js');
+        const ok = await Promise.all(vendors.map((v) => vendorHasValidLocation(v)));
+        vendors = vendors.filter((_, i) => ok[i]);
+    }
     const { blockedCookIds } = await import('../legal/legal.service.js');
     const blocked = await blockedCookIds(vendors);
     if (blocked.size) vendors = vendors.filter((v) => !blocked.has(String(v._id)));

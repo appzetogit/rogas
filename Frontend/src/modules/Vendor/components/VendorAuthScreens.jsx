@@ -6,6 +6,7 @@ import CountrySelector from '../../../shared/components/CountrySelector';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { ArrowLeft, ShieldCheck, MoreVertical, Store, Phone, MapPin, Locate, Check, CheckCircle, Upload, Image, IdCard, Clock, ArrowRight, XCircle, FilePenLine, Hourglass, RefreshCcw } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import { toast } from 'sonner';
 
 const mapContainerStyle = {
   width: '100%',
@@ -319,8 +320,10 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   const kpDropdownRef = useRef(null);
 
   const [address, setAddress] = useState('');
-  const [lat, setLat] = useState(52.2297); // default Warsaw
-  const [lng, setLng] = useState(21.0122); // default Warsaw
+  // No default location: the kitchen pin must be chosen by the vendor (a hidden default put kitchens in Warsaw).
+  const [lat, setLat] = useState(null);
+  const [lng, setLng] = useState(null);
+  const [locationZoneId, setLocationZoneId] = useState(''); // the zone that really covers the pin
   const [addressDetails, setAddressDetails] = useState({
     city: '',
     area: '',
@@ -357,6 +360,19 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
         .catch(err => console.error("Failed to fetch timings", err));
     });
   }, []);
+
+  // Where the map opens before a pin exists: the middle of the selected zone, else of the first zone (view only).
+  const mapCenter = React.useMemo(() => {
+    const z = zones.find((x) => x._id === selectedZoneId) || zones.find((x) => Array.isArray(x.coordinates) && x.coordinates.length >= 3);
+    const pts = z?.coordinates || [];
+    if (pts.length >= 3) {
+      return {
+        lat: pts.reduce((s, p) => s + Number(p.latitude), 0) / pts.length,
+        lng: pts.reduce((s, p) => s + Number(p.longitude), 0) / pts.length,
+      };
+    }
+    return { lat: 20.5937, lng: 78.9629 };
+  }, [zones, selectedZoneId]);
 
   const latestStates = useRef({ selectedZoneName, selectedKitchenPartnerId, kitchenPartners });
   useEffect(() => {
@@ -397,6 +413,42 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       setKitchenPartnerSearch('');
     }
   }, [selectedZoneName]);
+
+  // The service zone follows the pin: detect the zone that contains it and select it; if there is none, say so.
+  const resolveZoneForPoint = async (latitude, longitude) => {
+    try {
+      const res = await zoneAPI.detectZone(latitude, longitude);
+      const data = res?.data?.data || res?.data;
+      const zone = data?.zone;
+      const zid = zone?._id || data?.zoneId;
+      if (data?.status === 'IN_SERVICE' && zid) {
+        const name = zone?.name || zone?.zoneName || '';
+        setSelectedZoneId(String(zid));
+        setSelectedZoneName(name);
+        setZoneSearch(name);
+        setLocationZoneId(String(zid));
+        toast.success(tr("Service zone set to {{zone}}", { zone: name }));
+        return true;
+      }
+      setSelectedZoneId('');
+      setSelectedZoneName('');
+      setZoneSearch('');
+      setLocationZoneId('');
+      toast.error(tr("We do not deliver from this location yet. Please choose a location inside one of our service zones."));
+      return false;
+    } catch (err) {
+      setLocationZoneId('');
+      toast.error(tr("Could not check the service zone for this location. Please try again."));
+      return false;
+    }
+  };
+
+  const placePin = (latitude, longitude) => {
+    setLat(latitude);
+    setLng(longitude);
+    fetchAddressFromCoordinates(latitude, longitude);
+    resolveZoneForPoint(latitude, longitude);
+  };
 
   const fetchAddressFromCoordinates = (latitude, longitude) => {
     if (window.google && window.google.maps) {
@@ -448,9 +500,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       navigator.geolocation.getCurrentPosition((position) => {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
-        setLat(latitude);
-        setLng(longitude);
-        fetchAddressFromCoordinates(latitude, longitude);
+        placePin(latitude, longitude);
         setShowMap(true);
       }, (error) => {
         alert(tr("Failed to get live location. Please allow location permissions."));
@@ -461,11 +511,7 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
   };
 
   const onMapClick = (e) => {
-    const latitude = e.latLng.lat();
-    const longitude = e.latLng.lng();
-    setLat(latitude);
-    setLng(longitude);
-    fetchAddressFromCoordinates(latitude, longitude);
+    placePin(e.latLng.lat(), e.latLng.lng());
   };
 
   const handleFileChange = (e) => {
@@ -489,8 +535,16 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
       alert(tr("Please enter your business / kitchen name!"));
       return;
     }
-    if (!selectedZoneId) {
-      alert(tr("Please select a service zone!"));
+    if (lat === null || lng === null) {
+      toast.error(tr("Please set your kitchen location pin on the map (or use Live Location)."));
+      return;
+    }
+    if (!locationZoneId) {
+      toast.error(tr("We do not deliver from this location yet. Please choose a location inside one of our service zones."));
+      return;
+    }
+    if (!selectedZoneId || selectedZoneId !== locationZoneId) {
+      toast.error(tr("The service zone must match your location pin."));
       return;
     }
     if (type === 'Home Cook' && !selectedKitchenPartnerId) {
@@ -650,6 +704,11 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                         type="button"
                         className="w-full text-left px-4 py-3 text-[13px] hover:bg-primary-container/10 active:bg-primary-container/20 border-b border-outline-variant/10 last:border-0 transition-colors font-medium text-on-surface"
                         onClick={() => {
+                          if (locationZoneId && z._id !== locationZoneId) {
+                            toast.error(tr("Your pin is in a different zone. The zone is chosen from your pin; move the pin to change it."));
+                            setIsZoneDropdownOpen(false);
+                            return;
+                          }
                           setSelectedZoneId(z._id);
                           setSelectedZoneName(z.name);
                           setZoneSearch(z.name);
@@ -702,22 +761,18 @@ export function RegisterFormScreen({ phone: initialPhone, onContinue, onBack }) 
                     {isLoaded ? (
                       <GoogleMap
                         mapContainerStyle={mapContainerStyle}
-                        center={{ lat, lng }}
-                        zoom={13}
+                        center={lat !== null && lng !== null ? { lat, lng } : mapCenter}
+                        zoom={lat !== null ? 15 : 11}
                         onClick={onMapClick}
                         options={{ disableDefaultUI: true, zoomControl: true }}
                       >
-                        <Marker 
-                          position={{ lat, lng }} 
-                          draggable={true}
-                          onDragEnd={(e) => {
-                            const newLat = e.latLng.lat();
-                            const newLng = e.latLng.lng();
-                            setLat(newLat);
-                            setLng(newLng);
-                            fetchAddressFromCoordinates(newLat, newLng);
-                          }}
-                        />
+                        {lat !== null && lng !== null && (
+                          <Marker
+                            position={{ lat, lng }}
+                            draggable={true}
+                            onDragEnd={(e) => placePin(e.latLng.lat(), e.latLng.lng())}
+                          />
+                        )}
                       </GoogleMap>
                     ) : (
                       <div className="flex items-center justify-center h-full text-outline text-[12px]">{tr("Loading Map...")}</div>

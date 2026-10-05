@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { restaurantAPI, uploadAPI, dmbVendorAPI } from '../../../services/api/index';
+import { restaurantAPI, uploadAPI, dmbVendorAPI, zoneAPI } from '../../../services/api/index';
 import { useRestaurantNotifications } from '../../Food/hooks/useRestaurantNotifications';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -24,10 +24,15 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState(profile?.zoneId || '');
   const [address, setAddress] = useState(profile?.location?.formattedAddress || profile?.location?.address || profile?.address || '');
-  const [lat, setLat] = useState(profile?.location?.latitude || profile?.location?.coordinates?.[1] || 52.2297);
-  const [lng, setLng] = useState(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
+  // No hidden default location: a kitchen without a real pin must set one (a default put kitchens in Warsaw).
+  const [lat, setLat] = useState(profile?.location?.latitude || profile?.location?.coordinates?.[1] || null);
+  const [lng, setLng] = useState(profile?.location?.longitude || profile?.location?.coordinates?.[0] || null);
   const [showMap, setShowMap] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // The zone that really covers the pin (checked with the server). Starts as the saved zone when the saved pin is already set.
+  const [pinZoneId, setPinZoneId] = useState(
+    (profile?.location?.latitude || profile?.location?.coordinates?.[1]) ? (profile?.zoneId || '') : ''
+  );
   const [addressDetails, setAddressDetails] = useState({
     city: profile?.location?.city || profile?.city || '',
     area: profile?.location?.area || profile?.area || '',
@@ -98,14 +103,50 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
     }
   };
 
+  // The zone follows the pin: detect the zone that contains it and select it; if none, say so.
+  const resolveZoneForPoint = async (latitude, longitude) => {
+    try {
+      const res = await zoneAPI.detectZone(latitude, longitude);
+      const data = res?.data?.data || res?.data;
+      const zid = data?.zone?._id || data?.zoneId;
+      if (data?.status === 'IN_SERVICE' && zid) {
+        setSelectedZone(String(zid));
+        setPinZoneId(String(zid));
+        triggerToast(tr("Service zone set to {{zone}}", { zone: data?.zone?.name || data?.zone?.zoneName || '' }));
+        return;
+      }
+      setSelectedZone('');
+      setPinZoneId('');
+      triggerToast(tr("We do not deliver from this location yet. Please choose a location inside one of our service zones."));
+    } catch (err) {
+      setPinZoneId('');
+      triggerToast(tr("Could not check the service zone for this location. Please try again."));
+    }
+  };
+
+  const placePin = (latitude, longitude) => {
+    setLat(latitude);
+    setLng(longitude);
+    fetchAddressFromCoordinates(latitude, longitude);
+    resolveZoneForPoint(latitude, longitude);
+  };
+
+  // Where the map opens before a pin exists: the middle of the selected (else first) zone. View only, never saved.
+  const mapCenter = React.useMemo(() => {
+    const z = zones.find((x) => x._id === selectedZone) || zones.find((x) => Array.isArray(x.coordinates) && x.coordinates.length >= 3);
+    const pts = z?.coordinates || [];
+    if (pts.length >= 3) {
+      return { lat: pts.reduce((a, q) => a + Number(q.latitude), 0) / pts.length, lng: pts.reduce((a, q) => a + Number(q.longitude), 0) / pts.length };
+    }
+    return { lat: 20.5937, lng: 78.9629 };
+  }, [zones, selectedZone]);
+
   const handleLiveLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
-        setLat(latitude);
-        setLng(longitude);
-        fetchAddressFromCoordinates(latitude, longitude);
+        placePin(latitude, longitude);
         setShowMap(true);
         triggerToast(tr("Live location & address fetched successfully!"));
       }, (error) => {
@@ -117,11 +158,7 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
   };
 
   const onMapClick = (e) => {
-    const latitude = e.latLng.lat();
-    const longitude = e.latLng.lng();
-    setLat(latitude);
-    setLng(longitude);
-    fetchAddressFromCoordinates(latitude, longitude);
+    placePin(e.latLng.lat(), e.latLng.lng());
   };
 
   const handleSave = async () => {
@@ -164,19 +201,32 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
       triggerToast(tr("Location & Zone update request submitted successfully!"));
       onBack();
     } catch (err) {
-      triggerToast(tr("Failed to update location"));
+      // The server checks the pin against the zone too; show its reason (e.g. "outside our service zones").
+      triggerToast(err?.response?.data?.message || tr("Failed to update location"));
     }
   };
 
   const handleSaveClick = () => {
+    if (lat === null || lng === null) {
+      triggerToast(tr("Please set your kitchen location pin on the map (or use Live Location)."));
+      return;
+    }
+    if (!pinZoneId) {
+      triggerToast(tr("We do not deliver from this location yet. Please choose a location inside one of our service zones."));
+      return;
+    }
+    if (selectedZone !== pinZoneId) {
+      triggerToast(tr("The service zone must match your location pin."));
+      return;
+    }
     const activeZone = profile?.zoneId || '';
     const activeAddress = profile?.location?.formattedAddress || profile?.location?.address || profile?.address || '';
-    const activeLat = Number(profile?.location?.latitude || profile?.location?.coordinates?.[1] || 52.2297);
-    const activeLng = Number(profile?.location?.longitude || profile?.location?.coordinates?.[0] || 21.0122);
+    const activeLat = Number(profile?.location?.latitude || profile?.location?.coordinates?.[1] || NaN);
+    const activeLng = Number(profile?.location?.longitude || profile?.location?.coordinates?.[0] || NaN);
 
     const isZoneChanged = selectedZone !== activeZone;
     const isAddressChanged = address.trim() !== activeAddress.trim();
-    const isCoordsChanged = Math.abs(lat - activeLat) > 0.00001 || Math.abs(lng - activeLng) > 0.00001;
+    const isCoordsChanged = Number.isNaN(activeLat) || Number.isNaN(activeLng) || Math.abs(lat - activeLat) > 0.00001 || Math.abs(lng - activeLng) > 0.00001;
 
     const hasChanges = isZoneChanged || isAddressChanged || isCoordsChanged;
 
@@ -256,7 +306,13 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
               <div className="bg-white rounded-xl p-4 border border-outline-variant/20 shadow-xs space-y-4">
                 <select 
                   value={selectedZone} 
-                  onChange={(e) => setSelectedZone(e.target.value)}
+                  onChange={(e) => {
+                    if (pinZoneId && e.target.value !== pinZoneId) {
+                      triggerToast(tr("Your pin is in a different zone. The zone is chosen from your pin; move the pin to change it."));
+                      return;
+                    }
+                    setSelectedZone(e.target.value);
+                  }}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2 text-[13px] text-on-surface"
                 >
                   <option value="">{tr("Select a Zone")}</option>
@@ -299,12 +355,12 @@ function LocationZoneSettings({ profile, onBack, onSave, triggerToast }) {
                     {isLoaded ? (
                       <GoogleMap
                         mapContainerStyle={mapContainerStyle}
-                        center={{ lat, lng }}
-                        zoom={13}
+                        center={lat !== null && lng !== null ? { lat, lng } : mapCenter}
+                        zoom={lat !== null ? 15 : 11}
                         onClick={onMapClick}
                         options={{ disableDefaultUI: true, zoomControl: true }}
                       >
-                        <Marker position={{ lat, lng }} />
+                        {lat !== null && lng !== null && <Marker position={{ lat, lng }} />}
                       </GoogleMap>
                     ) : (
                       <div className="flex items-center justify-center h-full text-outline text-[12px]">{tr("Loading Map...")}</div>

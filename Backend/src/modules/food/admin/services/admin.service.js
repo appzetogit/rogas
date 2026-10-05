@@ -3740,6 +3740,16 @@ export async function approveRestaurant(id) {
         }
     }
 
+    // The kitchen's pin must lie inside its zone before it goes live (or before a zone/location change is applied).
+    {
+        const { vendorLocationProblem, vendorPoint } = await import('../../../dailymealbox/zones/zoneGeo.service.js');
+        const pending = restaurant.zoneChangeStatus === 'pending';
+        const point = pending ? vendorPoint({ location: restaurant.pendingLocation || restaurant.location }) : vendorPoint(restaurant);
+        const zoneToCheck = pending ? (restaurant.pendingZoneId || restaurant.zoneId) : restaurant.zoneId;
+        const problem = await vendorLocationProblem({ lat: point?.lat ?? null, lng: point?.lng ?? null, zoneId: zoneToCheck });
+        if (problem) throw new ValidationError(`Cannot approve: ${problem.message} Ask the vendor to correct the location first.`);
+    }
+
     let update = {};
     let isZoneChange = restaurant.zoneChangeStatus === 'pending';
 
