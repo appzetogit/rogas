@@ -31,6 +31,43 @@ const MaterialIcon = ({ name, filled = false, className = "", style = {} }) => (
   </span>
 );
 
+const FeatureCard = ({ icon, title, description }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "16px",
+      padding: "16px",
+      background: COLORS.surfaceContainerLowest,
+      border: `1px solid ${COLORS.outlineVariant}`,
+      borderRadius: "12px",
+    }}
+  >
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "8px",
+        background: "rgba(0,96,76,0.1)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <MaterialIcon name={icon} style={{ color: COLORS.primary }} />
+    </div>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <span style={{ fontWeight: 700, fontSize: "14px", lineHeight: "20px", color: COLORS.onSurface }}>
+        {title}
+      </span>
+      <span style={{ fontSize: "13px", lineHeight: "18px", color: COLORS.onSurfaceVariant, fontWeight: 400 }}>
+        {description}
+      </span>
+    </div>
+  </div>
+);
+
 export default function DeliveryWelcome() {
   const { t } = useTranslation("driver");
   const navigate = useNavigate();

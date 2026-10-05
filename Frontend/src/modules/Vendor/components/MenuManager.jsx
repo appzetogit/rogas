@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { uploadAPI, dmbVendorAPI } from '../../../services/api/index';
-import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle } from 'lucide-react';
+import { Sparkles, Plus, UtensilsCrossed, ArrowRightLeft, PlusCircle, Utensils, Edit2, Trash2, ArrowLeft, Info, CheckCircle, Loader2, Camera, Save, ShoppingBag, ArrowRight, ChevronDown, Clock, X, ChevronRight, PauseCircle, PlayCircle } from 'lucide-react';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { Trans, useTranslation } from "react-i18next";
 import { getCurrentLanguage } from "@/shared/i18n";

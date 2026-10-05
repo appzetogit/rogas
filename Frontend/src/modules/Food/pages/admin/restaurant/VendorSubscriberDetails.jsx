@@ -1,7 +1,7 @@
 import { formatCurrency } from "@food/utils/currency"
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, X, Loader2, Calendar, Clock, MapPin, Phone, Mail, User, CreditCard, Box, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, X, Loader2, Calendar, Clock, MapPin, Phone, Mail, User, CreditCard, Box, FileText, Eye, CheckCircle2, XCircle } from "lucide-react";
 import { adminAPI } from "@food/api";
 import { format } from "date-fns";
 
