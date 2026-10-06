@@ -7,6 +7,7 @@ import { assertAddressInZone, coordsOf } from '../zones/zoneGeo.service.js';
 import { deliveriesOn, buildPeriod } from './schedule.js';
 import { addDays, dateOnlyFromStr, localToday, storageDateStr } from '../../../utils/platformTime.js';
 import { logger } from '../../../utils/logger.js';
+import { OFFICE_MANAGED_MESSAGE } from './subscription.service.js';
 
 /**
  * Creating subscriptions from a server quote (new checkout), plus the change flows of Gap S:
@@ -165,6 +166,8 @@ const findOwned = async (userId, id) => {
  */
 export const previewChange = async ({ userId, subscriptionId, type, input = {} }) => {
     const sub = await findOwned(userId, subscriptionId);
+    // A company-paid plan is changed by the office; an employee "downgrade" or "switch" would also credit company money to them.
+    if (sub.source === 'office') throw new QuoteError(OFFICE_MANAGED_MESSAGE, 'OFFICE_MANAGED', 403);
     if (!['active', 'paused'].includes(sub.status)) throw new QuoteError('Only an active or paused subscription can be changed');
     if (sub.planChangePending?.newSubscriptionId && type !== 'renew') throw new QuoteError('A change is already scheduled for this subscription', 'CHANGE_PENDING');
     if (type === 'renew' && sub.renewedBySubscriptionId) throw new QuoteError('This subscription has already been renewed', 'ALREADY_RENEWED');

@@ -3,22 +3,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { Sparkles, ClipboardCheck, UserPlus, Star, Search, X, Utensils, Check, ArrowLeft } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Sparkles, ClipboardCheck, UserPlus, Star, Search, X, Utensils, Check, ArrowLeft, MapPin, AlertTriangle, CalendarDays } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSubscriptionPlansApi } from '../services/officeApi';
+import { getSubscriptionPlansApi, quoteAssignmentApi } from '../services/officeApi';
 import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 import { Trans, useTranslation } from "react-i18next";
 import usePaymentMethods from '../../../shared/payments/usePaymentMethods';
 import useMoney from '../../../shared/payments/money';
 import PaymentMethodPicker from '../../../shared/payments/PaymentMethodPicker';
+import { getCurrentLanguage, tKey } from '../../../shared/i18n';
 
+/** Labels for the server quote's price lines (the server sends English labels; these are translated). */
+const LINE_LABELS = {
+  food: tKey("Meals"),
+  plan_discount: tKey("Plan discount"),
+  annual_discount: tKey("Annual plan discount"),
+  food_vat: tKey("Food VAT"),
+  delivery: tKey("Delivery"),
+  delivery_vat: tKey("Delivery VAT"),
+  platform_fee: tKey("Platform fee"),
+};
+
+const fmtDate = (d) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString(getCurrentLanguage(), { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const todayStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 
 export default function VendorsTab({
   vendors,
   employees,
-  onAssignEmployees,
+  delivery,
+  onCheckout,
+  onGoToCompany,
 }) {
   const { t } = useTranslation("office");
   // Search State for Vendors
@@ -30,127 +49,168 @@ export default function VendorsTab({
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardSearch, setWizardSearch] = useState('');
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
-  const { enabledSlots: allSlots, window: slotWindow, label: slotLabelOf } = useDeliverySlots();
+  const { offeredSlots, window: slotWindow, label: slotLabelOf } = useDeliverySlots();
   const [selectedSlots, setSelectedSlots] = useState([]);
-  const [selectedMealPlan, setSelectedMealPlan] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [selectedMeal, setSelectedMeal] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-  const [feePerOrder, setFeePerOrder] = useState(0);
+  const [quote, setQuote] = useState(null);
+  const [quoteError, setQuoteError] = useState('');
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [showBreakdown, setShowBreakdown] = useState(false);
-  const methods = usePaymentMethods({ vendorId: selectedVendor?.id, enabled: Boolean(selectedVendor) });
-  const { money } = useMoney({ vendorId: selectedVendor?.id });
+  const quoteSeq = useRef(0);
+  const zoneId = delivery?.zoneId || undefined;
+  const methods = usePaymentMethods({ zoneId, vendorId: zoneId ? undefined : selectedVendor?.id, enabled: Boolean(selectedVendor) });
+  const { money } = useMoney({ zoneId, vendorId: zoneId ? undefined : selectedVendor?.id });
 
-  // The food price is the vendor's own meal plan (set in their Menu Management), never the admin's.
-  // Subscription plans here only decide the duration (day count) and the VAT/platform-fee policy.
-  const vendorMealPlan = selectedVendor?.mealPlans?.[0] || null;
-  const getPlanDays = (plan) => {
-    if (!plan) return 0;
-    const monFri = plan.deliveryDays === 'mon_fri';
-    if (plan.duration === 'day') return 1;
-    if (plan.duration === 'week') return monFri ? 5 : 7;
-    if (plan.duration === 'month') return monFri ? 20 : 30;
-    return 0;
-  };
-
-  React.useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        // The plans the selected vendor offers (before a vendor is picked: the platform plans, only for the delivery fee).
-        const res = await getSubscriptionPlansApi(selectedVendor?.id);
-        setSubscriptionPlans(res.data.plans || []);
-        setSelectedMealPlan(null);
-        setFeePerOrder(Number(res.data.feePerOrder || 0));
-      } catch (err) {
-        console.error('Failed to fetch subscription plans', err);
-      }
+  useEffect(() => {
+    if (!selectedVendor?.id) return undefined;
+    let cancelled = false;
+    // The subscription plans (duration and delivery days) the selected vendor offers.
+    getSubscriptionPlansApi(selectedVendor.id)
+      .then((res) => {
+        if (!cancelled) setSubscriptionPlans(res.data.plans || []);
+      })
+      .catch((err) => console.error('Failed to fetch subscription plans', err));
+    return () => {
+      cancelled = true;
     };
-    fetchPlans();
   }, [selectedVendor?.id]);
 
-  // Reactively calculate pending tasks (unassigned active employees)
+  // Active employees without any current meal plan.
   const pendingCount = useMemo(() => {
-    return employees.filter((emp) => emp.status === 'Active' && !emp.assignedVendorId).length;
+    return employees.filter((emp) => emp.status === 'Active' && !(emp.plans || []).length).length;
   }, [employees]);
 
   // Filter vendors based on search
   const filteredVendors = useMemo(() => {
+    const q = vendorSearch.toLowerCase();
     return vendors.filter((v) =>
-      v.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
-      v.tag.toLowerCase().includes(vendorSearch.toLowerCase()) ||
-      v.categories.some((cat) => cat.toLowerCase().includes(vendorSearch.toLowerCase()))
+      v.name.toLowerCase().includes(q) ||
+      v.tag.toLowerCase().includes(q) ||
+      v.categories.some((cat) => cat.toLowerCase().includes(q))
     );
   }, [vendors, vendorSearch]);
 
-  // List of active employees for assignment (only unassigned)
-  const activeEmployees = useMemo(() => {
-    return employees.filter((emp) => emp.status === 'Active' && !emp.assignedVendorId);
-  }, [employees]);
+  // Every active employee can get a plan — also those who already have one (another slot, vendor or the next period).
+  const activeEmployees = useMemo(() => employees.filter((emp) => emp.status === 'Active'), [employees]);
 
-  // Filter employees inside the wizard search
   const filteredWizardEmployees = useMemo(() => {
+    const q = wizardSearch.toLowerCase();
     return activeEmployees.filter((emp) =>
-      emp.name.toLowerCase().includes(wizardSearch.toLowerCase()) ||
-      emp.department.toLowerCase().includes(wizardSearch.toLowerCase())
+      emp.name.toLowerCase().includes(q) ||
+      (emp.department || '').toLowerCase().includes(q)
     );
   }, [activeEmployees, wizardSearch]);
+
+  // Slots this vendor cooks for (all offered slots when the vendor has not listed any).
+  const vendorSlots = useMemo(() => {
+    const own = selectedVendor?.mealSlots || [];
+    return offeredSlots.filter((sl) => !own.length || own.includes(sl.key));
+  }, [offeredSlots, selectedVendor]);
+
+  // Meals that can be delivered in every chosen slot (a meal without a slot list fits any slot).
+  const vendorMeals = useMemo(() => {
+    return (selectedVendor?.mealPlans || []).filter((m) => !(m.availableSlots || []).length || selectedSlots.every((s) => m.availableSlots.includes(s)));
+  }, [selectedVendor, selectedSlots]);
+
+  const resetQuote = () => {
+    quoteSeq.current += 1;
+    setQuote(null);
+    setQuoteError('');
+    setQuoteLoading(false);
+  };
 
   // Initialize assignment wizard
   const handleOpenAssignWizard = (vendor) => {
     setSelectedVendor(vendor);
     setWizardStep(1);
     setWizardSearch('');
-    // Prefill with unassigned active employees, or empty
-    const initiallySelected = activeEmployees
-      .slice(0, 3) // select first 3 unassigned by default to guide the user
-      .map((emp) => emp.id);
-    setSelectedEmployeeIds(initiallySelected);
-    setSelectedSlots(allSlots.length ? [allSlots[0].key] : []);
-    setSelectedMealPlan(null);
+    setSelectedEmployeeIds([]);
+    setSelectedSlots([]);
+    setStartDate('');
+    setSelectedMeal(null);
+    setSelectedPlan(null);
+    setSubscriptionPlans([]);
+    resetQuote();
     setIsProcessingPayment(false);
   };
 
-  const handleToggleEmployee = (id) => {
-    setSelectedEmployeeIds((prev) =>
-      prev.includes(id) ? prev.filter((eid) => eid !== id) : [...prev, id]
-    );
+  const closeWizard = () => {
+    if (isProcessingPayment) return;
+    setSelectedVendor(null);
+    resetQuote();
+  };
+
+  const handleToggleEmployee = (emp) => {
+    if (!emp.hasAccount) return;
+    setSelectedEmployeeIds((prev) => (prev.includes(emp.id) ? prev.filter((eid) => eid !== emp.id) : [...prev, emp.id]));
+    resetQuote();
+  };
+
+  const selectableIds = filteredWizardEmployees.filter((e) => e.hasAccount).map((e) => e.id);
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedEmployeeIds.includes(id));
+  const toggleAll = () => {
+    setSelectedEmployeeIds((prev) => (allSelected ? prev.filter((id) => !selectableIds.includes(id)) : [...new Set([...prev, ...selectableIds])]));
+    resetQuote();
+  };
+
+  const order = () => ({
+    employeeIds: selectedEmployeeIds,
+    vendorId: selectedVendor.id,
+    mealPlanId: selectedMeal?._id,
+    subscriptionPlanId: selectedPlan?._id,
+    slots: selectedSlots,
+    startDate: startDate || undefined,
+  });
+
+  // The review step shows the server's price (the same one that is charged).
+  const loadQuote = async () => {
+    const my = ++quoteSeq.current;
+    setQuoteLoading(true);
+    setQuoteError('');
+    try {
+      const res = await quoteAssignmentApi(order());
+      if (my === quoteSeq.current) setQuote(res.data.data);
+    } catch (err) {
+      if (my === quoteSeq.current) {
+        setQuote(null);
+        setQuoteError(err.response?.data?.message || t("Could not calculate the price. Please try again."));
+      }
+    } finally {
+      if (my === quoteSeq.current) setQuoteLoading(false);
+    }
+  };
+
+  const goToStep = (step) => {
+    setWizardStep(step);
+    if (step === 4) loadQuote();
+  };
+
+  const dropConflicting = () => {
+    const ids = new Set((quote?.conflicts || []).map((c) => c.employeeId));
+    setSelectedEmployeeIds((prev) => prev.filter((id) => !ids.has(id)));
+    setQuote(null);
+    setWizardStep(1);
   };
 
   const handleConfirmAssignment = async () => {
-    if (selectedVendor && selectedEmployeeIds.length > 0 && selectedSlots.length > 0 && selectedMealPlan && vendorMealPlan) {
-      try {
-        setIsProcessingPayment(true);
-        // Compute grand total to pass to backend for Razorpay order. Food price comes from the vendor's own meal
-        // plan (pricePerDay); the subscription plan only supplies the duration and the VAT/fee policy.
-        const days             = getPlanDays(selectedMealPlan);
-        const planPrice        = Number(vendorMealPlan.pricePerDay || 0) * days; // whole-duration food price, per employee
-        const empCount         = selectedEmployeeIds.length;
-        const slotCount        = selectedSlots.length;
-        const foodVatPct       = Number(selectedMealPlan.foodVat || 0);
-        const deliveryVatPct   = Number(selectedMealPlan.deliveryVat || 0);
-        const platformFeeEach  = Number(selectedMealPlan.platformFee || 0);
-        const foodTotal        = planPrice * empCount;
-        const foodVatAmt       = foodTotal * (foodVatPct / 100);
-        const deliveryBase     = slotCount * feePerOrder * empCount;
-        const deliveryVatAmt   = (deliveryBase / 100) * deliveryVatPct;
-        const platformTotal    = platformFeeEach * empCount;
-        const grandTotal       = foodTotal + foodVatAmt + deliveryVatAmt + platformTotal;
-
-        const vendorMealPlanId = vendorMealPlan._id;
-
-        onAssignEmployees(
-          selectedEmployeeIds,
-          selectedVendor.id,
-          selectedSlots,
-          selectedMealPlan._id,  // VendorSubscriptionPlan._id — for billing/order creation
-          grandTotal,
-          vendorMealPlanId,      // DMBMealPlan._id — for subscription record
-          methods.selected       // payment provider chosen by the office (server default when only one)
-        );
-        setSelectedVendor(null);
-      } finally {
-        setIsProcessingPayment(false);
-      }
+    if (!quote || quote.conflicts?.length || isProcessingPayment) return;
+    setIsProcessingPayment(true);
+    try {
+      const done = await onCheckout({ ...order(), expectedTotal: quote.total, provider: methods.selected || undefined });
+      if (done) setSelectedVendor(null);
+    } finally {
+      setIsProcessingPayment(false);
     }
+  };
+
+  const slotNames = (keys) => (keys || []).map((k) => slotLabelOf(k) || k).join(', ');
+  const planLabel = (plan) => {
+    const kind = plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : plan.duration === 'day' ? t("Daily plan") : plan.duration;
+    const days = plan.deliveryDays === 'mon_fri' ? t("Monday to Friday") : t("Every day");
+    return `${kind} · ${days}`;
   };
 
   // Helper to render rating stars
@@ -176,6 +236,11 @@ export default function VendorsTab({
     return stars;
   };
 
+  const canNext =
+    (wizardStep === 1 && selectedEmployeeIds.length > 0) ||
+    (wizardStep === 2 && selectedSlots.length > 0) ||
+    (wizardStep === 3 && Boolean(selectedMeal && selectedPlan));
+
   return (
     <div className="space-y-6">
       {/* Search Header Bar */}
@@ -195,6 +260,23 @@ export default function VendorsTab({
           />
         </div>
       </div>
+
+      {/* Meals are delivered to the office's map pin: without it there is no zone, price or driver route. */}
+      {delivery?.status && delivery.status !== 'ok' && (
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <div className="flex items-start gap-3">
+            <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <p className="text-sm">
+              {delivery.status === 'outside'
+                ? t("Your office delivery location is outside our delivery area. Check the map pin on the Company Details page.")
+                : t("Set your office delivery location (map pin) on the Company Details page before assigning meals, so we know where to deliver.")}
+            </p>
+          </div>
+          <button onClick={onGoToCompany} className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer">
+            {t("Open Company Details")}
+          </button>
+        </div>
+      )}
 
       {/* Bento Header section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -239,7 +321,7 @@ export default function VendorsTab({
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  
+
                   {/* Vendor Details overlay */}
                   <div className="absolute bottom-4 left-6 flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center font-extrabold text-lg text-brand-primary shadow-lg border border-brand-divider flex-shrink-0">
@@ -290,7 +372,9 @@ export default function VendorsTab({
                 </button>
                 <button
                   onClick={() => handleOpenAssignWizard(vendor)}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                  disabled={delivery?.status !== 'ok' || !(vendor.mealPlans || []).length}
+                  title={!(vendor.mealPlans || []).length ? t("This vendor hasn't published a meal yet.") : undefined}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary-dark disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
                   {t("Assign")}
@@ -317,51 +401,31 @@ export default function VendorsTab({
                   <h2 className="text-lg font-bold text-brand-text">
                     <Trans t={t} i18nKey={"Assign <0>{{name}}</0>"} defaults={"Assign <0>{{name}}</0>"} values={{ name: selectedVendor.name }} components={[<span className="text-brand-primary" />]} />
                   </h2>
-                  <button onClick={() => setSelectedVendor(null)} className="text-brand-muted hover:text-brand-text cursor-pointer">
+                  <button onClick={closeWizard} className="text-brand-muted hover:text-brand-text cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {/* Steps tracker indicators */}
                 <div className="flex gap-4">
-                  <div
-                    onClick={() => setWizardStep(1)}
-                    className={`flex-1 py-1.5 text-center rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      wizardStep === 1 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted hover:bg-brand-primary/10 hover:text-brand-primary'
-                    }`}
-                  >
-                    {t("1. Employees")}
-                  </div>
-                  <div
-                    onClick={() => {
-                      if (selectedEmployeeIds.length > 0) setWizardStep(2);
-                    }}
-                    className={`flex-1 py-1.5 text-center rounded-full text-xs font-bold transition-all ${selectedEmployeeIds.length > 0 ? 'cursor-pointer hover:bg-brand-primary/10 hover:text-brand-primary' : 'cursor-not-allowed opacity-50'} ${
-                      wizardStep === 2 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
-                    }`}
-                  >
-                    {t("2. Time Slot")}
-                  </div>
-                  <div
-                    onClick={() => {
-                      if (selectedSlots.length > 0) setWizardStep(3);
-                    }}
-                    className={`flex-1 py-1.5 text-center rounded-full text-xs font-bold transition-all ${selectedSlots.length > 0 ? 'cursor-pointer hover:bg-brand-primary/10 hover:text-brand-primary' : 'cursor-not-allowed opacity-50'} ${
-                      wizardStep === 3 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
-                    }`}
-                  >
-                    {t("3. Plan")}
-                  </div>
-                  <div
-                    onClick={() => {
-                      if (selectedMealPlan) setWizardStep(4);
-                    }}
-                    className={`flex-1 py-1.5 text-center rounded-full text-xs font-bold transition-all ${selectedMealPlan ? 'cursor-pointer hover:bg-brand-primary/10 hover:text-brand-primary' : 'cursor-not-allowed opacity-50'} ${
-                      wizardStep === 4 ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
-                    }`}
-                  >
-                    {t("4. Payment")}
-                  </div>
+                  {[
+                    { step: 1, label: t("1. Employees"), enabled: true },
+                    { step: 2, label: t("2. Time Slot"), enabled: selectedEmployeeIds.length > 0 },
+                    { step: 3, label: t("3. Plan"), enabled: selectedEmployeeIds.length > 0 && selectedSlots.length > 0 },
+                    { step: 4, label: t("4. Payment"), enabled: selectedEmployeeIds.length > 0 && selectedSlots.length > 0 && Boolean(selectedMeal && selectedPlan) },
+                  ].map(({ step, label, enabled }) => (
+                    <div
+                      key={step}
+                      onClick={() => {
+                        if (enabled && !isProcessingPayment) goToStep(step);
+                      }}
+                      className={`flex-1 py-1.5 text-center rounded-full text-xs font-bold transition-all ${enabled ? 'cursor-pointer hover:bg-brand-primary/10 hover:text-brand-primary' : 'cursor-not-allowed opacity-50'} ${
+                        wizardStep === step ? 'bg-brand-primary text-white' : 'bg-brand-bg text-brand-muted'
+                      }`}
+                    >
+                      {label}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -369,15 +433,25 @@ export default function VendorsTab({
               <div className="flex-grow overflow-y-auto p-6 bg-brand-bg/20 space-y-4">
                 {wizardStep === 1 && (
                   <div className="space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
-                      <input
-                        type="text"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-brand-divider rounded-lg text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none"
-                        placeholder={t("Search employee names or departments...")}
-                        value={wizardSearch}
-                        onChange={(e) => setWizardSearch(e.target.value)}
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+                        <input
+                          type="text"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-brand-divider rounded-lg text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none"
+                          placeholder={t("Search employee names or departments...")}
+                          value={wizardSearch}
+                          onChange={(e) => setWizardSearch(e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleAll}
+                        disabled={!selectableIds.length}
+                        className="px-3 py-2.5 border border-brand-divider bg-white rounded-lg text-xs font-bold text-brand-primary hover:bg-brand-primary/5 disabled:opacity-40 cursor-pointer whitespace-nowrap"
+                      >
+                        {allSelected ? t("Clear selection") : t("Select all")}
+                      </button>
                     </div>
 
                     <p className="text-[11px] text-brand-muted">
@@ -395,24 +469,35 @@ export default function VendorsTab({
                           return (
                             <div
                               key={emp.id}
-                              onClick={() => handleToggleEmployee(emp.id)}
-                              className={`flex items-center justify-between p-3.5 bg-white rounded-lg border transition-colors cursor-pointer ${
-                                isChecked ? 'border-brand-primary bg-brand-primary-light/20' : 'border-brand-divider/40 hover:border-brand-primary/50'
+                              onClick={() => handleToggleEmployee(emp)}
+                              className={`flex items-center justify-between gap-3 p-3.5 bg-white rounded-lg border transition-colors ${
+                                !emp.hasAccount ? 'opacity-60 cursor-not-allowed border-brand-divider/40' : isChecked ? 'cursor-pointer border-brand-primary bg-brand-primary-light/20' : 'cursor-pointer border-brand-divider/40 hover:border-brand-primary/50'
                               }`}
                             >
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <input
                                   type="checkbox"
                                   className="w-4 h-4 rounded text-brand-primary focus:ring-brand-primary border-brand-divider cursor-pointer"
                                   checked={isChecked}
+                                  disabled={!emp.hasAccount}
                                   onChange={() => {}} // Controlled by outer div click
                                 />
-                                <div className="text-sm">
+                                <div className="text-sm min-w-0">
                                   <span className="font-bold text-brand-text">{emp.name}</span>
-                                  <span className="text-xs text-brand-muted ml-2">({emp.id})</span>
+                                  {!emp.hasAccount ? (
+                                    <p className="text-[10px] text-amber-700 mt-0.5">{t("Add a mobile number first: it is how they sign in to see their meals.")}</p>
+                                  ) : (emp.plans || []).length > 0 ? (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {emp.plans.map((p) => (
+                                        <span key={p.assignmentId} className="px-1.5 py-0.5 bg-brand-bg rounded text-[10px] text-brand-muted">
+                                          {t("{{slots}} · {{vendor}} · until {{date}}", { slots: slotNames(p.slots), vendor: p.vendorName, date: fmtDate(p.until) })}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
-                              <span className="px-2 py-0.5 bg-brand-bg rounded text-[10px] text-brand-muted font-semibold">
+                              <span className="px-2 py-0.5 bg-brand-bg rounded text-[10px] text-brand-muted font-semibold flex-shrink-0">
                                 {emp.department}
                               </span>
                             </div>
@@ -422,7 +507,7 @@ export default function VendorsTab({
                     </div>
                   </div>
                 )}
-                
+
                 {wizardStep === 2 && (
                   <div className="space-y-4 py-4 text-center">
                     <p className="text-xs text-brand-muted">
@@ -430,216 +515,214 @@ export default function VendorsTab({
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      {allSlots
-                        .filter((sl) => (selectedVendor.mealSlots || []).includes(sl.key))
-                        .map((sl) => (
-                          <label key={sl.key} className="cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="delivery-slot-option"
-                              className="peer hidden"
-                              value={sl.key}
-                              checked={selectedSlots.includes(sl.key)}
-                              onChange={(e) => {
-                                if (e.target.checked) setSelectedSlots([...selectedSlots, sl.key]);
-                                else setSelectedSlots(selectedSlots.filter((k) => k !== sl.key));
-                              }}
-                            />
-                            <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
-                              <span className="text-4xl mb-3">{sl.icon}</span>
-                              <span className="font-bold text-sm text-brand-text">{sl.name}</span>
-                              <span className="text-[10px] text-brand-muted mt-1">{slotWindow(sl.key)}</span>
-                            </div>
-                          </label>
-                        ))}
+                      {vendorSlots.map((sl) => (
+                        <label key={sl.key} className="cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="delivery-slot-option"
+                            className="peer hidden"
+                            value={sl.key}
+                            checked={selectedSlots.includes(sl.key)}
+                            onChange={(e) => {
+                              setSelectedSlots((prev) => (e.target.checked ? [...prev, sl.key] : prev.filter((k) => k !== sl.key)));
+                              setSelectedMeal(null);
+                              resetQuote();
+                            }}
+                          />
+                          <div className="h-full flex flex-col items-center justify-center p-6 bg-white border-2 border-brand-divider rounded-xl peer-checked:border-brand-primary peer-checked:bg-brand-primary-light/10 hover:bg-white/80 transition-all">
+                            <span className="text-4xl mb-3">{sl.icon}</span>
+                            <span className="font-bold text-sm text-brand-text">{sl.name}</span>
+                            <span className="text-[10px] text-brand-muted mt-1">{slotWindow(sl.key)}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {vendorSlots.length === 0 && (
+                      <p className="text-xs text-brand-muted">{t("This vendor does not deliver in any slot right now.")}</p>
+                    )}
+
+                    <div className="max-w-xs mx-auto text-left pt-2">
+                      <label className="block text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
+                        <CalendarDays className="inline w-3.5 h-3.5 mr-1" />
+                        {t("Start date")}
+                      </label>
+                      <input
+                        type="date"
+                        min={todayStr()}
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value);
+                          resetQuote();
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-brand-divider rounded-lg text-sm text-brand-text focus:border-brand-primary outline-none"
+                      />
+                      <p className="text-[10px] text-brand-muted mt-1">{t("Leave empty to start as soon as possible.")}</p>
                     </div>
                   </div>
                 )}
 
                 {wizardStep === 3 && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <h3 className="font-bold text-base text-brand-text flex items-center gap-2">
-                          <ClipboardCheck className="w-4 h-4 text-brand-primary" />
-                          {t("Subscription Plans")}
-                        </h3>
-                        <p className="text-xs text-brand-muted mt-0.5">{selectedVendor.name}</p>
-                      </div>
-                    </div>
-                    
-                    <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">{t("Select Subscription Plan")}</h4>
-
-                    {!vendorMealPlan && (
-                      <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
-                        {t("This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one in Menu Management before assigning employees here.")}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 gap-4 max-h-[350px] overflow-y-auto pr-2">
-                      {(!subscriptionPlans || subscriptionPlans.length === 0) ? (
-                        <div className="col-span-full text-center text-xs text-brand-muted p-8 bg-white rounded-xl border border-brand-divider">
-                          {t("No active subscription plans available.")}
+                  <div className="space-y-5">
+                    <div>
+                      <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">{t("Select Meal")}</h4>
+                      {vendorMeals.length === 0 ? (
+                        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          {t("This vendor has no meal for the chosen time slot. Go back and pick another slot.")}
                         </div>
                       ) : (
-                        subscriptionPlans.map((plan) => {
-                          const isSelected = selectedMealPlan?._id === plan._id;
-                          const planDays = getPlanDays(plan);
-                          const planPrice = vendorMealPlan ? Number(vendorMealPlan.pricePerDay || 0) * planDays : null;
-                          return (
-                            <label key={plan._id} className={`block ${vendorMealPlan ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
-                              <input
-                                type="radio"
-                                name="subscription-plan-option"
-                                className="peer hidden"
-                                value={plan._id}
-                                checked={isSelected}
-                                disabled={!vendorMealPlan}
-                                onChange={() => setSelectedMealPlan(plan)}
-                              />
-                              <div className={`h-full bg-white border-2 rounded-xl transition-all p-4 ${isSelected ? 'border-brand-primary bg-brand-primary-light/5' : 'border-brand-divider hover:border-brand-primary/30'}`}>
-                                <div className="flex justify-between items-start mb-1">
-                                  <h4 className="font-extrabold text-sm text-brand-text">{plan.name}</h4>
-                                  <span className="font-extrabold text-brand-primary text-sm">{planPrice !== null ? money(planPrice, { compact: true }) : '—'}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {vendorMeals.map((meal) => {
+                            const isSelected = selectedMeal?._id === meal._id;
+                            return (
+                              <button
+                                key={meal._id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedMeal(meal);
+                                  resetQuote();
+                                }}
+                                className={`flex items-center gap-3 p-3 text-left bg-white border-2 rounded-xl transition-all cursor-pointer ${isSelected ? 'border-brand-primary bg-brand-primary-light/5' : 'border-brand-divider hover:border-brand-primary/30'}`}
+                              >
+                                <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                  {meal.photos?.[0] ? <img src={meal.photos[0]} alt={meal.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <Utensils className="w-6 h-6 m-4 text-brand-muted" />}
                                 </div>
-                                <p className="text-xs text-brand-muted mt-1">
-                                  {plan.duration === 'week' ? t("Weekly plan") : plan.duration === 'month' ? t("Monthly plan") : t("Daily plan")}
-                                  {plan.deliveryDays === 'mon_fri' ? " " + t("- Monday-Friday (5 Delivery Days)") : " " + t("- Full Week ({{planDays}} Delivery Days)", { planDays })}
-                                </p>
-                                {plan.description && (
-                                  <p className="text-xs text-brand-text mt-2 leading-relaxed">
-                                    {plan.description}
-                                  </p>
-                                )}
-                                <div className="mt-3 flex items-center justify-between">
-                                  <div className="flex gap-2">
-                                    <span className="px-2 py-1 bg-white border border-brand-divider rounded-full text-[9px] font-medium text-brand-muted flex items-center gap-1">
-                                      <Check className="w-3 h-3" />
-                                      {plan.duration}
-                                    </span>
+                                <div className="min-w-0">
+                                  <p className="font-extrabold text-sm text-brand-text truncate">{meal.name}</p>
+                                  <p className="text-xs font-bold text-brand-primary">{money(meal.pricePerDay, { compact: true })}<span className="text-brand-muted font-medium">{t("/day")}</span></p>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-brand-primary ml-auto flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-2">{t("Select Subscription Plan")}</h4>
+                      <div className="grid grid-cols-1 gap-3 max-h-[260px] overflow-y-auto pr-2">
+                        {subscriptionPlans.length === 0 ? (
+                          <div className="text-center text-xs text-brand-muted p-8 bg-white rounded-xl border border-brand-divider">
+                            {t("No active subscription plans available.")}
+                          </div>
+                        ) : (
+                          subscriptionPlans.map((plan) => {
+                            const isSelected = selectedPlan?._id === plan._id;
+                            return (
+                              <label key={plan._id} className="block cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="subscription-plan-option"
+                                  className="peer hidden"
+                                  value={plan._id}
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedPlan(plan);
+                                    resetQuote();
+                                  }}
+                                />
+                                <div className={`h-full bg-white border-2 rounded-xl transition-all p-4 ${isSelected ? 'border-brand-primary bg-brand-primary-light/5' : 'border-brand-divider hover:border-brand-primary/30'}`}>
+                                  <div className="flex justify-between items-start mb-1">
+                                    <h4 className="font-extrabold text-sm text-brand-text">{plan.name}</h4>
+                                    {Number(plan.discountPercent) > 0 && (
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">{t("{{pct}}% off", { pct: plan.discountPercent })}</span>
+                                    )}
                                   </div>
-                                  {isSelected && (
-                                    <span className="text-xs font-bold text-brand-primary flex items-center gap-1">
-                                      <div className="w-4 h-4 bg-brand-primary rounded-full flex items-center justify-center">
-                                        <Check className="w-2.5 h-2.5 text-white" />
-                                      </div>
-                                      {t("Selected")}
-                                    </span>
+                                  <p className="text-xs text-brand-muted mt-1">{planLabel(plan)}</p>
+                                  {plan.description && (
+                                    <p className="text-xs text-brand-text mt-2 leading-relaxed">{plan.description}</p>
                                   )}
                                 </div>
-                              </div>
-                            </label>
-                          );
-                        })
-                      )}
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
-                
-                {wizardStep === 4 && selectedMealPlan && vendorMealPlan && (() => {
-                  const days              = getPlanDays(selectedMealPlan);
-                  const planPrice         = Number(vendorMealPlan.pricePerDay || 0) * days;
-                  const empCount          = selectedEmployeeIds.length;
-                  const slotCount        = selectedSlots.length;
-                  const foodVatPct       = Number(selectedMealPlan.foodVat || 0);
-                  const deliveryVatPct   = Number(selectedMealPlan.deliveryVat || 0);
-                  const platformFeeEach  = Number(selectedMealPlan.platformFee || 0);
 
-                  // Food
-                  const foodTotal    = planPrice * empCount;
-                  const foodVatAmt   = foodTotal * (foodVatPct / 100);
-
-                  // Delivery VAT: slots × feePerOrder × employees = deliveryBase → deliveryBase / 100 × deliveryVatPct
-                  const deliveryBase  = slotCount * feePerOrder * empCount;
-                  const deliveryVatAmt = (deliveryBase / 100) * deliveryVatPct;
-
-                  // Platform
-                  const platformTotal  = platformFeeEach * empCount;
-
-                  const grandTotal = foodTotal + foodVatAmt + deliveryVatAmt + platformTotal;
-
-                  const S = {
-                    wrap:  { width: '100%', padding: '0 2px' },
-                    card:  { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
-                    hdr:   { background: '#f8fafc', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' },
-                    info:  { padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '8px' },
-                    break: { padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px', background: '#fafafa' },
-                    row:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' },
-                    lbl:   { fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 },
-                    val:   { fontSize: '13px', color: '#1e293b', fontWeight: 700, textAlign: 'right' },
-                    total: { padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-                    tlbl:  { fontSize: '15px', color: '#0f172a', fontWeight: 800 },
-                    tval:  { fontSize: '22px', color: '#16a34a', fontWeight: 900 },
-                  };
-
-                  const Row = ({ label, value }) => (
-                    <div style={S.row}>
-                      <span style={S.lbl}>{label}</span>
-                      <span style={S.val}>{value}</span>
-                    </div>
-                  );
-
-                  return (
-                    <div style={S.wrap}>
-                      <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginBottom: '14px' }}>
-                        {t("Review the price summary before proceeding to payment.")}
-                      </p>
-                      <div style={S.card}>
-                        <div style={S.hdr}>{t("Price Summary")}</div>
-
-                        {/* Plan details */}
-                        <div style={S.info}>
-                          <Row label={t("Subscription Plan")} value={selectedMealPlan.name} />
-                          <Row label={t("Plan Price")}        value={money(planPrice)} />
-                          <Row label={t("Duration")}          value={selectedMealPlan.duration === 'week' ? 'Weekly (Mon–Fri)' : selectedMealPlan.duration === 'month' ? 'Monthly (Full Week)' : 'Daily'} />
-                          <Row label={t("Assigned Employees")} value={`× ${empCount}`} />
-                          <Row label={t("Meal Slots")}        value={`${selectedSlots.map((k) => slotLabelOf(k)).join(', ')} (× ${slotCount})`} />
-                        </div>
-
-                        {/* Cost breakdown — shown only when user clicks ⓘ */}
-                        <div style={S.break}>
-                          <Row label={t("Food Total  ({{planPrice}} × {{empCount}})", { planPrice: money(planPrice), empCount })}  value={money(foodTotal)} />
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{t("Tax & Fee Breakdown")}</span>
-                            <button
-                              onClick={() => setShowBreakdown(p => !p)}
-                              style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                              title={t("Show/hide breakdown")}
-                            >ⓘ</button>
-                          </div>
-                          {showBreakdown && (
-                            <>
-                              <Row label={t("Food VAT  ({{foodVatPct}}% of {{foodTotal}})", { foodVatPct, foodTotal: money(foodTotal) })}                              value={money(foodVatAmt)} />
-                              <Row label={t("Delivery VAT  ({{slotCount}}×{{feePerOrder}}×{{empCount}}÷100×{{deliveryVatPct}}%)", { slotCount, feePerOrder: money(feePerOrder, { compact: true }), empCount, deliveryVatPct })}  value={money(deliveryVatAmt)} />
-                              <Row label={t("Platform Fee  ({{platformFeeEach}} × {{empCount}})", { platformFeeEach: money(platformFeeEach, { compact: true }), empCount })}                                  value={money(platformTotal)} />
-                            </>
-                          )}
-                        </div>
-
-                        {/* Grand total */}
-                        <div style={S.total}>
-                          <span style={S.tlbl}>{t("Total Price")}</span>
-                          <span style={S.tval}>{money(grandTotal)}</span>
-                        </div>
+                {wizardStep === 4 && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-brand-muted text-center">{t("Review the price summary before proceeding to payment.")}</p>
+                    {quoteLoading && <div className="bg-white rounded-xl border border-brand-divider h-48 animate-pulse" />}
+                    {quoteError && !quoteLoading && (
+                      <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{quoteError}</span>
                       </div>
-                      <PaymentMethodPicker
-                        className="mt-4"
-                        providers={methods.providers}
-                        selected={methods.selected}
-                        onSelect={methods.setSelected}
-                        loading={methods.loading}
-                        error={methods.error}
-                      />
-                    </div>
-                  );
-                })()}
+                    )}
+                    {quote && !quoteLoading && (
+                      <>
+                        {quote.conflicts?.length > 0 && (
+                          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 space-y-2">
+                            <p className="font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{t("Some employees already get a meal in this slot during this period:")}</p>
+                            <ul className="list-disc pl-5 text-xs space-y-0.5">
+                              {quote.conflicts.map((c) => (
+                                <li key={`${c.employeeId}-${c.slots.join()}`}>
+                                  {c.until
+                                    ? t("{{name}}: {{slots}} from {{vendor}} until {{date}}", { name: c.name, slots: slotNames(c.slots), vendor: c.vendorName, date: fmtDate(c.until) })
+                                    : t("{{name}}: {{slots}} from {{vendor}}", { name: c.name, slots: slotNames(c.slots), vendor: c.vendorName })}
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <button onClick={dropConflicting} className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer">{t("Remove them from this order")}</button>
+                              <button onClick={() => setWizardStep(2)} className="px-3 py-1.5 rounded-lg border border-amber-400 text-amber-900 text-xs font-bold cursor-pointer">{t("Pick a later start date")}</button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-white border border-brand-divider rounded-xl overflow-hidden shadow-sm">
+                          <div className="bg-brand-bg/40 px-4 py-3 border-b border-brand-divider text-[11px] font-bold uppercase tracking-wider text-brand-muted">{t("Price Summary")}</div>
+                          <div className="px-4 py-3 border-b border-brand-divider/60 space-y-2 text-[13px]">
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Subscription Plan")}</span><span className="font-bold text-brand-text text-right">{quote.planName}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Meal")}</span><span className="font-bold text-brand-text text-right">{selectedMeal?.name}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Period")}</span><span className="font-bold text-brand-text text-right">{fmtDate(quote.startDate)} – {fmtDate(quote.lastDate)}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Meal Slots")}</span><span className="font-bold text-brand-text text-right">{slotNames(quote.deliverySlots)}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Deliveries per employee")}</span><span className="font-bold text-brand-text text-right">{quote.perEmployee?.deliveries}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Assigned Employees")}</span><span className="font-bold text-brand-text text-right">× {quote.employeeCount}</span></div>
+                            <div className="flex justify-between gap-3"><span className="text-brand-muted">{t("Price per employee")}</span><span className="font-bold text-brand-text text-right">{money(quote.perEmployee?.total)}</span></div>
+                          </div>
+                          <div className="px-4 py-3 border-b border-brand-divider/60 space-y-1.5 text-[13px] bg-brand-bg/10">
+                            {quote.lines.map((line) => {
+                              const key = LINE_LABELS[line.key];
+                              const label = line.key === 'food_vat' || line.key === 'delivery_vat'
+                                ? t("{{label}} ({{rate}}%)", { label: t(key), rate: line.rate })
+                                : key ? t(key) : line.label;
+                              return (
+                                <div key={line.key} className={`flex justify-between ${line.amount < 0 ? 'text-emerald-700' : 'text-brand-muted'}`}>
+                                  <span>{label}</span>
+                                  <span className="font-bold">{line.amount < 0 ? `−${money(-line.amount)}` : money(line.amount)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="px-4 py-4 flex justify-between items-center">
+                            <span className="text-[15px] font-extrabold text-brand-text">{t("Total Price")}</span>
+                            <span className="text-[22px] font-black text-green-600">{money(quote.total)}</span>
+                          </div>
+                        </div>
+                        <PaymentMethodPicker
+                          className="mt-4"
+                          providers={methods.providers}
+                          selected={methods.selected}
+                          onSelect={methods.setSelected}
+                          loading={methods.loading}
+                          error={methods.error}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Actions Footer */}
               <div className="p-4 border-t border-brand-divider bg-white flex justify-between items-center">
                 <div>
                   <button
-                    onClick={() => setSelectedVendor(null)}
+                    onClick={closeWizard}
+                    disabled={isProcessingPayment}
                     className="px-5 py-2 text-brand-muted font-bold text-xs hover:text-brand-text transition-colors cursor-pointer"
                   >
                     {t("Cancel")}
@@ -648,7 +731,7 @@ export default function VendorsTab({
                 <div className="flex gap-2">
                   {wizardStep > 1 && (
                     <button
-                      onClick={() => setWizardStep(prev => prev - 1)}
+                      onClick={() => goToStep(wizardStep - 1)}
                       disabled={isProcessingPayment}
                       className="px-5 py-2 border border-brand-divider text-brand-muted rounded-lg font-bold text-xs hover:bg-brand-bg transition-all flex items-center gap-1.5 cursor-pointer"
                     >
@@ -658,12 +741,8 @@ export default function VendorsTab({
                   )}
                   {wizardStep < 4 ? (
                     <button
-                      onClick={() => setWizardStep(prev => prev + 1)}
-                      disabled={
-                        (wizardStep === 1 && selectedEmployeeIds.length === 0) ||
-                        (wizardStep === 2 && selectedSlots.length === 0) ||
-                        (wizardStep === 3 && !selectedMealPlan)
-                      }
+                      onClick={() => goToStep(wizardStep + 1)}
+                      disabled={!canNext}
                       className="px-6 py-2 bg-brand-primary hover:bg-brand-primary-dark disabled:opacity-40 text-white rounded-lg font-bold text-xs transition-all cursor-pointer"
                     >
                       {t("Next")}
@@ -671,7 +750,7 @@ export default function VendorsTab({
                   ) : (
                     <button
                       onClick={handleConfirmAssignment}
-                      disabled={isProcessingPayment || methods.loading || !methods.providers.length}
+                      disabled={isProcessingPayment || quoteLoading || !quote || quote.conflicts?.length > 0 || methods.loading || !methods.providers.length}
                       className="px-6 py-2 bg-[#6b9d8a] hover:bg-[#5a8674] disabled:opacity-40 text-white rounded-lg font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center"
                     >
                       <ClipboardCheck className="w-4 h-4" />
@@ -714,10 +793,10 @@ export default function VendorsTab({
                        <div key={plan._id || plan.id} className="bg-white border border-brand-divider p-4 rounded-xl flex items-start gap-4">
                          {/* Meal Image */}
                          <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                           <img 
-                             src={(plan.photos && plan.photos[0]) || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=256&h=256'} 
-                             alt={plan.name} 
-                             className="w-full h-full object-cover" 
+                           <img
+                             src={(plan.photos && plan.photos[0]) || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=256&h=256'}
+                             alt={plan.name}
+                             className="w-full h-full object-cover"
                              referrerPolicy="no-referrer"
                            />
                          </div>
@@ -735,10 +814,10 @@ export default function VendorsTab({
                                </span>
                              )}
                            </div>
-                           
+
                            <div className="mt-2 flex items-center">
                              <span className="font-extrabold text-brand-primary text-sm">
-                               {money(plan.pricePerDay || plan.price, { compact: true, currency: plan.currency })}
+                               {money(plan.pricePerDay || plan.price, { compact: true })}
                                <span className="text-brand-muted font-medium text-xs">{t("/day")}</span>
                              </span>
                            </div>

@@ -52,8 +52,12 @@ const modificationBlockedReason = async (order, verb) => {
     return null;
 };
 
-/** What the customer paid for one delivery — credited on skip, debited on undo. */
+/**
+ * What the customer paid for one delivery — credited on skip, debited on undo. A company-paid (office) meal was not paid
+ * by the employee, so skipping it never puts money in their own wallet.
+ */
 const paidForOrder = (order, sub) => {
+    if (sub?.source === 'office') return 0;
     const paid = Number(order.pricing?.totalPrice) || 0;
     if (paid > 0) return paid;
     return Number(sub?.pricing?.basePricePerDay) || Number(order.pricing?.foodCost) || 0;

@@ -449,6 +449,11 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
                           <p className="text-[12px] text-slate-500 font-medium mt-0.5">
                             👤 {order.customer?.name || ''}
                           </p>
+                          {order.office && (
+                            <p className="mt-1 inline-flex px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
+                              🏢 {t("Office order · {{company}}", { company: order.office.companyName })}
+                            </p>
+                          )}
                         </div>
                         <span className={`${sc.color} font-bold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider`}>
                           {t(sc.label)}

@@ -40,7 +40,23 @@ const officePaymentSchema = new mongoose.Schema(
         /** Meal plan and start date to assign once the payment is confirmed. */
         mealPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'DMBMealPlan', default: null },
         startDate: { type: Date, default: null },
+        endDate: { type: Date, default: null },
         planType: { type: String, default: '' },
+        /**
+         * The server quote ONE employee's subscription was priced at (the same quote a customer subscription uses):
+         * every subscription created for this payment is built from it, so its daily orders cost what was paid.
+         */
+        quote: { type: mongoose.Schema.Types.Mixed, default: undefined },
+        zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null },
+        /** Where the meals go: the company's delivery address and map pin when the order was placed. */
+        deliveryAddress: { type: mongoose.Schema.Types.Mixed, default: undefined },
+        /** Set while the employees' subscriptions are being created (stops two confirmations running at once). */
+        fulfillingAt: { type: Date, default: null },
+        /** Employees who could not be given their meals (e.g. removed before the payment was confirmed). */
+        skippedEmployees: {
+            type: [{ employeeId: mongoose.Schema.Types.ObjectId, name: String, reason: String, _id: false }],
+            default: undefined
+        },
         /** publicId of the payment_transactions row that pays for this order (any provider). */
         paymentTransactionId: { type: String, default: '', index: true },
         provider: { type: String, default: '' },
@@ -83,8 +99,10 @@ const officePaymentSchema = new mongoose.Schema(
         breakdown: {
             foodTotal: { type: Number, default: 0 },
             foodVat: { type: Number, default: 0 },
+            delivery: { type: Number, default: 0 },
             deliveryVat: { type: Number, default: 0 },
-            platformFee: { type: Number, default: 0 }
+            platformFee: { type: Number, default: 0 },
+            discount: { type: Number, default: 0 }
         }
     },
     { timestamps: true }

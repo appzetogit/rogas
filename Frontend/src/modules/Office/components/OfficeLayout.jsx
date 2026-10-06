@@ -16,12 +16,12 @@ import TermsAndConditionsPage from '../pages/TermsAndConditionsPage';
 import CompanyDetailsTab from '../pages/CompanyPage';
 import {
   getEmployeesApi, addEmployeeApi, updateEmployeeApi, deleteEmployeeApi,
-  getVendorsApi, assignMealsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi
+  getVendorsApi, getCompanyDetailsApi, updateCompanyDetailsApi, createAssignmentOrderApi, deleteAssignmentApi
 } from '../services/officeApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
-import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
+import { completePayment, paymentRequestExtras } from "../../../shared/payments/api";
 import usePaymentResult from "../../../shared/payments/usePaymentResult";
 
 export default function App() {
@@ -53,19 +53,22 @@ export default function App() {
   // Core state managers loaded from API
   const [employees, setEmployees] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [delivery, setDelivery] = useState(null);
   const [companyDetails, setCompanyDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dataVersion, setDataVersion] = useState(0);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [empRes, venRes, compRes] = await Promise.all([
         getEmployeesApi({ limit: 1000 }), // fetch all for now
         getVendorsApi(),
         getCompanyDetailsApi()
       ]);
       const employeesData = (empRes.data.data.employees || []).map(emp => ({ ...emp, id: emp._id }));
-      const vendorsData = (venRes.data.data || []).map(v => ({
+      setDelivery(venRes.data.data?.delivery || null);
+      const vendorsData = (venRes.data.data?.vendors || []).map(v => ({
         ...v,
         id: v._id,
         name: v.restaurantName || v.name,
@@ -80,13 +83,14 @@ export default function App() {
       setEmployees(employeesData);
       setVendors(vendorsData);
       setCompanyDetails(compRes.data.data || null);
+      setDataVersion((v) => v + 1);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       if (error.response?.status === 401) {
         navigate('/office/login');
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -94,22 +98,26 @@ export default function App() {
     fetchDashboardData();
   }, []);
 
-  // 1. Employee Mutators
+  // 1. Employee Mutators (resolve true when saved, so the form can stay open on an error)
   const handleAddEmployee = async (empData) => {
     try {
       await addEmployeeApi(empData);
-      fetchDashboardData(); // Refresh data
+      fetchDashboardData({ silent: true }); // Refresh data
+      return true;
     } catch (error) {
       alert(error.response?.data?.message || t("Failed to add employee"));
+      return false;
     }
   };
 
   const handleUpdateEmployee = async (id, updatedFields) => {
     try {
       await updateEmployeeApi(id, updatedFields);
-      fetchDashboardData();
+      fetchDashboardData({ silent: true });
+      return true;
     } catch (error) {
       alert(error.response?.data?.message || t("Failed to update employee"));
+      return false;
     }
   };
 
@@ -123,93 +131,28 @@ export default function App() {
   };
 
   // 2. Meal Subscription Actions (Assignment / Unassignment)
-  const handleAssignEmployees = async (employeeIds, vendorId, deliverySlot, subscriptionPlanId, totalAmount, vendorMealPlanId, provider) => {
-    // The price charged is the vendor's own meal plan, never the admin's subscriptionPlanId — never send one in
-    // place of the other.
-    if (!vendorMealPlanId) {
-      alert(t("This vendor hasn't published a meal plan yet, so no price is available. Ask them to add one before assigning employees."));
-      return;
-    }
+  /**
+   * Starts the payment for an order the office reviewed. The server prices it again and refuses a total the office did
+   * not see; the meals are assigned when the payment is confirmed (hosted page, test payment or Razorpay pop-up — all
+   * end on the shared return page, which brings the office back to Assigned Meal Plans). Resolves true when the
+   * payment page took over.
+   */
+  const handleCheckout = async (order) => {
     try {
-      // Step 1: Create the order. The server picks the payment provider for the vendor's country (or uses the chosen one);
-      // meals are assigned only after the payment is confirmed.
       const orderRes = await createAssignmentOrderApi({
-        employeeIds,
-        subscriptionPlanId,
-        vendorId,
-        slots: deliverySlot,
-        totalAmount,
-        mealPlanId: vendorMealPlanId, // the vendor's own DMBMealPlan._id — this is what sets the price
-        ...paymentRequestExtras({ provider, returnPath: '/office/AssignedMealPlans', cancelPath: '/office/VendorsAssign' }),
+        ...order,
+        ...paymentRequestExtras({ provider: order.provider, returnPath: '/office/AssignedMealPlans', cancelPath: '/office/VendorsAssign' }),
       });
-      const orderData = orderRes.data.data;
-
-      // Step 2a: Przelewy24 / Stripe: continue on the provider's page. The webhook assigns the meals and the return page
-      // brings the office back here.
-      const { redirected } = await continueHostedPayment(orderData.payment, { panel: 'office' });
-      if (redirected) return;
-
-      // Step 2b: Razorpay: load the script if needed
-      if (!window.Razorpay) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-      }
-
-      // Step 3: Open Razorpay Checkout using key returned from backend
-      const rzpKey = orderData.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || '';
-      if (!rzpKey) {
-        throw new Error('Razorpay key not configured. Please contact support.');
-      }
-
-      const options = {
-        key: rzpKey,
-        amount: orderData.amount,
-        currency: orderData.currency || 'INR',
-        name: "Rogas Meal Box",
-        description: t("Office Meal Subscription"),
-        order_id: orderData.orderId,
-        handler: async function (response) {
-          try {
-            await assignMealsApi({
-              transactionId: orderData.payment?.transactionId,
-              employeeIds,
-              vendorId,
-              mealPlanId: vendorMealPlanId,
-              subscriptionPlanId,
-              slots: deliverySlot,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            });
-            fetchDashboardData();
-            alert(t("Payment successful! Subscriptions assigned for {{count}} employee.", { count: employeeIds.length }));
-          } catch (error) {
-            alert(error.response?.data?.message || t("Payment verified but assignment failed. Please contact support."));
-          }
-        },
-        prefill: {
-          name: companyDetails?.legalName || "Office Admin",
-          email: companyDetails?.email || "admin@office.com",
-        },
-        theme: { color: "#088d5e" }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        alert("Payment failed: " + response.error.description);
-      });
-      rzp.open();
+      await completePayment(orderRes.data.data.payment, { panel: 'office' });
+      return true;
     } catch (error) {
+      if (error?.message === 'cancelled') return false; // the office closed the payment pop-up
       alert(error.response?.data?.message || error.message || t("Failed to initiate checkout"));
+      return false;
     }
   };
 
-  // Back from a hosted payment page (Przelewy24 / Stripe): the meals were assigned by the payment confirmation.
+  // Back from the payment return page: the meals were assigned by the payment confirmation.
   usePaymentResult(({ status, purpose }) => {
     if (status === 'success' && purpose === 'office') {
       fetchDashboardData();
@@ -217,20 +160,15 @@ export default function App() {
     }
   });
 
-  const handleUnassignEmployee = async (id) => {
+  /** Stops one company-paid meal plan (from tomorrow; paid days are not refunded). Resolves true when it was cancelled. */
+  const handleCancelAssignment = async (assignmentId) => {
     try {
-      // Find the assignment first, wait, employee ID isn't enough, we need assignment ID,
-      // Or we can delete by calling a special endpoint, but for now let's just make the backend delete it
-      // if we send an unassign request. Alternatively, I can call an API to find the assignment.
-      const res = await officeClient.get('/assignments');
-      const assignments = res.data.data;
-      const assignment = assignments.find(a => a.employeeId._id === id);
-      if (assignment) {
-        await officeClient.delete(`/assignments/${assignment._id}`);
-        fetchDashboardData();
-      }
+      await deleteAssignmentApi(assignmentId);
+      fetchDashboardData({ silent: true });
+      return true;
     } catch (error) {
       alert(error.response?.data?.message || t("Failed to unassign employee"));
+      return false;
     }
   };
 
@@ -373,15 +311,17 @@ export default function App() {
                   <VendorsTab
                     vendors={vendors}
                     employees={employees}
-                    onAssignEmployees={handleAssignEmployees}
+                    delivery={delivery}
+                    onCheckout={handleCheckout}
+                    onGoToCompany={() => setActiveTab('company')}
                   />
                 )}
 
                 {activeTab === 'meal-plans' && (
                   <MealPlansTab
                     employees={employees}
-                    vendors={vendors}
-                    onUnassignEmployee={handleUnassignEmployee}
+                    refreshKey={dataVersion}
+                    onCancelAssignment={handleCancelAssignment}
                     onSetTab={setActiveTab}
                   />
                 )}

@@ -2,8 +2,9 @@
 export default {
     async onPaid(tx) {
         const { fulfilOfficePayment } = await import('../../dailymealbox/office/office.assignment.service.js');
-        await fulfilOfficePayment(tx.refs?.officePaymentId, { paymentTxId: tx.publicId, providerPaymentId: tx.providerPaymentId });
-        return undefined;
+        const { attention } = await fulfilOfficePayment(tx.refs?.officePaymentId, { paymentTxId: tx.publicId, providerPaymentId: tx.providerPaymentId });
+        // Employees who could not be served were still paid for: flag the payment so an admin refunds or fixes them.
+        return attention ? { attention } : undefined;
     },
 
     async onFailed(tx) {

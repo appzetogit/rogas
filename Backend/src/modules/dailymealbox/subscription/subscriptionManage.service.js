@@ -20,6 +20,8 @@ export class ManageError extends Error {
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** Company-paid meals go to the company's address; only the office can change it (Company Details). */
+const OFFICE_ADDRESS_MESSAGE = 'Meals paid by your company are delivered to your company\'s address. Ask your office manager to change it.';
 
 export const findCustomerSubscription = async (userId, id) => {
     const or = [{ subscriptionId: id }];
@@ -57,6 +59,7 @@ const vendorsOf = async (sub, days) => {
  */
 export const changeSubscriptionAddress = async ({ userId, subscriptionId, addressId, days }) => {
     const sub = await findCustomerSubscription(userId, subscriptionId);
+    if (sub.source === 'office') throw new ManageError(OFFICE_ADDRESS_MESSAGE, 403, 'OFFICE_MANAGED');
     if (!['active', 'paused', 'pending_payment'].includes(sub.status)) throw new ManageError('This subscription can no longer be changed');
     const address = await savedAddress(userId, addressId);
     const onlyDays = Array.isArray(days) && days.length ? cleanWeekdays(days).filter((d) => deliveryWeekdays(sub).includes(d)) : null;
@@ -112,6 +115,9 @@ const assertOrderEditable = async (order) => {
 export const overrideOrderAddress = async ({ userId, orderId, addressId }) => {
     const order = await DMBDailyOrder.findOne({ _id: orderId, userId });
     if (!order) throw new ManageError('Delivery not found', 404, 'NOT_FOUND');
+    if (order.subscriptionId && await DMBSubscription.exists({ _id: order.subscriptionId, source: 'office' })) {
+        throw new ManageError(OFFICE_ADDRESS_MESSAGE, 403, 'OFFICE_MANAGED');
+    }
     await assertOrderEditable(order);
     const address = await savedAddress(userId, addressId);
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');

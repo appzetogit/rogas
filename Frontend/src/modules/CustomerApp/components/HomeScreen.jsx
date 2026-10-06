@@ -608,7 +608,9 @@ export function HomeScreen({
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Skip This Delivery?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  {t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })}
+                  {manageOrder.paidBy
+                    ? t("Your delivery for {{date}} will be skipped. Your company paid for this meal, so nothing is credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })
+                    : t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })}
                 </p>
                 <div className="flex gap-3">
                   <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">{t("Cancel")}</button>

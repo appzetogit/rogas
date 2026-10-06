@@ -313,6 +313,8 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
           <div className="space-y-5">
             {subscriptions.map((sub) => {
               const durationLabel = sub.duration ? sub.duration.charAt(0).toUpperCase() + sub.duration.slice(1) : "Weekly";
+              // Bought by the employee's company: the office manages (cancels, changes) it, and its price is the company's.
+              const paidByCompany = sub.source === "office";
               const mealList = (sub.meals && sub.meals.length > 0) 
                 ? sub.meals.map(m => `${m.mealPlanId?.name || "Meal Plan"} x${m.quantity || 1}`).join(", ") 
                 : (sub.mealPlanId?.name || "Standard Plan");
@@ -328,6 +330,11 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       <span className="text-[10px] font-bold text-[#6e7a74] uppercase tracking-wider">
                         {t("ID:")} {sub.subscriptionId || t("N/A")}
                       </span>
+                      {paidByCompany && (
+                        <span className="mt-1 inline-flex px-2 py-0.5 rounded-full bg-[#E8F3F0] text-primary text-[10px] font-bold">
+                          {t("Paid by {{company}}", { company: sub.companyName || t("your company") })}
+                        </span>
+                      )}
                     </div>
                     {isCancelling(sub) ? (
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-amber-300 bg-amber-50 text-amber-700">
@@ -369,12 +376,19 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       </div>
                     </div>
 
-                    <div className="space-y-0.5 text-right">
-                      <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Amount Paid")}</span>
-                      <span className="text-lg font-extrabold text-primary block mt-1">
-                        {money(sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice) : 0, { currency: sub.pricing?.currency })}
-                      </span>
-                    </div>
+                    {paidByCompany ? (
+                      <div className="space-y-0.5 text-right">
+                        <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Amount Paid")}</span>
+                        <span className="text-[12px] font-bold text-primary block mt-1">{t("Paid by your company")}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5 text-right">
+                        <span className="text-[10px] text-[#6e7a74] uppercase tracking-wider block font-bold">{t("Amount Paid")}</span>
+                        <span className="text-lg font-extrabold text-primary block mt-1">
+                          {money(sub.pricing?.totalPrice ? Number(sub.pricing.totalPrice) : 0, { currency: sub.pricing?.currency })}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions Row */}
@@ -409,17 +423,19 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               <PauseCircle className="text-[16px]" />
                               {t("Pause")}
                             </button>
-                            <button
-                              onClick={() => {
-                                setCancelReason("");
-                                setShowCancelModal(sub);
-                              }}
-                              className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                              disabled={actionLoading}
-                            >
-                              <XCircle className="text-[16px]" />
-                              {t("Cancel")}
-                            </button>
+                            {!paidByCompany && (
+                              <button
+                                onClick={() => {
+                                  setCancelReason("");
+                                  setShowCancelModal(sub);
+                                }}
+                                className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
+                                disabled={actionLoading}
+                              >
+                                <XCircle className="text-[16px]" />
+                                {t("Cancel")}
+                              </button>
+                            )}
                           </>
                         ) : (
                           <>
@@ -431,24 +447,34 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                               <PlayCircle className="text-[16px]" />
                               {t("Resume Plan")}
                             </button>
-                            <button
-                              onClick={() => {
-                                setCancelReason("");
-                                setShowCancelModal(sub);
-                              }}
-                              className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                              disabled={actionLoading}
-                            >
-                              <XCircle className="text-[16px]" />
-                              {t("Cancel")}
-                            </button>
+                            {!paidByCompany && (
+                              <button
+                                onClick={() => {
+                                  setCancelReason("");
+                                  setShowCancelModal(sub);
+                                }}
+                                className="flex-1 py-2.5 rounded-xl border border-red-200 text-brand-red bg-red-50/10 hover:bg-red-50 text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
+                                disabled={actionLoading}
+                              >
+                                <XCircle className="text-[16px]" />
+                                {t("Cancel")}
+                              </button>
+                            )}
                           </>
                         )}
                       </>
                     )}
                     {/* Amendment v2 Extra: change plan / maker / slot / renew, address, rotation, 10-day view */}
                     <div className="w-full mt-2 space-y-3">
-                      <SubscriptionActions subscription={sub} onNavigate={navigate} onShowToast={onShowNotificationToast} onChanged={fetchSubscriptions} />
+                      {paidByCompany ? (
+                        ["active", "paused"].includes(sub.status) && (
+                          <p className="text-[11px] text-[#6e7a74] bg-[#F5F5F0] rounded-xl p-3">
+                            {t("This meal plan is paid by your company and delivered to your office. Ask your office manager to change or cancel it.")}
+                          </p>
+                        )
+                      ) : (
+                        <SubscriptionActions subscription={sub} onNavigate={navigate} onShowToast={onShowNotificationToast} onChanged={fetchSubscriptions} />
+                      )}
                       {["active", "paused"].includes(sub.status) && (
                         <button type="button" onClick={() => setOpenUpcoming(openUpcoming === sub._id ? null : sub._id)} className="w-full py-2.5 rounded-xl border border-primary/40 text-primary text-xs font-bold">
                           {openUpcoming === sub._id ? t("Hide upcoming deliveries") : t("Show upcoming deliveries")}
@@ -456,16 +482,19 @@ export function SubscriptionDetailsScreen({ onGoBack, onGoToPlans, onShowNotific
                       )}
                       {openUpcoming === sub._id && <UpcomingDeliveries subscriptionId={sub._id} onShowToast={onShowNotificationToast} />}
                     </div>
-                    <button
-                      onClick={() => handleDownloadInvoice(sub)}
-                      disabled={downloadingId === sub._id}
-                      className="w-full py-2.5 rounded-xl border border-[#bec9c3] text-[#1b1c1c] bg-white hover:bg-surface-container-low text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm mt-1"
-                    >
-                      <span className={`material-symbols-outlined text-[16px] ${downloadingId === sub._id ? "animate-spin" : ""}`}>
-                        {downloadingId === sub._id ? "autorenew" : "receipt_long"}
-                      </span>
-                      {downloadingId === sub._id ? t("Generating...") : t("Download Invoice")}
-                    </button>
+                    {/* The company's invoice for a company-paid plan is in the office panel, not the employee's app. */}
+                    {!paidByCompany && (
+                      <button
+                        onClick={() => handleDownloadInvoice(sub)}
+                        disabled={downloadingId === sub._id}
+                        className="w-full py-2.5 rounded-xl border border-[#bec9c3] text-[#1b1c1c] bg-white hover:bg-surface-container-low text-xs font-bold active:scale-95 transition-all text-center flex items-center justify-center gap-1 shadow-sm mt-1"
+                      >
+                        <span className={`material-symbols-outlined text-[16px] ${downloadingId === sub._id ? "animate-spin" : ""}`}>
+                          {downloadingId === sub._id ? "autorenew" : "receipt_long"}
+                        </span>
+                        {downloadingId === sub._id ? t("Generating...") : t("Download Invoice")}
+                      </button>
+                    )}
                   </div>
                 </div>
               );

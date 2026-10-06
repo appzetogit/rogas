@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
+import { requireRoles } from '../../../../core/roles/role.middleware.js';
 import {
     getEmployees,
     addEmployee,
@@ -7,6 +8,7 @@ import {
     deleteEmployee,
     getVendors,
     assignMealPlan,
+    quoteAssignmentOrder,
     createAssignmentOrder,
     getAssignments,
     deleteAssignment,
@@ -23,8 +25,8 @@ import {
 
 const router = express.Router();
 
-// Require all office routes to be authenticated
-router.use(authMiddleware);
+// Office accounts only (a customer, vendor or driver token must not reach these).
+router.use(authMiddleware, requireRoles('OFFICE_ADMIN'));
 
 // Employees
 router.get('/employees', getEmployees);
@@ -35,6 +37,7 @@ router.delete('/employees/:id', deleteEmployee);
 // Vendors & Assignments
 router.get('/vendors', getVendors);
 router.get('/assignments', getAssignments);
+router.post('/assignments/quote', quoteAssignmentOrder);
 router.post('/assignments/create-order', createAssignmentOrder);
 router.post('/assignments', assignMealPlan);
 router.delete('/assignments/:id', deleteAssignment);

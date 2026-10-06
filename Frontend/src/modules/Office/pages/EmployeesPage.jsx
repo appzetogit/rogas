@@ -8,8 +8,22 @@ import { Search, ChevronDown, Filter, Edit, Trash2, Plus, X, TriangleAlert, Chev
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trans, useTranslation } from "react-i18next";
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
 
-
+// Numbers are stored the way the customer app signs in: country code + number, digits only ("48600100200").
+const PL_CODE = '48';
+/** The local part shown in the form next to its fixed +48 (numbers from other countries keep their "+code"). */
+const phoneForForm = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith(PL_CODE) && digits.length === 11) return digits.slice(2);
+  return digits ? `+${digits}` : '';
+};
+/** "+48 600 100 200" for the list. */
+const formatPhone = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith(PL_CODE) && digits.length === 11) return `+48 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  return digits ? `+${digits}` : '';
+};
 
 export default function EmployeesTab({
   employees,
@@ -18,6 +32,8 @@ export default function EmployeesTab({
   onDeleteEmployee,
 }) {
   const { t } = useTranslation("office");
+  const { label: slotLabel } = useDeliverySlots();
+  const [isSaving, setIsSaving] = useState(false);
   // Filters and Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
@@ -152,37 +168,30 @@ export default function EmployeesTab({
     setEditingEmployee(emp);
     setFormName(emp.name);
     setFormEmail(emp.email);
-    setFormPhone(emp.phone || '');
+    setFormPhone(phoneForForm(emp.phone));
     setFormDept(emp.department);
     setFormStatus(emp.status);
     setIsFormModalOpen(true);
   };
 
-  // Handle saving employee (Create / Edit)
-  const handleSaveEmployee = (e) => {
+  // Handle saving employee (Create / Edit). The form stays open when the server refuses it, so nothing typed is lost.
+  const handleSaveEmployee = async (e) => {
     e.preventDefault();
-    if (!formName.trim() || !formEmail.trim()) {
+    if (!formName.trim() || !formEmail.trim() || isSaving) {
       return;
     }
 
-    if (editingEmployee) {
-      onUpdateEmployee(editingEmployee.id, {
-        name: formName,
-        email: formEmail,
-        phone: formPhone,
-        department: formDept,
-        status: formStatus,
-      });
-    } else {
-      onAddEmployee({
-        name: formName,
-        email: formEmail,
-        phone: formPhone,
-        department: formDept,
-        status: formStatus,
-      });
-    }
-    setIsFormModalOpen(false);
+    const fields = {
+      name: formName,
+      email: formEmail,
+      phone: formPhone,
+      department: formDept,
+      status: formStatus,
+    };
+    setIsSaving(true);
+    const ok = editingEmployee ? await onUpdateEmployee(editingEmployee.id, fields) : await onAddEmployee(fields);
+    setIsSaving(false);
+    if (ok) setIsFormModalOpen(false);
   };
 
   // Handle opening delete confirmation modal
@@ -308,6 +317,7 @@ export default function EmployeesTab({
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Employee")}</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Department")}</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Phone Number")}</th>
+                <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Meal plans")}</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider">{t("Status")}</th>
                 <th className="px-6 py-4 font-semibold text-brand-muted text-xs uppercase tracking-wider text-right">{t("Actions")}</th>
               </tr>
@@ -315,7 +325,7 @@ export default function EmployeesTab({
             <tbody className="divide-y divide-brand-divider">
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-brand-muted">
+                  <td colSpan={6} className="px-6 py-12 text-center text-brand-muted">
                     {t("No employees match your active filters or search terms.")}
                   </td>
                 </tr>
@@ -345,7 +355,25 @@ export default function EmployeesTab({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-brand-muted">{emp.department}</td>
-                    <td className="px-6 py-4 text-sm text-brand-text">{emp.phone || <span className="text-brand-muted italic">{t("N/A")}</span>}</td>
+                    <td className="px-6 py-4 text-sm text-brand-text whitespace-nowrap">
+                      {emp.phone ? formatPhone(emp.phone) : <span className="text-brand-muted italic">{t("N/A")}</span>}
+                      {!emp.hasAccount && (
+                        <p className="text-[10px] text-amber-700 not-italic">{t("Add a mobile number so they can sign in")}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {(emp.plans || []).length ? (
+                        <div className="flex flex-wrap gap-1">
+                          {emp.plans.map((p) => (
+                            <span key={p.assignmentId} title={p.vendorName} className="px-2 py-0.5 rounded-full bg-brand-primary-light/40 text-brand-primary text-[10px] font-bold">
+                              {(p.slots || []).map((k) => slotLabel(k) || k).join(', ')}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-brand-muted italic">{t("None")}</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -536,7 +564,8 @@ export default function EmployeesTab({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                    disabled={isSaving}
+                    className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primary-dark disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer"
                   >
                     {editingEmployee ? t("Save Changes") : t("Save Employee")}
                   </button>

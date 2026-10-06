@@ -929,7 +929,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
               <>
                 <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{tr("Skip This Delivery?")}</h2>
                 <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
-                  {tr("Your {{dateStr}} delivery will be skipped and the day's amount will be credited to your wallet.", { dateStr: manageDeliveryInfo?.dateStr })}
+                  {manageOrder?.paidBy
+                    ? tr("Your {{dateStr}} delivery will be skipped. Your company paid for this meal, so nothing is credited to your wallet.", { dateStr: manageDeliveryInfo?.dateStr })
+                    : tr("Your {{dateStr}} delivery will be skipped and the day's amount will be credited to your wallet.", { dateStr: manageDeliveryInfo?.dateStr })}
                 </p>
                 <div className="flex gap-3">
                   <button

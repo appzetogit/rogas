@@ -993,6 +993,7 @@ export const getTodayAndTomorrowMeals = async (userId) => {
         .populate('vendorId', 'restaurantName profileImage city location')
         .populate('dispatch.deliveryPartnerId', 'name profilePhoto vehicleType phone')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
+        .populate('subscriptionId', 'source companyName')
         .lean();
 
     const slotPriority = await getSlotPriorityMap();
@@ -1084,7 +1085,7 @@ export const getCustomerOrders = async (userId, { type = 'upcoming', date, page,
         .populate('vendorId', 'restaurantName profileImage city location')
         .populate('dispatch.deliveryPartnerId', 'name profilePhoto vehicleType phone')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
-        .populate('subscriptionId', 'deliveryDays')
+        .populate('subscriptionId', 'deliveryDays source companyName')
         .sort(type === 'upcoming' ? { deliveryDate: 1 } : { deliveryDate: -1 });
 
     let totalOrders = 0;
@@ -1152,6 +1153,7 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
     const orders = await DMBDailyOrder.find(filter)
         .populate('userId', 'name phone')
         .populate('meals.mealPlanId', 'name photos pricePerDay nutrition')
+        .populate('subscriptionId', 'source companyName')
         .sort({ deliverySlot: 1, createdAt: 1 })
         .lean();
 
@@ -1167,6 +1169,8 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
             name: o.userId?.name || '',
             phone: o.userId?.phone || ''
         },
+        // Company-paid (office) meal: the kitchen sees which company it goes to.
+        office: o.subscriptionId?.source === 'office' ? { companyName: o.subscriptionId.companyName || '' } : null,
         meals: o.meals.map(m => ({
             name: m.name || 'No meal set',
             mealPlanName: m.mealPlanId?.name || null,
@@ -1744,6 +1748,8 @@ const formatOrderCard = (order) => ({
     })),
     pricing: order.pricing,
     subscriptionId: order.subscriptionId?._id || order.subscriptionId,
+    /** Set when the employee's company paid for this meal (skipping it credits nothing to the employee's wallet). */
+    paidBy: order.subscriptionId?.source === 'office' ? { companyName: order.subscriptionId.companyName || '' } : null,
     deliveryPin: order.deliveryPin || '',
     deliveryAddress: order.deliveryAddress,
     isRated: order.isRated || false,

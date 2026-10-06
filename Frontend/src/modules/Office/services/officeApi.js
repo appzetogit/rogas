@@ -37,6 +37,8 @@ export const deleteEmployeeApi = (id) => officeClient.delete(`/employees/${id}`)
 
 // Vendors & Assignments
 export const getVendorsApi = () => officeClient.get('/vendors');
+/** Server price of an order before paying (and employees who already have a meal in that slot). */
+export const quoteAssignmentApi = (data) => officeClient.post('/assignments/quote', data);
 export const createAssignmentOrderApi = (data) => officeClient.post('/assignments/create-order', data);
 export const assignMealsApi = (data) => officeClient.post('/assignments', data);
 export const getAssignmentsApi = () => officeClient.get('/assignments');

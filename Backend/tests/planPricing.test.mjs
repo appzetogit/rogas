@@ -1,7 +1,8 @@
 /**
- * Regression tests: subscription and office-plan prices must come from the vendor's own DMBMealPlan.pricePerDay,
- * never from the admin's VendorSubscriptionPlan.price (that field is a leftover of a fixed bug — see
+ * Regression tests: subscription prices must come from the vendor's own DMBMealPlan.pricePerDay, never from the
+ * admin's VendorSubscriptionPlan.price (that field is a leftover of a fixed bug — see
  * src/modules/dailymealbox/subscription/vendorSubscriptionPlan.model.js — and is no longer read anywhere).
+ * Office orders are priced by the full server quote; that is covered in tests/officeFlow.test.mjs.
  *
  * Needs a LOCAL MongoDB (default mongodb://127.0.0.1:27017). It creates a throw-away database and drops it
  * afterwards, and refuses to run against anything that is not localhost.
@@ -18,14 +19,13 @@ if (!/^mongodb:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(BASE_URI)) {
 }
 const DB_NAME = `plan_pricing_test_${Date.now()}`;
 
-let VendorSubscriptionPlan, DMBMealPlan, assertPriceFloor, officeAssignmentPlanFloor, daysForSubscriptionPlan;
+let VendorSubscriptionPlan, DMBMealPlan, assertPriceFloor;
 
 before(async () => {
     await mongoose.connect(`${BASE_URI.replace(/\/$/, '')}/${DB_NAME}`);
     ({ VendorSubscriptionPlan } = await import('../src/modules/dailymealbox/subscription/vendorSubscriptionPlan.model.js'));
     ({ DMBMealPlan } = await import('../src/modules/dailymealbox/mealplan/mealPlan.model.js'));
     ({ assertPriceFloor } = await import('../src/modules/dailymealbox/payment/dmb.payment.routes.js'));
-    ({ officeAssignmentPlanFloor, daysForSubscriptionPlan } = await import('../src/modules/dailymealbox/office/controllers/office.controller.js'));
 });
 
 after(async () => {
@@ -80,22 +80,4 @@ test('subscription checkout: a meal with no price contributes nothing (never fal
     const meal = await makeMealPlan(0);
     const plan = await makeSubPlan({ price: 500 });
     await assertPriceFloor({ subscriptionPlanId: plan._id, slots: 1, meals: [{ mealPlanId: meal._id, quantity: 1 }], pricing: { totalPrice: 0.01 } });
-});
-
-test('office assignment: the floor is the vendor meal price × plan days × employee count', () => {
-    const mealPlan = { pricePerDay: 12 };
-    const weekly = { duration: 'week', deliveryDays: 'mon_fri' }; // 5 days
-    assert.equal(daysForSubscriptionPlan(weekly), 5);
-    assert.equal(officeAssignmentPlanFloor({ subPlan: weekly, mealPlan, employeeCount: 4 }), 12 * 5 * 4);
-
-    const monthlyFullWeek = { duration: 'month', deliveryDays: 'full_week' }; // 30 days
-    assert.equal(daysForSubscriptionPlan(monthlyFullWeek), 30);
-    assert.equal(officeAssignmentPlanFloor({ subPlan: monthlyFullWeek, mealPlan, employeeCount: 10 }), 12 * 30 * 10);
-});
-
-test('office assignment: the admin plan price (if still present on old records) is never read', () => {
-    const mealPlan = { pricePerDay: 20 };
-    const subPlan = { duration: 'day', deliveryDays: 'full_week', price: 99999 }; // a huge leftover admin price
-    // Only the vendor's 20/day, once, counts — the huge admin price has no effect.
-    assert.equal(officeAssignmentPlanFloor({ subPlan, mealPlan, employeeCount: 1 }), 20);
 });

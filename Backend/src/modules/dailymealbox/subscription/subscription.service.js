@@ -17,6 +17,9 @@ import { queueEmail } from '../../email/email.service.js';
  */
 const emailSafe = (promise, label) => promise.catch((err) => logger.warn(`${label} not sent: ${err?.message || err}`));
 
+/** Shown when an employee tries to cancel or change a meal plan their company bought (only the office may do that). */
+export const OFFICE_MANAGED_MESSAGE = 'This meal plan is paid by your company. Ask your office manager to change or cancel it.';
+
 const findSubQuery = (id, extra = {}) => {
     if (mongoose.Types.ObjectId.isValid(id)) {
         return { $or: [{ _id: id }, { subscriptionId: id }], ...extra };
@@ -291,12 +294,14 @@ export const skipDelivery = async ({ subscriptionId, userId, skipDate, reason })
     sub.skipsUsedThisMonth += 1;
     await sub.save();
 
-    // Credit wallet for skipped day
+    // Credit wallet for skipped day. A company-paid (office) meal is not the employee's money, so nothing is credited.
     const slotCount = sub.deliverySlots && sub.deliverySlots.length > 0 ? sub.deliverySlots.length : 1;
-    const creditAmount = sub.pricing.basePricePerDay * slotCount;
-    await FoodUser.findByIdAndUpdate(userId, {
-        $inc: { walletBalance: creditAmount }
-    });
+    const creditAmount = sub.source === 'office' ? 0 : sub.pricing.basePricePerDay * slotCount;
+    if (creditAmount > 0) {
+        await FoodUser.findByIdAndUpdate(userId, {
+            $inc: { walletBalance: creditAmount }
+        });
+    }
 
     // Notify vendor to reduce prep count
     await sendNotificationToUser({
@@ -455,6 +460,7 @@ export const cancelSubscription = async ({ subscriptionId, userId, reason }) => 
     const { localToday, addDays, storageDateStr } = await import('../../../utils/platformTime.js');
     const current = await DMBSubscription.findOne(findSubQuery(subscriptionId, { userId, status: { $in: ['active', 'paused'] } }));
     if (!current) throw new Error('Subscription not found or already cancelled');
+    if (current.source === 'office') throw new Error(OFFICE_MANAGED_MESSAGE);
     if (current.cancelRequestedAt) throw new Error('This subscription is already set to end');
 
     const today = localToday();

@@ -267,7 +267,10 @@ const subscriptionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'OfficeCompany',
             default: null
-        }
+        },
+        /** The office purchase and employee this subscription was created for (source = 'office'). */
+        officePaymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'OfficePayment', default: null },
+        officeEmployeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'OfficeEmployee', default: null, index: true }
     },
     {
         collection: 'dmb_subscriptions',
@@ -280,6 +283,11 @@ subscriptionSchema.index({ userId: 1, status: 1 });
 subscriptionSchema.index({ vendorId: 1, status: 1 });
 subscriptionSchema.index({ nextDeliveryDate: 1, status: 1 });
 subscriptionSchema.index({ status: 1, autoRenew: 1 });
+// An office purchase creates one subscription per employee, even if its payment confirmation runs twice.
+subscriptionSchema.index(
+    { officePaymentId: 1, officeEmployeeId: 1 },
+    { unique: true, partialFilterExpression: { officePaymentId: { $type: 'objectId' } }, name: 'office_payment_employee_unique' }
+);
 
 // ─── Pre-save: generate subscriptionId, keep query helpers in sync ───────────
 subscriptionSchema.pre('save', function (next) {

@@ -1,5 +1,5 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 const officeEmployeeSchema = new mongoose.Schema(
     {
@@ -94,11 +94,11 @@ const officeEmployeeSchema = new mongoose.Schema(
 // Compound index to ensure email is unique per office account/company
 officeEmployeeSchema.index({ accountId: 1, email: 1 }, { unique: true });
 
-// Pre-save to auto-generate employeeId
+// Pre-save to auto-generate employeeId. It is unique across ALL companies, so it needs far more than 4 random digits
+// (those collided after ~100 employees and the second "Add employee" failed with a duplicate-key error).
 officeEmployeeSchema.pre('save', function (next) {
     if (!this.employeeId) {
-        const rand = Math.floor(1000 + Math.random() * 9000);
-        this.employeeId = `EMP-${rand}`;
+        this.employeeId = `EMP-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     }
     next();
 });

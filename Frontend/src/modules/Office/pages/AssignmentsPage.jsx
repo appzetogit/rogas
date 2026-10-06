@@ -3,79 +3,109 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Plus, Users, CheckCircle2, Clock, Store, Search, Filter, MoreVertical, X, ChevronLeft, ChevronRight, Ban } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Download, Plus, Users, CheckCircle2, Clock, Store, Search, X, ChevronLeft, ChevronRight, Ban, RefreshCw } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
+import { getAssignmentsApi } from '../services/officeApi';
+import useDeliverySlots from '../../../shared/hooks/useDeliverySlots';
+import { getCurrentLanguage } from '../../../shared/i18n';
 
+const CURRENT = ['upcoming', 'active', 'paused'];
+const fmtDate = (d) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString(getCurrentLanguage(), { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
-
-
+/**
+ * Every meal subscription the company bought: one row per employee per purchase (an employee can have several at once,
+ * e.g. breakfast and lunch, or next month's plan bought early).
+ */
 export default function MealPlansTab({
   employees,
-  vendors,
-  onUnassignEmployee,
+  refreshKey,
+  onCancelAssignment,
   onSetTab,
 }) {
   const { t } = useTranslation("office");
-  // Local states
+  const { label: slotLabel } = useDeliverySlots();
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPast, setShowPast] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
   const [exportSuccess, setExportSuccess] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 8;
 
-  // Resolve vendor name
-  const getVendorName = (vendorId) => {
-    if (!vendorId) return 'Not assigned';
-    const found = vendors.find((v) => v.id === vendorId);
-    return found ? found.name : 'Unknown Vendor';
-  };
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getAssignmentsApi();
+      setAssignments(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Filter assignments
-  const filteredAssignments = useMemo(() => {
-    return employees.filter((emp) => {
-      const vendorName = getVendorName(emp.assignedVendorId);
-      const matchesSearch =
-        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (emp.deliverySlot && emp.deliverySlot.toLowerCase().includes(searchQuery.toLowerCase()));
+  useEffect(() => {
+    load();
+  }, [load, refreshKey]);
 
-      return matchesSearch;
+  const stateLabel = (state) => ({
+    upcoming: t("Upcoming"),
+    active: t("Active"),
+    paused: t("Paused"),
+    ended: t("Ended"),
+    cancelled: t("Cancelled"),
+  }[state] || state);
+  const stateClass = (state) => ({
+    upcoming: 'bg-blue-50 text-blue-700',
+    active: 'bg-brand-primary-light text-brand-primary',
+    paused: 'bg-amber-50 text-amber-700',
+    ended: 'bg-gray-100 text-gray-600',
+    cancelled: 'bg-brand-error-bg text-brand-error-text',
+  }[state] || 'bg-gray-100 text-gray-600');
+  const slotsText = (keys) => (keys || []).map((k) => slotLabel(k) || k).join(', ');
+
+  const visible = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return assignments.filter((a) => {
+      if (!showPast && !CURRENT.includes(a.state)) return false;
+      if (!q) return true;
+      return [a.employeeId?.name, a.employeeId?.department, a.vendorId?.restaurantName, a.mealPlanId?.name, slotsText(a.slots)]
+        .some((v) => (v || '').toLowerCase().includes(q));
     });
-  }, [employees, searchQuery, vendors]);
+  }, [assignments, searchQuery, showPast, slotLabel]);
 
   // Reactive Stats Overview
   const stats = useMemo(() => {
     const totalCount = employees.length;
-    const assignedCount = employees.filter((emp) => emp.assignedVendorId).length;
-    const unassignedCount = totalCount - assignedCount;
-    const percentage = totalCount > 0 ? Math.round((assignedCount / totalCount) * 100) : 0;
-
+    const assignedCount = employees.filter((emp) => (emp.plans || []).length > 0).length;
+    const vendorsActive = new Set(assignments.filter((a) => CURRENT.includes(a.state)).map((a) => String(a.vendorId?._id || a.vendorId))).size;
     return {
       total: totalCount,
       assigned: assignedCount,
-      unassigned: unassignedCount,
-      percent: percentage,
-      vendorsActive: vendors.length,
+      unassigned: totalCount - assignedCount,
+      percent: totalCount > 0 ? Math.round((assignedCount / totalCount) * 100) : 0,
+      vendorsActive,
     };
-  }, [employees, vendors]);
+  }, [employees, assignments]);
 
   // Paginated data
-  const totalPages = Math.max(1, Math.ceil(filteredAssignments.length / itemsPerPage));
-  const paginatedAssignments = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredAssignments.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredAssignments, currentPage]);
+  const totalPages = Math.max(1, Math.ceil(visible.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+  const paginated = visible.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  // Unassign action with immediate confirmation
-  const handleUnassign = (emp) => {
-    const confirmed = window.confirm(t("Are you sure you want to unassign the current meal subscription for {{name}}?", { name: emp.name }));
-    if (confirmed) {
-      onUnassignEmployee(emp.id);
-      alert(t("Successfully unassigned meal plans for {{name}}.", { name: emp.name }));
+  const handleCancel = async (a) => {
+    const confirmed = window.confirm(t("Stop {{meal}} for {{name}}? Deliveries stop from tomorrow and paid days are not refunded.", { meal: `${a.mealPlanId?.name || ''} (${slotsText(a.slots)})`, name: a.employeeId?.name }));
+    if (!confirmed) return;
+    setCancellingId(a._id);
+    const ok = await onCancelAssignment(a._id);
+    setCancellingId(null);
+    if (ok) {
+      await load();
+      alert(t("Successfully unassigned meal plans for {{name}}.", { name: a.employeeId?.name }));
     }
   };
 
@@ -83,37 +113,18 @@ export default function MealPlansTab({
   const handleExport = () => {
     setExportSuccess(true);
     try {
-      // 1. Define CSV headers
-      const headers = [
-        'Employee ID',
-        'Employee Name',
-        'Department',
-        'Phone',
-        'Email',
-        'Assigned Partner',
-        'Delivery Window',
-        'Status'
-      ];
-      
-      // 2. Format rows
-      const rows = employees.map((emp) => {
-        const vendorName = getVendorName(emp.assignedVendorId);
-        const isAssigned = !!emp.assignedVendorId;
-        const status = isAssigned ? 'Assigned' : 'Unassigned';
-        
-        return [
-          emp.id || emp._id || '',
-          emp.name || '',
-          emp.department || '',
-          emp.phone || '',
-          emp.email || '',
-          isAssigned ? vendorName : '—',
-          isAssigned ? (emp.deliverySlot || '—') : '—',
-          status
-        ];
-      });
-      
-      // 3. Construct CSV Content
+      const headers = ['Employee ID', 'Employee Name', 'Department', 'Vendor', 'Meal', 'Delivery Window', 'From', 'Until', 'Status'];
+      const rows = visible.map((a) => [
+        a.employeeId?.employeeId || a.employeeId?._id || '',
+        a.employeeId?.name || '',
+        a.employeeId?.department || '',
+        a.vendorId?.restaurantName || '',
+        a.mealPlanId?.name || '',
+        slotsText(a.slots),
+        a.from || '',
+        a.until || '',
+        a.state
+      ]);
       const escapeCSVField = (field) => {
         const stringVal = String(field);
         if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
@@ -121,13 +132,7 @@ export default function MealPlansTab({
         }
         return stringVal;
       };
-      
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(escapeCSVField).join(','))
-      ].join('\r\n');
-      
-      // 4. Create Blob and trigger download
+      const csvContent = [headers.join(','), ...rows.map((row) => row.map(escapeCSVField).join(','))].join('\r\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -137,10 +142,7 @@ export default function MealPlansTab({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      setTimeout(() => {
-        setExportSuccess(false);
-      }, 800);
+      setTimeout(() => setExportSuccess(false), 800);
     } catch (error) {
       console.error('Error exporting CSV:', error);
       setExportSuccess(false);
@@ -176,7 +178,6 @@ export default function MealPlansTab({
 
       {/* Bento Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
             <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Total Employees")}</span>
@@ -187,7 +188,6 @@ export default function MealPlansTab({
           <p className="text-2xl font-bold text-brand-text">{stats.total.toLocaleString()}</p>
         </div>
 
-        {/* Assigned */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
             <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Assigned")}</span>
@@ -201,7 +201,6 @@ export default function MealPlansTab({
           </div>
         </div>
 
-        {/* Unassigned Warning */}
         <div className="bg-white p-6 rounded-xl card-shadow border-l-4 border-brand-error-text flex flex-col justify-between">
           <div className="flex justify-between items-start mb-3">
             <span className="text-brand-error-text font-bold text-[10px] uppercase tracking-wider">{t("Unassigned")}</span>
@@ -212,7 +211,6 @@ export default function MealPlansTab({
           <p className="text-2xl font-bold text-brand-error-text">{stats.unassigned.toLocaleString()}</p>
         </div>
 
-        {/* Active Vendors */}
         <div className="bg-white p-6 rounded-xl card-shadow flex flex-col justify-between border border-brand-divider">
           <div className="flex justify-between items-start mb-3">
             <span className="text-brand-muted font-bold text-[10px] uppercase tracking-wider">{t("Active Vendors")}</span>
@@ -226,11 +224,13 @@ export default function MealPlansTab({
 
       {/* Main Table Card */}
       <div className="bg-white rounded-xl card-shadow overflow-hidden border border-brand-divider">
-        {/* Table Header Controls */}
-        <div className="px-6 py-4 border-b border-brand-divider flex items-center justify-between bg-brand-bg/10">
+        <div className="px-6 py-4 border-b border-brand-divider flex flex-wrap gap-3 items-center justify-between bg-brand-bg/10">
           <h4 className="font-bold text-sm text-brand-text">{t("Active Schedule Mapping")}</h4>
-          <div className="flex items-center gap-3">
-            {/* Table Search */}
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-brand-muted cursor-pointer">
+              <input type="checkbox" checked={showPast} onChange={(e) => { setShowPast(e.target.checked); setCurrentPage(1); }} className="w-3.5 h-3.5" />
+              {t("Show ended and cancelled")}
+            </label>
             <div className="relative w-52 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-muted" />
               <input
@@ -244,113 +244,77 @@ export default function MealPlansTab({
                 }}
               />
             </div>
-            <button className="p-1.5 hover:bg-brand-bg rounded-lg text-brand-muted transition-colors cursor-pointer">
-              <Filter className="w-4 h-4" />
-            </button>
-            <button className="p-1.5 hover:bg-brand-bg rounded-lg text-brand-muted transition-colors cursor-pointer">
-              <MoreVertical className="w-4 h-4" />
+            <button onClick={load} title={t("Refresh")} className="p-1.5 hover:bg-brand-bg rounded-lg text-brand-muted transition-colors cursor-pointer">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Assignments Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-transparent border-b border-brand-divider">
                 <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Employee Name")}</th>
-                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Department")}</th>
                 <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Assigned Partner")}</th>
                 <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Delivery Window")}</th>
+                <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Period")}</th>
                 <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider">{t("Status")}</th>
                 <th className="px-6 py-4 font-bold text-brand-muted text-xs uppercase tracking-wider text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-divider">
-              {paginatedAssignments.length === 0 ? (
+              {loading && assignments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-brand-muted">
-                    {t("No employee assignments match your search filter.")}
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-brand-primary/40" />
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-brand-muted">
+                    {assignments.length === 0 ? t("No meal plans assigned yet. Choose a vendor to assign the first one.") : t("No employee assignments match your search filter.")}
                   </td>
                 </tr>
               ) : (
-                paginatedAssignments.map((emp) => {
-                  const isAssigned = !!emp.assignedVendorId;
-                  const vendorName = getVendorName(emp.assignedVendorId);
-
-                  // Delivery window details
-                  const slotLabel = emp.deliverySlot || '—';
-                  let slotColor = emp.deliverySlot ? 'bg-brand-primary' : 'bg-gray-400';
-                  if (emp.deliverySlot === 'Breakfast') slotColor = 'bg-orange-400';
-                  if (emp.deliverySlot === 'Lunch') slotColor = 'bg-brand-primary';
-                  if (emp.deliverySlot === 'Dinner') slotColor = 'bg-indigo-400';
-
+                paginated.map((a) => {
+                  const emp = a.employeeId || {};
+                  const canCancel = CURRENT.includes(a.state);
                   return (
-                    <tr key={emp.id} className="hover:bg-brand-bg/50 transition-colors group">
+                    <tr key={a._id} className="hover:bg-brand-bg/50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-brand-bg border border-brand-divider flex-shrink-0">
-                            {emp.avatarUrl ? (
-                              <img
-                                className="w-full h-full object-cover"
-                                src={emp.avatarUrl}
-                                alt={emp.name}
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-brand-primary/10 text-brand-primary text-xs font-bold">
-                                {emp.name.split(' ').map((n) => n[0]).join('')}
-                              </div>
-                            )}
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-brand-primary/10 text-brand-primary text-xs font-bold flex items-center justify-center flex-shrink-0">
+                            {(emp.name || '?').split(' ').map((n) => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>
                             <p className="font-bold text-brand-text text-sm">{emp.name}</p>
-                            <p className="text-xs text-brand-muted">{t("ID: {{id}}", { id: emp.id })}</p>
+                            <p className="text-xs text-brand-muted">{emp.department}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs text-brand-muted">{emp.department}</td>
                       <td className="px-6 py-4">
-                        <span className={`text-xs ${isAssigned ? 'text-brand-text font-medium' : 'italic text-brand-muted/70'}`}>
-                          {vendorName}
-                        </span>
+                        <p className="text-xs text-brand-text font-medium">{a.vendorId?.restaurantName || t("Unknown Vendor")}</p>
+                        <p className="text-[11px] text-brand-muted">{a.mealPlanId?.name}</p>
                       </td>
+                      <td className="px-6 py-4 text-xs text-brand-muted font-medium">{slotsText(a.slots) || '—'}</td>
+                      <td className="px-6 py-4 text-xs text-brand-muted whitespace-nowrap">{fmtDate(a.from)} – {fmtDate(a.until)}</td>
                       <td className="px-6 py-4">
-                        {isAssigned ? (
-                          <div className="flex items-center gap-2 text-xs text-brand-muted font-medium">
-                            <span className={`w-2 h-2 rounded-full ${slotColor}`}></span>
-                            {slotLabel}
-                          </div>
-                        ) : (
-                          <span className="italic text-brand-muted/70 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                            isAssigned
-                              ? 'bg-brand-primary-light text-brand-primary'
-                              : 'bg-brand-error-bg text-brand-error-text'
-                          }`}
-                        >
-                          {isAssigned ? t("Assigned") : t("Unassigned")}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${stateClass(a.state)}`}>
+                          {stateLabel(a.state)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {isAssigned ? (
+                        {canCancel ? (
                           <button
-                            onClick={() => handleUnassign(emp)}
-                            className="p-1.5 text-brand-muted hover:text-brand-error-text hover:bg-brand-error-bg/40 rounded-lg transition-all active:scale-95 cursor-pointer"
+                            onClick={() => handleCancel(a)}
+                            disabled={cancellingId === a._id}
+                            className="p-1.5 text-brand-muted hover:text-brand-error-text hover:bg-brand-error-bg/40 rounded-lg transition-all active:scale-95 cursor-pointer disabled:opacity-40"
                             title={t("Unassign Meal Plan")}
                           >
                             <X className="w-4 h-4" />
                           </button>
                         ) : (
-                          <button
-                            disabled
-                            className="p-1.5 text-brand-muted/30 cursor-not-allowed"
-                            title={t("Cannot Unassign")}
-                          >
+                          <button disabled className="p-1.5 text-brand-muted/30 cursor-not-allowed" title={t("Cannot Unassign")}>
                             <Ban className="w-4 h-4" />
                           </button>
                         )}
@@ -366,12 +330,12 @@ export default function MealPlansTab({
         {/* Pagination */}
         <div className="px-6 py-4 border-t border-brand-divider flex items-center justify-between">
           <p className="text-xs text-brand-muted">
-            <Trans t={t} i18nKey={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} defaults={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} values={{ length: paginatedAssignments.length, length2: filteredAssignments.length }} components={[<span className="font-bold" />, <span className="font-bold" />]} />
+            <Trans t={t} i18nKey={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} defaults={"Showing <0>{{length}}</0> of <1>{{length2}}</1> schedules"} values={{ length: paginated.length, length2: visible.length }} components={[<span className="font-bold" />, <span className="font-bold" />]} />
           </p>
           <div className="flex gap-1.5">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(Math.max(1, page - 1))}
+              disabled={page === 1}
               className="p-1 rounded border border-brand-divider hover:bg-brand-bg text-brand-muted disabled:opacity-30 disabled:hover:bg-white cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -380,18 +344,14 @@ export default function MealPlansTab({
               <button
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`text-xs font-bold px-2.5 py-1 rounded cursor-pointer ${
-                  currentPage === i + 1
-                    ? 'bg-brand-primary text-white'
-                    : 'text-brand-muted hover:bg-brand-bg'
-                }`}
+                className={`text-xs font-bold px-2.5 py-1 rounded cursor-pointer ${page === i + 1 ? 'bg-brand-primary text-white' : 'text-brand-muted hover:bg-brand-bg'}`}
               >
                 {i + 1}
               </button>
             ))}
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
               className="p-1 rounded border border-brand-divider hover:bg-brand-bg text-brand-muted disabled:opacity-30 disabled:hover:bg-white cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
