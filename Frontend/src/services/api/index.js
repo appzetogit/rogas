@@ -204,6 +204,8 @@ export const adminAPI = {
     return authService.logout(token, resolvedFcmToken, platform);
   },
   // Order-Based Delivery Fee and Commission Audit
+  getPantryDeliveryFee: () => adminClient.get("/food/admin/pantry/delivery-fee"),
+  updatePantryDeliveryFee: (body) => adminClient.post("/food/admin/pantry/delivery-fee", body),
   getDeliveryOrderFeeSettings: () =>
     adminClient.get("/food/admin/delivery/order-fee-settings"),
   updateDeliveryOrderFeeSettings: (body) =>

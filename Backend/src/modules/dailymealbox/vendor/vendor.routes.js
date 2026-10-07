@@ -652,15 +652,16 @@ router.get('/pantry-items/all', async (req, res) => {
 router.get('/:vendorId/pricing-config', async (req, res) => {
     try {
         const { FoodRestaurantCommission } = await import('../../food/admin/models/restaurantCommission.model.js');
-        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
+        const { FoodFeeSettings } = await import('../../food/admin/models/feeSettings.model.js');
 
         const commConfig = await FoodRestaurantCommission.findOne({ restaurantId: req.params.vendorId }).lean();
-        const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
+        const feeConfig = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
 
         res.json({
             success: true,
             foodVatPercent: Number(commConfig?.foodVatPercent ?? 0),
             platformFee: Number(feeConfig?.platformFee ?? 0),
+            deliveryFeePerDelivery: await (await import('../platform/pantryFee.js')).getPantryDeliveryFee(),
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -1059,6 +1060,10 @@ router.post('/daily-orders/verify-batch-otp', authMiddleware, requireRoles('REST
             { _id: { $in: batch.orderIds } },
             { $set: { status: 'out_for_delivery', pickedUpAt: new Date() } }
         );
+        if (batch.driverId) {
+            const { markPantryCollected } = await import('../delivery/pantryPickup.service.js');
+            await markPantryCollected(batch.orderIds, batch.driverId);
+        }
 
         // Notify driver
         const io = (await import('../../../config/socket.js')).getIO();
@@ -1121,14 +1126,22 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             deliverySlot: requestedSlot
         });
 
+        // A pantry shop's paid bags for this date and slot are collected on the same pickup.
+        const { pantryUnitsFor } = await import('../delivery/pantryPickup.service.js');
+        const pantryUnits = await pantryUnitsFor({ vendorId, date: targetDate, slot: requestedSlot });
+
         // 3. Verify that orders exist.
-        if (allOrders.length === 0) {
+        if (allOrders.length === 0 && pantryUnits.length === 0) {
             return res.status(400).json({ success: false, message: `No orders found for the ${requestedSlot} slot on this date.` });
         }
 
         // 4. Verify that all eligible/active orders in the slot are Ready (none are scheduled or preparing).
         const eligibleOrders = allOrders.filter(o => ['scheduled', 'preparing', 'ready'].includes(o.status));
-        const pendingOrders = eligibleOrders.filter(o => ['scheduled', 'preparing'].includes(o.status));
+        const pantryOpen = pantryUnits.filter(u => ['scheduled', 'preparing', 'ready'].includes(u.delivery.status));
+        const pendingOrders = [
+            ...eligibleOrders.filter(o => ['scheduled', 'preparing'].includes(o.status)),
+            ...pantryOpen.filter(u => ['scheduled', 'preparing'].includes(u.delivery.status))
+        ];
         if (pendingOrders.length > 0) {
             return res.status(400).json({
                 success: false,
@@ -1137,7 +1150,10 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         }
 
         // 5. Verify that there is at least one Ready order to request delivery for.
-        const readyOrders = eligibleOrders.filter(o => o.status === 'ready');
+        const readyOrders = [
+            ...eligibleOrders.filter(o => o.status === 'ready'),
+            ...pantryOpen.filter(u => u.delivery.status === 'ready').map(u => ({ _id: u.delivery._id }))
+        ];
         if (readyOrders.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -1269,6 +1285,16 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
         let offerSummary = null;
         {
             const ordersInBatch = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone');
+            const bagIds = new Set(batch.orderIds.map(String));
+            const pantryDetails = pantryUnits.filter(u => bagIds.has(String(u.delivery._id))).map(u => ({
+                _id: u.delivery._id,
+                orderId: u.order.orderId,
+                status: u.delivery.status,
+                type: 'pantry',
+                deliveryAddress: u.order.deliveryAddress,
+                meals: (u.order.items || []).map(i => ({ name: i.title, quantity: i.quantity })),
+                customer: { name: u.order.userId?.name || '', phone: u.order.userId?.phone || '' }
+            }));
             const ordersDetails = ordersInBatch.map(o => ({
                 _id: o._id,
                 orderId: o.orderId,
@@ -1280,7 +1306,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
                     phone: o.userId?.phone || ''
                 },
                 pricing: o.pricing
-            }));
+            })).concat(pantryDetails);
 
             let feePerOrder = 18; // fallback default
             try {

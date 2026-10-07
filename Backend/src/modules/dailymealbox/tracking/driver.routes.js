@@ -13,6 +13,8 @@ import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { notifyDriverOfRouteUpdate } from '../subscription/dmb.dailyOrder.service.js';
 import { listShiftsForDriver, confirmShift } from '../../food/delivery/services/attendance.service.js';
 import crypto from 'crypto';
+import { assignPantryDriver, markPantryCollected, findPantryDelivery } from '../delivery/pantryPickup.service.js';
+import { localToday, localParts, addDays } from '../../../utils/platformTime.js';
 import { PICKUP_REASONS, PickupProblemError, reportPickupProblem, openBlockingIssue } from './pickupProblem.service.js';
 
 const router = express.Router();
@@ -85,13 +87,13 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
         const timingSettings = await getVendorTimingSettings();
         const SLOTS = timingSettings.slots.map(sl => sl.key);
-        const todayDow = new Date().getDay();
+        const todayDow = new Date(localToday()).getUTCDay(); // weekday in the platform's time zone
         const slotRunsToday = (key) => {
             const sl = timingSettings.slots.find(x => x.key === key);
             return !sl?.availableDays?.length || sl.availableDays.includes(todayDow);
         };
 
-        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+        const nowMins = (() => { const p = localParts(); return p.hour * 60 + p.minute; })(); // slot times are wall-clock in the platform's time zone
         const hhmmToMins = (str) => {
             if (!str) return null;
             const [h, m] = str.split(':').map(Number);
@@ -182,10 +184,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
         let assignedVendors = driver.assignedVendors || [];
 
         // ─── 2. Build today's date range ─────────────────────────────────────
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        // Dates are stored as UTC midnight of the platform's calendar day.
+        const today = localToday();
+        const tomorrow = addDays(today, 1);
 
         // ─── 2.5 Resolve Effective Vendors based on Transfers ────────────────
         const { ServiceRequest } = await import('../serviceManagement/serviceRequest.model.js');
@@ -251,10 +252,8 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
             .lean();
 
         // ─── 3.1 Fetch PantryOrders for the target slot today ────────────────
-        const startOfDay = new Date(today);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(today);
-        endOfDay.setHours(23, 59, 59, 999);
+        const startOfDay = today;
+        const endOfDay = new Date(tomorrow.getTime() - 1);
 
         const pantryOrders = await PantryOrder.find({
             vendorId: { $in: effectiveVendors },
@@ -480,10 +479,9 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
 // ─── Get Today's Route ────────────────────────────────────────────────────
 router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        // Dates are stored as UTC midnight of the platform's calendar day.
+        const today = localToday();
+        const tomorrow = addDays(today, 1);
 
         // Fetch active collection batches for this driver
         const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
@@ -494,7 +492,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
 
         const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
         const timingSettings = await getVendorTimingSettings();
-        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+        const nowMins = (() => { const p = localParts(); return p.hour * 60 + p.minute; })(); // slot times are wall-clock in the platform's time zone
         const hhmmToMins = (str) => {
             if (!str) return null;
             const [h, m] = str.split(':').map(Number);
@@ -790,10 +788,9 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
             return res.status(400).json({ success: false, message: 'PIN is required' });
         }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        // Dates are stored as UTC midnight of the platform's calendar day.
+        const today = localToday();
+        const tomorrow = addDays(today, 1);
 
         // ─── Strategy 1: CollectionBatch lookup (old flow / if batch exists) ───
         let batch = null;
@@ -865,6 +862,8 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
                 { _id: { $in: batch.orderIds } },
                 { $set: { status: 'out_for_delivery', pickedUpAt: new Date(), 'dispatch.deliveryPartnerId': driverId } }
             );
+            // Pantry bags in the same pickup go out for delivery too, and the driver is recorded on each bag.
+            await markPantryCollected(batch.orderIds, driverId);
 
             // Notify Vendor
             const io = getIO();
@@ -953,6 +952,9 @@ router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PAR
         const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
         const vendor = await FoodRestaurant.findById(batch.vendorId).select('restaurantName location zoneId addressLine1 phone').lean();
         const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone').lean();
+        const bagIds = new Set(batch.orderIds.map(String));
+        const pantryBags = (await PantryOrder.find({ 'dailyDeliveries._id': { $in: batch.orderIds } }).populate('userId', 'name phone').lean())
+            .flatMap((po) => po.dailyDeliveries.filter((dd) => bagIds.has(String(dd._id))).map((dd) => ({ po, dd })));
         const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
         const vis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
         const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
@@ -972,15 +974,28 @@ router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PAR
                     vendorPhone: vendor?.phone || ''
                 },
                 pickupStatus: batch.status,
-                orders: orders.map((o) => ({
-                    _id: o._id,
-                    orderId: o.orderId,
-                    status: o.status,
-                    deliveryAddress: o.deliveryAddress,
-                    meals: o.meals,
-                    customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, vis),
-                    pricing: driverPricingView(o.pricing || {}, vis)
-                })),
+                orders: [
+                    ...orders.map((o) => ({
+                        _id: o._id,
+                        orderId: o.orderId,
+                        status: o.status,
+                        deliveryAddress: o.deliveryAddress,
+                        meals: o.meals,
+                        customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, vis),
+                        pricing: driverPricingView(o.pricing || {}, vis)
+                    })),
+                    // Pantry bags in the same pickup (their id is the bag's delivery id).
+                    ...pantryBags.map(({ po, dd }) => ({
+                        _id: dd._id,
+                        orderId: po.orderId,
+                        type: 'pantry',
+                        status: dd.status,
+                        deliveryAddress: po.deliveryAddress,
+                        meals: (po.items || []).map((i) => ({ name: i.title, quantity: i.quantity })),
+                        customer: driverCustomerView({ name: po.userId?.name || '', phone: po.userId?.phone || '' }, vis),
+                        pricing: driverPricingView({}, vis)
+                    }))
+                ],
                 totalEarnings: feePerOrder * batch.boxCount,
                 vendorId: vendor?._id,
                 vendorName: vendor?.restaurantName || '',
@@ -1023,6 +1038,7 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
             { _id: { $in: batch.orderIds } },
             { $set: { 'dispatch.deliveryPartnerId': (req.user.userId || req.user._id) } }
         );
+        await assignPantryDriver(batch.orderIds, (req.user.userId || req.user._id));
 
         const io = getIO();
         if (io) {
@@ -1080,6 +1096,24 @@ router.post('/confirm-payment', authMiddleware, requireRoles('DELIVERY_PARTNER')
         const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
         const { FoodOrder } = await import('../../food/orders/models/order.model.js');
         const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+
+        // A pantry bag is identified by its delivery id; the driver earns the configured fee once per bag.
+        const pantry = await findPantryDelivery(orderId);
+        if (pantry) {
+            const { delivery } = pantry;
+            if (!delivery.driverId || String(delivery.driverId) !== String(driverId)) return res.status(403).json({ success: false, message: 'This delivery is not assigned to you' });
+            if (delivery.status !== 'delivered') return res.status(409).json({ success: false, message: 'Deliver the bag before confirming payment' });
+            const fee = await configuredDriverFee();
+            if (!fee) return res.status(409).json({ success: false, code: 'DRIVER_FEE_NOT_SET', message: 'The delivery fee for drivers is not configured yet. Admin has been told; please try again later.' });
+            // Claim the bag first so two taps can never credit it twice.
+            const claimed = await PantryOrder.updateOne(
+                { 'dailyDeliveries._id': orderId, 'dailyDeliveries.paymentConfirmed': { $ne: true } },
+                { $set: { 'dailyDeliveries.$.paymentConfirmed': true, 'dailyDeliveries.$.riderEarning': fee } }
+            );
+            if (!claimed.modifiedCount) return res.status(400).json({ success: false, message: 'Payment already confirmed for this order' });
+            await FoodDeliveryPartner.findByIdAndUpdate(driverId, { $inc: { earningsToday: fee, deliveriesToday: 1 } });
+            return res.json({ success: true, riderEarning: fee, message: 'Payment confirmed successfully' });
+        }
 
         // Check if it has already been paid/confirmed to prevent double earnings
         let order = await DMBDailyOrder.findById(orderId);

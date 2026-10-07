@@ -89,7 +89,7 @@ export function PantryCheckoutScreen() {
   const { money } = useMoney({ vendorId: cart?.vendorId });
   const [deliveryAddress, setDeliveryAddress] = useState(null);
   // Pricing config from backend
-  const [pricingConfig, setPricingConfig] = useState({ foodVatPercent: 0, platformFee: 0 });
+  const [pricingConfig, setPricingConfig] = useState({ foodVatPercent: 0, platformFee: 0, deliveryFeePerDelivery: 0 });
   // Which items' date pickers are expanded
   const [expandedItemIds, setExpandedItemIds] = useState([]);
 
@@ -129,6 +129,7 @@ export function PantryCheckoutScreen() {
           setPricingConfig({
             foodVatPercent: res.data.foodVatPercent || 0,
             platformFee: res.data.platformFee || 0,
+            deliveryFeePerDelivery: res.data.deliveryFeePerDelivery || 0,
           });
         }
       } catch (err) {
@@ -236,10 +237,22 @@ export function PantryCheckoutScreen() {
 
   const foodVatPercent = pricingConfig.foodVatPercent || 0;
   const platformFee = pricingConfig.platformFee || 0;
-  const foodVatAmount = Math.round((itemsTotal * (foodVatPercent / 100)) * 100) / 100;
+  // What is actually delivered and charged: each item is delivered once per day and slot chosen for IT (same rule the server uses).
+  const chargedItemsTotal = Math.round((cart.items || []).reduce((sum, item) => (
+    sum + item.price * item.quantity * new Set(getItemDates(item)).size * new Set(getItemSlots(item)).size
+  ), 0) * 100) / 100;
+  const foodVatAmount = Math.round((chargedItemsTotal * (foodVatPercent / 100)) * 100) / 100;
 
-  // Grand Total = Items Total × (Days * Slots) + Food VAT + Platform Fee
-  const grandTotal = (itemsTotal * (totalDeliveryDays * totalDeliverySlots)) + foodVatAmount + platformFee;
+  // The pantry delivery fee (admin setting) is charged for every delivery day and slot: the schedules of the cart, not per item.
+  const scheduleKeys = new Set();
+  (cart.items || []).forEach(item => {
+    new Set(getItemDates(item)).forEach(d => new Set(getItemSlots(item)).forEach(s => scheduleKeys.add(`${d}|${s}`)));
+  });
+  const deliveryCount = scheduleKeys.size;
+  const deliveryFee = Math.round((pricingConfig.deliveryFeePerDelivery || 0) * deliveryCount * 100) / 100;
+
+  // Grand Total = items x their own days x slots + Food VAT (on that) + Delivery Fee + Platform Fee
+  const grandTotal = Math.round((chargedItemsTotal + foodVatAmount + deliveryFee + platformFee) * 100) / 100;
 
   // ─── Map ─────────────────────────────────────────────────────────────────────
   const fetchAddressFromCoordinates = (latitude, longitude) => {
@@ -545,7 +558,7 @@ export function PantryCheckoutScreen() {
           <div className="space-y-2">
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Items Total")}</span>
-              <span className="font-semibold text-[#1b1c1c]">{money(itemsTotal)}</span>
+              <span className="font-semibold text-[#1b1c1c]">{money(chargedItemsTotal)}</span>
             </div>
             <div className="flex justify-between text-[14px] text-[#6e7a74]">
               <span>{t("Delivery Days")}</span>
@@ -559,6 +572,12 @@ export function PantryCheckoutScreen() {
               <div className="flex justify-between text-[14px] text-[#6e7a74]">
                 <span>{t("Food VAT ({{foodVatPercent}}%)", { foodVatPercent })}</span>
                 <span className="font-semibold text-[#1b1c1c]">{money(foodVatAmount)}</span>
+              </div>
+            )}
+            {deliveryFee > 0 && (
+              <div className="flex justify-between text-[14px] text-[#6e7a74]">
+                <span>{t("Delivery Fee")}</span>
+                <span className="font-semibold text-[#1b1c1c]">{money(deliveryFee)}</span>
               </div>
             )}
             {platformFee > 0 && (

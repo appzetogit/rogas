@@ -10,9 +10,9 @@ import { connect, disconnect, seedWorld, nextPhone } from './helpers/amendmentFi
 
 let w, svc, CollectionBatch, DMBAdminAlert, driverA, driverB;
 
-const makeBatch = (driver, over = {}) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+const makeBatch = async (driver, over = {}) => {
+    // Batches are stored on UTC midnight of the platform's calendar day (like every DailyMealBox date).
+    const today = (await import('../src/utils/platformTime.js')).localToday();
     return CollectionBatch.create({
         vendorId: w.vendor._id, driverId: driver?._id || null, deliveryDate: today, deliverySlot: 'lunch', boxCount: 2,
         collectionPinHash: '4321', status: driver ? 'driver_assigned' : 'pending', orderIds: [new mongoose.Types.ObjectId()], ...over

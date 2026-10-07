@@ -6,6 +6,10 @@ import { FoodItem } from '../../food/admin/models/food.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
 import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
 import { resolvePaymentContext, resolveProviders } from '../../payments/payments.settings.js';
+import { listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.js';
+import { localToday, localDateStr, addDays, storageDateStr } from '../../../utils/platformTime.js';
+import { newDeliveryPin } from '../delivery/pantryPickup.service.js';
+import { getPantryDeliveryFee } from '../platform/pantryFee.js';
 
 const router = express.Router();
 
@@ -29,13 +33,15 @@ const normalizeAddress = (raw) => {
 
 /** Food VAT % (per vendor) and platform fee (platform-wide), both set by the admin. */
 const loadCartPricingConfig = async (vendorId) => {
-    let feePerOrder = 5; // fallback
+    // What the customer pays per bag delivery: its own admin setting (Pantry Delivery Fee), free until it is set.
+    let feePerOrder = 0;
     let platformFee = 0;
+    try { feePerOrder = await getPantryDeliveryFee(); } catch (err) { }
+    // The platform fee is set in admin Fee Settings (FoodFeeSettings), not on the per-order delivery fee record.
     try {
-        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-        const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-        if (feeConfig && Number(feeConfig.feePerOrder) > 0) feePerOrder = Number(feeConfig.feePerOrder);
-        if (feeConfig && Number(feeConfig.platformFee) > 0) platformFee = Number(feeConfig.platformFee);
+        const { FoodFeeSettings } = await import('../../food/admin/models/feeSettings.model.js');
+        const fees = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
+        if (fees && Number(fees.platformFee) > 0) platformFee = Number(fees.platformFee);
     } catch (err) { }
     let foodVatPercent = 0;
     try {
@@ -46,12 +52,30 @@ const loadCartPricingConfig = async (vendorId) => {
     return { feePerOrder, platformFee, foodVatPercent };
 };
 
+const MAX_DAYS_AHEAD = 90;
+
+/** Delivery days must be real dates from today (platform time) to ~3 months ahead, in slots the platform runs that weekday. */
+const validateSchedule = async (dates, slots) => {
+    const today = localToday();
+    const earliest = storageDateStr(today);
+    const latest = storageDateStr(addDays(today, MAX_DAYS_AHEAD));
+    const slotDefs = await listSlots();
+    for (const d of dates) {
+        const valid = /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && !Number.isNaN(new Date(d).getTime()) && new Date(d).toISOString().slice(0, 10) === d;
+        if (!valid) throw new PaymentsError(`Invalid delivery date: ${d}`, 400, 'BAD_REQUEST');
+        if (d < earliest) throw new PaymentsError('A delivery date cannot be in the past', 400, 'BAD_REQUEST');
+        if (d > latest) throw new PaymentsError(`Deliveries can be booked up to ${MAX_DAYS_AHEAD} days ahead`, 400, 'BAD_REQUEST');
+        for (const slot of slots) {
+            if (!slotServesDay(slotDefs, slot, new Date(d).getUTCDay())) throw new PaymentsError(`The ${slot} slot is not available on ${d}`, 400, 'BAD_REQUEST');
+        }
+    }
+};
+
+/** Monday of the current week in the platform's calendar (UTC midnight, like every other stored date). */
 const startOfWeek = () => {
-    const d = new Date();
-    const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
-    const weekStart = new Date(d.setDate(diff));
-    weekStart.setHours(0, 0, 0, 0);
-    return weekStart;
+    const today = localToday();
+    const dow = today.getUTCDay();
+    return addDays(today, dow === 0 ? -6 : 1 - dow);
 };
 
 /**
@@ -62,14 +86,17 @@ const startOfWeek = () => {
 const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAddress, minimumTotal = 0 }) => {
     const cfg = await loadCartPricingConfig(vendorId);
     const priced = [];
-    const allDates = new Set();
-    const allSlots = new Set();
     let itemsTotalAll = 0;
+    let totalDeliveries = 0;
+    const visits = new Set();
 
     for (const group of groups) {
         if (!group.items?.length || !group.deliveryDates?.length || !group.deliverySlots?.length) {
             throw new PaymentsError('Missing required fields', 400, 'BAD_REQUEST');
         }
+        group.deliveryDates = [...new Set(group.deliveryDates.map(String))].sort();
+        group.deliverySlots = [...new Set(group.deliverySlots.map(String))];
+        await validateSchedule(group.deliveryDates, group.deliverySlots);
         let groupItemsTotal = 0;
         const processedItems = [];
         for (const item of group.items) {
@@ -83,14 +110,22 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
             groupItemsTotal += itemPrice * quantity;
             processedItems.push({ pantryItemId: pItem._id, title: pItem.name, price: itemPrice, quantity });
         }
-        group.deliveryDates.forEach((d) => allDates.add(d));
-        group.deliverySlots.forEach((s) => allSlots.add(s));
-        itemsTotalAll += groupItemsTotal;
-        priced.push({ group, processedItems, itemsTotal: groupItemsTotal });
+        // The bag is delivered once per day and slot of THIS group, so that is what is charged.
+        const deliveries = group.deliveryDates.length * group.deliverySlots.length;
+        const charged = round2(groupItemsTotal * deliveries);
+        itemsTotalAll = round2(itemsTotalAll + charged);
+        // One driver visit per distinct day + slot of the whole cart: a visit two groups share is charged once.
+        let feeDeliveries = 0;
+        for (const d of group.deliveryDates) for (const sl of group.deliverySlots) {
+            if (!visits.has(`${d}|${sl}`)) { visits.add(`${d}|${sl}`); feeDeliveries += 1; }
+        }
+        totalDeliveries += feeDeliveries;
+        priced.push({ group, processedItems, itemsTotal: groupItemsTotal, charged, deliveries: feeDeliveries });
     }
 
     const foodVatAmountAll = round2(itemsTotalAll * (cfg.foodVatPercent / 100));
-    const serverTotal = round2(itemsTotalAll * (allDates.size * allSlots.size) + foodVatAmountAll + cfg.platformFee);
+    const deliveryFeeAll = round2(cfg.feePerOrder * totalDeliveries);
+    const serverTotal = round2(itemsTotalAll + foodVatAmountAll + deliveryFeeAll + cfg.platformFee);
     // Older single-group clients pass the whole-cart total they computed; honour it only when it is HIGHER than ours.
     const grandTotal = Math.max(serverTotal, round2(minimumTotal));
     if (!(grandTotal > 0)) throw new PaymentsError('Invalid order total', 400, 'BAD_REQUEST');
@@ -100,15 +135,16 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
     const orders = [];
     const weekStartDate = startOfWeek();
     for (let i = 0; i < priced.length; i++) {
-        const { group, processedItems, itemsTotal } = priced[i];
-        const share = i === priced.length - 1 ? round2(grandTotal - allocated) : round2(itemsTotalAll > 0 ? grandTotal * (itemsTotal / itemsTotalAll) : grandTotal / priced.length);
+        const { group, processedItems, itemsTotal, charged, deliveries } = priced[i];
+        const share = i === priced.length - 1 ? round2(grandTotal - allocated) : round2(itemsTotalAll > 0 ? grandTotal * (charged / itemsTotalAll) : grandTotal / priced.length);
         allocated = round2(allocated + share);
 
         const dailyDeliveries = [];
         for (const dateStr of group.deliveryDates) {
             const dayDate = new Date(dateStr);
             const dayOfWeek = dayDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-            for (const slot of group.deliverySlots) dailyDeliveries.push({ date: dayDate, dayOfWeek, slot, status: 'scheduled' });
+            // Each bag has its own 4-digit PIN: the customer reads it out at the door and the driver enters it.
+            for (const slot of group.deliverySlots) dailyDeliveries.push({ date: dayDate, dayOfWeek, slot, status: 'scheduled', deliveryPin: newDeliveryPin() });
         }
         orders.push({
             orderId: `PO-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
@@ -120,9 +156,9 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
             deliveryAddress,
             pricing: {
                 itemsTotal,
-                deliveryFee: cfg.feePerOrder * group.deliveryDates.length,
+                deliveryFee: round2(cfg.feePerOrder * deliveries),
                 foodVatPercent: cfg.foodVatPercent,
-                foodVatAmount: round2(foodVatAmountAll * (itemsTotalAll > 0 ? itemsTotal / itemsTotalAll : 1)),
+                foodVatAmount: round2(foodVatAmountAll * (itemsTotalAll > 0 ? charged / itemsTotalAll : 1)),
                 platformFee: i === 0 ? cfg.platformFee : 0,
                 total: share
             },
@@ -266,11 +302,8 @@ router.get('/my-orders', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async
         } else if (type === 'upcoming') {
             query.status = { $nin: ['delivered', 'failed', 'cancelled', 'skipped'] };
             // Restrict to strictly today's orders
-            const todayIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-            const yyyy = todayIST.getFullYear();
-            const mm = String(todayIST.getMonth() + 1).padStart(2, '0');
-            const dd = String(todayIST.getDate()).padStart(2, '0');
-            query.deliveryDates = `${yyyy}-${mm}-${dd}`;
+            // "Today" is the platform's day (PLATFORM_TIMEZONE), not a fixed country's.
+            query.deliveryDates = localDateStr();
         } else if (type === 'past') {
             query.status = { $in: ['delivered', 'failed', 'cancelled', 'skipped'] };
         }
@@ -319,9 +352,8 @@ router.get('/vendor', authMiddleware, requireRoles('RESTAURANT'), async (req, re
 
         if (date) {
             const startOfDay = new Date(date);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(date);
-            endOfDay.setHours(23, 59, 59, 999);
+            startOfDay.setUTCHours(0, 0, 0, 0);
+            const endOfDay = new Date(startOfDay.getTime() + 86_400_000 - 1);
 
             query['dailyDeliveries.date'] = { $gte: startOfDay, $lte: endOfDay };
         }
@@ -336,9 +368,8 @@ router.get('/vendor', authMiddleware, requireRoles('RESTAURANT'), async (req, re
                 // If date was specified, filter out the deliveries for other days
                 if (date) {
                     const startOfDay = new Date(date);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    const endOfDay = new Date(date);
-                    endOfDay.setHours(23, 59, 59, 999);
+                    startOfDay.setUTCHours(0, 0, 0, 0);
+                    const endOfDay = new Date(startOfDay.getTime() + 86_400_000 - 1);
                     if (new Date(delivery.date).getTime() < startOfDay.getTime() || new Date(delivery.date).getTime() > endOfDay.getTime()) {
                         return;
                     }
@@ -372,16 +403,33 @@ router.patch('/:id/daily-status', authMiddleware, requireRoles('RESTAURANT'), as
     try {
         const { deliveryId, status } = req.body;
         const vendorId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
+        // The shop only prepares the bag; pickup, delivery and failure are set by the driver steps (PINs).
+        if (!['preparing', 'ready'].includes(status)) return res.status(400).json({ success: false, message: 'Status must be preparing or ready' });
 
         // Find the order that has this dailyDelivery
         const order = await PantryOrder.findOne({ _id: req.params.id, vendorId });
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (order.status !== 'paid') return res.status(409).json({ success: false, message: 'This order is not paid' });
 
-        const deliveryIndex = order.dailyDeliveries.findIndex(d => d._id.toString() === deliveryId);
+        const deliveryIndex = order.dailyDeliveries.findIndex(d => d._id.toString() === String(deliveryId));
         if (deliveryIndex === -1) return res.status(404).json({ success: false, message: 'Delivery day not found' });
 
-        order.dailyDeliveries[deliveryIndex].status = status;
+        const delivery = order.dailyDeliveries[deliveryIndex];
+        if (!['scheduled', 'preparing', 'ready'].includes(delivery.status)) {
+            return res.status(409).json({ success: false, message: `This bag is already ${delivery.status.replace(/_/g, ' ')}` });
+        }
+        if (storageDateStr(delivery.date) > storageDateStr(localToday())) {
+            return res.status(409).json({ success: false, message: 'This bag is for a later day. You can prepare it on its delivery day.' });
+        }
+
+        delivery.status = status;
         await order.save();
+
+        // All bags and meals of this shop for the slot are ready: ask the drivers to collect (collection PIN for the shop).
+        if (status === 'ready') {
+            const { triggerDriverNotificationIfAllReady } = await import('../subscription/dmb.dailyOrder.service.js');
+            await triggerDriverNotificationIfAllReady(vendorId, delivery.date, delivery.slot);
+        }
 
         res.status(200).json({ success: true, message: 'Status updated', order });
     } catch (error) {

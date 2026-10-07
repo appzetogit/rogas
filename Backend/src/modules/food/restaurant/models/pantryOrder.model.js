@@ -81,6 +81,11 @@ const pantryOrderSchema = new mongoose.Schema(
             status: { type: String, enum: ['scheduled', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'failed'], default: 'scheduled' },
             deliveryPin: { type: String },
             deliveredAt: { type: Date },
+            /** Driver pay for this bag, credited once when the driver confirms the drop. */
+            paymentConfirmed: { type: Boolean, default: false },
+            riderEarning: { type: Number, default: 0 },
+            gpsMismatch: { type: Boolean, default: false },
+            proofMethod: { type: String, default: '' },
             driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' },
             /** DA-07 failed delivery and what happened to the bag (Amendment v2 Gap P). */
             failure: {

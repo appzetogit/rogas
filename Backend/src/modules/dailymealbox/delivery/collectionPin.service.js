@@ -11,6 +11,8 @@ import { enqueueOrderEvent } from '../../food/orders/services/order.helpers.js';
 import * as foodTransactionService from '../../food/orders/services/foodTransaction.service.js';
 import { FoodTransaction } from '../../food/orders/models/foodTransaction.model.js';
 import { msg } from '../../i18n/i18n.service.js';
+import { findPantryDelivery } from './pantryPickup.service.js';
+import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 
 const GPS_FLAG_METERS = parseInt(process.env.GPS_MISMATCH_THRESHOLD_METERS || '500');
 const COLLECTION_PIN_EXPIRY_SECONDS = parseInt(process.env.COLLECTION_PIN_EXPIRY_SECONDS || '7200'); // 2 hours
@@ -246,6 +248,17 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
         storedPin = await redis.get(redisKey);
     }
 
+    // A pantry bag: its PIN is the one on that delivery (made when the customer paid).
+    const pantry = await findPantryDelivery(orderId);
+    if (pantry) {
+        if (!pantry.delivery.deliveryPin || String(pinEntered ?? '').trim() !== String(pantry.delivery.deliveryPin).trim()) {
+            throw new Error('Incorrect delivery PIN');
+        }
+        await confirmDelivery({ orderId, driverId, method: 'pin', deliveryGps });
+        if (redis) await redis.del(redisKey);
+        return { success: true, gpsMismatch: Boolean((await findPantryDelivery(orderId))?.delivery?.gpsMismatch) };
+    }
+
     if (!storedPin) {
         // Fallback: check order's stored pin in DMBDailyOrder first, then FoodOrder
         const dmbOrder = await DMBDailyOrder.findById(orderId);
@@ -306,6 +319,46 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
     const assertDriver = (assigned) => {
         if (!assigned || String(assigned) !== String(driverId)) throw new Error('This delivery is not assigned to you');
     };
+
+    // A pantry bag (its id is the delivery id inside a pantry order).
+    const pantry = await findPantryDelivery(orderId);
+    if (pantry) {
+        const { order: po, delivery: dd } = pantry;
+        assertDriver(dd.driverId);
+        if (['delivered', 'failed'].includes(dd.status)) throw new Error(`This delivery is already ${dd.status}`);
+        let mismatch = Boolean(gpsMismatch);
+        const dest = po.deliveryAddress?.location?.coordinates;
+        if (!mismatch && deliveryGps && Array.isArray(dest) && dest.length === 2 && (dest[0] || dest[1])) {
+            const dist = haversineDistance(Number(deliveryGps.lat), Number(deliveryGps.lng), dest[1], dest[0]);
+            mismatch = Number.isFinite(dist) && dist > GPS_FLAG_METERS;
+        }
+        // Only the first confirmation wins: a second tap or a replayed request changes nothing.
+        const done = await PantryOrder.updateOne(
+            { _id: po._id },
+            { $set: { 'dailyDeliveries.$[d].status': 'delivered', 'dailyDeliveries.$[d].deliveredAt': new Date(), 'dailyDeliveries.$[d].proofMethod': method || '', 'dailyDeliveries.$[d].gpsMismatch': mismatch } },
+            { arrayFilters: [{ 'd._id': dd._id, 'd.status': { $nin: ['delivered', 'failed'] }, 'd.driverId': dd.driverId }] }
+        );
+        if (!done.modifiedCount) throw new Error('This delivery was updated meanwhile — refresh your route');
+        if (mismatch) {
+            import('../platform/platformConfig.service.js')
+                .then((m) => m.raiseAdminAlert({
+                    type: 'delivery_gps_mismatch', severity: 'warning',
+                    title: `Delivery confirmed far from the address (${po.orderId})`,
+                    message: `The driver confirmed this delivery more than ${GPS_FLAG_METERS} m from the customer's address.`,
+                    entityType: 'PantryOrder', entityId: po._id, link: '/admin/food/dmb/alerts', dedupeKey: `gps:${dd._id}`
+                }))
+                .catch(() => {});
+        }
+        await sendNotificationToUser({
+            recipientId: po.userId,
+            recipientType: 'customer',
+            title: msg('Delivered! 🎉'),
+            body: msg('Your DailyMealBox has been delivered. Enjoy!'),
+            data: { screen: 'order_detail', orderId: po.orderId, event: 'delivered' }
+        }).catch((err) => logger.warn(`Pantry delivered notification failed: ${err.message}`));
+        logger.info(`Pantry bag ${dd._id} of ${po.orderId} delivered by driver ${driverId}`);
+        return (await findPantryDelivery(orderId)).delivery;
+    }
 
     // Check if it is a DMB Daily Order
     const dmbOrder = await DMBDailyOrder.findById(orderId).select('status dispatch.deliveryPartnerId deliveryAddress.location orderId').lean();

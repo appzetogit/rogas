@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { localToday, addDays } from '../../../utils/platformTime.js';
 import { CollectionBatch } from '../delivery/collectionBatch.model.js';
 import { notify } from '../notifications/notify.js';
 import { msg } from '../../i18n/i18n.service.js';
@@ -34,10 +35,8 @@ export class PickupProblemError extends Error {
 
 /** The batch a driver is collecting from this vendor in this slot today (same lookup the collection-PIN route uses). */
 export const findPickupBatch = async ({ driverId, vendorId, slot }) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const today = localToday(); // UTC midnight of the platform's calendar day, as batches are stored
+    const tomorrow = addDays(today, 1);
     let batch = null;
     if (vendorId && slot && mongoose.Types.ObjectId.isValid(String(vendorId))) {
         batch = await CollectionBatch.findOne({ vendorId, deliveryDate: { $gte: today, $lt: tomorrow }, deliverySlot: slot, status: { $nin: ['collected', 'failed'] } });

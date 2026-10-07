@@ -299,6 +299,22 @@ router.get('/delivery/cash-limit-settlements', requirePermission('driverManageme
 // ----- Delivery partners & general -----
 router.get('/delivery/order-fee-settings', requirePermission('driverManagement', 'view'), adminController.getDeliveryOrderFeeSettings);
 router.post('/delivery/order-fee-settings', requirePermission('driverManagement', 'edit'), adminController.updateDeliveryOrderFeeSettings);
+router.get('/pantry/delivery-fee', requirePermission('driverManagement', 'view'), async (req, res, next) => {
+    try {
+        const { getPantryDeliveryFee } = await import('../../../dailymealbox/platform/pantryFee.js');
+        res.json({ success: true, data: { deliveryFeePerDelivery: await getPantryDeliveryFee() } });
+    } catch (error) { next(error); }
+});
+router.post('/pantry/delivery-fee', requirePermission('driverManagement', 'edit'), async (req, res, next) => {
+    try {
+        const { setPantryDeliveryFee, getPantryDeliveryFee } = await import('../../../dailymealbox/platform/pantryFee.js');
+        await setPantryDeliveryFee(req.body?.deliveryFeePerDelivery, req.user?.userId || req.user?._id || null);
+        res.json({ success: true, message: 'Pantry delivery fee saved', data: { deliveryFeePerDelivery: await getPantryDeliveryFee() } });
+    } catch (error) {
+        if (/Fee must be/.test(error.message)) return res.status(400).json({ success: false, message: error.message });
+        next(error);
+    }
+});
 router.get('/delivery/commission-audit', requirePermission('driverManagement', 'view'), adminController.getDeliveryCommissionAudit);
 router.get('/delivery/join-requests', requirePermission('driverManagement', 'view'), adminController.getDeliveryJoinRequests);
 router.get('/delivery/available-partners', requirePermission('driverManagement', 'view'), adminController.getAvailableDeliveryPartners);

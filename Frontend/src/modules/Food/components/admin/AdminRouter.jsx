@@ -77,6 +77,7 @@ const DeliveryEmergencyHelp = lazy(() => import("@food/pages/admin/DeliveryEmerg
 const DeliverySupportTickets = lazy(() => import("@food/pages/admin/DeliverySupportTickets"));
 const JoinRequest = lazy(() => import("@food/pages/admin/delivery-partners/JoinRequest"));
 const OrderBasedDeliveryFee = lazy(() => import("@food/pages/admin/delivery-partners/OrderBasedDeliveryFee"));
+const PantryDeliveryFee = lazy(() => import("@food/pages/admin/delivery-partners/PantryDeliveryFee"));
 const ShiftChangeRequests = lazy(() => import("@food/pages/admin/delivery-partners/ShiftChangeRequests"));
 const AddDeliveryman = lazy(() => import("@food/pages/admin/delivery-partners/AddDeliveryman"));
 const DeliverymanList = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanList"));
@@ -318,6 +319,7 @@ export default function AdminRouter() {
             <Route path="delivery-partners/shift-requests" element={<ShiftChangeRequests />} />
             <Route path="delivery-partners/attendance" element={<DriverAttendance />} />
             <Route path="order-based-delivery-fee" element={<OrderBasedDeliveryFee />} />
+            <Route path="pantry-delivery-fee" element={<PantryDeliveryFee />} />
 
 
             {/* REPORTS & SETTINGS */}

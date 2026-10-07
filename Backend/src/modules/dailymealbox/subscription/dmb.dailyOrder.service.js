@@ -1337,18 +1337,30 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
     };
 
     const allOrdersInSlot = await DMBDailyOrder.find(filter).populate('userId', 'name phone');
-    if (allOrdersInSlot.length === 0) {
+    // A pantry shop's paid bags for the same date and slot travel on the same pickup (one box each).
+    const { pantryUnitsFor } = await import('../delivery/pantryPickup.service.js');
+    const pantryUnits = await pantryUnitsFor({ vendorId, date: targetDate, slot });
+    if (allOrdersInSlot.length === 0 && pantryUnits.length === 0) {
         logger.info(`[DRIVER-NOTIFY] No orders for vendor ${vendorId} slot ${slot} on ${dateStr(targetDate)}`);
         return;
     }
 
-    const pendingOrders = allOrdersInSlot.filter(o => ['scheduled', 'preparing'].includes(o.status));
+    const pendingOrders = [
+        ...allOrdersInSlot.filter(o => ['scheduled', 'preparing'].includes(o.status)),
+        ...pantryUnits.filter(u => ['scheduled', 'preparing'].includes(u.delivery.status))
+    ];
     if (pendingOrders.length > 0) {
         logger.info(`[DRIVER-NOTIFY] ${pendingOrders.length} orders still pending for vendor ${vendorId} slot ${slot} — skipping broadcast`);
         return;
     }
 
-    const readyOrders = allOrdersInSlot.filter(o => o.status === 'ready');
+    const readyMeals = allOrdersInSlot.filter(o => o.status === 'ready');
+    const readyPantry = pantryUnits.filter(u => u.delivery.status === 'ready');
+    // `readyOrders` is every box in the pickup: meals first, then pantry bags (their ids are the bag's delivery id).
+    const readyOrders = [
+        ...readyMeals,
+        ...readyPantry.map(u => ({ _id: u.delivery._id, orderId: u.order.orderId, status: 'ready', deliveryAddress: u.order.deliveryAddress, userId: u.order.userId, pantryItems: u.order.items, isPantry: true }))
+    ];
     if (readyOrders.length === 0) {
         logger.info(`[DRIVER-NOTIFY] No ready orders for vendor ${vendorId} slot ${slot} — all may be skipped`);
         return;
@@ -1394,7 +1406,9 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
             // A rider already holds this pickup: orders that became ready later (e.g. an office order bought after the
             // first request) join that rider instead of being offered to everybody again.
             if (batch.driverId) {
-                await DMBDailyOrder.updateMany({ _id: { $in: readyOrders.map(o => o._id) }, 'dispatch.deliveryPartnerId': null }, { $set: { 'dispatch.deliveryPartnerId': batch.driverId } });
+                await DMBDailyOrder.updateMany({ _id: { $in: readyMeals.map(o => o._id) }, 'dispatch.deliveryPartnerId': null }, { $set: { 'dispatch.deliveryPartnerId': batch.driverId } });
+                const { assignPantryDriver } = await import('../delivery/pantryPickup.service.js');
+                await assignPantryDriver(readyPantry.map(u => u.delivery._id), batch.driverId);
                 notifyDriverOfRouteUpdate(batch.driverId);
                 return;
             }
@@ -1458,7 +1472,8 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
                 orderId: o.orderId,
                 status: o.status,
                 deliveryAddress: o.deliveryAddress,
-                meals: o.meals,
+                meals: o.isPantry ? (o.pantryItems || []).map(i => ({ name: i.title, quantity: i.quantity })) : o.meals,
+                type: o.isPantry ? 'pantry' : undefined,
                 isFamilyBox: Boolean(o.isFamilyBox),
                 setCount: o.setCount || 1,
                 hasColdMeal: Boolean(o.hasColdMeal),

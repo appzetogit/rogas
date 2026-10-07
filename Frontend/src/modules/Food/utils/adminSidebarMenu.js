@@ -148,6 +148,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Delivery Cash Limit", path: "/admin/food/delivery-cash-limit", icon: "Wallet" },
       { type: "link", label: "Cash Limit Settlement", path: "/admin/food/cash-limit-settlement", icon: "Receipt" },
       { type: "link", label: "Order-Based Delivery Fee", path: "/admin/food/order-based-delivery-fee", icon: "DollarSign" },
+      { type: "link", label: "Pantry Delivery Fee", path: "/admin/food/pantry-delivery-fee", icon: "DollarSign" },
       { type: "link", label: "Delivery Support Tickets", path: "/admin/food/delivery-support-tickets", icon: "MessageSquare" },
       { type: "link", label: "Delivery Emergency Help", path: "/admin/food/delivery-emergency-help", icon: "Phone" },
     ],
