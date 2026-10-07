@@ -100,15 +100,27 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
         let groupItemsTotal = 0;
         const processedItems = [];
         for (const item of group.items) {
-            const pItem = await FoodItem.findById(item.pantryItemId);
+            // The app sends a plain item id, or "<itemId>-<variant name>" for a size/variant (e.g. "…a922-500gm").
+            const idMatch = String(item.pantryItemId || '').match(/^([0-9a-fA-F]{24})(?:-(.+))?$/);
+            if (!idMatch) throw new PaymentsError(`Invalid pantry item: ${item.title || item.pantryItemId}`, 400, 'BAD_REQUEST');
+            const variantName = idMatch[2] || '';
+            const pItem = await FoodItem.findById(idMatch[1]);
             if (!pItem || pItem.restaurantId.toString() !== String(vendorId)) {
                 throw new PaymentsError(`Invalid pantry item: ${item.title || item.pantryItemId}`, 400, 'BAD_REQUEST');
             }
             if (!pItem.isAvailable) throw new PaymentsError(`Item out of stock: ${item.title || pItem.name}`, 400, 'BAD_REQUEST');
             const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
-            const itemPrice = pItem.price || (pItem.variants && pItem.variants.length > 0 ? pItem.variants[0].price : 0);
+            let itemPrice = pItem.price || (pItem.variants && pItem.variants.length > 0 ? pItem.variants[0].price : 0);
+            let title = pItem.name;
+            if (variantName) {
+                // Charged at the variant's own price, read from the database.
+                const variant = (pItem.variants || []).find((v) => v.name === variantName);
+                if (!variant) throw new PaymentsError(`This option is no longer available: ${pItem.name} - ${variantName}`, 400, 'BAD_REQUEST');
+                itemPrice = variant.price;
+                title = `${pItem.name} - ${variant.name}`;
+            }
             groupItemsTotal += itemPrice * quantity;
-            processedItems.push({ pantryItemId: pItem._id, title: pItem.name, price: itemPrice, quantity });
+            processedItems.push({ pantryItemId: pItem._id, title, price: itemPrice, quantity });
         }
         // The bag is delivered once per day and slot of THIS group, so that is what is charged.
         const deliveries = group.deliveryDates.length * group.deliverySlots.length;

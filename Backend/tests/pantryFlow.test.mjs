@@ -240,6 +240,23 @@ test('2d. delivery fee (admin "Pantry Delivery Fee") and per-item slots: lunch 5
     await setPantryDeliveryFee(0);
 });
 
+test('2e. size variants: the app sends "<itemId>-<variant>"; priced at the variant price, bad ids are a 400 not a 500', async () => {
+    const rice = await M.FoodItem.create({ restaurantId: shop._id, name: 'Rice', price: 10, variants: [{ name: '500gm', price: 30 }, { name: '1 kg', price: 55 }] });
+    const g = (id) => ({ groups: [{ items: [{ pantryItemId: id, quantity: 2 }], deliveryDates: [todayStr], deliverySlots: [SLOT] }] });
+    const ok = await checkout(g(`${rice._id}-500gm`));
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.orders[0].items[0].price, 30);
+    assert.equal(ok.body.orders[0].items[0].title, 'Rice - 500gm');
+    assert.equal(ok.body.orders[0].pricing.itemsTotal, 60);
+    await M.PantryOrder.deleteMany({ status: 'pending_payment' });
+    const spaced = await checkout(g(`${rice._id}-1 kg`));
+    assert.equal(spaced.body.orders[0].pricing.itemsTotal, 110, 'names with spaces work');
+    await M.PantryOrder.deleteMany({ status: 'pending_payment' });
+    assert.equal((await checkout(g(`${rice._id}-2kg`))).status, 400, 'unknown variant');
+    assert.equal((await checkout(g('not-an-id'))).status, 400, 'garbage id');
+    assert.equal(await M.PantryOrder.countDocuments({ status: 'pending_payment' }), 0);
+});
+
 test('2c. failed / cancelled payment cancels the pending bag; a paid order is never cancelled by a late failure', async () => {
     const res = await checkout({ groups: [{ items: [{ pantryItemId: String(milk._id), quantity: 1 }], deliveryDates: [todayStr], deliverySlots: [SLOT] }] });
     const id = res.body.orders[0].orderId;
