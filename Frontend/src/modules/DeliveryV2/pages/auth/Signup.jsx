@@ -17,24 +17,18 @@ import { clearModuleAuth } from "@food/utils/auth"
 import loginBg from "@food/assets/deliveryloginbanner.png"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { SUPPORTED_COUNTRIES } from "@/config/countries";
+import { splitPhone } from "@/shared/utils/phone";
 import CountrySelector from "@/shared/components/CountrySelector";
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 const matchCountryFromPhone = (phoneVal) => {
-  if (!phoneVal) return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
-  const cleanDigits = phoneVal.replace(/\D/g, "");
-  const sorted = [...SUPPORTED_COUNTRIES].sort(
-    (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
-  );
-  for (const c of sorted) {
-    const codeDigits = c.code.replace(/\D/g, "");
-    if (cleanDigits.startsWith(codeDigits)) {
-      return c;
-    }
-  }
-  return SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+  const fallback = SUPPORTED_COUNTRIES.find(c => c.code === "+91") || SUPPORTED_COUNTRIES[0];
+  if (!phoneVal) return fallback;
+  // Country by the number's real length, not just by what it starts with.
+  const { countryCode } = splitPhone(phoneVal);
+  return SUPPORTED_COUNTRIES.find(c => c.code === countryCode) || fallback;
 };
 
 const getPhoneInitialValue = (draft, country) => {

@@ -425,3 +425,64 @@ test('10. failed delivery of a bag returns it to the shop for restocking', async
     await call('PATCH', `/v1/dmb/vendor/pantry-returns/${dd._id}/restock`, { token: tok.shop });
     assert.equal((await M.PantryOrder.findOne({ _id: po._id })).dailyDeliveries[0].returnStatus, 'restocked');
 });
+
+test('11. the same customer: a kitchen meal and a pantry bag in the SAME slot, one driver takes both pickups on one route; slot timing; request queue data', async () => {
+    // Fresh state: a meal for today (kitchen A) and a lunch bag (shop B) for the same customer.
+    await M.CollectionBatch.deleteMany({});
+    await w.DMBDailyOrder.updateOne({ _id: mealOrder._id }, { $set: { status: 'scheduled', 'dispatch.deliveryPartnerId': null } });
+    await w.FoodDeliveryPartner.updateOne({ _id: driver._id }, { $set: { assignedVendors: [w.vendor._id] } }); // the shop is NOT on the driver's usual list
+    const res = await checkout({ groups: [{ items: [{ pantryItemId: String(milk._id), quantity: 1 }], deliveryDates: [todayStr], deliverySlots: [SLOT] }, { items: [{ pantryItemId: String(bread._id), quantity: 1 }], deliveryDates: [todayStr], deliverySlots: ['dinner'] }] });
+    await pay(res);
+    const lunchOrder = res.body.orders.find((o) => o.deliverySlots[0] === SLOT);
+    const dinnerOrder = res.body.orders.find((o) => o.deliverySlots[0] === 'dinner');
+    const lunchBag = (await M.PantryOrder.findOne({ orderId: lunchOrder.orderId })).dailyDeliveries[0];
+    const dinnerBag = (await M.PantryOrder.findOne({ orderId: dinnerOrder.orderId })).dailyDeliveries[0];
+
+    // Marking the dinner bag ready during the lunch window is refused (same rule as meals)...
+    await M.DeliverySlot.updateOne({ key: 'dinner' }, { $set: { startTime: '03:00', endTime: '03:01' } });
+    const { listSlots } = await import('../src/modules/dailymealbox/deliverySlot/deliverySlot.service.js');
+    await listSlots();
+    const early = await call('PATCH', `/v1/dmb/pantry-orders/${dinnerOrder._id}/daily-status`, { token: tok.shop, body: { deliveryId: String(dinnerBag._id), status: 'ready' } });
+    assert.equal(early.status, 409, JSON.stringify(early.body));
+    assert.equal(early.body.code, 'OUTSIDE_SLOT_WINDOW');
+    assert.equal(await M.CollectionBatch.countDocuments({ vendorId: shop._id, deliverySlot: 'dinner' }), 0, 'no dinner request reached any driver');
+
+    // ...while lunch is fine, and only the lunch request exists.
+    const ok = await call('PATCH', `/v1/dmb/pantry-orders/${lunchOrder._id}/daily-status`, { token: tok.shop, body: { deliveryId: String(lunchBag._id), status: 'ready' } });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: tok.kitchen, body: { date: todayStr, slot: SLOT } });
+    const batches = await M.CollectionBatch.find({ deliverySlot: SLOT, status: 'pending' });
+    assert.equal(batches.length, 2, 'one pickup request per vendor: the kitchen and the pantry shop');
+
+    // One driver accepts both (while it already holds nothing else) and sees BOTH pickups, then both drops, on ONE route.
+    for (const b of batches) assert.equal((await call('POST', '/v1/dmb/driver/accept-batch', { token: tok.driver, body: { batchId: b.batchId } })).status, 200);
+    const route = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
+    assert.equal(route.status, 200, JSON.stringify(route.body));
+    const pickups = route.body.stops.filter((s) => s.type === 'P');
+    const drops = route.body.stops.filter((s) => s.type === 'D');
+    assert.deepEqual(pickups.map((p) => p.name).sort(), ['Corner Pantry', 'Maria Kitchen'], 'both vendors are pickup stops');
+    assert.equal(drops.length, 2, 'the meal and the bag are both drops for the same customer');
+    assert.ok(drops.every((d) => d.slot === SLOT), 'the bag stop carries its slot');
+    assert.equal(route.body.vendorName, 'Maria Kitchen + Corner Pantry'.split(' + ').sort((a, b) => route.body.vendorName.indexOf(a) - route.body.vendorName.indexOf(b)).join(' + '));
+    assert.equal(route.body.totalMealBoxCount, 2);
+    // The shop is not on the driver's usual list, yet its stop shows on the today-route once its pickup is accepted.
+    const slotRoute = await call('GET', '/v1/dmb/driver/slot-route', { token: tok.driver });
+    assert.ok(slotRoute.body.stops.some((s) => s.type === 'pickup' && s.name === 'Corner Pantry'), 'accepted vendor shows even if not on the usual list');
+
+    // Collect from the kitchen only: its drop opens, the shop's drop stays locked until the shop is collected too.
+    const kitchenBatch = batches.find((b) => String(b.vendorId) === String(w.vendor._id));
+    const pantryBatch = batches.find((b) => String(b.vendorId) === String(shop._id));
+    const k = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: (await M.CollectionBatch.findById(kitchenBatch._id)).collectionPinHash, vendorId: String(w.vendor._id), slot: SLOT } });
+    assert.equal(k.status, 200, JSON.stringify(k.body));
+    let r2 = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
+    assert.equal(r2.body.stops.filter((s) => s.type === 'P').length, 1, 'only the pantry pickup is left');
+    const mealStop = r2.body.stops.find((s) => s.type === 'D' && String(s.orderId) === String(mealOrder._id));
+    const bagStop = r2.body.stops.find((s) => s.type === 'D' && String(s.orderId) === String(lunchBag._id));
+    assert.equal(mealStop.status, 'READY');
+    assert.equal(bagStop.status, 'WAITING');
+    const p = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: (await M.CollectionBatch.findById(pantryBatch._id)).collectionPinHash, vendorId: String(shop._id), slot: SLOT } });
+    assert.equal(p.status, 200, JSON.stringify(p.body));
+    r2 = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
+    assert.equal(r2.body.stops.filter((s) => s.type === 'P').length, 0);
+    assert.equal(r2.body.stops.filter((s) => s.type === 'D' && s.status !== 'COMPLETED').length, 2);
+});

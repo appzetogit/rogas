@@ -222,6 +222,14 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
             }
         }
 
+        // Vendors whose pickup this driver already accepted for this slot today count too (a pantry shop that is not on the
+        // driver's usual list still has to show up once the driver took its request).
+        const heldBatches = await CollectionBatch.find({
+            driverId: driver._id, deliveryDate: { $gte: today, $lt: tomorrow }, deliverySlot: targetSlot,
+            status: { $in: ['driver_assigned', 'driver_en_route', 'collected'] }
+        }).select('vendorId').lean();
+        heldBatches.forEach((b) => effectiveVendorsSet.add(String(b.vendorId)));
+
         const effectiveVendors = Array.from(effectiveVendorsSet);
 
         // If driver has no vendors assigned for this slot, return early
@@ -516,9 +524,9 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             }
         }
 
-        let batch = null;
-        let orders = [];
-        let pOrders = []; // Add pantry orders array
+        // Every unfinished pickup this driver holds, so one driver can collect from several vendors (a kitchen AND a pantry
+        // shop for the same customer) in one route.
+        const active = [];
 
         const currentDriverId = (req.user.userId || req.user._id).toString();
 
@@ -535,19 +543,18 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 .populate('vendorId', 'restaurantName location addressLine1 phone')
                 .populate('userId', 'name phone')
                 .sort({ deliverySlot: 1 });
-            
+
             const candidatePantryOrders = await PantryOrder.find({
                 'dailyDeliveries._id': { $in: candidate.orderIds }
             })
                 .populate('vendorId', 'restaurantName location addressLine1 phone')
-                .populate('userId', 'name phone')
-                .sort({ deliverySlot: 1 });
+                .populate('userId', 'name phone');
 
             const mappedPantryOrders = [];
             const pantryDriverFee = candidatePantryOrders.length ? await configuredDriverFee() : null;
             for (const po of candidatePantryOrders) {
-                const delivery = po.dailyDeliveries.find(d => candidate.orderIds.some(id => id.toString() === d._id.toString()));
-                if (delivery) {
+                // One order can hold several bags in this pickup (e.g. two days): each bag is its own stop.
+                for (const delivery of po.dailyDeliveries.filter(d => candidate.orderIds.some(id => id.toString() === d._id.toString()))) {
                     mappedPantryOrders.push({
                         _id: delivery._id,
                         orderId: po.orderId,
@@ -556,8 +563,8 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                         userId: po.userId,
                         status: delivery.status,
                         deliveryAddress: po.deliveryAddress,
-                        deliverySlot: po.deliverySlot,
-                        deliveryPin: delivery.deliveryPin || po.deliveryPin,
+                        deliverySlot: delivery.slot,
+                        deliveryPin: delivery.deliveryPin,
                         riderEarning: pantryDriverFee || 0,
                         parentOrderId: po._id
                     });
@@ -568,17 +575,18 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
 
             const isCompleted = allCandidateOrders.length > 0 && allCandidateOrders.every(o => ['delivered', 'skipped', 'failed'].includes(o.status));
             if (!isCompleted && allCandidateOrders.length > 0) {
-                batch = candidate;
-                orders = candidateOrders;
-                pOrders = mappedPantryOrders;
-                break;
+                active.push({ batch: candidate, orders: candidateOrders, pOrders: mappedPantryOrders });
             }
         }
 
-        if (!batch) {
+        if (!active.length) {
             return res.json({ success: true, stops: [], orders: [], totalBoxes: 0 });
         }
 
+        // Today's pickups together; when none is for today (a leftover), the newest one as before.
+        const todays = active.filter(a => a.batch.deliveryDate >= today && a.batch.deliveryDate < tomorrow);
+        const chosen = (todays.length ? todays : [active[0]]).sort((x, y) => new Date(x.batch.createdAt) - new Date(y.batch.createdAt));
+        const batch = chosen[0].batch;
 
         // Fetch dynamic delivery fee configured by Admin
         let riderEarningSetting = 0;
@@ -592,130 +600,111 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             console.error("Failed to fetch DeliveryOrderFeeSettings in /my-route", err);
         }
 
-        // Generate delivery Pin/OTP mapping if needed
-        const batchOtpMap = new Map();
-        if (batch.orderIds && batch.collectionPinHash) {
-            for (const oId of batch.orderIds) {
-                batchOtpMap.set(oId.toString(), batch.collectionPinHash);
+        // Orders of each pickup, with pins and earnings.
+        for (const entry of chosen) {
+            const batchOtpMap = new Map();
+            if (entry.batch.orderIds && entry.batch.collectionPinHash) {
+                for (const oId of entry.batch.orderIds) batchOtpMap.set(oId.toString(), entry.batch.collectionPinHash);
             }
-        }
+            entry.withPins = [];
+            for (const order of [...entry.orders, ...entry.pOrders]) {
+                const orderObj = order.toObject ? order.toObject() : order;
+                orderObj.pin = batchOtpMap.get(orderObj._id.toString()) || '';
 
-        const allOrders = [...orders, ...pOrders];
-        const ordersWithPins = [];
-        for (const order of allOrders) {
-            const orderObj = order.toObject ? order.toObject() : order;
-            orderObj.pin = batchOtpMap.get(orderObj._id.toString()) || '';
-            
-            // Assign Admin-configured delivery fee to riderEarning
-            orderObj.riderEarning = orderObj.riderEarning || riderEarningSetting;
+                // Assign Admin-configured delivery fee to riderEarning
+                orderObj.riderEarning = orderObj.riderEarning || riderEarningSetting;
 
-            if (!orderObj.deliveryPin) {
-                const randomPin = String(Math.floor(1000 + Math.random() * 9000));
-                orderObj.deliveryPin = randomPin;
-                // Save it asynchronously in the database
-                if (orderObj.type === 'pantry') {
-                    PantryOrder.updateOne(
-                        { 'dailyDeliveries._id': orderObj._id },
-                        { $set: { 'dailyDeliveries.$.deliveryPin': randomPin } }
-                    ).catch(err => console.error(`Error background updating pantry deliveryPin: ${err.message}`));
-                } else {
-                    DMBDailyOrder.updateOne({ _id: orderObj._id }, { $set: { deliveryPin: randomPin } })
-                        .catch(err => console.error(`Error background updating deliveryPin: ${err.message}`));
+                if (!orderObj.deliveryPin) {
+                    const randomPin = String(Math.floor(1000 + Math.random() * 9000));
+                    orderObj.deliveryPin = randomPin;
+                    // Save it asynchronously in the database
+                    if (orderObj.type === 'pantry') {
+                        PantryOrder.updateOne(
+                            { 'dailyDeliveries._id': orderObj._id },
+                            { $set: { 'dailyDeliveries.$.deliveryPin': randomPin } }
+                        ).catch(err => console.error(`Error background updating pantry deliveryPin: ${err.message}`));
+                    } else {
+                        DMBDailyOrder.updateOne({ _id: orderObj._id }, { $set: { deliveryPin: randomPin } })
+                            .catch(err => console.error(`Error background updating deliveryPin: ${err.message}`));
+                    }
                 }
+                entry.withPins.push(orderObj);
             }
-            ordersWithPins.push(orderObj);
         }
+        const ordersWithPins = chosen.flatMap(e => e.withPins);
 
-        const vendorName = batch.vendorId?.restaurantName || '';
+        const vendorName = [...new Set(chosen.map(e => e.batch.vendorId?.restaurantName).filter(Boolean))].join(' + ');
         const vendorAddress = batch.vendorId?.addressLine1 || '';
         const vendorPhone = batch.vendorId?.phone || '';
         const vendorLocation = batch.vendorId?.location || null;
         const { listSlots: _listSlots, getSlotLabel: _getSlotLabel } = await import('../deliverySlot/deliverySlot.service.js');
         const slotType = _getSlotLabel(await _listSlots(), batch.deliverySlot);
         // Meal boxes the driver carries (a 2-meal order is 2 boxes), not the number of orders.
-        const totalMealBoxCount = allOrders.reduce((sum, o) => sum + mealBoxesOf(o), 0);
-        const stopsCount = allOrders.length;
+        const totalMealBoxCount = ordersWithPins.reduce((sum, o) => sum + mealBoxesOf(o), 0);
+        const stopsCount = ordersWithPins.length;
 
-        // Delivery timer: 3 hours countdown from collectedAt (when vendor pickup is verified)
-        const deliveryDeadline = batch.collectedAt 
-            ? new Date(batch.collectedAt.getTime() + 3 * 60 * 60 * 1000).toISOString()
+        // Delivery timer: 3 hours countdown from the earliest collection (when vendor pickup is verified)
+        const collectedTimes = chosen.filter(e => e.batch.collectedAt).map(e => new Date(e.batch.collectedAt).getTime());
+        const deliveryDeadline = collectedTimes.length
+            ? new Date(Math.min(...collectedTimes) + 3 * 60 * 60 * 1000).toISOString()
             : null;
 
-        // Build stops sequence
-        let stops = [];
-        if (batch.status !== 'collected') {
-            // Not collected yet: first stop is the Pickup at vendor
-            const vendorLat = batch.vendorId?.location?.latitude || (batch.vendorId?.location?.coordinates && batch.vendorId.location.coordinates[1]);
-            const vendorLng = batch.vendorId?.location?.longitude || (batch.vendorId?.location?.coordinates && batch.vendorId.location.coordinates[0]);
-            
-            stops = [
-                {
-                    id: 'pickup_' + batch._id,
-                    type: 'P',
-                    name: vendorName,
-                    address: vendorAddress,
-                    status: 'READY',
-                    orderId: orders[0]?._id,
-                    // The pickup is ONE stop for every order in the batch: all customers of this vendor and slot.
-                    orderCount: ordersWithPins.length,
-                    boxCount: ordersWithPins.reduce((sum, o) => sum + mealBoxesOf(o), 0),
-                    vendorLat,
-                    vendorLng,
-                    vendorId: batch.vendorId?._id || batch.vendorId,
-                    slot: batch.deliverySlot
-                },
-                ...ordersWithPins.map((order, idx) => ({
-                    id: 'delivery_' + order._id,
-                    type: 'D',
-                    name: order.userId?.name || '',
-                    address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
-                    status: 'WAITING',
-                    orderId: order._id,
-                    customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
-                    customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
-                    boxNumber: idx + 1,
-                    boxCount: mealBoxesOf(order),
-                    vendorId: order.vendorId?._id || order.vendorId,
-                    slot: order.deliverySlot,
-                    riderEarning: order.riderEarning
-                }))
-            ];
-        } else {
-            // Already collected: stops are just the customer deliveries
-            // Sort so pending ones are listed first, and completed are at the end
-            const sortedOrders = [...ordersWithPins].sort((a, b) => {
-                const aDone = ['delivered', 'skipped', 'failed'].includes(a.status);
-                const bDone = ['delivered', 'skipped', 'failed'].includes(b.status);
-                if (aDone && !bDone) return 1;
-                if (!aDone && bDone) return -1;
-                return 0;
-            });
+        const coordsOf = (loc) => ({
+            lat: loc?.latitude || (loc?.coordinates && loc.coordinates[1]),
+            lng: loc?.longitude || (loc?.coordinates && loc.coordinates[0])
+        });
+        const isDoneStatus = (st) => ['delivered', 'skipped', 'failed'].includes(st);
+        const deliveryStop = (order, idx, status, extra = {}) => ({
+            id: 'delivery_' + order._id,
+            type: 'D',
+            name: order.userId?.name || '',
+            address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
+            status,
+            orderId: order._id,
+            customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
+            customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
+            boxNumber: idx + 1,
+            vendorId: order.vendorId?._id || order.vendorId,
+            slot: order.deliverySlot,
+            ...extra
+        });
 
-            let firstPendingFound = false;
-            stops = sortedOrders.map((order, idx) => {
-                const isDone = ['delivered', 'skipped', 'failed'].includes(order.status);
-                let stopStatus = 'WAITING';
-                if (isDone) {
-                    stopStatus = order.status === 'delivered' ? 'COMPLETED' : 'FAILED';
-                } else if (!firstPendingFound) {
-                    stopStatus = 'READY';
-                    firstPendingFound = true;
-                }
-
-                return {
-                    id: 'delivery_' + order._id,
-                    type: 'D',
-                    name: order.userId?.name || '',
-                    address: order.deliveryAddress?.addressLine1 || order.deliveryAddress?.city,
-                    status: stopStatus,
-                    orderId: order._id,
-                    customerLat: order.deliveryAddress?.location?.latitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[1]),
-                    customerLng: order.deliveryAddress?.location?.longitude || (order.deliveryAddress?.location?.coordinates && order.deliveryAddress.location.coordinates[0]),
-                    boxNumber: idx + 1,
-                    vendorId: order.vendorId?._id || order.vendorId,
-                    slot: order.deliverySlot
-                };
+        // Stops: first every pickup not yet collected (one per vendor), then the customer drops: boxes already in the bag
+        // (pending first, finished last), then the ones still waiting at a vendor.
+        const stops = [];
+        for (const entry of chosen) {
+            if (entry.batch.status === 'collected') continue;
+            const { lat, lng } = coordsOf(entry.batch.vendorId?.location);
+            stops.push({
+                id: 'pickup_' + entry.batch._id,
+                type: 'P',
+                name: entry.batch.vendorId?.restaurantName || '',
+                address: entry.batch.vendorId?.addressLine1 || '',
+                status: 'READY',
+                orderId: entry.withPins[0]?._id,
+                // The pickup is ONE stop for every order in the batch: all customers of this vendor and slot.
+                orderCount: entry.withPins.length,
+                boxCount: entry.withPins.reduce((sum, o) => sum + mealBoxesOf(o), 0),
+                vendorLat: lat,
+                vendorLng: lng,
+                vendorId: entry.batch.vendorId?._id || entry.batch.vendorId,
+                slot: entry.batch.deliverySlot
             });
+        }
+        let boxNo = 0;
+        let firstPendingFound = false;
+        const inBag = chosen.filter(e => e.batch.status === 'collected').flatMap(e => e.withPins)
+            .sort((a, b) => Number(isDoneStatus(a.status)) - Number(isDoneStatus(b.status)));
+        for (const order of inBag) {
+            let stopStatus = 'WAITING';
+            if (isDoneStatus(order.status)) stopStatus = order.status === 'delivered' ? 'COMPLETED' : 'FAILED';
+            else if (!firstPendingFound) { stopStatus = 'READY'; firstPendingFound = true; }
+            stops.push(deliveryStop(order, boxNo++, stopStatus));
+        }
+        for (const entry of chosen.filter(e => e.batch.status !== 'collected')) {
+            for (const order of entry.withPins) {
+                stops.push(deliveryStop(order, boxNo++, 'WAITING', { boxCount: mealBoxesOf(order), riderEarning: order.riderEarning }));
+            }
         }
 
         const { enrichDriverRoute } = await import('./driverRouteEnrich.js');

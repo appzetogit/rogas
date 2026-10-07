@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { encryptedFields } from '../../../../utils/encryptedFields.plugin.js';
+import { splitPhone } from '../../../../core/auth/phone.util.js';
 
 const normalizeRatingValue = (value) => {
   const numeric = Number(value);
@@ -453,7 +454,8 @@ restaurantSchema.pre("validate", function normalizeDerivedFields(next) {
       : "";
   const digits = phoneRaw.replace(/\D/g, "").slice(-15); // guard against country prefixes
   this.ownerPhoneDigits = digits || undefined;
-  this.ownerPhoneLast10 = digits ? digits.slice(-10) : undefined;
+  // The national number (all 9 digits of a Polish number, 10 of an Indian one), not "the last 10 digits".
+  this.ownerPhoneLast10 = digits ? (splitPhone(digits).local || digits.slice(-10)) : undefined;
 
   // Keep `location` in sync when flat address fields exist (backward-compatible migration).
   // Prefer explicit location.* fields if provided.

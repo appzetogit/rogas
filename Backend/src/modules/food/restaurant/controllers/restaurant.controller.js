@@ -154,16 +154,13 @@ export const getRestaurantRegistrationStatusController = async (req, res, next) 
         
         const { FoodRestaurant } = await import('../models/restaurant.model.js');
         
-        const digits = String(phone).replace(/\D/g, "");
-        const last10 = digits.slice(-10);
-        const phoneCandidates = [phone, digits, last10].filter(Boolean);
-        
+        const { phoneLookupClauses } = await import('../../../../core/auth/phone.util.js');
+        // Matched by country and number, never by "the last 10 digits" (a Polish and an Indian number can end alike).
         const restaurant = await FoodRestaurant.findOne({
             $or: [
-                { ownerPhone: { $in: phoneCandidates } },
-                { primaryContactNumber: { $in: phoneCandidates } },
-                { ownerPhoneDigits: { $in: phoneCandidates } },
-                { ownerPhoneLast10: { $in: phoneCandidates } },
+                ...phoneLookupClauses('ownerPhone', phone),
+                ...phoneLookupClauses('primaryContactNumber', phone),
+                ...phoneLookupClauses('ownerPhoneDigits', phone),
             ]
         }).select('status rejectionReason restaurantName').lean();
 

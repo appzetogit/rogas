@@ -9,25 +9,30 @@ import { FoodOrder } from '../../orders/models/order.model.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { checkPhoneConflict } from '../../../../core/auth/auth.service.js';
+import { normalizeStoredPhone } from '../../../../core/auth/phone.util.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 
 export const registerDeliveryPartner = async (payload, files) => {
     const { 
-        name, phone, email, countryCode, address, city, state, 
+        name, email, address, city, state, 
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
         fcmToken, platform 
     } = payload;
     const refRaw = typeof payload?.ref === 'string' ? String(payload.ref).trim() : '';
 
+    // Stored as the national number plus its country code (+48 and 910959948), never with digits moved between them.
+    const { dialCode: normalizedCode, local: phone } = normalizeStoredPhone({ phone: payload.phone, countryCode: payload.countryCode });
+    const countryCode = normalizedCode || payload.countryCode;
+
     await checkPhoneConflict(phone, "DELIVERY_PARTNER");
 
-    const existing = await FoodDeliveryPartner.findOne({ phone });
+    const existing = await FoodDeliveryPartner.findOne({ phone, countryCode });
     if (existing) {
         if (existing.status !== 'rejected') {
             throw new ValidationError('Delivery partner with this phone already exists');
         }
         // If rejected, delete the old record so they can start fresh with same phone
-        await FoodDeliveryPartner.deleteMany({ phone });
+        await FoodDeliveryPartner.deleteMany({ phone, countryCode });
     }
 
     const images = {};

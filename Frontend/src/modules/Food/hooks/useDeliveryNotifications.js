@@ -206,6 +206,21 @@ export const useDeliveryNotifications = () => {
   const [claimedOrderId, setClaimedOrderId] = useState(null); // set when another partner claims an order
   const [adminNotification, setAdminNotification] = useState(null);
   const [newBatchRequest, setNewBatchRequest] = useState(null);
+  // Pickup requests that arrive while one is on screen (e.g. a kitchen's and a pantry shop's for the same slot) wait their turn
+  // instead of replacing it.
+  const currentBatchRef = useRef(null);
+  const batchQueueRef = useRef([]);
+  const showBatchRequest = (data) => {
+    if (!data) return;
+    const cur = currentBatchRef.current;
+    if (cur && cur.batchId !== data.batchId) {
+      if (!batchQueueRef.current.some((b) => b.batchId === data.batchId)) batchQueueRef.current.push(data);
+      return;
+    }
+    currentBatchRef.current = data;
+    setNewBatchRequest(data);
+    playNotificationSound(data);
+  };
   const joinedDeliveryRoomRef = useRef(null);
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
@@ -983,8 +998,7 @@ export const useDeliveryNotifications = () => {
         debugLog('?? Ignored new_delivery_request - rider is offline');
         return;
       }
-      setNewBatchRequest(batchData);
-      playNotificationSound(batchData);
+      showBatchRequest(batchData);
     });
 
     socketRef.current.on('admin_notification', (payload) => {
@@ -1087,7 +1101,14 @@ export const useDeliveryNotifications = () => {
   };
 
   const clearNewBatchRequest = () => {
-    setNewBatchRequest(null);
+    const next = batchQueueRef.current.shift() || null;
+    currentBatchRef.current = next;
+    setNewBatchRequest(next);
+    if (next) {
+      // The next waiting request comes up right away.
+      setTimeout(() => playNotificationSound(next), 0);
+      return;
+    }
     if (audioRef.current) {
       try {
         audioRef.current.pause();
@@ -1116,8 +1137,7 @@ export const useDeliveryNotifications = () => {
       try {
         const res = await dmbDeliveryAPI.getBatchRequest(batchId);
         if (cancelled || !res?.data?.batch) return;
-        setNewBatchRequest(res.data.batch);
-        playNotificationSound(res.data.batch);
+        showBatchRequest(res.data.batch);
       } catch (err) {
         debugLog('Pickup request from push is no longer available', err?.response?.data || err?.message);
       }

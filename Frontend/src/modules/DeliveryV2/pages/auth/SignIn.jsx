@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { deliveryAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { SUPPORTED_COUNTRIES } from "@/config/countries";
+import { splitPhone } from "@/shared/utils/phone";
 import CountrySelector from "@/shared/components/CountrySelector";
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
@@ -36,18 +37,11 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
 );
 
 const matchCountryFromPhone = (phoneVal) => {
-  if (!phoneVal) return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
-  const cleanDigits = phoneVal.replace(/\D/g, "");
-  const sorted = [...SUPPORTED_COUNTRIES].sort(
-    (a, b) => b.code.replace(/\D/g, "").length - a.code.replace(/\D/g, "").length
-  );
-  for (const c of sorted) {
-    const codeDigits = c.code.replace(/\D/g, "");
-    if (cleanDigits.startsWith(codeDigits)) {
-      return c;
-    }
-  }
-  return SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+  const fallback = SUPPORTED_COUNTRIES.find(c => c.code === "+48") || SUPPORTED_COUNTRIES[0];
+  if (!phoneVal) return fallback;
+  // Country by the number's real length, not just by what it starts with.
+  const { countryCode } = splitPhone(phoneVal);
+  return SUPPORTED_COUNTRIES.find(c => c.code === countryCode) || fallback;
 };
 
 const getPhoneInitialValue = (draft, country) => {

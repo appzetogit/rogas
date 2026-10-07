@@ -433,6 +433,10 @@ router.patch('/:id/daily-status', authMiddleware, requireRoles('RESTAURANT'), as
         if (storageDateStr(delivery.date) > storageDateStr(localToday())) {
             return res.status(409).json({ success: false, message: 'This bag is for a later day. You can prepare it on its delivery day.' });
         }
+        // Same slot timing rule as meals: a dinner bag cannot be marked ready (and sent to drivers) during the lunch window.
+        const { checkAdminTimingWindow } = await import('../subscription/dmb.dailyOrder.service.js');
+        const timing = await checkAdminTimingWindow(delivery.slot);
+        if (!timing.allowed) return res.status(409).json({ success: false, code: 'OUTSIDE_SLOT_WINDOW', message: timing.message });
 
         delivery.status = status;
         await order.save();

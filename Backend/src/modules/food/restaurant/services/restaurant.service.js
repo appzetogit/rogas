@@ -5,6 +5,7 @@ import { checkPhoneConflict } from '../../../../core/auth/auth.service.js';
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
+import { splitPhone } from '../../../../core/auth/phone.util.js';
 
 /** Fields that need admin re-approval when an approved vendor changes them (legal and financial documents). */
 const REAPPROVAL_FIELDS = new Set([
@@ -26,7 +27,8 @@ const normalizePhone = (value) => {
     const digits = String(value || '').replace(/\D/g, '').slice(-15);
     return {
         digits: digits || '',
-        last10: digits ? digits.slice(-10) : ''
+        // the national number (a Polish number has 9 digits, an Indian one 10), not "the last 10 digits"
+        last10: digits ? (splitPhone(digits).local || digits.slice(-10)) : ''
     };
 };
 

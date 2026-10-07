@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { DIAL_CODE_LENGTHS, DIAL_CODES_LONGEST_FIRST, dialCodeFromPhone, phoneLookupClauses, splitPhone } from "./phone.util.js";
 import ms from "ms";
 import { FoodUser } from "../users/user.model.js";
 import { FoodAdmin } from "../admin/admin.model.js";
@@ -96,33 +97,7 @@ const sanitizeDeliveryForAuthResponse = (deliveryDoc = {}) => {
   };
 };
 
-// Major country dial codes -> expected local phone number length.
-const DIAL_CODE_LENGTHS = {
-    "1": 10, "7": 10, "20": 10, "27": 9, "30": 10, "31": 9, "32": 9, "33": 9, "34": 9, "351": 9,
-    "352": 9, "353": 9, "354": 7, "355": 9, "356": 8, "357": 8, "358": 9, "359": 9, "36": 9,
-    "370": 8, "371": 8, "372": 7, "374": 8, "375": 9, "376": 6, "377": 8, "380": 9, "381": 9,
-    "382": 8, "385": 9, "386": 8, "387": 8, "389": 8, "39": 10, "40": 9, "41": 9, "420": 9,
-    "421": 9, "423": 7, "43": 10, "44": 10, "45": 8, "46": 9, "47": 8, "48": 9, "49": 10,
-    "51": 9, "52": 10, "53": 8, "54": 10, "55": 11, "56": 9, "57": 10, "58": 10, "60": 9,
-    "61": 9, "62": 10, "63": 10, "64": 9, "65": 8, "66": 9, "81": 10, "82": 10, "84": 9,
-    "86": 11, "90": 10, "91": 10, "92": 10, "93": 9, "94": 9, "95": 9, "98": 10, "212": 9,
-    "213": 9, "220": 7, "221": 9, "222": 8, "223": 8, "224": 8, "226": 8, "228": 8, "229": 8,
-    "230": 7, "231": 7, "233": 9, "234": 10, "240": 9, "241": 7, "242": 9, "244": 9, "250": 9,
-    "251": 9, "252": 9, "254": 9, "255": 9, "256": 9, "258": 9, "260": 9, "261": 9, "263": 9,
-    "264": 8, "265": 9, "266": 8, "267": 8, "269": 7, "291": 7, "501": 7, "502": 8, "503": 8,
-    "504": 8, "505": 8, "506": 8, "507": 8, "591": 8, "592": 7, "593": 9, "595": 9, "598": 8,
-    "880": 10, "886": 9, "960": 7, "961": 8, "962": 9, "964": 10, "965": 8, "966": 9, "967": 9,
-    "968": 8, "971": 9, "972": 9, "973": 8, "975": 8, "976": 8, "977": 10, "992": 9, "993": 8,
-    "994": 9, "995": 9, "996": 9, "998": 9
-};
-const DIAL_CODES_LONGEST_FIRST = Object.keys(DIAL_CODE_LENGTHS).sort((a, b) => b.length - a.length);
-
-/** "+48" for "48600100201" / "+48 600 100 201"; null when the number carries no recognisable country code. */
-export const dialCodeFromPhone = (phone) => {
-  const digits = String(phone || "").replace(/\D/g, "");
-  const code = DIAL_CODES_LONGEST_FIRST.find((c) => digits.startsWith(c) && digits.length - c.length === DIAL_CODE_LENGTHS[c]);
-  return code ? `+${code}` : null;
-};
+export { dialCodeFromPhone };
 
 const validatePhoneCountryAndLength = (phone) => {
   if (!phone) {
@@ -164,33 +139,19 @@ export const checkPhoneConflict = async (phone, expectedRole) => {
 
 export const checkPhoneAlreadyExists = async (phone, role) => {
   if (!phone) return false;
-  const digits = String(phone).replace(/\D/g, "");
-  if (!digits) return false;
-  const last10 = digits.slice(-10);
-  const candidates = [phone, digits, last10].filter(Boolean);
+  if (!splitPhone(phone).digits) return false;
 
   if (role === "USER") {
-    const userQuery = {
-      $or: [
-        { phone: { $in: candidates } },
-        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
-      ]
-    };
-    const user = await FoodUser.findOne(userQuery).lean();
+    const user = await FoodUser.findOne({ $or: phoneLookupClauses("phone", phone, { countryField: "countryCode" }) }).lean();
     return !!user;
   }
 
   if (role === "RESTAURANT") {
-    const phoneOrFields = (field) => [
-      { [field]: { $in: candidates } },
-      ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
-    ];
     const restaurant = await FoodRestaurant.findOne({
       $or: [
-        ...phoneOrFields("ownerPhone"),
-        ...phoneOrFields("primaryContactNumber"),
-        ...phoneOrFields("ownerPhoneDigits"),
-        ...phoneOrFields("ownerPhoneLast10"),
+        ...phoneLookupClauses("ownerPhone", phone),
+        ...phoneLookupClauses("primaryContactNumber", phone),
+        ...phoneLookupClauses("ownerPhoneDigits", phone),
       ],
     }).lean();
     return restaurant && restaurant.status !== 'rejected';
@@ -198,10 +159,7 @@ export const checkPhoneAlreadyExists = async (phone, role) => {
 
   if (role === "DELIVERY_PARTNER") {
     const deliveryPartner = await FoodDeliveryPartner.findOne({
-      $or: [
-        { phone: { $in: candidates } },
-        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
-      ]
+      $or: phoneLookupClauses("phone", phone, { countryField: "countryCode" })
     }).lean();
     return deliveryPartner && deliveryPartner.status !== 'rejected';
   }
@@ -231,15 +189,9 @@ export const verifyUserOtpAndLogin = async (
   validatePhoneCountryAndLength(phone);
   let trimmedName = typeof name === "string" ? name.trim() : "";
   
-  const digits = String(phone).replace(/\D/g, "");
-  const last10 = digits.slice(-10);
-  const candidates = [phone, digits, last10].filter(Boolean);
-  
+  // Matched by country AND number (never by "the last 10 digits"), so a Polish and an Indian number cannot collide.
   const existingUser = await FoodUser.findOne({
-      $or: [
-        { phone: { $in: candidates } },
-        ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : [])
-      ]
+      $or: phoneLookupClauses("phone", phone, { countryField: "countryCode" })
   });
 
     // officeEmp fetch removed from top, will fetch below if role is EMPLOYEE
@@ -501,20 +453,11 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
 
   // Restaurants may store ownerPhone with country code or formatting, or normalized fields.
   // Match by exact phone, last-10 digits, suffix match, or normalized fields to avoid false "needsRegistration".
-  const digits = String(phone || "").replace(/\D/g, "");
-  const last10 = digits.slice(-10);
-  const phoneCandidates = [phone, digits, last10].filter(Boolean);
-  const phoneOrFields = (field) => [
-    { [field]: { $in: phoneCandidates } },
-    ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
-  ];
-
   const restaurant = await FoodRestaurant.findOne({
     $or: [
-      ...phoneOrFields("ownerPhone"),
-      ...phoneOrFields("primaryContactNumber"),
-      ...phoneOrFields("ownerPhoneDigits"),
-      ...phoneOrFields("ownerPhoneLast10"),
+      ...phoneLookupClauses("ownerPhone", phone),
+      ...phoneLookupClauses("primaryContactNumber", phone),
+      ...phoneLookupClauses("ownerPhoneDigits", phone),
     ],
   });
     const restaurantDoc = restaurant;
@@ -591,10 +534,6 @@ export const requestDeliveryOtp = async (phone) => {
   return shouldExposeOtp ? { otp } : {};
 };
 
-const normalizePhoneForDelivery = (phone) => {
-  const digits = String(phone || "").replace(/\D/g, "");
-  return digits.slice(-10) || null;
-};
 
 export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) => {
   validatePhoneCountryAndLength(phone);
@@ -603,16 +542,13 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
-  const normalized = normalizePhoneForDelivery(phone);
-  if (!normalized) {
+  if (!splitPhone(phone).digits) {
     return { needsRegistration: true, phone };
   }
 
+  // Matched by country AND number: a Polish 910959948 is not the Indian 8910959948.
   const deliveryPartner = await FoodDeliveryPartner.findOne({
-    $or: [
-      { phone: normalized },
-      { phone: { $regex: new RegExp(normalized + "$") } },
-    ],
+    $or: phoneLookupClauses("phone", phone, { countryField: "countryCode" }),
   });
 
   if (!deliveryPartner) {

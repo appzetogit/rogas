@@ -377,11 +377,13 @@ function NewDeliveryDashboard({ children }) {
     // Go back to the route screen so the driver can see their delivery tasks
     setCurrentScreen("route");
     
-    // Optimistic UI updates
-    setOrders(prev => prev.map(o => ({ ...o, status: "picked_up" })));
+    // Optimistic UI updates: only the vendor just collected from (the route can hold several vendors, e.g. a kitchen and a pantry shop)
+    const pickedVendor = selectedRouteStop?.vendorId ? String(selectedRouteStop.vendorId) : null;
+    const isPicked = (vendorId) => !pickedVendor || String(vendorId || '') === pickedVendor;
+    setOrders(prev => prev.map(o => (isPicked(o.vendorId) ? { ...o, status: "picked_up" } : o)));
     setStops(prev => prev.map(s => {
-      if (s.type === "pickup" || s.type === "P") return { ...s, status: "COMPLETED" };
-      if (s.type === "delivery" || s.type === "D") return { ...s, status: "READY" };
+      if ((s.type === "pickup" || s.type === "P") && isPicked(s.vendorId)) return { ...s, status: "COMPLETED" };
+      if ((s.type === "delivery" || s.type === "D") && isPicked(s.vendorId)) return { ...s, status: "READY" };
       return s;
     }));
     
@@ -555,7 +557,7 @@ function NewDeliveryDashboard({ children }) {
       case "pickup": {
         const collectsAll = activeOrder && !["picked_up", "out_for_delivery"].includes(activeOrder.status);
         const pickupOrder = collectsAll
-          ? { ...activeOrder, boxCount: routeMetadata?.totalMealBoxCount || activeOrder.boxCount, orderCount: routeMetadata?.stopsCount || activeOrder.orderCount }
+          ? { ...activeOrder, boxCount: selectedRouteStop?.boxCount || routeMetadata?.totalMealBoxCount || activeOrder.boxCount, orderCount: selectedRouteStop?.orderCount || routeMetadata?.stopsCount || activeOrder.orderCount }
           : activeOrder;
         return <PickupVerification
           order={pickupOrder}

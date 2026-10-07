@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { deliveryAPI } from "@food/api";
 import { setAuthData as storeAuthData } from "@food/utils/auth";
+import { splitPhone, formatPhone } from "@/shared/utils/phone";
 import { Trans, useTranslation } from "react-i18next";
 
 const COLORS = {
@@ -236,11 +237,12 @@ export default function DeliveryOTP() {
       if (needsRegistration) {
         localStorage.removeItem("deliveryAuthData");
         localStorage.setItem("deliveryNeedsRegistration", "true");
-        const digits = String(phone || "").replace(/\D/g, "");
+        // Keep the number whole with its own country code (a Polish +48 number has 9 digits, not 10).
+        const { local, countryCode } = splitPhone(phone);
         const details = {
           name: "",
-          phone: digits.slice(-10),
-          countryCode: "+91",
+          phone: local,
+          countryCode: countryCode || "+91",
         };
         localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
         setIsLoading(false);
@@ -412,12 +414,7 @@ export default function DeliveryOTP() {
 
   const getPhoneNumber = () => {
     if (!authData) return "";
-    const phone = authData.phone || "";
-    const cleaned = phone.replace(/\s/g, "");
-    if (cleaned.startsWith("+91") && cleaned.length > 3) {
-      return cleaned.slice(0, 3) + "-" + cleaned.slice(3);
-    }
-    return phone;
+    return formatPhone(authData.phone || "");
   };
 
   if (!authData) {
@@ -554,12 +551,12 @@ export default function DeliveryOTP() {
                     <button
                       onClick={() => {
                         const phone = authData?.phone;
-                        const digits = String(phone || "").replace(/\D/g, "");
+                        const { local, countryCode } = splitPhone(phone);
                         localStorage.setItem("deliveryNeedsRegistration", "true");
                         const details = {
                           name: "",
-                          phone: digits.slice(-10),
-                          countryCode: "+91",
+                          phone: local,
+                          countryCode: countryCode || "+91",
                         };
                         localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
                         navigate("/food/delivery/signup/details", { replace: true });

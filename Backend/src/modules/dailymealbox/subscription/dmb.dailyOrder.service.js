@@ -839,7 +839,7 @@ import { getSlotPriorityMap, listSlots, slotServesDay } from '../deliverySlot/de
 
 // cloud code
 import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
-import { localToday, addDays as addLocalDays } from '../../../utils/platformTime.js';
+import { localToday, localParts, addDays as addLocalDays } from '../../../utils/platformTime.js';
 import { applyCustomerOrderVisibility } from '../platform/visibility.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
@@ -1219,7 +1219,8 @@ export const checkAdminTimingWindow = async (slot) => {
         if (slotCfg.isEnabled === false) return { allowed: true }; // slot timing disabled → no restriction
 
         const now = new Date();
-        const curMinutes = now.getHours() * 60 + now.getMinutes();
+        const nowLocal = localParts(now); // slot windows are wall-clock times in the platform's time zone
+        const curMinutes = nowLocal.hour * 60 + nowLocal.minute;
         const start = hhmmToMinutes(slotCfg.startTime);
         const end = hhmmToMinutes(slotCfg.endTime);
 
