@@ -71,6 +71,7 @@ before(async () => {
     app.use('/v1/food/auth', (await import('../src/core/auth/auth.routes.js')).default);
     app.use('/v1/dmb/office', (await import('../src/modules/dailymealbox/office/routes/office.routes.js')).default);
     app.use('/v1/dmb/subscriptions', (await import('../src/modules/dailymealbox/subscription/subscription.routes.js')).default);
+    app.use('/v1/dmb/driver', (await import('../src/core/auth/auth.middleware.js')).authMiddleware, (await import('../src/modules/dailymealbox/tracking/driver.routes.js')).default);
     app.use('/v1/dmb/vendor', (await import('../src/modules/dailymealbox/vendor/vendor.routes.js')).default);
     app.use('/v1/dmb/payments', (await import('../src/modules/dailymealbox/payment/dmb.payment.routes.js')).default);
     app.use('/v1/payments', (await import('../src/modules/payments/payments.routes.js')).paymentsRouter);
@@ -415,4 +416,41 @@ test('a new phone number moves the employee\'s meals to that sign-in and never r
     assert.equal((await w.FoodUser.findById(employees.piotr.userId).lean()).phone, '48600100202', 'the old account keeps its own number');
     assert.equal(await w.DMBSubscription.countDocuments({ userId: other._id, source: 'office', status: 'active' }), 1, 'Piotr\'s dinner plan follows him');
     assert.equal(await w.DMBSubscription.countDocuments({ userId: employees.piotr.userId, source: 'office', status: 'active' }), 0);
+});
+
+test('delivery partners: an online driver is offered the office pickup; vendor can resend until a rider accepts', async () => {
+    const { logger } = await import('../src/utils/logger.js');
+    const lines = [];
+    const origInfo = logger.info;
+    logger.info = (m) => { lines.push(String(m)); };
+    try {
+        const driver = await w.FoodDeliveryPartner.create({ name: 'Rider', phone: '+48500111222', status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: ['dinner'] });
+        const tomorrow = time.storageDateStr(time.addDays(time.localToday(), 1));
+        const ready = await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
+        assert.equal(ready.status, 200, JSON.stringify(ready.body));
+        assert.ok(lines.some((l) => /\[PICKUP-OFFER\].*"drivers":1/.test(l)), `offer reached the driver: ${lines.filter((l) => /DRIVER-NOTIFY|PICKUP/.test(l)).join(' | ')}`);
+
+        const status = await call('GET', `/v1/dmb/vendor/daily-orders/dispatch-status?date=${tomorrow}`, { token: vendorToken });
+        assert.equal(status.status, 200, JSON.stringify(status.body));
+        const dinner = status.body.slots.find((s) => s.slot === 'dinner');
+        assert.equal(dinner.canResend, true);
+        assert.equal(dinner.driverAssigned, false);
+
+        lines.length = 0;
+        const resend = await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
+        assert.equal(resend.status, 200, JSON.stringify(resend.body));
+        assert.ok(lines.some((l) => /\[PICKUP-OFFER\].*\(resend\)/.test(l)));
+
+        const batch = await M.CollectionBatch.findOne({ vendorId: w.vendor._id, deliverySlot: 'dinner' });
+        const { signAccessToken } = await import('../src/core/auth/token.util.js');
+        const accept = await call('POST', '/v1/dmb/driver/accept-batch', { token: signAccessToken({ userId: String(driver._id), role: 'DELIVERY_PARTNER' }), body: { batchId: batch.batchId } });
+        assert.equal(accept.status, 200, JSON.stringify(accept.body));
+        const after = await call('GET', `/v1/dmb/vendor/daily-orders/dispatch-status?date=${tomorrow}`, { token: vendorToken });
+        const d2 = after.body.slots.find((s) => s.slot === 'dinner');
+        assert.equal(d2.driverAssigned, true);
+        assert.equal(d2.canResend, false);
+        assert.equal((await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } })).status, 409);
+    } finally {
+        logger.info = origInfo;
+    }
 });

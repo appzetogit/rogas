@@ -1171,6 +1171,8 @@ export const getVendorDailyOrders = async (vendorId, { date, slot } = {}) => {
         },
         // Company-paid (office) meal: the kitchen sees which company it goes to.
         office: o.subscriptionId?.source === 'office' ? { companyName: o.subscriptionId.companyName || '' } : null,
+        // Only whether a rider holds this order (the vendor's Resend button hides once one does).
+        dispatch: o.dispatch?.deliveryPartnerId ? { deliveryPartner: { _id: o.dispatch.deliveryPartnerId } } : null,
         meals: o.meals.map(m => ({
             name: m.name || 'No meal set',
             mealPlanName: m.mealPlanId?.name || null,
@@ -1389,6 +1391,13 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
             batch.boxCount = readyOrders.length;
             batch.orderIds = readyOrders.map(o => o._id);
             await batch.save();
+            // A rider already holds this pickup: orders that became ready later (e.g. an office order bought after the
+            // first request) join that rider instead of being offered to everybody again.
+            if (batch.driverId) {
+                await DMBDailyOrder.updateMany({ _id: { $in: readyOrders.map(o => o._id) }, 'dispatch.deliveryPartnerId': null }, { $set: { 'dispatch.deliveryPartnerId': batch.driverId } });
+                notifyDriverOfRouteUpdate(batch.driverId);
+                return;
+            }
         }
 
         // FIX: use the robust driver filter

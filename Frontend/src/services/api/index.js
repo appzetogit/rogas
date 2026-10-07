@@ -2094,6 +2094,8 @@ export const dmbVendorAPI = {
   updateDailyOrderStatus: (orderId, status) => restaurantClient.patch(`/dmb/vendor/daily-orders/${orderId}/status`, { status }),
   /** NEW: Mark all orders for a slot as ready */
   markAllDailyOrdersReady: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/mark-all-ready", { date, slot }),
+  /** Per slot: is a rider assigned, and can the request still be resent? */
+  getDispatchStatus: (date) => restaurantClient.get("/dmb/vendor/daily-orders/dispatch-status", { params: { date } }),
   resendBatch: (date, slot) => restaurantClient.post("/dmb/vendor/daily-orders/resend-batch", { date, slot }),
   /** New collection PIN for a batch (e.g. after the old one was locked by 3 wrong attempts). */
   regenerateBatchPin: (batchId) => restaurantClient.post("/dmb/vendor/daily-orders/regenerate-pin", { batchId }),

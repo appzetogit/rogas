@@ -1,6 +1,4 @@
 {
- "Payment successful! Subscriptions assigned for {{count}} employee._one": "Payment successful! Subscriptions assigned for {{count}} employee.",
- "Payment successful! Subscriptions assigned for {{count}} employee._other": "Payment successful! Subscriptions assigned for {{count}} employees.",
  "Please upload all {{count}} required documents to continue._one": "Please upload the required document to continue.",
  "Please upload all {{count}} required documents to continue._other": "Please upload all {{count}} required documents to continue.",
  "Select the scheduled daily delivery window for {{count}} employee._one": "Select the scheduled daily delivery window for {{count}} employee.",

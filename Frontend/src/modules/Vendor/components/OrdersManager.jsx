@@ -108,6 +108,21 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
     loadDailyOrders(activeDate);
   }, [activeDate]);
 
+  // Whether a rider holds each slot's pickup yet (drives the Resend button, which stays until one does).
+  const [dispatch, setDispatch] = useState({});
+  const loadDispatch = async () => {
+    try {
+      const dateParam = activeDate === 'tomorrow' ? new Date(Date.now() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const res = await dmbVendorAPI.getDispatchStatus(dateParam);
+      setDispatch(Object.fromEntries((res.data?.slots || []).map((x) => [x.slot, x])));
+    } catch { /* keep the last known state */ }
+  };
+  useEffect(() => {
+    loadDispatch();
+    const id = setInterval(loadDispatch, 20000);
+    return () => clearInterval(id);
+  }, [activeDate, dailyOrders]);
+
   useEffect(() => {
     const handleStatusUpdate = (e) => {
       const detail = e?.detail || {};
@@ -229,9 +244,11 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
       if (res.data?.success) {
         showToast(t("✅ Delivery partner requested for {{slotName}}!", { slotName: slotName(activeSlot) }));
         loadDailyOrders(activeDate);
+        loadDispatch();
       }
     } catch (err) {
       showToast(err.response?.data?.message || t("Failed to request delivery partner"));
+      loadDispatch();
     } finally {
       setIsRequestingDelivery(false);
     }
@@ -388,7 +405,7 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           )}
 
           {/* Resend: only while no delivery partner has accepted this slot's pickup */}
-          {pendingCount === 0 && filteredOrders.some((o) => o.status === 'ready' && !o.dispatch?.deliveryPartner) && (
+          {pendingCount === 0 && (dispatch[activeSlot] ? dispatch[activeSlot].canResend : filteredOrders.some((o) => o.status === 'ready' && !o.dispatch?.deliveryPartner)) && (
             <button
               onClick={handleRequestDeliveryPartner}
               disabled={isRequestingDelivery}

@@ -1,6 +1,6 @@
 import { getIO } from '../../../config/socket.js';
 import { logger } from '../../../utils/logger.js';
-import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
+import { sendNotificationToUser, createInboxNotifications } from '../../../core/notifications/notification.service.js';
 import { msg } from '../../i18n/i18n.service.js';
 
 /**
@@ -43,7 +43,22 @@ export const offerPickupToDrivers = async ({ driverIds, batch, vendor, payload, 
         for (const id of ids) io.to(roomOf(id)).emit('new_delivery_request', payload);
     }
 
-    const pushTargets = mode === 'resend' ? ids.filter((id) => !live.has(id)) : ids;
+    // Every offer (first request or a resend) is also pushed to every rider, so a rider with the app open in the background
+  // still gets a notification each time the vendor presses Resend.
+  const pushTargets = ids;
+
+  // And kept in the rider's notification list in the delivery app (a resend brings the same entry back as unread).
+  try {
+    const text = `${batch.boxCount} boxes to collect from ${vendor?.restaurantName || 'a vendor'} (${batch.deliverySlot}). Open the app to accept.`;
+    await createInboxNotifications({
+      notifications: ids.map((id) => ({
+        ownerType: 'DELIVERY_PARTNER', ownerId: id, title: mode === 'resend' ? 'Pickup request (reminder) 🍱' : 'New pickup request 🍱', message: text,
+        link: `/food/delivery?batch=${encodeURIComponent(batch.batchId)}`, category: 'pickup_request', metadata: { batchId: batch.batchId }
+      }))
+    });
+  } catch (err) {
+    logger.warn(`[PICKUP-OFFER] inbox entry failed: ${err.message}`);
+  }
     const data = {
         screen: 'pickup_request',
         event: 'new_delivery_request',

@@ -1,4 +1,6 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._one": "{{company}} hat Mahlzeiten für {{count}} Mitarbeiter bestellt, ab {{date}}. Öffnen Sie die Anbieter-App, um die Bestellungen zu sehen.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._other": "{{company}} hat Mahlzeiten für {{count}} Mitarbeiter bestellt, ab {{date}}. Öffnen Sie die Anbieter-App, um die Bestellungen zu sehen.",
  "{{driverName}} did not check in for their {{slotKey}} shift on {{date}}. Reassign the route if needed.": "{{driverName}} hat sich nicht für die {{slotKey}}-Schicht am {{date}} angemeldet. Weisen Sie die Route bei Bedarf neu zu.",
  "{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.": "{{driverName}} hat die {{slotKey}}-Schicht, die in etwa 2 Stunden am {{date}} beginnt, nicht bestätigt.",
  "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Ein neuer Kunde hat Ihren Menüplan abonniert. Öffnen Sie die Partner-App, um die Details zu sehen.",
@@ -12,6 +14,7 @@
  "DailyMealBox is closed on {{date}} ({{name}}). No orders will be placed for that day.": "DailyMealBox ist am {{date}} geschlossen ({{name}}). Für diesen Tag gehen keine Bestellungen ein.",
  "Driver has not confirmed an upcoming shift": "Fahrer hat eine bevorstehende Schicht nicht bestätigt",
  "Driver no-show": "Fahrer nicht erschienen",
+ "New office order 🏢": "Neue Büro-Bestellung 🏢",
  "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
  "No DailyMealBox delivery on {{date}} ({{name}}). Your subscription has been extended by one delivery day, so you do not lose a paid meal.": "Am {{date}} gibt es keine DailyMealBox-Lieferung ({{name}}). Wir haben dein Abo um einen Liefertag verlängert, damit dir keine bezahlte Mahlzeit verloren geht.",
  "No delivery on {{date}}": "Keine Lieferung am {{date}}",

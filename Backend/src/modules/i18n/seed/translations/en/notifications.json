@@ -1,4 +1,6 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._one": "{{company}} ordered meals for {{count}} employee, starting {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._other": "{{company}} ordered meals for {{count}} employees, starting {{date}}.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} box ready. Collection PIN: {{pin}}. Tap to navigate.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate.",
  "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._one": "{{count}} box to collect from {{vendor}} ({{slot}}). Open the app to accept.",

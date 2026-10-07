@@ -1335,6 +1335,36 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
     }
 });
 
+// ─── Dispatch status per slot: is a rider assigned, and may the vendor still resend the request? ───────────
+router.get('/daily-orders/dispatch-status', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const vendorId = req.user.userId || req.user._id;
+        const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+        targetDate.setUTCHours(0, 0, 0, 0);
+        const { DMBDailyOrder } = await import('../subscription/dmb.dailyOrder.model.js');
+        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const orders = await DMBDailyOrder.find({ vendorId, deliveryDate: targetDate, status: { $nin: ['skipped', 'failed'] } })
+            .select('deliverySlot status dispatch.deliveryPartnerId').lean();
+        const batches = await CollectionBatch.find({ vendorId, deliveryDate: targetDate, status: { $nin: ['failed'] } }).select('deliverySlot status driverId batchId').lean();
+        const slots = {};
+        for (const o of orders) {
+            const s = (slots[o.deliverySlot] ||= { slot: o.deliverySlot, total: 0, pending: 0, ready: 0, assignedOrders: 0 });
+            s.total++;
+            if (['scheduled', 'preparing'].includes(o.status)) s.pending++;
+            if (o.status === 'ready') s.ready++;
+            if (o.dispatch?.deliveryPartnerId) s.assignedOrders++;
+        }
+        const out = Object.values(slots).map((s) => {
+            const batch = batches.find((b) => b.deliverySlot === s.slot && ['pending', 'driver_assigned', 'driver_en_route', 'collected'].includes(b.status));
+            const driverAssigned = Boolean(batch?.driverId) || (s.ready > 0 && s.assignedOrders > 0);
+            return { ...s, batchId: batch?.batchId || null, batchStatus: batch?.status || null, driverAssigned, canResend: s.pending === 0 && s.ready > 0 && !driverAssigned };
+        });
+        res.json({ success: true, slots: out });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+});
+
 // ─── NEW: Get Assigned Driver Location for Vendor ──────────────────────
 router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {

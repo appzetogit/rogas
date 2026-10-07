@@ -1,4 +1,8 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._few": "{{company}} заказала блюда для {{count}} сотрудников, начиная с {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._many": "{{company}} заказала блюда для {{count}} сотрудников, начиная с {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._one": "{{company}} заказала блюда для {{count}} сотрудника, начиная с {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._other": "{{company}} заказала блюда для {{count}} сотрудника, начиная с {{date}}.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._few": "{{count}} бокса готовы. PIN получения: {{pin}}. Нажмите, чтобы начать навигацию.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._many": "{{count}} боксов готовы. PIN получения: {{pin}}. Нажмите, чтобы начать навигацию.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} бокс готов. PIN получения: {{pin}}. Нажмите, чтобы начать навигацию.",
@@ -45,6 +49,7 @@
  "Kitchen photos need another look": "Фото кухни нужно переснять",
  "Low stock: {{meal}}": "Заканчивается: {{meal}}",
  "Menu confirmed for {{date}}": "Меню на {{date}} подтверждено",
+ "New office order 🏢": "Новый офисный заказ 🏢",
  "New pickup request 🍱": "Новый запрос на забор 🍱",
  "New single-meal order": "Новый разовый заказ",
  "New Subscriber! 🎉": "Новый подписчик! 🎉",

@@ -1,0 +1,4 @@
+{
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._one": "{{company}} ordered meals for {{count}} employee, starting {{date}}. Open the vendor app to see the orders.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._other": "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders."
+}

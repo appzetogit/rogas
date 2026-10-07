@@ -1,4 +1,8 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._few": "{{company}} zamówiła posiłki dla {{count}} pracowników, od {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._many": "{{company}} zamówiła posiłki dla {{count}} pracowników, od {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._one": "{{company}} zamówiła posiłki dla {{count}} pracownika, od {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._other": "{{company}} zamówiła posiłki dla {{count}} pracownika, od {{date}}.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._few": "{{count}} pudełka gotowe. PIN odbioru: {{pin}}. Dotknij, aby nawigować.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._many": "{{count}} pudełek gotowych. PIN odbioru: {{pin}}. Dotknij, aby nawigować.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} pudełko gotowe. PIN odbioru: {{pin}}. Dotknij, aby nawigować.",
@@ -45,6 +49,7 @@
  "Kitchen photos need another look": "Zdjęcia kuchni wymagają poprawy",
  "Low stock: {{meal}}": "Niski stan: {{meal}}",
  "Menu confirmed for {{date}}": "Menu potwierdzone na {{date}}",
+ "New office order 🏢": "Nowe zamówienie biurowe 🏢",
  "New pickup request 🍱": "Nowa prośba o odbiór 🍱",
  "New single-meal order": "Nowe zamówienie pojedynczego posiłku",
  "New Subscriber! 🎉": "Nowy subskrybent! 🎉",

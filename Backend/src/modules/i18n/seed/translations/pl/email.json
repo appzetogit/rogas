@@ -1,4 +1,8 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._few": "{{company}} zamówiła posiłki dla {{count}} pracowników, od {{date}}. Otwórz aplikację dostawcy, aby zobaczyć zamówienia.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._many": "{{company}} zamówiła posiłki dla {{count}} pracowników, od {{date}}. Otwórz aplikację dostawcy, aby zobaczyć zamówienia.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._one": "{{company}} zamówiła posiłki dla {{count}} pracownika, od {{date}}. Otwórz aplikację dostawcy, aby zobaczyć zamówienia.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}. Open the vendor app to see the orders._other": "{{company}} zamówiła posiłki dla {{count}} pracownika, od {{date}}. Otwórz aplikację dostawcy, aby zobaczyć zamówienia.",
  "{{driverName}} did not check in for their {{slotKey}} shift on {{date}}. Reassign the route if needed.": "{{driverName}} nie zameldował się na swoją zmianę {{slotKey}} w dniu {{date}}. W razie potrzeby przydziel trasę ponownie.",
  "{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.": "{{driverName}} nie potwierdził swojej zmiany {{slotKey}} rozpoczynającej się za około 2 godziny, w dniu {{date}}.",
  "A new customer subscribed to your meal plan. Open the vendor app to see the details.": "Nowy klient zasubskrybował Twój plan posiłków. Otwórz aplikację dla dostawców, aby zobaczyć szczegóły.",
@@ -12,6 +16,7 @@
  "DailyMealBox is closed on {{date}} ({{name}}). No orders will be placed for that day.": "DailyMealBox jest zamknięty {{date}} ({{name}}). Tego dnia nie będzie zamówień.",
  "Driver has not confirmed an upcoming shift": "Kierowca nie potwierdził nadchodzącej zmiany",
  "Driver no-show": "Nieobecność kierowcy",
+ "New office order 🏢": "Nowe zamówienie biurowe 🏢",
  "New Subscriber! 🎉": "Nowy subskrybent! 🎉",
  "No DailyMealBox delivery on {{date}} ({{name}}). Your subscription has been extended by one delivery day, so you do not lose a paid meal.": "Brak dostawy DailyMealBox {{date}} ({{name}}). Przedłużyliśmy Twoją subskrypcję o jeden dzień dostawy, więc nie tracisz opłaconego posiłku.",
  "No delivery on {{date}}": "Brak dostawy {{date}}",

@@ -1,4 +1,6 @@
 {
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._one": "{{company}} hat Mahlzeiten für {{count}} Mitarbeiter bestellt, ab {{date}}.",
+ "{{company}} ordered meals for {{count}} employees, starting {{date}}._other": "{{company}} hat Mahlzeiten für {{count}} Mitarbeiter bestellt, ab {{date}}.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._one": "{{count}} Box bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
  "{{count}} boxes ready. Collection PIN: {{pin}}. Tap to navigate._other": "{{count}} Boxen bereit. Abhol-PIN: {{pin}}. Tippen zum Navigieren.",
  "{{count}} boxes to collect from {{vendor}} ({{slot}}). Open the app to accept._one": "{{count}} Box zur Abholung bei {{vendor}} ({{slot}}). Öffne die App, um anzunehmen.",
@@ -39,6 +41,7 @@
  "Kitchen photos need another look": "Küchenfotos müssen nachgebessert werden",
  "Low stock: {{meal}}": "Geringer Bestand: {{meal}}",
  "Menu confirmed for {{date}}": "Menü für {{date}} bestätigt",
+ "New office order 🏢": "Neue Büro-Bestellung 🏢",
  "New pickup request 🍱": "Neue Abholanfrage 🍱",
  "New single-meal order": "Neue Einzelbestellung",
  "New Subscriber! 🎉": "Neuer Abonnent! 🎉",
