@@ -32,7 +32,10 @@ export const authMiddleware = (req, res, next) => {
                     return sendError(res, 401, 'User account is deactivated');
                 }
                 next();
-            }).catch(() => sendError(res, 401, 'Authentication failed'));
+            }, () => {
+                // A database hiccup is not "signed out": 401 makes the app wipe the saved session, 503 just retries.
+                sendError(res, 503, 'Service temporarily unavailable. Please try again.');
+            });
             return;
         }
         return next();
