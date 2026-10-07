@@ -189,8 +189,10 @@ function createModuleClient(moduleName) {
       } catch (refreshErr) {
         // Only a definite "this refresh token is not valid" answer from the server ends the session. A network error,
         // timeout or 5xx must NOT sign anybody out: keep the tokens, fail this one request, the next one retries.
+        // Only the server's own "this refresh token is not valid" (401) ends the session. A 403/400 can come from a proxy,
+        // firewall or rate limit in front of the API and must not sign anybody out.
         const status = refreshErr?.response?.status;
-        if (status === 400 || status === 401 || status === 403) {
+        if (status === 401) {
           onRefreshFailed();
         } else {
           subscribers.forEach((cb) => cb(null));
