@@ -1328,7 +1328,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot, 
         // customer in ANOTHER zone are placed (and given their hub transfer) by that customer's zone.
         const slotShiftKey = slotDef ? shiftKeyOf(slotDef) : String(slot);
         if (zoneId) await splitCell({ zoneId, date: targetDate, slotKey: slotShiftKey });
-        for (const destZone of new Set(readyMeals.map((o) => String(o.zoneId || '')).filter((z) => z && z !== String(zoneId)))) {
+        for (const destZone of new Set([...readyMeals.map((o) => String(o.zoneId || '')), ...readyPantry.map((u) => String(u.order.zoneId || ''))].filter((z) => z && z !== String(zoneId)))) {
             await splitCell({ zoneId: destZone, date: targetDate, slotKey: slotShiftKey });
         }
 
@@ -1342,7 +1342,7 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot, 
 
         // A hub item is collected by the source driver of its transfer; the zone driver only meets it again at the hub.
         const { transfersByUnit } = await import('../delivery/hub.service.js');
-        const hubTransfers = await transfersByUnit(readyMeals.map((o) => String(o._id)));
+        const hubTransfers = await transfersByUnit([...readyMeals.map((o) => String(o._id)), ...readyPantry.map((u) => String(u.delivery._id))]);
         const groups = new Map(); // driverId | '' -> { ids, meals, bags }
         const put = (driverId, id, kind, item) => {
             const g = groups.get(driverId) || { ids: [], meals: [], bags: [] };
@@ -1353,7 +1353,10 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot, 
             const t = hubTransfers.get(String(o._id));
             put(t ? String(t.sourceDriverId || '') : (driverOfMeal.get(String(o._id)) || ''), o._id, 'meals', o);
         }
-        for (const u of readyPantry) put(bagDrivers.get(String(u.delivery._id)) || '', u.delivery._id, 'bags', u);
+        for (const u of readyPantry) {
+            const t = hubTransfers.get(String(u.delivery._id));
+            put(t ? String(t.sourceDriverId || '') : (bagDrivers.get(String(u.delivery._id)) || ''), u.delivery._id, 'bags', u);
+        }
 
         const { visibilityFor, driverCustomerView } = await import('../platform/visibility.js');
         const driverVis = await visibilityFor('driver', { zoneId });

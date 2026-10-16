@@ -299,11 +299,11 @@ export const settleMealDelivery = async ({ orderId, driverId, method = '' }) => 
 
 /** The same for a pantry bag (identified by its delivery id), paid by the zone of its shop. */
 export const settlePantryDelivery = async ({ deliveryId, driverId }) => {
-    const po = await PantryOrder.findOne({ 'dailyDeliveries._id': deliveryId }).select('vendorId dailyDeliveries').lean();
+    const po = await PantryOrder.findOne({ 'dailyDeliveries._id': deliveryId }).select('vendorId zoneId dailyDeliveries').lean();
     const dd = po?.dailyDeliveries.find((x) => String(x._id) === String(deliveryId));
     if (!dd) throw new EarningsError('Delivery not found', 'NOT_FOUND', 404);
     if (dd.paymentConfirmed) throw new EarningsError('Payment already confirmed for this order', 'ALREADY_CONFIRMED');
-    const zoneId = (await FoodRestaurant.findById(po.vendorId).select('zoneId').lean())?.zoneId || null;
+    const zoneId = po.zoneId || (await FoodRestaurant.findById(po.vendorId).select('zoneId').lean())?.zoneId || null;
     const pay = await previewDeliveryEarning({ zoneId, slotKey: dd.slot, date: dd.date });
     if (!pay) {
         await alertRateMissing('PantryOrder', deliveryId, zoneId);

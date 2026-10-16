@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { DMBHubTransfer } from './hub.models.js';
 import { DMBDailyOrder } from '../subscription/dmb.dailyOrder.model.js';
+import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { DeliverySlot } from '../deliverySlot/deliverySlot.model.js';
 import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
@@ -119,6 +120,38 @@ const alertOnce = (args) => raiseAdminAlert({ link: '/admin/food/delivery-partne
 
 const itemsOf = (order) => (order.meals || []).map((m) => ({ description: m.name || 'Meal', quantity: m.quantity || 1 }));
 
+/** State of the carried items (meals and pantry bags) by id: { status, orderId, slot }. */
+const unitStates = async (transfers) => {
+    const out = new Map();
+    const mealIds = transfers.filter((t) => t.unitKind !== 'pantry').map((t) => t.unitId);
+    const bagIds = transfers.filter((t) => t.unitKind === 'pantry').map((t) => t.unitId);
+    if (mealIds.length) for (const o of await DMBDailyOrder.find({ _id: { $in: mealIds } }).select('status orderId deliverySlot').lean()) out.set(String(o._id), { status: o.status, orderId: o.orderId, slot: o.deliverySlot });
+    if (bagIds.length) {
+        const wanted = new Set(bagIds.map(String));
+        for (const po of await PantryOrder.find({ 'dailyDeliveries._id': { $in: bagIds } }).select('orderId dailyDeliveries._id dailyDeliveries.status dailyDeliveries.slot').lean()) {
+            for (const dd of po.dailyDeliveries) if (wanted.has(String(dd._id))) out.set(String(dd._id), { status: dd.status, orderId: po.orderId, slot: dd.slot });
+        }
+    }
+    return out;
+};
+
+/** Sets status / driver / pickup time on items of one kind. */
+const setUnits = async (kind, ids, { status, driverId, pickedUpAt }) => {
+    if (!ids.length) return;
+    if (kind === 'pantry') {
+        const $set = {};
+        if (status) $set['dailyDeliveries.$[d].status'] = status;
+        if (driverId) $set['dailyDeliveries.$[d].driverId'] = oid(driverId);
+        await PantryOrder.updateMany({ 'dailyDeliveries._id': { $in: ids } }, { $set }, { arrayFilters: [{ 'd._id': { $in: ids } }] });
+        return;
+    }
+    const $set = {};
+    if (status) $set.status = status;
+    if (driverId) $set['dispatch.deliveryPartnerId'] = oid(driverId);
+    if (pickedUpAt) $set.pickedUpAt = pickedUpAt;
+    await DMBDailyOrder.updateMany({ _id: { $in: ids } }, { $set });
+};
+
 /** The source-zone driver with the fewest transfers that day: the one who carries the next cross-zone item. */
 const pickSourceDriver = async ({ sourceZoneId, date, slotKey }) => {
     const accepted = await acceptedDriversFor({ zoneId: sourceZoneId, date, slotKey });
@@ -141,15 +174,22 @@ export const createTransfersForCell = async ({ zoneId, date, slotKey, units }) =
     const out = { created: 0, blocked: [] };
     if (!(await crossZoneSettings(zoneId)).enabled) return out; // the switch is off here: vendors keep delivering the way they did
     const day = new Date(storageDateStr(date) + 'T00:00:00.000Z');
-    const open = units.filter((u) => u.kind === 'meal' && ['scheduled', 'preparing', 'ready'].includes(u.status));
+    const open = units.filter((u) => ['scheduled', 'preparing', 'ready'].includes(u.status));
     if (!open.length) return out;
     const vendors = new Map((await FoodRestaurant.find({ _id: { $in: [...new Set(open.map((u) => u.vendorId))] } }).select('zoneId location restaurantName').lean()).map((v) => [String(v._id), v]));
     const cross = open.filter((u) => vendors.get(u.vendorId)?.zoneId && String(vendors.get(u.vendorId).zoneId) !== String(zoneId));
     if (!cross.length) return out;
-    const existing = new Set((await DMBHubTransfer.find({ unitKind: 'meal', unitId: { $in: cross.map((u) => oid(u.id)) } }).select('unitId').lean()).map((t) => String(t.unitId)));
+    const existing = new Set((await DMBHubTransfer.find({ unitId: { $in: cross.map((u) => oid(u.id)) } }).select('unitId').lean()).map((t) => String(t.unitId)));
     const ops = await hubSettings(zoneId);
-    const dropped = (await DMBDailyOrder.find({ _id: { $in: cross.map((u) => oid(u.id)) } }).select('meals dispatch').lean());
-    const orderById = new Map(dropped.map((o) => [String(o._id), o]));
+    const crossMeals = cross.filter((u) => u.kind === 'meal').map((u) => oid(u.id));
+    const crossBags = cross.filter((u) => u.kind === 'pantry').map((u) => oid(u.id));
+    const itemsById = new Map();
+    if (crossMeals.length) for (const o of await DMBDailyOrder.find({ _id: { $in: crossMeals } }).select('meals').lean()) itemsById.set(String(o._id), itemsOf(o));
+    if (crossBags.length) {
+        for (const po of await PantryOrder.find({ 'dailyDeliveries._id': { $in: crossBags } }).select('items dailyDeliveries._id').lean()) {
+            for (const dd of po.dailyDeliveries) itemsById.set(String(dd._id), (po.items || []).map((i) => ({ description: i.title || 'Item', quantity: i.quantity || 1 })));
+        }
+    }
     for (const u of cross) {
         if (existing.has(u.id)) continue;
         const vendor = vendors.get(u.vendorId);
@@ -165,15 +205,15 @@ export const createTransfersForCell = async ({ zoneId, date, slotKey, units }) =
         const pin = newPin();
         try {
             await DMBHubTransfer.create({
-                _id, unitKind: 'meal', unitId: oid(u.id), hubVendorId: hub._id, sourceVendorId: vendor._id, sourceZoneId, destZoneId: oid(zoneId), date: day, slotKey,
-                sourceDriverId, zoneDriverId: orderById.get(u.id)?.dispatch?.deliveryPartnerId || null, items: itemsOf(orderById.get(u.id) || {}),
+                _id, unitKind: u.kind, unitId: oid(u.id), hubVendorId: hub._id, sourceVendorId: vendor._id, sourceZoneId, destZoneId: oid(zoneId), date: day, slotKey,
+                sourceDriverId, zoneDriverId: u.driverId ? oid(u.driverId) : null, items: itemsById.get(u.id) || [],
                 dropPinHash: pinHash(_id, pin), dropPinEnc: encryptField(pin), status: 'pending_drop'
             });
         } catch (err) {
             if (err?.code === 11000) continue; // another split created it first
             throw err;
         }
-        await DMBDailyOrder.updateOne({ _id: u.id }, { $set: { hasCrossZone: true } });
+        if (u.kind === 'meal') await DMBDailyOrder.updateOne({ _id: u.id }, { $set: { hasCrossZone: true } });
         out.created += 1;
     }
     return out;
@@ -181,26 +221,26 @@ export const createTransfersForCell = async ({ zoneId, date, slotKey, units }) =
 
 /** After the customer-zone cell has placed its items on drivers: tell every open transfer who the zone driver is. */
 export const syncZoneDrivers = async (units) => {
-    for (const u of units.filter((x) => x.kind === 'meal' && x.driverId)) {
-        await DMBHubTransfer.updateOne({ unitKind: 'meal', unitId: oid(u.id), status: { $in: ['pending_drop', 'holding'] }, zoneDriverId: { $ne: oid(u.driverId) } }, { $set: { zoneDriverId: oid(u.driverId) } });
+    for (const u of units.filter((x) => x.driverId)) {
+        await DMBHubTransfer.updateOne({ unitKind: u.kind, unitId: oid(u.id), status: { $in: ['pending_drop', 'holding'] }, zoneDriverId: { $ne: oid(u.driverId) } }, { $set: { zoneDriverId: oid(u.driverId) } });
     }
 };
 
 /** The units of a vendor's pickup that must go to a hub, by unit id. */
 export const transfersByUnit = async (unitIds) => {
     if (!unitIds.length) return new Map();
-    const rows = await DMBHubTransfer.find({ unitKind: 'meal', unitId: { $in: unitIds.map(oid) }, status: { $in: ['pending_drop', 'holding'] } }).lean();
+    const rows = await DMBHubTransfer.find({ unitId: { $in: unitIds.map(oid) }, status: { $in: ['pending_drop', 'holding'] } }).lean();
     return new Map(rows.map((t) => [String(t.unitId), t]));
 };
 
 /** The source driver collected the vendor's batch: its hub items are now in transit, and PIN 1 starts to live. */
 export const markCollectedForHub = async ({ unitIds, driverId, now = new Date() }) => {
-    const transfers = await DMBHubTransfer.find({ unitKind: 'meal', unitId: { $in: unitIds.map(oid) }, status: 'pending_drop' }).lean();
+    const transfers = await DMBHubTransfer.find({ unitId: { $in: unitIds.map(oid) }, status: 'pending_drop' }).lean();
     if (!transfers.length) return [];
     const ops = await hubSettings(transfers[0].sourceZoneId);
     const expires = new Date(now.getTime() + Number(ops.dropPinHours) * 3_600_000);
     await DMBHubTransfer.updateMany({ _id: { $in: transfers.map((t) => t._id) } }, { $set: { sourceDriverId: oid(driverId), dropPinExpiresAt: expires } });
-    await DMBDailyOrder.updateMany({ _id: { $in: transfers.map((t) => t.unitId) } }, { $set: { status: 'hub_transit', pickedUpAt: now } });
+    for (const kind of ['meal', 'pantry']) await setUnits(kind, transfers.filter((t) => t.unitKind === kind).map((t) => t.unitId), { status: 'hub_transit', pickedUpAt: now });
     return transfers.map((t) => String(t.unitId));
 };
 
@@ -227,7 +267,7 @@ export const dropAtHub = async ({ transferId, driverId, pin, now = new Date() })
     if (!t) throw new HubError('Transfer not found', 'NOT_FOUND', 404);
     if (!t.sourceDriverId || String(t.sourceDriverId) !== String(driverId)) throw new HubError('This hand-over is not yours', 'NOT_YOURS', 403);
     if (t.status !== 'pending_drop') throw new HubError(`This item is already ${t.status.replace('_', ' ')}`, 'WRONG_STATE', 409);
-    const unit = await DMBDailyOrder.findById(t.unitId).select('status').lean();
+    const unit = (await unitStates([t])).get(String(t.unitId));
     if (!unit || unit.status !== 'hub_transit') throw new HubError('Collect the item at the vendor first', 'NOT_COLLECTED', 409);
     if (t.dropAttempts >= MAX_PIN_ATTEMPTS) throw new HubError('Too many wrong PINs. Ask the hub to have a new PIN generated.', 'PIN_LOCKED', 423);
     if (t.dropPinExpiresAt && t.dropPinExpiresAt <= now) throw new HubError('This PIN has expired. Ask the hub to have a new PIN generated.', 'PIN_EXPIRED', 410);
@@ -303,10 +343,10 @@ export const pickupAtHub = async ({ transferId, driverId, pin, now = new Date() 
     if (!claimed) throw new HubError('You already collected this item', 'WRONG_STATE', 409);
 
     // The item is now carried by the zone driver: a collected batch makes it part of their normal route and delivery.
-    const unit = await DMBDailyOrder.findById(t.unitId).select('deliverySlot deliveryDate').lean();
-    await DMBDailyOrder.updateOne({ _id: t.unitId }, { $set: { status: 'out_for_delivery', 'dispatch.deliveryPartnerId': oid(driverId), pickedUpAt: now } });
+    const unit = (await unitStates([t])).get(String(t.unitId));
+    await setUnits(t.unitKind, [t.unitId], { status: 'out_for_delivery', driverId, pickedUpAt: now });
     const day = new Date(storageDateStr(t.date) + 'T00:00:00.000Z');
-    const slot = unit?.deliverySlot || t.slotKey;
+    const slot = unit?.slot || t.slotKey;
     let batch = await CollectionBatch.findOne({ vendorId: t.hubVendorId, driverId: oid(driverId), deliveryDate: day, deliverySlot: slot, status: 'collected' });
     if (batch) {
         batch.orderIds = [...new Set([...batch.orderIds.map(String), String(t.unitId)])];
@@ -331,7 +371,7 @@ export const hubBoard = async ({ hubVendorId, now = new Date() }) => {
         DMBHubTransfer.countDocuments({ hubVendorId: oid(hubVendorId), status: 'picked_up', pickupConfirmedAt: { $gte: new Date(now.getTime() - 24 * 3_600_000) } })
     ]);
     const drivers = new Map((await FoodDeliveryPartner.find({ _id: { $in: active.flatMap((t) => [t.sourceDriverId, t.zoneDriverId]).filter(Boolean) } }).select('name phone').lean()).map((d) => [String(d._id), d]));
-    const units = new Map((await DMBDailyOrder.find({ _id: { $in: active.map((t) => t.unitId) } }).select('status orderId').lean()).map((o) => [String(o._id), o]));
+    const units = await unitStates(active);
     const sources = new Map((await FoodRestaurant.find({ _id: { $in: active.map((t) => t.sourceVendorId) } }).select('restaurantName').lean()).map((v) => [String(v._id), v.restaurantName]));
     const card = (t) => ({
         transferId: t._id, orderId: units.get(String(t.unitId))?.orderId || '', items: t.items, from: sources.get(String(t.sourceVendorId)) || '', date: t.date, slotKey: t.slotKey,
@@ -353,7 +393,7 @@ export const driverHubTasks = async ({ driverId, now = new Date() }) => {
     }).sort({ date: 1 }).lean();
     if (!rows.length) return [];
     const hubs = new Map((await FoodRestaurant.find({ _id: { $in: rows.map((t) => t.hubVendorId) } }).select('restaurantName addressLine1 location phone hubOperatorName hubActiveHours').lean()).map((h) => [String(h._id), h]));
-    const units = new Map((await DMBDailyOrder.find({ _id: { $in: rows.map((t) => t.unitId) } }).select('status orderId').lean()).map((o) => [String(o._id), o]));
+    const units = await unitStates(rows);
     const tasks = [];
     for (const t of rows) {
         const hub = hubs.get(String(t.hubVendorId));

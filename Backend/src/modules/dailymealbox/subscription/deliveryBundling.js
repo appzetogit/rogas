@@ -39,6 +39,14 @@ export const coveredCrossZoneKeys = async ({ userId, dates, excludeSubscriptionI
         if (o.status === 'pending_payment' && Date.now() - new Date(o.createdAt).getTime() > ABANDONED_CHECKOUT_MS) continue;
         keys.add(deliveryKey(o.deliveryDate, o.deliverySlot));
     }
+    // Pantry bags that already came through a hub paid it for their slot.
+    const { PantryOrder } = await import('../../food/restaurant/models/pantryOrder.model.js');
+    const first = new Date(Math.min(...days));
+    const last = addDays(new Date(Math.max(...days)), 1);
+    for (const po of await PantryOrder.find({ userId, crossZone: true, createdAt: { $lt: before }, status: { $in: ['paid', 'pending_payment'] }, 'dailyDeliveries.date': { $gte: first, $lt: last } }).select('dailyDeliveries.date dailyDeliveries.slot status createdAt').lean()) {
+        if (po.status === 'pending_payment' && Date.now() - new Date(po.createdAt).getTime() > ABANDONED_CHECKOUT_MS) continue;
+        for (const dd of po.dailyDeliveries) if (dd.date >= first && dd.date < last) keys.add(deliveryKey(dd.date, dd.slot));
+    }
     for (const sub of subs) {
         if (new Date(sub.feeSeniorityAt || sub.createdAt) >= before) continue;
         if (sub.status === 'pending_payment' && Date.now() - new Date(sub.createdAt).getTime() > ABANDONED_CHECKOUT_MS) continue;

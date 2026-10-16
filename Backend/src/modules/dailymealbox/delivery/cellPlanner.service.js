@@ -46,9 +46,12 @@ export const cellUnits = async ({ zoneId, date, slotKey }) => {
         FoodRestaurant.find({ zoneId }).select('_id').lean()
     ]);
     const next = addDays(d, 1);
-    const pantry = vendors.length
-        ? await PantryOrder.find({ status: 'paid', vendorId: { $in: vendors.map((v) => v._id) }, dailyDeliveries: { $elemMatch: { date: { $gte: d, $lt: next }, slot: { $in: keys } } } }).lean()
-        : [];
+    // A bag belongs to the cell of the CUSTOMER's zone; orders from before zones were stored fall back to the shop's zone.
+    const pantry = await PantryOrder.find({
+        status: 'paid',
+        $or: [{ zoneId }, { zoneId: null, vendorId: { $in: vendors.map((v) => v._id) } }],
+        dailyDeliveries: { $elemMatch: { date: { $gte: d, $lt: next }, slot: { $in: keys } } }
+    }).lean();
 
     const units = [];
     for (const o of orders) {

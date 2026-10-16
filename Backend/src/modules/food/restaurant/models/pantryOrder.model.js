@@ -67,8 +67,14 @@ const pantryOrderSchema = new mongoose.Schema(
             foodVatPercent: { type: Number, default: 0 },
             foodVatAmount: { type: Number, default: 0 },
             platformFee: { type: Number, default: 0 },
+            /** Flat, once per slot: bags that come from another sub-zone of the city through its hub. */
+            crossZoneSurcharge: { type: Number, default: 0 },
             total: { type: Number, required: true }
         },
+        /** The customer's sub-zone (where the bags are delivered). Older orders have none: the shop's zone applies. */
+        zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null, index: true },
+        /** The shop is in another sub-zone than the customer: bags go through a hub. */
+        crossZone: { type: Boolean, default: false },
         status: {
             type: String,
             enum: ['pending_payment', 'paid', 'cancelled'],

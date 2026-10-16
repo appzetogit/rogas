@@ -617,7 +617,19 @@ router.get('/:vendorId/menu', async (req, res) => {
 // ─── PUBLIC: Get All Pantry Items ──────────────────────────────────────────
 router.get('/pantry-items/all', async (req, res) => {
     try {
-        const pantryVendors = await FoodRestaurant.find({ vendorType: 'pantry_shop', status: 'approved' }).select('_id');
+        let pantryVendors = await FoodRestaurant.find({ vendorType: 'pantry_shop', status: 'approved' }).select('_id zoneId');
+        // With the customer's sub-zone given: shops of that sub-zone, plus those of the other sub-zones of the SAME city when its hub can carry them.
+        const customerZone = String(req.query.zoneId || '');
+        const crossIds = new Set();
+        if (customerZone) {
+            const { crossZoneReach } = await import('../delivery/hub.service.js');
+            const reach = await crossZoneReach(customerZone);
+            pantryVendors = pantryVendors.filter((v) => {
+                if (String(v.zoneId || '') === customerZone) return true;
+                if (reach.available && v.zoneId && reach.zoneIds.includes(String(v.zoneId))) { crossIds.add(String(v._id)); return true; }
+                return false;
+            });
+        }
         const vendorIds = pantryVendors.map(v => v._id);
 
         const foods = await FoodItem.find({ 
@@ -639,6 +651,7 @@ router.get('/pantry-items/all', async (req, res) => {
             description: food.description,
             categoryId: food.categoryId,
             categoryName: food.categoryName,
+            crossZone: crossIds.has(String(food.restaurantId?._id || food.restaurantId)),
         }));
 
         res.json({ success: true, items });

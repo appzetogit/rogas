@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
+import { useAddresses } from "./amendment/addresses";
 
 export function PantryItemsList() {
   const { t } = useTranslation("customer");
@@ -16,11 +17,14 @@ export function PantryItemsList() {
   const { cart, addItem, removeItem, getItemQuantity, cartTotal, totalItems } = usePantryCart();
   const { money } = useMoney({ vendorId: cart?.vendorId });
   const navigate = useNavigate();
+  const { addresses, loading: addressesLoading } = useAddresses();
+  const zoneId = (addresses.find((a) => a.isDefault) || addresses[0])?.zoneId || "";
 
   useEffect(() => {
+    if (addressesLoading) return;
     const fetchItems = async () => {
       try {
-        const res = await dmbCustomerAPI.getAllPantryItems();
+        const res = await dmbCustomerAPI.getAllPantryItems(zoneId);
         if (res.data?.success) {
           // Only show items that are available
           setItems((res.data.items || []).filter(i => i.isAvailable));
@@ -32,7 +36,7 @@ export function PantryItemsList() {
       }
     };
     fetchItems();
-  }, []);
+  }, [zoneId, addressesLoading]);
 
   const normalizeImageUrl = (imageUrl) => {
     if (!imageUrl) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
@@ -124,7 +128,7 @@ export function PantryItemsList() {
               <div className="flex flex-col flex-1 px-1">
                 <h3 className="font-medium text-[13px] text-[#1b1c1c] leading-tight mb-1 flex-1">{item.title}</h3>
                 {item.vendorId && (
-                  <p className="text-[11px] text-[#6e7a74] mb-2 truncate">{t("by {{restaurantName}}", { restaurantName: item.vendorId.restaurantName })}</p>
+                  <p className="text-[11px] text-[#6e7a74] mb-2 truncate">{t("by {{restaurantName}}", { restaurantName: item.vendorId.restaurantName })}{item.crossZone ? ` · ${t("From another zone of your city")}` : ""}</p>
                 )}
                 <div className="flex items-center justify-between mt-auto h-[32px]">
                   <span className="font-extrabold text-[15px] text-[#1F7A63]">{money(item.price)}</span>

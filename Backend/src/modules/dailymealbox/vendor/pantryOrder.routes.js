@@ -10,7 +10,9 @@ import { listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.j
 import { localToday, localDateStr, addDays, storageDateStr } from '../../../utils/platformTime.js';
 import { newDeliveryPin } from '../delivery/pantryPickup.service.js';
 import { getPantryDeliveryFee } from '../platform/pantryFee.js';
-import { coveredDeliveryKeys, deliveryKey } from '../subscription/deliveryBundling.js';
+import { coveredDeliveryKeys, coveredCrossZoneKeys, deliveryKey } from '../subscription/deliveryBundling.js';
+import { assertAddressInZone, ZoneError } from '../zones/zoneGeo.service.js';
+import { crossZoneFeasibility } from '../delivery/hub.service.js';
 
 const router = express.Router();
 
@@ -87,7 +89,23 @@ const startOfWeek = () => {
 const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAddress, minimumTotal = 0 }) => {
     const cfg = await loadCartPricingConfig(vendorId);
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
-    const shopZoneId = (await FoodRestaurant.findById(vendorId).select('zoneId').lean())?.zoneId || null;
+    const shop = await FoodRestaurant.findById(vendorId).select('zoneId location restaurantName').lean();
+    const shopZoneId = shop?.zoneId || null;
+    // Where the customer is: their pinned address must lie inside a delivery zone. A different sub-zone than the shop's is fine
+    // inside the same city (the bag then goes through the hub); another city is refused.
+    const pin = deliveryAddress?.location?.coordinates;
+    const pinned = Array.isArray(pin) && pin.length === 2 && (Number(pin[0]) !== 0 || Number(pin[1]) !== 0);
+    let customerZoneId = shopZoneId;
+    if (pinned) {
+        try {
+            customerZoneId = (await assertAddressInZone(deliveryAddress, { source: 'pantry_checkout', userId })).zoneId;
+        } catch (err) {
+            if (err instanceof ZoneError) throw new PaymentsError(err.message, 400, 'OUTSIDE_ZONES');
+            throw err;
+        }
+    }
+    const crossZone = !!shopZoneId && !!customerZoneId && String(shopZoneId) !== String(customerZoneId);
+    let crossSurchargePln = 0;
     const priced = [];
     let itemsTotalAll = 0;
     let totalDeliveries = 0;
@@ -100,6 +118,15 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
         group.deliveryDates = [...new Set(group.deliveryDates.map(String))].sort();
         group.deliverySlots = [...new Set(group.deliverySlots.map(String))];
         await validateSchedule(group.deliveryDates, group.deliverySlots);
+        if (crossZone) {
+            for (const key of group.deliverySlots) {
+                const f = await crossZoneFeasibility({ vendor: shop, customerZoneId, slotKey: key });
+                // No switch, no hub, or another city: for the customer the shop simply does not deliver to them.
+                const plain = ['CROSS_ZONE_DISABLED', 'NO_HUB', 'DIFFERENT_CITY'].includes(f.code);
+                if (!f.ok) throw new PaymentsError(plain ? `${shop.restaurantName} does not deliver to your zone` : `${shop.restaurantName}: ${f.reason}`, 400, plain ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
+                crossSurchargePln = f.surchargePln;
+            }
+        }
         let groupItemsTotal = 0;
         const processedItems = [];
         for (const item of group.items) {
@@ -131,7 +158,7 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
         itemsTotalAll = round2(itemsTotalAll + charged);
         // One driver visit per distinct day + slot of the whole cart: a visit two groups share is charged once.
         // A visit the customer already has coming (a subscription, a single meal or an earlier bag in that slot) costs no second fee.
-        const covered = await coveredDeliveryKeys({ userId, zoneId: shopZoneId, dates: group.deliveryDates });
+        const covered = await coveredDeliveryKeys({ userId, zoneId: customerZoneId, dates: group.deliveryDates });
         let feeDeliveries = 0;
         for (const d of group.deliveryDates) for (const sl of group.deliverySlots) {
             if (!visits.has(`${d}|${sl}`)) { visits.add(`${d}|${sl}`); if (!covered.has(deliveryKey(d, sl))) feeDeliveries += 1; }
@@ -140,9 +167,16 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
         priced.push({ group, processedItems, itemsTotal: groupItemsTotal, charged, deliveries: feeDeliveries });
     }
 
+    // Flat cross-zone surcharge: once per slot visit of the whole cart, nothing again for a slot the customer already pays it for.
+    let crossZoneSurcharge = 0;
+    if (crossZone) {
+        const dates = [...new Set(priced.flatMap((p) => p.group.deliveryDates))];
+        const already = await coveredCrossZoneKeys({ userId, dates });
+        crossZoneSurcharge = round2([...visits].filter((k) => { const [d, sl] = k.split('|'); return !already.has(deliveryKey(d, sl)); }).length * crossSurchargePln);
+    }
     const foodVatAmountAll = round2(itemsTotalAll * (cfg.foodVatPercent / 100));
     const deliveryFeeAll = round2(cfg.feePerOrder * totalDeliveries);
-    const serverTotal = round2(itemsTotalAll + foodVatAmountAll + deliveryFeeAll + cfg.platformFee);
+    const serverTotal = round2(itemsTotalAll + foodVatAmountAll + deliveryFeeAll + cfg.platformFee + crossZoneSurcharge);
     // Older single-group clients pass the whole-cart total they computed; honour it only when it is HIGHER than ours.
     const grandTotal = Math.max(serverTotal, round2(minimumTotal));
     if (!(grandTotal > 0)) throw new PaymentsError('Invalid order total', 400, 'BAD_REQUEST');
@@ -177,8 +211,11 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
                 foodVatPercent: cfg.foodVatPercent,
                 foodVatAmount: round2(foodVatAmountAll * (itemsTotalAll > 0 ? charged / itemsTotalAll : 1)),
                 platformFee: i === 0 ? cfg.platformFee : 0,
+                crossZoneSurcharge: i === 0 ? crossZoneSurcharge : 0,
                 total: share
             },
+            zoneId: customerZoneId || null,
+            crossZone,
             status: 'pending_payment',
             dailyDeliveries,
             paymentOrderId: '',

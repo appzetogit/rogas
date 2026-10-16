@@ -573,6 +573,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                         deliverySlot: delivery.slot,
                         deliveryPin: delivery.deliveryPin,
                         bundleId: delivery.bundleId || '',
+                        driverId: delivery.driverId || null,
                         parentOrderId: po._id
                     });
                 }
@@ -637,7 +638,8 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 }
                 // What the pickup carries includes items bound for a hub; only the driver who delivers an item gets its stop.
                 entry.pickupLoad.push(orderObj);
-                const someoneElsesDrop = orderObj.type !== 'pantry' && (orderObj.status === 'hub_transit' || (orderObj.dispatch?.deliveryPartnerId && String(orderObj.dispatch.deliveryPartnerId) !== currentDriverId));
+                const dropDriver = orderObj.type === 'pantry' ? orderObj.driverId : orderObj.dispatch?.deliveryPartnerId;
+                const someoneElsesDrop = orderObj.status === 'hub_transit' || (dropDriver && String(dropDriver) !== currentDriverId);
                 if (someoneElsesDrop) continue;
                 entry.withPins.push(orderObj);
             }
