@@ -264,7 +264,6 @@
  "ID Reference": "ID-Referenz",
  "ID: {{deliveryId}}": "ID: {{deliveryId}}",
  "Identity Doc": "Ausweisdokument",
- "Ignore": "Ignorieren",
  "Image size must be under {{maxSizeMB}}MB": "Die Bildgröße muss unter {{maxSizeMB}} MB liegen",
  "Image size should be less than 5MB": "Die Bildgröße sollte unter 5 MB liegen",
  "Incorrect PIN or server error.": "Falsche PIN oder Serverfehler.",

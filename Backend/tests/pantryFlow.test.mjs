@@ -486,3 +486,71 @@ test('11. the same customer: a kitchen meal and a pantry bag in the SAME slot, o
     assert.equal(r2.body.stops.filter((s) => s.type === 'P').length, 0);
     assert.equal(r2.body.stops.filter((s) => s.type === 'D' && s.status !== 'COMPLETED').length, 2);
 });
+
+test('12. pending pickup requests: the app can fetch them (polling), reject one, and only one driver can win an accept', async () => {
+    // Fresh state: today's meal (kitchen A) and one lunch bag (shop B), both ready.
+    await M.CollectionBatch.deleteMany({});
+    await M.PantryOrder.deleteMany({});
+    await w.DMBDailyOrder.updateOne({ _id: mealOrder._id }, { $set: { status: 'scheduled', 'dispatch.deliveryPartnerId': null } });
+    await w.FoodDeliveryPartner.updateOne({ _id: driver._id }, { $set: { availabilityStatus: 'online', assignedVendors: [w.vendor._id, shop._id] } });
+    const driver2 = await w.FoodDeliveryPartner.create({ name: 'Second', phone: nextPhone(), status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: [SLOT] });
+    const far = await w.FoodDeliveryPartner.create({ name: 'Far away', phone: nextPhone(), status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone2._id], allowedShifts: [SLOT] });
+    const { signAccessToken } = await import('../src/core/auth/token.util.js');
+    const t2 = signAccessToken({ userId: String(driver2._id), role: 'DELIVERY_PARTNER' });
+    const tFar = signAccessToken({ userId: String(far._id), role: 'DELIVERY_PARTNER' });
+    const pending = async (token) => (await call('GET', '/v1/dmb/driver/pending-requests', { token })).body.requests;
+
+    assert.deepEqual(await pending(tok.driver), [], 'nothing before anything is ready');
+
+    const res = await checkout({ groups: [{ items: [{ pantryItemId: String(milk._id), quantity: 1 }], deliveryDates: [todayStr], deliverySlots: [SLOT] }] });
+    await pay(res);
+    const order = res.body.orders[0];
+    const bag = (await M.PantryOrder.findOne({ orderId: order.orderId })).dailyDeliveries[0];
+    await call('PATCH', `/v1/dmb/pantry-orders/${order._id}/daily-status`, { token: tok.shop, body: { deliveryId: String(bag._id), status: 'ready' } });
+    await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: tok.kitchen, body: { date: todayStr, slot: SLOT } });
+
+    // Both drivers in the zone see BOTH requests, with the same detail the pop-up needs.
+    let mine = await pending(tok.driver);
+    assert.deepEqual(mine.map((r) => r.vendorName).sort(), ['Corner Pantry', 'Maria Kitchen']);
+    const shopReq = mine.find((r) => r.vendorName === 'Corner Pantry');
+    assert.equal(shopReq.orders[0].type, 'pantry');
+    assert.equal(shopReq.boxCount, 1);
+    assert.equal(shopReq.totalEarnings, 5);
+    assert.equal((await pending(t2)).length, 2);
+    assert.equal((await pending(tFar)).length, 0, 'a driver in another zone is not offered them');
+
+    // Offline drivers get nothing.
+    await w.FoodDeliveryPartner.updateOne({ _id: driver2._id }, { $set: { availabilityStatus: 'offline' } });
+    assert.equal((await pending(t2)).length, 0);
+    await w.FoodDeliveryPartner.updateOne({ _id: driver2._id }, { $set: { availabilityStatus: 'online' } });
+
+    // Reject: gone for this driver only; rejecting twice or a taken/unknown request is harmless.
+    const rej = await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: { batchId: shopReq.batchId } });
+    assert.equal(rej.status, 200);
+    assert.equal((await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: { batchId: shopReq.batchId } })).status, 200);
+    assert.equal((await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: {} })).status, 400);
+    assert.deepEqual((await pending(tok.driver)).map((r) => r.vendorName), ['Maria Kitchen']);
+    assert.equal((await pending(t2)).length, 2, 'the other driver still sees it');
+
+    // The shop asks again (resend): it is offered to the driver who said no, too.
+    const resend = await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: tok.shop, body: { date: todayStr, slot: SLOT } });
+    assert.equal(resend.status, 200, JSON.stringify(resend.body));
+    assert.equal((await pending(tok.driver)).length, 2);
+
+    // Two drivers accept the same request at the same moment: exactly one wins.
+    const kitchen = (await pending(tok.driver)).find((r) => r.vendorName === 'Maria Kitchen');
+    const [a1, a2] = await Promise.all([
+        call('POST', '/v1/dmb/driver/accept-batch', { token: tok.driver, body: { batchId: kitchen.batchId } }),
+        call('POST', '/v1/dmb/driver/accept-batch', { token: t2, body: { batchId: kitchen.batchId } })
+    ]);
+    assert.deepEqual([a1.status, a2.status].sort(), [200, 400], `one winner, one refused: ${a1.status}/${a2.status}`);
+    const batch = await M.CollectionBatch.findOne({ batchId: kitchen.batchId });
+    assert.equal(batch.status, 'driver_assigned');
+    const winner = a1.status === 200 ? driver._id : driver2._id;
+    assert.equal(String(batch.driverId), String(winner));
+    assert.equal((await pending(tok.driver)).some((r) => r.batchId === kitchen.batchId), false, 'a taken request disappears from everybody\'s list');
+
+    // Yesterday's leftovers are never offered.
+    await M.CollectionBatch.create({ vendorId: shop._id, deliveryDate: time.addDays(today, -1), deliverySlot: SLOT, boxCount: 1, collectionPinHash: '1234', orderIds: [new mongoose.Types.ObjectId()], status: 'pending' });
+    assert.equal((await pending(t2)).filter((r) => r.vendorName === 'Corner Pantry').length, 1, 'only today\'s pantry request');
+});

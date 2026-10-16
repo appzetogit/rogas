@@ -403,6 +403,19 @@ router.get('/vendor', authMiddleware, requireRoles('RESTAURANT'), async (req, re
             });
         });
 
+        // Where each bag's pickup stands, so the card can offer "Resend request" while no driver has accepted it.
+        if (expandedOrders.length) {
+            const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+            const openBatches = await CollectionBatch.find({
+                vendorId, status: { $in: ['pending', 'driver_assigned'] }, deliveryDate: { $in: [...new Set(expandedOrders.map((o) => new Date(o.date).getTime()))].map((t) => new Date(t)) }
+            }).select('deliveryDate deliverySlot status').lean();
+            const pickupOf = new Map(openBatches.map((b) => [`${storageDateStr(b.deliveryDate)}|${b.deliverySlot}`, b.status]));
+            for (const row of expandedOrders) {
+                const status = pickupOf.get(`${storageDateStr(row.date)}|${row.deliverySlot}`) || null;
+                row.pickup = { status, canResend: status === 'pending' && row.status === 'ready' };
+            }
+        }
+
         res.status(200).json({ success: true, orders: expandedOrders });
     } catch (error) {
         console.error('Error fetching vendor pantry orders:', error);

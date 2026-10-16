@@ -2124,7 +2124,6 @@
   "ID Reference",
   "ID: {{deliveryId}}",
   "Identity Doc",
-  "Ignore",
   "Image size must be under {{maxSizeMB}}MB",
   "Image size should be less than 5MB",
   "Incorrect PIN or server error.",

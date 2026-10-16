@@ -28,6 +28,10 @@ const collectionBatchSchema = new mongoose.Schema(
             default: null,
             index: true
         },
+        /** Drivers who rejected this pickup request: it is not offered to them again (a vendor resend clears the list). */
+        rejectedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }],
+        /** Drivers who rejected this pickup request: it is not offered to them again (a vendor resend clears the list). */
+        rejectedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }],
         fleetPartnerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'FleetPartner',

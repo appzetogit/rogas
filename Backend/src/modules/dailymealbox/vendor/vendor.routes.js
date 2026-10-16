@@ -1187,6 +1187,7 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             // Refresh the box list in case orders were added/changed since the first request.
             batch.boxCount = readyOrders.length;
             batch.orderIds = readyOrders.map(o => o._id);
+            batch.rejectedBy = []; // a resend offers the pickup to every driver again
             await batch.save();
         } else {
             // Create a new batch for these ready orders!

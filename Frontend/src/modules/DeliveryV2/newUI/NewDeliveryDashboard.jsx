@@ -157,6 +157,7 @@ function NewDeliveryDashboard({ children }) {
   const {
     newBatchRequest,
     clearNewBatchRequest,
+    rejectNewBatchRequest,
     orderStatusUpdate,
     clearOrderStatusUpdate,
     socket, // FIX: get socket from context (add this to your context if not already)
@@ -340,13 +341,13 @@ function NewDeliveryDashboard({ children }) {
       if (res.data?.success) {
         const otp = res.data.batch?.otp || res.data.otp;
         setAcceptedBatchDetails({ ...newBatchRequest, otp });
-        clearNewBatchRequest();
+        clearNewBatchRequest(newBatchRequest.batchId);
         await fetchActiveRoute();
         setCurrentScreen("route");
       }
     } catch (err) {
       alert("Failed to accept batch: " + (err.response?.data?.message || err.message));
-      clearNewBatchRequest();
+      clearNewBatchRequest(newBatchRequest.batchId);
     } finally {
       setIsAccepting(false);
     }
@@ -776,10 +777,10 @@ function NewDeliveryDashboard({ children }) {
               <div className="px-5 pb-5 flex gap-3">
                 <button
                   disabled={isAccepting}
-                  onClick={clearNewBatchRequest}
+                  onClick={rejectNewBatchRequest}
                   className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm active:scale-95 transition-transform"
                 >
-                  {tr("Ignore")}
+                  {tr("Reject")}
                 </button>
                 <button
                   disabled={isAccepting || !isOnline}

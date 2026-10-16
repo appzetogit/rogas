@@ -210,16 +210,32 @@ export const useDeliveryNotifications = () => {
   // instead of replacing it.
   const currentBatchRef = useRef(null);
   const batchQueueRef = useRef([]);
-  const showBatchRequest = (data) => {
+  // Requests the driver rejected or took this session, and the ones that came from polling (so they can be taken back off
+  // the screen when the server no longer lists them).
+  const dismissedBatchesRef = useRef(new Set());
+  const polledBatchesRef = useRef(new Set());
+  const showBatchRequest = (data, { fromPoll = false } = {}) => {
     if (!data) return;
+    if (fromPoll && dismissedBatchesRef.current.has(data.batchId)) return;
     const cur = currentBatchRef.current;
     if (cur && cur.batchId !== data.batchId) {
-      if (!batchQueueRef.current.some((b) => b.batchId === data.batchId)) batchQueueRef.current.push(data);
+      if (!batchQueueRef.current.some((b) => b.batchId === data.batchId)) {
+        batchQueueRef.current.push(data);
+        if (fromPoll) polledBatchesRef.current.add(data.batchId);
+      }
       return;
     }
+    // Polling sees the same request every few seconds: show it once, without ringing again.
+    if (cur && fromPoll) return;
+    if (fromPoll) polledBatchesRef.current.add(data.batchId);
     currentBatchRef.current = data;
     setNewBatchRequest(data);
     playNotificationSound(data);
+  };
+  /** Takes a request off the screen and out of the queue (another driver took it, or it was withdrawn). */
+  const removeBatchRequest = (batchId) => {
+    batchQueueRef.current = batchQueueRef.current.filter((b) => b.batchId !== batchId);
+    if (currentBatchRef.current?.batchId === batchId) clearNewBatchRequest(batchId);
   };
   const joinedDeliveryRoomRef = useRef(null);
   const ALERT_LOOP_INTERVAL_MS = 4500;
@@ -1001,6 +1017,11 @@ export const useDeliveryNotifications = () => {
       showBatchRequest(batchData);
     });
 
+    // Another driver accepted this pickup (the server tells every driver): take it off the screen.
+    socketRef.current.on('remove_delivery_request', (payload) => {
+      if (payload?.batchId) removeBatchRequest(payload.batchId);
+    });
+
     socketRef.current.on('admin_notification', (payload) => {
       debugLog('Admin broadcast received via socket', payload);
       setAdminNotification(payload);
@@ -1100,7 +1121,10 @@ export const useDeliveryNotifications = () => {
     setAdminNotification(null);
   };
 
-  const clearNewBatchRequest = () => {
+  const clearNewBatchRequest = (batchId) => {
+    // Called with the id of the request being closed (ignored when it is no longer the one on screen, so a close that
+    // arrives twice never throws away the next waiting request). Called with nothing (or a click event): closes the current one.
+    if (typeof batchId === 'string' && currentBatchRef.current && currentBatchRef.current.batchId !== batchId) return;
     const next = batchQueueRef.current.shift() || null;
     currentBatchRef.current = next;
     setNewBatchRequest(next);
@@ -1160,8 +1184,62 @@ export const useDeliveryNotifications = () => {
     };
   }, []);
 
+  /** The driver says no: it leaves the screen now and is not offered to this driver again. */
+  const rejectNewBatchRequest = async () => {
+    const cur = currentBatchRef.current;
+    if (!cur) return;
+    dismissedBatchesRef.current.add(cur.batchId);
+    clearNewBatchRequest(cur.batchId);
+    try { await dmbDeliveryAPI.rejectBatch(cur.batchId); } catch { /* it stays hidden here; the server list will not return it once saved */ }
+  };
+
+  // Polling on every delivery page: pickup requests nobody accepted yet are fetched every few seconds while the rider is
+  // online and the app is open, so a request is never lost to a missed push or a dropped socket.
+  useEffect(() => {
+    const POLL_MS = 15000;
+    let stopped = false;
+    let inFlight = false;
+    const poll = async () => {
+      if (stopped || inFlight) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      let signedIn = false;
+      try { signedIn = Boolean(localStorage.getItem('delivery_accessToken')); } catch { /* storage blocked */ }
+      if (!signedIn || !isRiderOnline()) return;
+      inFlight = true;
+      try {
+        const res = await dmbDeliveryAPI.getPendingRequests();
+        if (stopped) return;
+        const list = Array.isArray(res?.data?.requests) ? res.data.requests : [];
+        const stillOpen = new Set(list.map((r) => r.batchId));
+        // A request that came from polling and is no longer listed was taken or withdrawn.
+        batchQueueRef.current = batchQueueRef.current.filter((b) => !polledBatchesRef.current.has(b.batchId) || stillOpen.has(b.batchId));
+        const cur = currentBatchRef.current;
+        if (cur && polledBatchesRef.current.has(cur.batchId) && !stillOpen.has(cur.batchId)) clearNewBatchRequest(cur.batchId);
+        list.forEach((r) => showBatchRequest(r, { fromPoll: true }));
+      } catch {
+        // offline, signed out or a hiccup: the next round tries again
+      } finally {
+        inFlight = false;
+      }
+    };
+    poll();
+    const timer = setInterval(poll, POLL_MS);
+    const wake = () => { if (document.visibilityState === 'visible') poll(); };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', wake);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('focus', wake);
+      window.removeEventListener('online', wake);
+    };
+  }, []);
+
   return {
     socket: socketRef.current,
+    rejectNewBatchRequest,
     newOrder,
     clearNewOrder,
     orderReady,

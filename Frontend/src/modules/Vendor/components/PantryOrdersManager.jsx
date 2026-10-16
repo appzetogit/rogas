@@ -60,6 +60,24 @@ export default function PantryOrdersManager() {
     }
   };
 
+  // Ask the delivery partners again for this bag's pickup (same request the kitchen Orders screen sends).
+  const [resendingId, setResendingId] = useState(null);
+  const handleResend = async (order) => {
+    try {
+      setResendingId(order.deliveryId);
+      const dateStr = String(order.date).slice(0, 10);
+      const res = await dmbVendorAPI.resendBatch(dateStr, order.deliverySlot);
+      if (res.data?.success) {
+        toast.success(t("✅ Delivery partner requested for {{slotName}}!", { slotName: order.deliverySlot }));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || t("Failed to request delivery partner"));
+    } finally {
+      setResendingId(null);
+      fetchOrders();
+    }
+  };
+
   const pendingOrders = orders.filter(o => ['scheduled', 'preparing', 'ready'].includes(o.status));
   const completedOrders = orders.filter(o => ['out_for_delivery', 'delivered', 'failed'].includes(o.status));
 
@@ -163,6 +181,16 @@ export default function PantryOrdersManager() {
                   </div>
                 )}
               </div>
+              {order.pickup?.canResend && (
+                <button
+                  onClick={() => handleResend(order)}
+                  disabled={resendingId === order.deliveryId}
+                  className="w-full mb-2 py-3 rounded-xl border-2 border-primary text-primary font-extrabold text-[14px] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCw className={`text-[18px] ${resendingId === order.deliveryId ? 'animate-spin' : ''}`} />
+                  {resendingId === order.deliveryId ? t("Sending request…") : t("Resend request to delivery partners")}
+                </button>
+              )}
               {activeTab === 'pending' && order.status !== 'ready' && (
                 <button
                   onClick={() => handleUpdateOrderStatus(order.id, order.deliveryId, 'ready')}

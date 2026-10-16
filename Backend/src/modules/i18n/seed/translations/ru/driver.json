@@ -270,7 +270,6 @@
  "ID Reference": "Идентификатор ID",
  "ID: {{deliveryId}}": "ID: {{deliveryId}}",
  "Identity Doc": "Документ, удостоверяющий личность",
- "Ignore": "Игнорировать",
  "Image size must be under {{maxSizeMB}}MB": "Размер изображения должен быть меньше {{maxSizeMB}} МБ",
  "Image size should be less than 5MB": "Размер изображения должен быть меньше 5 МБ",
  "Incorrect PIN or server error.": "Неверный PIN или ошибка сервера.",

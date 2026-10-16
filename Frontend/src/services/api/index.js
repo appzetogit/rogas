@@ -1312,6 +1312,10 @@ export const dmbDeliveryAPI = {
   acceptBatch: (batchId) => deliveryClient.post("/dmb/driver/accept-batch", { batchId }),
   /** Details of a still-unclaimed pickup request (opened from the FCM push). 409 when another driver took it. */
   getBatchRequest: (batchId) => deliveryClient.get(`/dmb/driver/batch-request/${encodeURIComponent(batchId)}`),
+  /** Pickup requests nobody has accepted yet that this driver can take (polled on every page). */
+  getPendingRequests: () => deliveryClient.get("/dmb/driver/pending-requests"),
+  /** Say no to a pickup request: it is not offered to this driver again. */
+  rejectBatch: (batchId) => deliveryClient.post("/dmb/driver/reject-batch", { batchId }),
   /** NEW: Get slot-based route filtered by current meal time window (no CollectionBatch needed) */
   getSlotRoute: () => deliveryClient.get("/dmb/driver/slot-route"),
   getRoute: () => deliveryClient.get("/dmb/driver/my-route"),

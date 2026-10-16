@@ -928,9 +928,64 @@ router.post('/delivery-photo', authMiddleware, requireRoles('DELIVERY_PARTNER'),
     }
 });
 
-// ─── Accept Batch (Real-time Broadcast) ───────────────────────────────────
+// ─── The details of one pickup request (shared by the push link, the polling list and the socket pop-up) ──────────
+// Same shape the `new_delivery_request` socket event carries.
+const batchRequestPayload = async (batch) => {
+    const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+    const vendor = await FoodRestaurant.findById(batch.vendorId).select('restaurantName location zoneId addressLine1 phone').lean();
+    const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone').lean();
+    const bagIds = new Set(batch.orderIds.map(String));
+    const pantryBags = (await PantryOrder.find({ 'dailyDeliveries._id': { $in: batch.orderIds } }).populate('userId', 'name phone').lean())
+        .flatMap((po) => po.dailyDeliveries.filter((dd) => bagIds.has(String(dd._id))).map((dd) => ({ po, dd })));
+    const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
+    const vis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
+    const feePerOrder = (await configuredDriverFee()) || 0;
+    return {
+        batchId: batch.batchId,
+        slotType: batch.deliverySlot,
+        totalMealBoxCount: batch.boxCount,
+        vendorInfo: {
+            vendorId: vendor?._id,
+            vendorName: vendor?.restaurantName || '',
+            vendorLocation: vendor?.location,
+            vendorAddress: vendor?.addressLine1 || '',
+            vendorPhone: vendor?.phone || ''
+        },
+        pickupStatus: batch.status,
+        orders: [
+            ...orders.map((o) => ({
+                _id: o._id,
+                orderId: o.orderId,
+                status: o.status,
+                deliveryAddress: o.deliveryAddress,
+                meals: o.meals,
+                customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, vis),
+                pricing: driverPricingView(o.pricing || {}, vis)
+            })),
+            // Pantry bags in the same pickup (their id is the bag's delivery id).
+            ...pantryBags.map(({ po, dd }) => ({
+                _id: dd._id,
+                orderId: po.orderId,
+                type: 'pantry',
+                status: dd.status,
+                deliveryAddress: po.deliveryAddress,
+                meals: (po.items || []).map((i) => ({ name: i.title, quantity: i.quantity })),
+                customer: driverCustomerView({ name: po.userId?.name || '', phone: po.userId?.phone || '' }, vis),
+                pricing: driverPricingView({}, vis)
+            }))
+        ],
+        totalEarnings: feePerOrder * batch.boxCount,
+        vendorId: vendor?._id,
+        vendorName: vendor?.restaurantName || '',
+        vendorLocation: vendor?.location,
+        boxCount: batch.boxCount,
+        slot: batch.deliverySlot,
+        totalOrders: batch.boxCount
+    };
+};
+
 // ─── Pickup request details (opened from the FCM push) ───────────────────────────────────────────────────
-// Returns the same shape the `new_delivery_request` socket event carries, but only while the batch is still unclaimed.
+// Only while the batch is still unclaimed.
 router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
         const batch = await CollectionBatch.findOne({ batchId: req.params.batchId });
@@ -938,62 +993,67 @@ router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PAR
         if (batch.driverId || batch.status !== 'pending') {
             return res.status(409).json({ success: false, code: 'TAKEN', message: 'Another delivery partner already accepted this pickup.' });
         }
+        res.json({ success: true, batch: await batchRequestPayload(batch) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Pending pickup requests this driver can still accept (the app polls this on every page) ─────────────────────
+// Push and socket can be missed (app closed, socket dropped, another request on screen), so the app also asks. Returns
+// today's unclaimed pickups from vendors in the driver's zone or city, not rejected by this driver, not blocked by a
+// problem report. Same pop-up payload as the socket event.
+router.get('/pending-requests', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const driverId = req.user.userId || req.user._id;
+        const driver = await FoodDeliveryPartner.findById(driverId).select('status availabilityStatus zoneIds city fleetPartnerId').lean();
+        if (!driver || driver.status !== 'approved' || driver.availabilityStatus !== 'online') return res.json({ success: true, requests: [] });
+
+        const today = localToday();
+        const pending = await CollectionBatch.find({
+            status: 'pending', driverId: null, deliveryDate: { $gte: today, $lt: addDays(today, 1) }, rejectedBy: { $ne: driverId }
+        }).sort({ createdAt: 1 }).limit(20);
+        if (!pending.length) return res.json({ success: true, requests: [] });
+
         const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
-        const vendor = await FoodRestaurant.findById(batch.vendorId).select('restaurantName location zoneId addressLine1 phone').lean();
-        const orders = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone').lean();
-        const bagIds = new Set(batch.orderIds.map(String));
-        const pantryBags = (await PantryOrder.find({ 'dailyDeliveries._id': { $in: batch.orderIds } }).populate('userId', 'name phone').lean())
-            .flatMap((po) => po.dailyDeliveries.filter((dd) => bagIds.has(String(dd._id))).map((dd) => ({ po, dd })));
-        const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
-        const vis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
-        const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-        const feeCfg = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-        const feePerOrder = Number(feeCfg?.feePerOrder) || 0;
-        res.json({
-            success: true,
-            batch: {
-                batchId: batch.batchId,
-                slotType: batch.deliverySlot,
-                totalMealBoxCount: batch.boxCount,
-                vendorInfo: {
-                    vendorId: vendor?._id,
-                    vendorName: vendor?.restaurantName || '',
-                    vendorLocation: vendor?.location,
-                    vendorAddress: vendor?.addressLine1 || '',
-                    vendorPhone: vendor?.phone || ''
-                },
-                pickupStatus: batch.status,
-                orders: [
-                    ...orders.map((o) => ({
-                        _id: o._id,
-                        orderId: o.orderId,
-                        status: o.status,
-                        deliveryAddress: o.deliveryAddress,
-                        meals: o.meals,
-                        customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, vis),
-                        pricing: driverPricingView(o.pricing || {}, vis)
-                    })),
-                    // Pantry bags in the same pickup (their id is the bag's delivery id).
-                    ...pantryBags.map(({ po, dd }) => ({
-                        _id: dd._id,
-                        orderId: po.orderId,
-                        type: 'pantry',
-                        status: dd.status,
-                        deliveryAddress: po.deliveryAddress,
-                        meals: (po.items || []).map((i) => ({ name: i.title, quantity: i.quantity })),
-                        customer: driverCustomerView({ name: po.userId?.name || '', phone: po.userId?.phone || '' }, vis),
-                        pricing: driverPricingView({}, vis)
-                    }))
-                ],
-                totalEarnings: feePerOrder * batch.boxCount,
-                vendorId: vendor?._id,
-                vendorName: vendor?.restaurantName || '',
-                vendorLocation: vendor?.location,
-                boxCount: batch.boxCount,
-                slot: batch.deliverySlot,
-                totalOrders: batch.boxCount
+        const vendors = new Map((await FoodRestaurant.find({ _id: { $in: pending.map((b) => b.vendorId) } })
+            .select('zoneId city location.city preferredFleetPartnerId').lean()).map((v) => [String(v._id), v]));
+        const myZones = new Set((driver.zoneIds || []).map(String));
+        const myCity = String(driver.city || '').trim().toLowerCase();
+        const preferredOnline = new Map(); // fleet partner -> has an online driver
+
+        const requests = [];
+        for (const batch of pending) {
+            const v = vendors.get(String(batch.vendorId));
+            if (!v) continue;
+            // Same reach as the broadcast: the vendor's zone or city (a vendor with neither is open to everyone).
+            const vz = v.zoneId ? String(v.zoneId) : '';
+            const vc = String(v.city || v.location?.city || '').trim().toLowerCase();
+            if ((vz || vc) && !((vz && myZones.has(vz)) || (vc && vc === myCity))) continue;
+            if (openBlockingIssue(batch)) continue;
+            // The vendor's preferred delivery partner gets first call while it has a driver online.
+            const pref = v.preferredFleetPartnerId ? String(v.preferredFleetPartnerId) : '';
+            if (pref && String(driver.fleetPartnerId || '') !== pref) {
+                if (!preferredOnline.has(pref)) {
+                    preferredOnline.set(pref, Boolean(await FoodDeliveryPartner.exists({ fleetPartnerId: pref, availabilityStatus: 'online', status: 'approved' })));
+                }
+                if (preferredOnline.get(pref)) continue;
             }
-        });
+            requests.push(await batchRequestPayload(batch));
+        }
+        res.json({ success: true, requests });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Reject a pickup request: it is not offered to this driver again (others still see it) ────────────────────────
+router.post('/reject-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
+    try {
+        const { batchId } = req.body || {};
+        if (!batchId) return res.status(400).json({ success: false, message: 'batchId is required' });
+        await CollectionBatch.updateOne({ batchId, driverId: null, status: 'pending' }, { $addToSet: { rejectedBy: req.user.userId || req.user._id } });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -1004,23 +1064,23 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
         const { batchId } = req.body;
         if (!batchId) return res.status(400).json({ success: false, message: 'batchId is required' });
 
-        const batch = await CollectionBatch.findOne({ batchId });
-        if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
-        if (batch.driverId) return res.status(400).json({ success: false, message: 'Batch already assigned to another driver' });
-
         const driver = await FoodDeliveryPartner.findById((req.user.userId || req.user._id));
         if (!driver) return res.status(404).json({ success: false, message: 'Driver profile not found' });
 
         // Generate 4-digit OTP for the vendor to verify this driver
         const otp = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
 
-        batch.driverId = (req.user.userId || req.user._id);
-        batch.status = 'driver_assigned';
-        batch.assignedAt = new Date();
-        // We temporarily store the raw OTP in `collectionPinHash` or a dedicated field if needed.
-        // The driver will show this OTP to the vendor. We can store it directly in batch for simplicity.
-        batch.collectionPinHash = otp; 
-        await batch.save();
+        // Claimed in ONE step: with several drivers seeing the same request (push, pop-up and polling), exactly one wins.
+        // The raw OTP is kept in `collectionPinHash`; the driver shows it to the vendor.
+        const batch = await CollectionBatch.findOneAndUpdate(
+            { batchId, driverId: null, status: 'pending' },
+            { $set: { driverId: (req.user.userId || req.user._id), status: 'driver_assigned', assignedAt: new Date(), collectionPinHash: otp, pinAttempts: 0 } },
+            { new: true }
+        );
+        if (!batch) {
+            const exists = await CollectionBatch.exists({ batchId });
+            return res.status(exists ? 400 : 404).json({ success: false, code: exists ? 'TAKEN' : undefined, message: exists ? 'Batch already assigned to another driver' : 'Batch not found' });
+        }
 
         // Update orders inside the batch (if needed, assign driverId)
         await DMBDailyOrder.updateMany(
