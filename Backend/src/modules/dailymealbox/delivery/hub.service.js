@@ -6,7 +6,7 @@ import { DeliverySlot } from '../deliverySlot/deliverySlot.model.js';
 import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { CollectionBatch } from './collectionBatch.model.js';
-import { cityIdForZone, getControl, raiseAdminAlert } from '../platform/platformConfig.service.js';
+import { cityIdForZone, getControl, raiseAdminAlert, zoneIdsForCity } from '../platform/platformConfig.service.js';
 import { acceptedDriversFor } from './driverAssignment.service.js';
 import { encryptField, safeDecrypt } from '../../../utils/fieldCrypto.js';
 import { logger } from '../../../utils/logger.js';
@@ -73,6 +73,21 @@ export const pickHub = async ({ zoneId, vendor }) => {
 };
 
 /**
+ * What a customer's sub-zone can reach beyond itself: the other sub-zones of the SAME city, through the hub of the customer's
+ * own sub-zone. `available` is false when the switch is off, the sub-zone belongs to no city, or it has no hub yet.
+ */
+export const crossZoneReach = async (zoneId) => {
+    const none = { available: false, zoneIds: [], surchargePln: 0 };
+    const cfg = await crossZoneSettings(zoneId);
+    if (!cfg.enabled) return none;
+    const cityId = await cityIdForZone(zoneId);
+    if (!cityId) return none;
+    if (!(await FoodRestaurant.exists({ isHub: true, status: 'approved', zoneId: oid(zoneId) }))) return none;
+    const zoneIds = (await zoneIdsForCity(cityId)).map(String).filter((z) => z !== String(zoneId));
+    return { available: zoneIds.length > 0, zoneIds, surchargePln: Number(cfg.surchargePln) || 0 };
+};
+
+/**
  * Can this vendor's food reach the customer's zone through a hub for this slot? Used at checkout: when it cannot, the customer
  * gets the reason and chooses another slot. The food is ready after the slot's prep time; the source driver then has to
  * reach the hub before (zone drivers' start - buffer).
@@ -80,6 +95,9 @@ export const pickHub = async ({ zoneId, vendor }) => {
 export const crossZoneFeasibility = async ({ vendor, customerZoneId, slotKey }) => {
     const cfg = await crossZoneSettings(customerZoneId);
     if (!cfg.enabled) return { ok: false, code: 'CROSS_ZONE_DISABLED', reason: 'Ordering from another zone is not available in your area' };
+    // The city is the main zone: a customer reaches the sub-zones of THEIR city only, never another city's.
+    const [customerCity, vendorCity] = await Promise.all([cityIdForZone(customerZoneId), cityIdForZone(vendor?.zoneId)]);
+    if (!customerCity || String(customerCity) !== String(vendorCity)) return { ok: false, code: 'DIFFERENT_CITY', reason: 'This maker is outside your city' };
     const hub = await pickHub({ zoneId: customerZoneId, vendor });
     if (!hub) return { ok: false, code: 'NO_HUB', reason: 'There is no hub in your zone yet, so this maker cannot deliver to you' };
     const slot = await DeliverySlot.findOne({ key: String(slotKey).toLowerCase() }).lean();

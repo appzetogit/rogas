@@ -120,12 +120,12 @@ test('checkout: the flat surcharge is charged once per slot, outside every disco
     assert.equal(fee, 5 + 3);
 });
 
-test('checkout refuses a cross-zone vendor when the slot cannot be served in time or there is no hub', async () => {
+test('checkout refuses a cross-zone vendor when the slot cannot be served in time; with no hub the maker simply does not deliver to the customer', async () => {
     const start = await nextWeekday(1, 2);
     const input = { subscriptionPlanId: String(w.plans.weekMF._id), vendorId: String(w.farVendor._id), zoneId: String(w.zone._id), meals: [{ mealPlanId: String(w.farMeal._id), quantity: 1 }], deliverySlots: ['dinner'], startDate: start };
     await assert.rejects(pricing.quoteSubscription(input, { userId: w.user._id }), (e) => e.code === 'CROSS_ZONE_SLOT_NOT_CONFIGURED');
     await w.FoodRestaurant.updateOne({ _id: w.vendor2._id }, { $set: { isHub: false } });
-    await assert.rejects(pricing.quoteSubscription({ ...input, deliverySlots: ['lunch'] }, { userId: w.user._id }), (e) => e.code === 'CROSS_ZONE_NO_HUB');
+    await assert.rejects(pricing.quoteSubscription({ ...input, deliverySlots: ['lunch'] }, { userId: w.user._id }), (e) => e.code === 'ZONE_MISMATCH' && /does not deliver to your zone/.test(e.message));
 });
 
 test('a cross-zone item gets a transfer: the source driver of the vendor zone, the zone driver of the customer, PIN 1 stored hashed and encrypted', async () => {
@@ -375,4 +375,48 @@ test('a single meal from another zone: refused while cross-zone is off; with it 
     assert.ok(await DMBHubTransfer.findOne({ unitId: daily._id }), 'a hub transfer carries it');
     await w.DMBDailyOrder.deleteMany({ orderType: 'one_time_select' });
     await DMBOneTimeOrder.deleteMany({});
+});
+
+test('the city is the main zone: the plans browser lists makers of the other sub-zones of the SAME city through the hub, never another city', async () => {
+    const { browseVendors, vendorMeals } = await import('../src/modules/dailymealbox/customer/browse.service.js');
+    const KRAKOW = { lat: 50.0647, lng: 19.945 };
+    const square = (c, d) => [
+        { latitude: c.lat - d, longitude: c.lng - d }, { latitude: c.lat - d, longitude: c.lng + d },
+        { latitude: c.lat + d, longitude: c.lng + d }, { latitude: c.lat + d, longitude: c.lng - d }
+    ];
+    const zone3 = await w.FoodZone.create({ name: `Krakow Centre ${Date.now()}`, country: 'Poland', coordinates: square(KRAKOW, 0.05) });
+    await w.AdminCity.create({ name: `Krakow ${Date.now()}`, country: 'PL', currency: 'PLN', status: 'active', zoneIds: [zone3._id] });
+    const foreign = await w.FoodRestaurant.create({
+        restaurantName: 'Krakow Kitchen', ownerName: 'K', ownerPhone: nextPhone(), status: 'approved', zoneId: zone3._id, vendorType: 'restaurant',
+        location: { type: 'Point', coordinates: [KRAKOW.lng, KRAKOW.lat], latitude: KRAKOW.lat, longitude: KRAKOW.lng }
+    });
+    const ids = async () => (await browseVendors({ zoneId: w.zone._id })).vendors.map((v) => String(v.vendorId || v._id || v.id));
+    const findFar = async () => (await browseVendors({ zoneId: w.zone._id })).vendors.find((v) => String(v.vendorId || v._id || v.id) === String(w.farVendor._id));
+
+    const far = await findFar();
+    assert.ok(far, 'a maker of another sub-zone of the same city is listed');
+    assert.deepEqual([far.crossZone, far.crossZoneSurchargePln], [true, 3]);
+    const own = (await browseVendors({ zoneId: w.zone._id })).vendors.find((v) => String(v.vendorId || v._id || v.id) === String(w.vendor._id));
+    assert.equal(own.crossZone, false, 'a maker of the own sub-zone is not flagged');
+    assert.ok(!(await ids()).includes(String(foreign._id)), 'a maker of another city is never listed');
+
+    // the meal list of that maker opens for this customer, and the other city's does not
+    await vendorMeals({ vendorId: w.farVendor._id, zoneId: w.zone._id });
+    await assert.rejects(vendorMeals({ vendorId: foreign._id, zoneId: w.zone._id }), (e) => e.code === 'ZONE_MISMATCH');
+    assert.equal((await hub.crossZoneFeasibility({ vendor: foreign, customerZoneId: w.zone._id, slotKey: 'lunch' })).code, 'DIFFERENT_CITY');
+
+    // without a hub in the customer's sub-zone, or with the switch off, nothing from other sub-zones is offered
+    await w.FoodRestaurant.updateOne({ _id: w.vendor2._id }, { $set: { isHub: false } });
+    assert.equal(await findFar(), undefined);
+    await assert.rejects(vendorMeals({ vendorId: w.farVendor._id, zoneId: w.zone._id }), (e) => e.code === 'ZONE_MISMATCH');
+    await w.FoodRestaurant.updateOne({ _id: w.vendor2._id }, { $set: { isHub: true } });
+    await setControl('crossZoneDelivery', { enabled: false, surchargePln: 3 });
+    assert.equal(await findFar(), undefined);
+    await w.FoodRestaurant.deleteOne({ _id: foreign._id });
+});
+
+test('an address outside every sub-zone of every city cannot use the system at all', async () => {
+    const { assertAddressInZone } = await import('../src/modules/dailymealbox/zones/zoneGeo.service.js');
+    await assert.rejects(assertAddressInZone({ street: 'Nowhere', city: 'Gdansk', location: { type: 'Point', coordinates: [18.6466, 54.352] } }, { source: 'checkout' }), /outside our delivery area/);
+    assert.ok(await assertAddressInZone({ street: 'Home', city: 'Warsaw', location: { type: 'Point', coordinates: [WARSAW.lng, WARSAW.lat] } }, { source: 'checkout' }));
 });

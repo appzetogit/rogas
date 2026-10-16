@@ -131,7 +131,7 @@ export const ACM_CONTROLS = [
 
     // ─── Delivery architecture — hubs and cross-zone delivery ─────────────────────────────────────────────
     { acm: 187, key: 'crossZoneDelivery', group: 'driver', label: 'Cross-zone delivery through hubs (a customer can order from a vendor in another zone) and its flat surcharge', fields: {
-        enabled: bool(false),
+        enabled: bool(true),
         surchargePln: num(3, 0, 1000, { step: 0.5, hint: 'Flat, once per delivery slot (never per vendor). Subscriber discounts do not apply to it.' })
     }, perCity: true, roles: ['CITY_MANAGER'] },
     { acm: 188, key: 'hubOperations', group: 'driver', label: 'Hub operations: hand-off buffer, holding limits, PIN lifetimes and the travel speed used to check a hand-off is possible', fields: {
