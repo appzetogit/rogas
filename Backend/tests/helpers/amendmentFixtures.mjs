@@ -109,3 +109,22 @@ export const nextWeekday = async (dow, minAhead = 1) => {
     while (d.getUTCDay() !== dow) d = addDays(d, 1);
     return storageDateStr(d);
 };
+
+/**
+ * Records that admin assigned `driver` to a zone x slot x date and the driver accepted — the only way dispatch will offer
+ * them a pickup. Written directly (not through assignDriver) so tests do not depend on the slot still being in the future.
+ */
+export const acceptAssignment = async (driver, { zoneId, slotKeys, days = [0, 1] } = {}) => {
+    const { ShiftRecord } = await import('../../src/modules/food/delivery/models/shiftRecord.model.js');
+    const { localToday, addDays } = await import('../../src/utils/platformTime.js');
+    const zid = zoneId || driver.zoneIds?.[0];
+    for (const offset of days) {
+        for (const slotKey of slotKeys) {
+            await ShiftRecord.updateOne(
+                { driverId: driver._id, date: addDays(localToday(), offset), slotKey },
+                { $set: { zoneId: zid, status: 'confirmed', confirmedAt: new Date(), assignment: { state: 'accepted', assignedAt: new Date(), respondedAt: new Date() } } },
+                { upsert: true }
+            );
+        }
+    }
+};

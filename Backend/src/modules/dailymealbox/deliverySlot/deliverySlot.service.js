@@ -104,6 +104,19 @@ const sanitize = (body, { partial = false } = {}) => {
         if (v < 1) throw new Error('maxPrepMinutes must be at least 1');
         out.maxPrepMinutes = v;
     }
+    if (body.driverStartTime !== undefined) {
+        const t = String(body.driverStartTime || '').trim();
+        if (t && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(t)) throw new Error('The driver start time must be HH:MM');
+        out.driverStartTime = t;
+    }
+    if (body.deliveryFee !== undefined) {
+        if (body.deliveryFee === null || body.deliveryFee === '') out.deliveryFee = null;
+        else {
+            const fee = Number(body.deliveryFee);
+            if (!Number.isFinite(fee) || fee < 0 || fee > 1000) throw new Error('The delivery fee must be between 0 and 1000');
+            out.deliveryFee = Math.round(fee * 100) / 100;
+        }
+    }
     if (body.orderCutoffHours !== undefined) out.orderCutoffHours = Math.max(0, num(body.orderCutoffHours, 0));
     if (body.availableDays !== undefined) {
         const days = [...new Set((Array.isArray(body.availableDays) ? body.availableDays : []).map(Number))].filter((d) => d >= 0 && d <= 6);

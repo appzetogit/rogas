@@ -60,9 +60,6 @@ export const ACM_CONTROLS = [
     { acm: 150, key: 'trialOffer', group: 'plans', label: 'Discounted first week for new customers', fields: { enabled: bool(false), discountPct: num(50, 1, 100), minOrderAmount: num(0, 0, 100000, { hint: 'Minimum first-week total before the trial discount applies' }) }, perCity: true, roles: ['MARKETING_MANAGER'] },
     { acm: 151, key: 'fortnightlyPlan', group: 'plans', label: 'Fortnightly option (deliveries every other week, billed every 2 weeks)', fields: { enabled: bool(false) }, perCity: true, roles: [] },
 
-    // ─── Gaps B / Z ───────────────────────────────────────────────────────────────────────────────────────
-    { acm: 152, key: 'driverShiftConfirmation', group: 'driver', label: 'Drivers must confirm each shift 24h ahead (alert if unconfirmed 2h before)', fields: { enabled: bool(false) }, perCity: true, roles: ['CITY_MANAGER'] },
-
     // ─── Gap G ────────────────────────────────────────────────────────────────────────────────────────────
     { acm: 153, key: 'holidayAutoImport', group: 'legal', label: 'Offer the yearly import of Polish public holidays (admin confirms each date)', fields: { enabled: bool(true) }, roles: [] },
 
@@ -96,7 +93,6 @@ export const ACM_CONTROLS = [
     { acm: 167, key: 'preparedByCredit', group: 'visibility', audience: 'customer', item: '"Prepared by [first name]"', label: 'Show "Prepared by [cook first name]" on customer receipts', fields: { enabled: bool(false) }, roles: [] },
     { acm: 168, key: 'legalReacceptance', group: 'legal', label: 'Enforce re-acceptance of legal documents published with "requires re-acceptance"', fields: { enabled: bool(true) }, roles: ['WEB_MANAGER'] },
     { acm: 169, key: 'preferredFleetRequests', group: 'driver', label: 'Vendors may request their own preferred delivery partner', fields: { enabled: bool(true) }, roles: [] },
-    { acm: 170, key: 'preferredFleetRouting', group: 'driver', label: 'Route a vendor\'s pickups to its preferred partner first (pool as fallback)', fields: { enabled: bool(true) }, perCity: true, roles: ['CITY_MANAGER'] },
 
     // ─── Addendum 3 — AE, AF, AG, AH ──────────────────────────────────────────────────────────────────────
     { acm: 171, key: 'calendarPreviewDays', group: 'vendor', label: 'Days ahead the customer calendar shows upcoming meals', fields: { days: num(10, 2, 14) }, roles: [] },
@@ -120,7 +116,32 @@ export const ACM_CONTROLS = [
     { acm: 183, key: 'temperatureMandatory', group: 'vendor', label: 'Vendors must choose Hot or Cold before publishing a meal', fields: { enabled: bool(true) }, roles: [] },
 
     // ─── Subscription plans owned by vendors ──────────────────────────────────────────────────────────────
-    { acm: 184, key: 'subscriptionPlatformFee', group: 'plans', label: 'One-time platform fee per subscription (on = this amount for every plan; off = the fee stored on each plan)', fields: { enabled: bool(false), amount: num(0, 0, 1000, { step: 0.5 }) }, roles: [] }
+    { acm: 184, key: 'subscriptionPlatformFee', group: 'plans', label: 'One-time platform fee per subscription (on = this amount for every plan; off = the fee stored on each plan)', fields: { enabled: bool(false), amount: num(0, 0, 1000, { step: 0.5 }) }, roles: [] },
+
+    // ─── Delivery architecture — Zone x Slot driver assignment (planned the day before) ───────────────────
+    { acm: 185, key: 'driverAssignment', group: 'driver', label: 'Day-before driver assignment: how long a driver has to accept, when admin is warned about uncovered zone/slot cells, and the daily planning reminder', fields: {
+        responseHours: num(6, 1, 48, { hint: 'Hours a driver has to accept or decline an assignment before it expires (admin is alerted)' }),
+        noCoverageAlertHours: num(2, 0, 48, { hint: 'Alert admin when a zone/slot with orders still has no accepted driver this many hours before the slot starts' }),
+        planningReminderTime: { type: 'string', default: '18:00', pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', hint: 'HH:MM - each day admin is reminded of tomorrow zone/slot cells that still have no driver' }
+    }, perCity: true, roles: ['CITY_MANAGER'] },
+    { acm: 186, key: 'driverPromotions', group: 'driver', label: 'Driver promotions (bonuses and rate boosts on top of the delivery rate)', fields: {
+        enabled: bool(true),
+        maxActive: num(5, 1, 50, { hint: 'Most promotions that may run at the same time in one city' })
+    }, perCity: true, roles: ['CITY_MANAGER', 'MARKETING_MANAGER'] },
+
+    // ─── Delivery architecture — hubs and cross-zone delivery ─────────────────────────────────────────────
+    { acm: 187, key: 'crossZoneDelivery', group: 'driver', label: 'Cross-zone delivery through hubs (a customer can order from a vendor in another zone) and its flat surcharge', fields: {
+        enabled: bool(false),
+        surchargePln: num(3, 0, 1000, { step: 0.5, hint: 'Flat, once per delivery slot (never per vendor). Subscriber discounts do not apply to it.' })
+    }, perCity: true, roles: ['CITY_MANAGER'] },
+    { acm: 188, key: 'hubOperations', group: 'driver', label: 'Hub operations: hand-off buffer, holding limits, PIN lifetimes and the travel speed used to check a hand-off is possible', fields: {
+        handoffBufferMinutes: num(15, 0, 240, { hint: 'The item must reach the hub this many minutes before the zone drivers start' }),
+        maxHoldingMinutes: num(60, 1, 1440, { hint: 'Admin is alerted when an item stays at a hub longer than this' }),
+        dropPinHours: num(2, 1, 24, { hint: 'Lifetime of the drop-off PIN (PIN 1)' }),
+        pickupPinHours: num(4, 1, 48, { hint: 'Lifetime of the pickup PIN (PIN 2)' }),
+        defaultCapacity: num(50, 1, 1000, { hint: 'Items a hub may hold at once, unless the hub sets its own' }),
+        travelSpeedKmh: num(20, 1, 120, { hint: 'Average speed used to check a source driver can reach the hub in time' })
+    }, perCity: true, roles: ['CITY_MANAGER'] }
 ];
 
 /** Information that can never be hidden (EU law) — shown locked in the visibility matrix. */

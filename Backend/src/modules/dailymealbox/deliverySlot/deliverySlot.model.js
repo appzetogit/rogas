@@ -17,6 +17,14 @@ const deliverySlotSchema = new mongoose.Schema({
     deliveryStartTime: { type: String, default: '' },
     deliveryEndTime: { type: String, default: '' },
 
+    /**
+     * When the drivers of this slot start (HH:MM). The hub hand-off deadline is this minus the hub buffer; a slot with no driver
+     * start cannot carry cross-zone deliveries.
+     */
+    driverStartTime: { type: String, default: '' },
+    /** Customer delivery fee for this slot (per delivery). null = use the zone override or the platform fee. */
+    deliveryFee: { type: Number, default: null, min: 0 },
+
     // How many hours before startTime the customer can no longer change/skip this slot (0 = no rule)
     orderCutoffHours: { type: Number, default: 0, min: 0 },
 

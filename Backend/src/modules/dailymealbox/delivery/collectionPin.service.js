@@ -256,7 +256,8 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
         }
         await confirmDelivery({ orderId, driverId, method: 'pin', deliveryGps });
         if (redis) await redis.del(redisKey);
-        return { success: true, gpsMismatch: Boolean((await findPantryDelivery(orderId))?.delivery?.gpsMismatch) };
+        const bundled = await confirmBundleMates({ orderId, driverId, deliveryGps });
+        return { success: true, gpsMismatch: Boolean((await findPantryDelivery(orderId))?.delivery?.gpsMismatch), bundled };
     }
 
     if (!storedPin) {
@@ -307,7 +308,35 @@ export const verifyDeliveryPin = async ({ orderId, pinEntered, driverId, deliver
     // Clean up Redis
     if (redis) await redis.del(redisKey);
 
-    return { success: true, gpsMismatch };
+    const bundled = await confirmBundleMates({ orderId, driverId, deliveryGps });
+    return { success: true, gpsMismatch, bundled };
+};
+
+/**
+ * One doorbell, one PIN: after one item of a bundle is confirmed with the bundle's PIN, every other item of the same bundle
+ * the driver has already collected is delivered with it. Items still waiting at a vendor stay open (they cannot be handed over).
+ * Returns the ids confirmed with it.
+ */
+export const confirmBundleMates = async ({ orderId, driverId, deliveryGps }) => {
+    const pantry = await findPantryDelivery(orderId);
+    const bundleId = pantry ? pantry.delivery.bundleId : (await DMBDailyOrder.findById(orderId).select('bundleId').lean())?.bundleId;
+    if (!bundleId) return [];
+    const mates = [];
+    for (const o of await DMBDailyOrder.find({ bundleId, 'dispatch.deliveryPartnerId': driverId, status: 'out_for_delivery', _id: { $ne: orderId } }).select('_id').lean()) mates.push(String(o._id));
+    const bags = await PantryOrder.find({ dailyDeliveries: { $elemMatch: { bundleId, driverId, status: 'out_for_delivery' } } }).select('dailyDeliveries').lean();
+    for (const po of bags) {
+        for (const dd of po.dailyDeliveries) if (dd.bundleId === bundleId && String(dd.driverId) === String(driverId) && dd.status === 'out_for_delivery' && String(dd._id) !== String(orderId)) mates.push(String(dd._id));
+    }
+    const done = [];
+    for (const id of mates) {
+        try {
+            await confirmDelivery({ orderId: id, driverId, method: 'pin', deliveryGps });
+            done.push(id);
+        } catch (err) {
+            logger.warn(`[bundle] could not confirm ${id} with bundle ${bundleId}: ${err.message}`);
+        }
+    }
+    return done;
 };
 
 // ─── Confirm Delivery (shared for PIN + Photo) ─────────────────────────────

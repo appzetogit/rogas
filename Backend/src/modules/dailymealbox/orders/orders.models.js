@@ -48,8 +48,10 @@ const oneTimeOrderSchema = new mongoose.Schema(
         deliverySlot: { type: String, required: true },
         zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null },
         deliveryAddress: { type: addressSnapshot, required: true },
+        /** The vendor is in another zone: the item travels through a hub (flat surcharge, once per slot). */
+        crossZone: { type: Boolean, default: false },
         pricing: {
-            foodCost: Number, foodVat: Number, foodVatAmount: Number, deliveryFee: Number, deliveryVat: Number,
+            foodCost: Number, foodVat: Number, foodVatAmount: Number, deliveryFee: Number, crossZoneSurcharge: { type: Number, default: 0 }, deliveryVat: Number,
             deliveryVatAmount: Number, platformFee: { type: Number, default: 0 }, totalPrice: Number, currency: String
         },
         /**

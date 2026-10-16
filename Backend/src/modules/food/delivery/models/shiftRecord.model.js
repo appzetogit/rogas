@@ -13,9 +13,24 @@ const shiftRecordSchema = new mongoose.Schema(
         /** DeliverySlot.key this shift covers (e.g. "lunch", "dinner"). */
         slotKey: { type: String, required: true, trim: true, lowercase: true },
 
+        /** Delivery zone this shift covers. Set by every admin assignment; one driver covers one zone per date + slot. */
+        zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', required: true, index: true },
+        /**
+         * The admin's assignment of this driver to the zone + slot: pending (waiting for the driver) → accepted
+         * (the shift becomes "confirmed") | declined | expired (no answer before the deadline).
+         */
+        assignment: {
+            state: { type: String, enum: ['pending', 'accepted', 'declined', 'expired'], default: 'pending', index: true },
+            assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodAdmin', default: null },
+            assignedAt: { type: Date, default: null },
+            respondBy: { type: Date, default: null },
+            respondedAt: { type: Date, default: null },
+            declineReason: { type: String, default: '' }
+        },
+
         status: {
             type: String,
-            enum: ['scheduled', 'confirmed', 'completed', 'no_show', 'holiday'],
+            enum: ['scheduled', 'confirmed', 'completed', 'no_show', 'holiday', 'declined', 'expired'],
             default: 'scheduled',
             index: true
         },

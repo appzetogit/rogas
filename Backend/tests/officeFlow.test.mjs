@@ -19,7 +19,8 @@ process.env.PAYMENTS_MODE = 'mock';
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-secret';
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
 
-const { connect, disconnect, seedWorld, setControl, WARSAW, OUTSIDE } = await import('./helpers/amendmentFixtures.mjs');
+const { connect, disconnect, seedWorld, setControl, WARSAW, OUTSIDE, acceptAssignment } = await import('./helpers/amendmentFixtures.mjs');
+const { readCollectionPin } = await import('../src/modules/dailymealbox/delivery/collectionBatch.model.js');
 
 let w, server, base, time, officeToken, vendorToken, vendor2Token, company, account;
 const M = {};
@@ -418,39 +419,33 @@ test('a new phone number moves the employee\'s meals to that sign-in and never r
     assert.equal(await w.DMBSubscription.countDocuments({ userId: employees.piotr.userId, source: 'office', status: 'active' }), 0);
 });
 
-test('delivery partners: an online driver is offered the office pickup; vendor can resend until a rider accepts', async () => {
-    const { logger } = await import('../src/utils/logger.js');
-    const lines = [];
-    const origInfo = logger.info;
-    logger.info = (m) => { lines.push(String(m)); };
-    try {
-        const driver = await w.FoodDeliveryPartner.create({ name: 'Rider', phone: '+48500111222', status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: ['dinner'] });
-        const tomorrow = time.storageDateStr(time.addDays(time.localToday(), 1));
-        const ready = await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
-        assert.equal(ready.status, 200, JSON.stringify(ready.body));
-        assert.ok(lines.some((l) => /\[PICKUP-OFFER\].*"drivers":1/.test(l)), `offer reached the driver: ${lines.filter((l) => /DRIVER-NOTIFY|PICKUP/.test(l)).join(' | ')}`);
+test('delivery partners: the assigned driver gets the office pickup directly; a driver who was not assigned cannot take it', async () => {
+    const driver = await w.FoodDeliveryPartner.create({ name: 'Rider', phone: '+48500111222', status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: ['dinner'] });
+    const outsider = await w.FoodDeliveryPartner.create({ name: 'Outsider', phone: '+48500111333', status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: ['dinner'] });
+    await acceptAssignment(driver, { slotKeys: ['dinner'] });
+    const tomorrow = time.storageDateStr(time.addDays(time.localToday(), 1));
+    const ready = await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
+    assert.equal(ready.status, 200, JSON.stringify(ready.body));
 
-        const status = await call('GET', `/v1/dmb/vendor/daily-orders/dispatch-status?date=${tomorrow}`, { token: vendorToken });
-        assert.equal(status.status, 200, JSON.stringify(status.body));
-        const dinner = status.body.slots.find((s) => s.slot === 'dinner');
-        assert.equal(dinner.canResend, true);
-        assert.equal(dinner.driverAssigned, false);
+    // The pickup is already the assigned driver's: PIN issued, orders carry the driver, no request was broadcast.
+    const batch = await M.CollectionBatch.findOne({ vendorId: w.vendor._id, deliverySlot: 'dinner' });
+    assert.equal(String(batch.driverId), String(driver._id));
+    assert.equal(batch.status, 'driver_assigned');
+    assert.match(readCollectionPin(batch), /^\d{4}$/);
+    const placed = await w.DMBDailyOrder.find({ vendorId: w.vendor._id, deliverySlot: 'dinner', status: 'ready' }).lean();
+    assert.ok(placed.length > 0 && placed.every((o) => String(o.dispatch?.deliveryPartnerId) === String(driver._id)));
 
-        lines.length = 0;
-        const resend = await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
-        assert.equal(resend.status, 200, JSON.stringify(resend.body));
-        assert.ok(lines.some((l) => /\[PICKUP-OFFER\].*\(resend\)/.test(l)));
+    const status = await call('GET', `/v1/dmb/vendor/daily-orders/dispatch-status?date=${tomorrow}`, { token: vendorToken });
+    const dinner = status.body.slots.find((s) => s.slot === 'dinner');
+    assert.equal(dinner.driverAssigned, true);
+    assert.equal(dinner.canResend, false);
 
-        const batch = await M.CollectionBatch.findOne({ vendorId: w.vendor._id, deliverySlot: 'dinner' });
-        const { signAccessToken } = await import('../src/core/auth/token.util.js');
-        const accept = await call('POST', '/v1/dmb/driver/accept-batch', { token: signAccessToken({ userId: String(driver._id), role: 'DELIVERY_PARTNER' }), body: { batchId: batch.batchId } });
-        assert.equal(accept.status, 200, JSON.stringify(accept.body));
-        const after = await call('GET', `/v1/dmb/vendor/daily-orders/dispatch-status?date=${tomorrow}`, { token: vendorToken });
-        const d2 = after.body.slots.find((s) => s.slot === 'dinner');
-        assert.equal(d2.driverAssigned, true);
-        assert.equal(d2.canResend, false);
-        assert.equal((await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } })).status, 409);
-    } finally {
-        logger.info = origInfo;
-    }
+    // "Resend" only reminds the assigned driver; it never widens to anybody else.
+    const resend = await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: vendorToken, body: { date: tomorrow, slot: 'dinner' } });
+    assert.equal(resend.status, 200, JSON.stringify(resend.body));
+    assert.deepEqual(resend.body.summary.drivers, [String(driver._id)]);
+
+    const { signAccessToken } = await import('../src/core/auth/token.util.js');
+    const steal = await call('POST', '/v1/dmb/driver/accept-batch', { token: signAccessToken({ userId: String(outsider._id), role: 'DELIVERY_PARTNER' }), body: { batchId: batch.batchId } });
+    assert.equal(steal.status, 403, JSON.stringify(steal.body));
 });

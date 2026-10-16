@@ -19,7 +19,8 @@ process.env.PAYMENTS_MODE = 'mock';
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-secret';
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
 
-const { connect, disconnect, seedWorld, setControl, nextWeekday, nextPhone, WARSAW } = await import('./helpers/amendmentFixtures.mjs');
+const { connect, disconnect, seedWorld, setControl, nextWeekday, nextPhone, WARSAW, acceptAssignment } = await import('./helpers/amendmentFixtures.mjs');
+const { readCollectionPin } = await import('../src/modules/dailymealbox/delivery/collectionBatch.model.js');
 
 let M = {};
 let w, server, base, time, shop, milk, bread, driver, tok, subscription, mealOrder, today, todayStr, pantryOrderIds;
@@ -76,6 +77,7 @@ before(async () => {
         name: 'Dariusz', phone: nextPhone(), status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id],
         allowedShifts: [SLOT], assignedVendors: [w.vendor._id, shop._id]
     });
+    await acceptAssignment(driver, { slotKeys: [SLOT, 'dinner'] }); // admin assigned the day before and the driver accepted
 
     const { signAccessToken } = await import('../src/core/auth/token.util.js');
     const other = await w.FoodUser.create({ phone: nextPhone(), name: 'Other Customer', role: 'USER' });
@@ -202,8 +204,18 @@ test('2b. pantry pricing edge cases', async () => {
     await M.PantryOrder.deleteMany({ status: 'pending_payment' });
 });
 
+/** Takes the customer's earlier paid bags out of play (they would share a trip with the ones priced here); returns the undo. */
+const isolatePaidBags = async () => {
+    const ids = (await M.PantryOrder.find({ status: 'paid' }).select('_id').lean()).map((o) => o._id);
+    await M.PantryOrder.updateMany({ _id: { $in: ids } }, { $set: { status: 'cancelled' } });
+    return () => M.PantryOrder.updateMany({ _id: { $in: ids } }, { $set: { status: 'paid' } });
+};
+
 test('2d. delivery fee (admin "Pantry Delivery Fee") and per-item slots: lunch 50 + dinner 200 = 250 items, not 500', async () => {
     const { setPantryDeliveryFee } = await import('../src/modules/dailymealbox/platform/pantryFee.js');
+    // This test is about the pantry fee arithmetic alone: the customer's meal plan would share the lunch trip (see 2f).
+    await w.DMBSubscription.updateMany({ status: 'active' }, { $set: { status: 'paused' } });
+    const restoreBags = await isolatePaidBags();
     const cheap = await M.FoodItem.create({ restaurantId: shop._id, name: 'Lunch snack', price: 50 });
     const dear = await M.FoodItem.create({ restaurantId: shop._id, name: 'Dinner pack', price: 200 });
     const cart = { groups: [
@@ -238,6 +250,8 @@ test('2d. delivery fee (admin "Pantry Delivery Fee") and per-item slots: lunch 5
     assert.equal(cfg.body.deliveryFeePerDelivery, 3);
     assert.equal(cfg.body.platformFee, 2);
     await setPantryDeliveryFee(0);
+    await w.DMBSubscription.updateMany({ status: 'paused' }, { $set: { status: 'active' } });
+    await restoreBags();
 });
 
 test('2e. size variants: the app sends "<itemId>-<variant>"; priced at the variant price, bad ids are a 400 not a 500', async () => {
@@ -271,6 +285,34 @@ test('2c. failed / cancelled payment cancels the pending bag; a paid order is ne
     // idempotent onPaid
     await getPurpose('pantry').onPaid({ refs: { orderIds: [paidId] }, providerPaymentId: 'x' });
     assert.equal((await M.PantryOrder.findOne({ orderId: paidId })).status, 'paid');
+});
+
+test('2f. one delivery fee per slot: a pantry visit that shares a day and slot with the meal plan of the same customer costs no second fee', async () => {
+    const { setPantryDeliveryFee } = await import('../src/modules/dailymealbox/platform/pantryFee.js');
+    const snack = await M.FoodItem.create({ restaurantId: shop._id, name: 'Shared trip snack', price: 10 });
+    const restoreBags = await isolatePaidBags();
+    await setPantryDeliveryFee(3);
+    try {
+        // The plan's real schedule: its first delivery day and its slot (the meal order of test 1 was only moved to today).
+        const plan = await w.DMBSubscription.findById(subscription._id).lean();
+        assert.equal(plan.status, 'active');
+        const slot = plan.deliverySlots[0];
+        const other = slot === 'lunch' ? 'dinner' : 'lunch';
+        const day = time.storageDateStr(plan.startDate);
+        const feeOf = async (slots, dates) => {
+            const res = await checkout({ groups: [{ items: [{ pantryItemId: String(snack._id), quantity: 1 }], deliveryDates: dates, deliverySlots: slots }] });
+            assert.equal(res.status, 200, JSON.stringify(res.body));
+            const fee = res.body.orders.reduce((n, o) => n + o.pricing.deliveryFee, 0);
+            await M.PantryOrder.deleteMany({ status: 'pending_payment' });
+            return fee;
+        };
+        assert.equal(await feeOf([slot], [day]), 0, `${slot} shares the meal plan trip`);
+        assert.equal(await feeOf([other], [day]), 3, `${other} is a separate trip and pays the pantry fee`);
+        assert.equal(await feeOf([slot, other], [day]), 3, `only the ${other} trip is charged`);
+    } finally {
+        await setPantryDeliveryFee(0);
+        await restoreBags();
+    }
 });
 
 test('3. customer sees both orders; other customers and other shops cannot see or touch the bag', async () => {
@@ -334,7 +376,7 @@ test('7. collection PINs: wrong PIN refused, three wrong attempts lock, right PI
     assert.ok(batchB, 'pantry batch exists');
     const bad = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: '0000', vendorId: String(shop._id), slot: SLOT } });
     assert.equal(bad.status, 400);
-    const ok = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: batchB.collectionPinHash, vendorId: String(shop._id), slot: SLOT } });
+    const ok = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: readCollectionPin(batchB), vendorId: String(shop._id), slot: SLOT } });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     const po = await M.PantryOrder.findOne({ orderId: pantryOrderIds[0] }).lean();
     assert.equal(po.dailyDeliveries[0].status, 'out_for_delivery', 'bag is out for delivery after pickup');
@@ -342,7 +384,7 @@ test('7. collection PINs: wrong PIN refused, three wrong attempts lock, right PI
 
     const batchA = await M.CollectionBatch.findOne({ vendorId: w.vendor._id, deliverySlot: SLOT });
     for (let i = 0; i < 3; i++) await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: '0000', vendorId: String(w.vendor._id), slot: SLOT } });
-    const locked = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: batchA.collectionPinHash, vendorId: String(w.vendor._id), slot: SLOT } });
+    const locked = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: readCollectionPin(batchA), vendorId: String(w.vendor._id), slot: SLOT } });
     assert.equal(locked.status, 423, 'locked after 3 wrong tries even with the right PIN');
     const regen = await call('POST', '/v1/dmb/vendor/daily-orders/regenerate-pin', { token: tok.kitchen, body: { batchId: batchA.batchId } });
     assert.equal(regen.status, 200);
@@ -351,7 +393,7 @@ test('7. collection PINs: wrong PIN refused, three wrong attempts lock, right PI
     assert.equal((await w.DMBDailyOrder.findById(mealOrder._id)).status, 'out_for_delivery');
 });
 
-test('8. delivery: the customer\'s two PINs; wrong PIN refused; bag + meal delivered; no double delivery; stranger driver refused', async () => {
+test('8. delivery: one doorbell, one PIN for the meal and the bag; wrong PIN refused; both delivered together; no double delivery; stranger driver refused', async () => {
     const route = await call('GET', '/v1/dmb/driver/slot-route', { token: tok.driver });
     const drops = route.body.stops.filter((s) => s.type === 'delivery');
     assert.equal(drops.length, 2);
@@ -359,7 +401,14 @@ test('8. delivery: the customer\'s two PINs; wrong PIN refused; bag + meal deliv
     const pantryDrop = drops.find((d) => d.id === `delivery_${bagId}`);
     const mealDrop = drops.find((d) => d.id === `delivery_${mealOrder._id}`);
     assert.ok(pantryDrop && mealDrop, 'a drop for the bag and a drop for the meal');
-    assert.ok(pantryDrop.deliveryPin, 'the bag has its own delivery PIN, shown to the customer');
+    assert.ok(pantryDrop.deliveryPin, 'the bag has a delivery PIN, shown to the customer');
+    // Same customer, address, day and slot: one stop with ONE PIN for the whole bundle.
+    const storedMeal = await w.DMBDailyOrder.findById(mealOrder._id).lean();
+    const storedBag = (await M.PantryOrder.findOne({ orderId: pantryOrderIds[0] }).lean()).dailyDeliveries[0];
+    assert.ok(storedMeal.bundleId && storedMeal.bundleId === storedBag.bundleId, 'the meal and the bag are one bundle');
+    assert.equal(storedMeal.deliveryPin, storedBag.deliveryPin, 'one PIN covers the full bundle');
+    assert.equal(pantryDrop.deliveryPin, mealDrop.deliveryPin, 'and the driver sees that one PIN on both drops');
+    assert.ok(pantryDrop.bundleId && pantryDrop.bundleId === mealDrop.bundleId, 'the route marks both drops as one bundle so the app can show one stop');
 
     // The customer can read the PIN for BOTH from the app.
     const mine = await call('GET', '/v1/dmb/pantry-orders/my-orders', { token: tok.user });
@@ -379,15 +428,15 @@ test('8. delivery: the customer\'s two PINs; wrong PIN refused; bag + meal deliv
     const po = await M.PantryOrder.findOne({ orderId: pantryOrderIds[0] }).lean();
     assert.equal(po.dailyDeliveries[0].status, 'delivered');
     assert.ok(po.dailyDeliveries[0].deliveredAt);
+    assert.equal(bag.body.bundled.length, 1, 'the meal was handed over with the bag');
+    assert.equal((await w.DMBDailyOrder.findById(mealOrder._id)).status, 'delivered', 'one PIN delivered the whole bundle');
     const twice = await call('POST', '/v1/dmb/driver/verify-delivery-pin', { token: tok.driver, body: { orderId: pantryDrop.orderId, pin: pantryDrop.deliveryPin } });
     assert.equal(twice.status, 400, 'delivering the same bag twice is refused');
-
-    const meal = await call('POST', '/v1/dmb/driver/verify-delivery-pin', { token: tok.driver, body: { orderId: mealDrop.orderId, pin: mealDrop.deliveryPin } });
-    assert.equal(meal.status, 200, JSON.stringify(meal.body));
-    assert.equal((await w.DMBDailyOrder.findById(mealOrder._id)).status, 'delivered');
+    const mealAgain = await call('POST', '/v1/dmb/driver/verify-delivery-pin', { token: tok.driver, body: { orderId: mealDrop.orderId, pin: mealDrop.deliveryPin } });
+    assert.equal(mealAgain.status, 400, 'and so is the meal');
 });
 
-test('9. driver earnings: credited once per drop, for the bag as well as the meal', async () => {
+test('9. driver earnings: one payment for the drop, however many items the bundle holds; never twice', async () => {
     const po = await M.PantryOrder.findOne({ orderId: pantryOrderIds[0] }).lean();
     const before = (await w.FoodDeliveryPartner.findById(driver._id).lean()).earningsToday || 0;
     const bag = await call('POST', '/v1/dmb/driver/confirm-payment', { token: tok.driver, body: { orderId: String(po.dailyDeliveries[0]._id), method: 'QR' } });
@@ -395,7 +444,9 @@ test('9. driver earnings: credited once per drop, for the bag as well as the mea
     const meal = await call('POST', '/v1/dmb/driver/confirm-payment', { token: tok.driver, body: { orderId: String(mealOrder._id), method: 'QR' } });
     assert.equal(meal.status, 200, JSON.stringify(meal.body));
     const after = (await w.FoodDeliveryPartner.findById(driver._id).lean()).earningsToday || 0;
-    assert.equal(after - before, 10, '2 drops x 5');
+    assert.equal(bag.body.riderEarning, 5, 'the first item of the bundle pays the drop');
+    assert.equal(meal.body.riderEarning, 0, 'the second item of the same doorbell pays nothing');
+    assert.equal(after - before, 5, 'one drop x 5');
     const again = await call('POST', '/v1/dmb/driver/confirm-payment', { token: tok.driver, body: { orderId: String(po.dailyDeliveries[0]._id), method: 'QR' } });
     assert.equal(again.status, 400, 'no double earning');
 });
@@ -451,11 +502,11 @@ test('11. the same customer: a kitchen meal and a pantry bag in the SAME slot, o
     const ok = await call('PATCH', `/v1/dmb/pantry-orders/${lunchOrder._id}/daily-status`, { token: tok.shop, body: { deliveryId: String(lunchBag._id), status: 'ready' } });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: tok.kitchen, body: { date: todayStr, slot: SLOT } });
-    const batches = await M.CollectionBatch.find({ deliverySlot: SLOT, status: 'pending' });
+    const batches = await M.CollectionBatch.find({ deliverySlot: SLOT, status: 'driver_assigned' });
     assert.equal(batches.length, 2, 'one pickup request per vendor: the kitchen and the pantry shop');
 
-    // One driver accepts both (while it already holds nothing else) and sees BOTH pickups, then both drops, on ONE route.
-    for (const b of batches) assert.equal((await call('POST', '/v1/dmb/driver/accept-batch', { token: tok.driver, body: { batchId: b.batchId } })).status, 200);
+    // The one accepted driver of the zone is given both pickups and sees BOTH of them, then both drops, on ONE route.
+    for (const b of batches) assert.equal(String(b.driverId), String(driver._id), 'each pickup is already the assigned driver\'s - nothing to accept');
     const route = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
     assert.equal(route.status, 200, JSON.stringify(route.body));
     const pickups = route.body.stops.filter((s) => s.type === 'P');
@@ -472,7 +523,7 @@ test('11. the same customer: a kitchen meal and a pantry bag in the SAME slot, o
     // Collect from the kitchen only: its drop opens, the shop's drop stays locked until the shop is collected too.
     const kitchenBatch = batches.find((b) => String(b.vendorId) === String(w.vendor._id));
     const pantryBatch = batches.find((b) => String(b.vendorId) === String(shop._id));
-    const k = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: (await M.CollectionBatch.findById(kitchenBatch._id)).collectionPinHash, vendorId: String(w.vendor._id), slot: SLOT } });
+    const k = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: readCollectionPin((await M.CollectionBatch.findById(kitchenBatch._id))), vendorId: String(w.vendor._id), slot: SLOT } });
     assert.equal(k.status, 200, JSON.stringify(k.body));
     let r2 = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
     assert.equal(r2.body.stops.filter((s) => s.type === 'P').length, 1, 'only the pantry pickup is left');
@@ -480,14 +531,14 @@ test('11. the same customer: a kitchen meal and a pantry bag in the SAME slot, o
     const bagStop = r2.body.stops.find((s) => s.type === 'D' && String(s.orderId) === String(lunchBag._id));
     assert.equal(mealStop.status, 'READY');
     assert.equal(bagStop.status, 'WAITING');
-    const p = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: (await M.CollectionBatch.findById(pantryBatch._id)).collectionPinHash, vendorId: String(shop._id), slot: SLOT } });
+    const p = await call('POST', '/v1/dmb/driver/verify-collection-pin', { token: tok.driver, body: { pin: readCollectionPin((await M.CollectionBatch.findById(pantryBatch._id))), vendorId: String(shop._id), slot: SLOT } });
     assert.equal(p.status, 200, JSON.stringify(p.body));
     r2 = await call('GET', '/v1/dmb/driver/my-route', { token: tok.driver });
     assert.equal(r2.body.stops.filter((s) => s.type === 'P').length, 0);
     assert.equal(r2.body.stops.filter((s) => s.type === 'D' && s.status !== 'COMPLETED').length, 2);
 });
 
-test('12. pending pickup requests: the app can fetch them (polling), reject one, and only one driver can win an accept', async () => {
+test('12. two accepted drivers share a zone and slot: every ready delivery lands on exactly one of them; nobody else is offered anything', async () => {
     // Fresh state: today's meal (kitchen A) and one lunch bag (shop B), both ready.
     await M.CollectionBatch.deleteMany({});
     await M.PantryOrder.deleteMany({});
@@ -495,12 +546,12 @@ test('12. pending pickup requests: the app can fetch them (polling), reject one,
     await w.FoodDeliveryPartner.updateOne({ _id: driver._id }, { $set: { availabilityStatus: 'online', assignedVendors: [w.vendor._id, shop._id] } });
     const driver2 = await w.FoodDeliveryPartner.create({ name: 'Second', phone: nextPhone(), status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone._id], allowedShifts: [SLOT] });
     const far = await w.FoodDeliveryPartner.create({ name: 'Far away', phone: nextPhone(), status: 'approved', availabilityStatus: 'online', zoneIds: [w.zone2._id], allowedShifts: [SLOT] });
+    await acceptAssignment(driver2, { slotKeys: [SLOT] });
+    await acceptAssignment(far, { slotKeys: [SLOT] }); // accepted, but for another zone: never given this vendor's pickup
     const { signAccessToken } = await import('../src/core/auth/token.util.js');
     const t2 = signAccessToken({ userId: String(driver2._id), role: 'DELIVERY_PARTNER' });
     const tFar = signAccessToken({ userId: String(far._id), role: 'DELIVERY_PARTNER' });
     const pending = async (token) => (await call('GET', '/v1/dmb/driver/pending-requests', { token })).body.requests;
-
-    assert.deepEqual(await pending(tok.driver), [], 'nothing before anything is ready');
 
     const res = await checkout({ groups: [{ items: [{ pantryItemId: String(milk._id), quantity: 1 }], deliveryDates: [todayStr], deliverySlots: [SLOT] }] });
     await pay(res);
@@ -509,48 +560,30 @@ test('12. pending pickup requests: the app can fetch them (polling), reject one,
     await call('PATCH', `/v1/dmb/pantry-orders/${order._id}/daily-status`, { token: tok.shop, body: { deliveryId: String(bag._id), status: 'ready' } });
     await call('POST', '/v1/dmb/vendor/daily-orders/mark-all-ready', { token: tok.kitchen, body: { date: todayStr, slot: SLOT } });
 
-    // Both drivers in the zone see BOTH requests, with the same detail the pop-up needs.
-    let mine = await pending(tok.driver);
-    assert.deepEqual(mine.map((r) => r.vendorName).sort(), ['Corner Pantry', 'Maria Kitchen']);
-    const shopReq = mine.find((r) => r.vendorName === 'Corner Pantry');
-    assert.equal(shopReq.orders[0].type, 'pantry');
-    assert.equal(shopReq.boxCount, 1);
-    assert.equal(shopReq.totalEarnings, 5);
-    assert.equal((await pending(t2)).length, 2);
-    assert.equal((await pending(tFar)).length, 0, 'a driver in another zone is not offered them');
+    // Each delivery has exactly one of the two accepted drivers - never the driver of another zone.
+    const meal = await w.DMBDailyOrder.findById(mealOrder._id).lean();
+    const bagDriver = (await M.PantryOrder.findOne({ orderId: order.orderId })).dailyDeliveries[0].driverId;
+    const mine = new Set([String(driver._id), String(driver2._id)]);
+    assert.ok(mine.has(String(meal.dispatch.deliveryPartnerId)), 'the meal went to one of the two accepted drivers');
+    assert.ok(mine.has(String(bagDriver)), 'the bag went to one of the two accepted drivers');
 
-    // Offline drivers get nothing.
-    await w.FoodDeliveryPartner.updateOne({ _id: driver2._id }, { $set: { availabilityStatus: 'offline' } });
-    assert.equal((await pending(t2)).length, 0);
-    await w.FoodDeliveryPartner.updateOne({ _id: driver2._id }, { $set: { availabilityStatus: 'online' } });
+    // Pickups are pre-assigned (PIN issued) and add up to every box; the other zone's driver has none.
+    const batches = await M.CollectionBatch.find({ deliverySlot: SLOT, deliveryDate: { $gte: today } });
+    assert.ok(batches.length >= 2, 'one pickup per vendor at least');
+    assert.ok(batches.every((b) => b.status === 'driver_assigned' && mine.has(String(b.driverId)) && /^\d{4}$/.test(readCollectionPin(b))));
+    assert.equal(batches.reduce((n, b) => n + b.boxCount, 0), 2);
+    assert.equal(batches.some((b) => String(b.driverId) === String(far._id)), false);
 
-    // Reject: gone for this driver only; rejecting twice or a taken/unknown request is harmless.
-    const rej = await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: { batchId: shopReq.batchId } });
-    assert.equal(rej.status, 200);
-    assert.equal((await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: { batchId: shopReq.batchId } })).status, 200);
+    // There is no claim pool any more: nobody has an open request to take.
+    for (const t of [tok.driver, t2, tFar]) assert.deepEqual(await pending(t), []);
+    const stolen = await call('POST', '/v1/dmb/driver/accept-batch', { token: tFar, body: { batchId: batches[0].batchId } });
+    assert.equal(stolen.status, 403, JSON.stringify(stolen.body));
     assert.equal((await call('POST', '/v1/dmb/driver/reject-batch', { token: tok.driver, body: {} })).status, 400);
-    assert.deepEqual((await pending(tok.driver)).map((r) => r.vendorName), ['Maria Kitchen']);
-    assert.equal((await pending(t2)).length, 2, 'the other driver still sees it');
 
-    // The shop asks again (resend): it is offered to the driver who said no, too.
-    const resend = await call('POST', '/v1/dmb/vendor/daily-orders/resend-batch', { token: tok.shop, body: { date: todayStr, slot: SLOT } });
-    assert.equal(resend.status, 200, JSON.stringify(resend.body));
-    assert.equal((await pending(tok.driver)).length, 2);
-
-    // Two drivers accept the same request at the same moment: exactly one wins.
-    const kitchen = (await pending(tok.driver)).find((r) => r.vendorName === 'Maria Kitchen');
-    const [a1, a2] = await Promise.all([
-        call('POST', '/v1/dmb/driver/accept-batch', { token: tok.driver, body: { batchId: kitchen.batchId } }),
-        call('POST', '/v1/dmb/driver/accept-batch', { token: t2, body: { batchId: kitchen.batchId } })
-    ]);
-    assert.deepEqual([a1.status, a2.status].sort(), [200, 400], `one winner, one refused: ${a1.status}/${a2.status}`);
-    const batch = await M.CollectionBatch.findOne({ batchId: kitchen.batchId });
-    assert.equal(batch.status, 'driver_assigned');
-    const winner = a1.status === 200 ? driver._id : driver2._id;
-    assert.equal(String(batch.driverId), String(winner));
-    assert.equal((await pending(tok.driver)).some((r) => r.batchId === kitchen.batchId), false, 'a taken request disappears from everybody\'s list');
-
-    // Yesterday's leftovers are never offered.
-    await M.CollectionBatch.create({ vendorId: shop._id, deliveryDate: time.addDays(today, -1), deliverySlot: SLOT, boxCount: 1, collectionPinHash: '1234', orderIds: [new mongoose.Types.ObjectId()], status: 'pending' });
-    assert.equal((await pending(t2)).filter((r) => r.vendorName === 'Corner Pantry').length, 1, 'only today\'s pantry request');
+    // Each driver's route shows only their own pickups.
+    for (const [token, id] of [[tok.driver, driver._id], [t2, driver2._id]]) {
+        const route = await call('GET', '/v1/dmb/driver/my-route', { token });
+        const owned = batches.filter((b) => String(b.driverId) === String(id)).length;
+        assert.equal((route.body.stops || []).filter((x) => x.type === 'P').length, owned);
+    }
 });

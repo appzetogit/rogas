@@ -3,23 +3,20 @@ import { ShiftRecord } from '../models/shiftRecord.model.js';
 import { DeliverySlot } from '../../../dailymealbox/deliverySlot/deliverySlot.model.js';
 import { logger } from '../../../../utils/logger.js';
 import { queueEmail } from '../../../email/email.service.js';
-import { zonedInstant, storageDateStr, localToday, addDays as addLocalDays } from '../../../../utils/platformTime.js';
+import { zonedInstant, storageDateStr, localToday } from '../../../../utils/platformTime.js';
 
 /**
- * Driver attendance (Amendment v2 GAP B) and shift confirmation (GAP Z, ACM-152).
- *
- * Slot times are local wall-clock times (PLATFORM_TIMEZONE, default Europe/Warsaw); ShiftRecord.date is the storage
- * form of the local calendar date. With ACM-152 on for the driver's city, drivers are reminded 24h before each shift
- * and admins are alerted when a shift is still unconfirmed 2h before it starts. No-shows (not online 15 minutes after
- * the start) are always detected. A no-show never earns the minimum guarantee.
+ * Driver attendance (Amendment v2 GAP B). Shifts exist only because admin assigned a driver to a zone x slot x date and
+ * the driver accepted (see dailymealbox/delivery/driverAssignment.service.js). Slot times are local wall-clock times
+ * (PLATFORM_TIMEZONE, default Europe/Warsaw); ShiftRecord.date is the storage form of the local calendar date. A driver
+ * who is not online 15 minutes after an accepted shift starts is flagged a no-show; a no-show never earns the minimum
+ * guarantee.
  */
 
 /** Never lets an email problem break attendance tracking. */
 const emailSafe = (promise, label) => promise.catch((err) => logger.warn(`${label} not sent: ${err?.message || err}`));
 
 const NO_SHOW_GRACE_MS = 15 * 60_000;
-const UNCONFIRMED_REMINDER_MS = 2 * 60 * 60_000;
-const DRIVER_REMINDER_MS = 24 * 60 * 60_000;
 const UNCONFIRM_LOCK_MS = 2 * 60 * 60_000;
 
 const midnightUTC = (d = new Date()) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -46,99 +43,41 @@ const adminAlertEmail = async () => {
 
 const platform = async () => import('../../../dailymealbox/platform/platformConfig.service.js');
 
-/** ACM-152 for a driver (first zone's city), cached per sweep. */
-const confirmationRequired = async (driver, cache) => {
-    const key = String(driver?.zoneIds?.[0] || '');
-    if (cache?.has(key)) return cache.get(key);
-    let on = false;
-    try {
-        on = await (await platform()).isEnabled('driverShiftConfirmation', { zoneId: driver?.zoneIds?.[0] });
-    } catch { /* default off */ }
-    cache?.set(key, on);
-    return on;
-};
-
-/** Confirmed platform holidays that apply to a driver (by the cities of their zones). */
-const driverHolidays = async (driver, cache) => {
-    const key = (driver?.zoneIds || []).map(String).sort().join(',');
-    if (cache?.has(key)) return cache.get(key);
-    const set = new Set();
-    try {
-        const { holidaySetForCity } = await import('../../../dailymealbox/platform/holiday.service.js');
-        const { cityIdForZone } = await platform();
-        for (const d of await holidaySetForCity(null)) set.add(d);
-        for (const z of driver?.zoneIds || []) for (const d of await holidaySetForCity(await cityIdForZone(z))) set.add(d);
-    } catch { /* no holidays */ }
-    cache?.set(key, set);
-    return set;
-};
-
-/**
- * Creates any missing ShiftRecords for the given calendar date, from each driver's allowedShifts x each slot's
- * availableDays. Slots linked to another slot's driver shift do not create shifts of their own. On a platform holiday
- * the shift is created as "holiday" (the driver app shows "Platform Holiday — no shift").
- */
-export const generateShiftsForDate = async (date, { driverId } = {}) => {
-    const day = midnightUTC(date);
-    const dow = day.getUTCDay();
-    const driverFilter = { status: 'approved', allowedShifts: { $exists: true, $ne: [] } };
-    if (driverId) driverFilter._id = driverId;
-
-    const [slots, drivers] = await Promise.all([
-        DeliverySlot.find({ isEnabled: true, availableDays: dow }).select('key linkedShiftKey').lean(),
-        FoodDeliveryPartner.find(driverFilter).select('allowedShifts zoneIds').lean()
-    ]);
-    if (!slots.length || !drivers.length) return { created: 0 };
-
-    const slotKeys = new Set(slots.filter((s) => !s.linkedShiftKey || s.linkedShiftKey === s.key).map((s) => s.key));
-    const holidayCache = new Map();
-    const ops = [];
-    for (const driver of drivers) {
-        const holidays = await driverHolidays(driver, holidayCache);
-        const isHoliday = holidays.has(storageDateStr(day));
-        for (const key of driver.allowedShifts || []) {
-            if (!slotKeys.has(key)) continue;
-            ops.push({
-                updateOne: {
-                    filter: { driverId: driver._id, date: day, slotKey: key },
-                    update: { $setOnInsert: { driverId: driver._id, date: day, slotKey: key, status: isHoliday ? 'holiday' : 'scheduled' } },
-                    upsert: true
-                }
-            });
-        }
-    }
-    if (!ops.length) return { created: 0 };
-    const res = await ShiftRecord.bulkWrite(ops, { ordered: false });
-    return { created: res.upsertedCount || 0 };
-};
-
-/** Driver confirms an upcoming shift (GAP Z). Only a still-"scheduled" shift can be confirmed. */
+/** Driver accepts an assignment. */
 export const confirmShift = async (driverId, shiftRecordId) => {
-    const shift = await ShiftRecord.findOne({ _id: shiftRecordId, driverId });
-    if (!shift) throw new Error('Shift not found');
-    if (shift.status !== 'scheduled') throw new Error(`Shift is already "${shift.status}"`);
-    shift.status = 'confirmed';
-    shift.confirmedAt = new Date();
-    await shift.save();
-    return shift;
+    const { respondToAssignment } = await import('../../../dailymealbox/delivery/driverAssignment.service.js');
+    return respondToAssignment(driverId, shiftRecordId, { accept: true });
 };
 
-/** Driver withdraws a confirmation — not possible within 2 hours of the shift start (GAP Z). */
-export const unconfirmShift = async (driverId, shiftRecordId, now = new Date()) => {
+/** Driver declines a pending assignment. */
+export const declineShift = async (driverId, shiftRecordId, { reason = '' } = {}) => {
+    const { respondToAssignment } = await import('../../../dailymealbox/delivery/driverAssignment.service.js');
+    return respondToAssignment(driverId, shiftRecordId, { accept: false, reason });
+};
+
+/** Driver withdraws an accepted shift — not possible within 2 hours of the shift start. */
+export const unconfirmShift = async (driverId, shiftRecordId, now = new Date(), { reason = '' } = {}) => {
     const shift = await ShiftRecord.findOne({ _id: shiftRecordId, driverId });
-    if (!shift) throw new Error('Shift not found');
-    if (shift.status !== 'confirmed' || shift.checkedInAt) throw new Error('Only a confirmed shift that has not started can be unconfirmed');
+    if (!shift || !shift.zoneId) throw new Error('Shift not found');
+    if (shift.assignment?.state !== 'accepted' || shift.checkedInAt) throw new Error('Only an accepted shift that has not started can be withdrawn');
     const slot = await DeliverySlot.findOne({ key: shift.slotKey }).select('startTime endTime').lean();
     if (slot) {
         const { startAt } = slotWindow(shift.date, slot);
-        if (startAt.getTime() - now.getTime() < UNCONFIRM_LOCK_MS) throw new Error('A shift cannot be unconfirmed within 2 hours of its start — contact your City Manager');
+        if (startAt.getTime() - now.getTime() < UNCONFIRM_LOCK_MS) throw new Error('A shift cannot be withdrawn within 2 hours of its start - contact your City Manager');
     }
-    shift.status = 'scheduled';
+    shift.assignment.state = 'declined';
+    shift.assignment.respondedAt = now;
+    shift.assignment.declineReason = String(reason || 'withdrawn').slice(0, 300);
+    shift.status = 'declined';
     shift.confirmedAt = null;
     await shift.save();
     try {
         const p = await platform();
-        await p.raiseAdminAlert({ type: 'shift_unconfirmed', severity: 'warning', title: 'A driver withdrew a shift confirmation', message: `${shift.slotKey} on ${storageDateStr(shift.date)}`, entityType: 'ShiftRecord', entityId: shift._id, link: '/admin/food/delivery-partners/attendance' });
+        await p.raiseAdminAlert({
+            type: 'assignment_declined', severity: 'critical', cityId: await p.cityIdForZone(shift.zoneId),
+            title: 'A driver withdrew an accepted shift', message: `${shift.slotKey} on ${storageDateStr(shift.date)} needs another driver.`,
+            entityType: 'ShiftRecord', entityId: shift._id, link: '/admin/food/delivery-partners/assignments', dedupeKey: `withdrawn:${shift._id}:${now.getTime()}`
+        });
     } catch { /* alert is best-effort */ }
     return shift;
 };
@@ -150,7 +89,8 @@ export const checkInDriver = async (driverId) => {
     const candidates = await ShiftRecord.find({
         driverId,
         date: { $in: [day, addDays(day, -1)] },
-        status: { $in: ['scheduled', 'confirmed'] },
+        status: 'confirmed',
+        'assignment.state': 'accepted',
         checkedInAt: null
     }).lean();
     if (!candidates.length) return null;
@@ -163,7 +103,7 @@ export const checkInDriver = async (driverId) => {
         if (!slot) continue;
         const { startAt, endAt } = slotWindow(new Date(shift.date), slot);
         if (now >= startAt && now <= endAt) {
-            await ShiftRecord.updateOne({ _id: shift._id }, { $set: { checkedInAt: now, status: 'confirmed' } });
+            await ShiftRecord.updateOne({ _id: shift._id }, { $set: { checkedInAt: now } });
             return shift._id;
         }
     }
@@ -193,78 +133,46 @@ const alertAdminNoShow = async (shift, driver) => {
     }), `No-show alert for driver ${shift.driverId}`);
 };
 
-const alertAdminUnconfirmed = async (shift, driver) => {
-    try {
-        const p = await platform();
-        const cityId = driver?.zoneIds?.[0] ? await p.cityIdForZone(driver.zoneIds[0]) : null;
-        await p.raiseAdminAlert({
-            type: 'shift_unconfirmed', severity: 'warning', cityId,
-            title: `Unconfirmed shift: ${driver?.name || 'driver'} (${shift.slotKey})`,
-            message: `${driver?.name || 'A driver'} has not confirmed the ${shift.slotKey} shift starting in about 2 hours (${storageDateStr(shift.date)}). Call the driver.`,
-            entityType: 'ShiftRecord', entityId: shift._id, link: '/admin/food/delivery-partners/attendance', dedupeKey: `unconfirmed:${shift._id}`
-        });
-    } catch { /* alert is best-effort */ }
-    const to = await adminAlertEmail();
-    if (!to) return;
-    await emailSafe(queueEmail({
-        to,
-        subjectKey: 'Driver has not confirmed an upcoming shift',
-        bodyKey: '{{driverName}} has not confirmed their {{slotKey}} shift starting in about 2 hours, on {{date}}.',
-        vars: { driverName: driver?.name || 'A driver', slotKey: shift.slotKey, date: new Date(shift.date).toISOString().slice(0, 10) }
-    }), `Unconfirmed-shift alert for driver ${shift.driverId}`);
-};
-
-const remindDriver = async (shift, slot) => {
-    try {
-        const { notify } = await import('../../../dailymealbox/notifications/notify.js');
-        const { msg } = await import('../../../i18n/i18n.service.js');
-        await notify({
-            to: 'driver', id: shift.driverId, event: 'shift_confirm_reminder',
-            title: msg('Confirm your shift tomorrow'),
-            body: msg('Your {{slot}} shift starts tomorrow at {{time}}. Confirm you\'re available →', { slot: slot.name || shift.slotKey, time: slot.startTime }),
-            link: '/food/delivery/shifts', data: { shiftId: String(shift._id) }
-        });
-    } catch (err) {
-        logger.warn(`[attendance] reminder for shift ${shift._id} failed: ${err.message}`);
-    }
-};
-
 /** Deliveries and earnings of a driver during one shift (date + slot), for the record and the guarantee rule. */
-const shiftStats = async (shift) => {
+export const shiftStats = async (shift) => {
     try {
         const { DMBDailyOrder } = await import('../../../dailymealbox/subscription/dmb.dailyOrder.model.js');
         const [row] = await DMBDailyOrder.aggregate([
             { $match: { 'dispatch.deliveryPartnerId': shift.driverId, deliveryDate: shift.date, deliverySlot: shift.slotKey, status: 'delivered' } },
             { $group: { _id: null, n: { $sum: 1 }, earnings: { $sum: { $add: [{ $ifNull: ['$riderEarning', 0] }, { $ifNull: ['$driverTip', 0] }] } } } }
         ]);
-        return { deliveries: row?.n || 0, earnings: Math.round((row?.earnings || 0) * 100) / 100 };
+        // Hub drop-off stops of the shift pay the driver too; they are not deliveries, so they add to the earnings only.
+        const { DMBHubTransfer } = await import('../../../dailymealbox/delivery/hub.models.js');
+        const [hub] = await DMBHubTransfer.aggregate([
+            { $match: { sourceDriverId: shift.driverId, date: shift.date, slotKey: shift.slotKey, dropConfirmed: true } },
+            { $group: { _id: null, earnings: { $sum: '$dropEarning' } } }
+        ]);
+        return { deliveries: row?.n || 0, earnings: Math.round(((row?.earnings || 0) + (hub?.earnings || 0)) * 100) / 100 };
     } catch {
         return { deliveries: 0, earnings: 0 };
     }
 };
 
-/** Background sweep: seeds tomorrow's shifts, resolves finished ones (no-show / completed), sends reminders. */
-export const runAttendanceSweep = async () => {
-    const now = new Date();
+/** Background sweep: expires unanswered assignments / warns about uncovered cells, then resolves finished shifts. */
+export const runAttendanceSweep = async (now = new Date()) => {
     const today = localToday(now);
-    await generateShiftsForDate(addDays(today, 1));
+    const { sweepAssignments } = await import('../../../dailymealbox/delivery/driverAssignment.service.js');
+    const assignments = await sweepAssignments(now);
+    const { sweepHubs } = await import('../../../dailymealbox/delivery/hub.service.js');
+    Object.assign(assignments, await sweepHubs(now));
 
     const open = await ShiftRecord.find({
-        status: { $in: ['scheduled', 'confirmed'] },
+        status: 'confirmed', 'assignment.state': 'accepted',
         date: { $gte: addDays(today, -1), $lte: addDays(today, 1) }
     }).lean();
-    if (!open.length) return { resolved: 0, reminded: 0, driverReminders: 0 };
+    if (!open.length) return { resolved: 0, ...assignments };
 
     const slots = await DeliverySlot.find({ key: { $in: [...new Set(open.map((s) => s.slotKey))] } }).select('key name startTime endTime').lean();
     const slotByKey = new Map(slots.map((s) => [s.key, s]));
-    const driverIds = [...new Set(open.map((s) => String(s.driverId)))];
-    const drivers = await FoodDeliveryPartner.find({ _id: { $in: driverIds } }).select('name zoneIds fleetPartnerId minimumGuarantee').lean();
+    const drivers = await FoodDeliveryPartner.find({ _id: { $in: [...new Set(open.map((s) => String(s.driverId)))] } }).select('name zoneIds fleetPartnerId minimumGuarantee').lean();
     const driverById = new Map(drivers.map((d) => [String(d._id), d]));
-    const acmCache = new Map();
 
     let resolved = 0;
-    let reminded = 0;
-    let driverReminders = 0;
     for (const shift of open) {
         const slot = slotByKey.get(shift.slotKey);
         if (!slot) continue;
@@ -288,30 +196,14 @@ export const runAttendanceSweep = async () => {
                 }
             });
             resolved++;
-            continue;
-        }
-        const msToStart = startAt.getTime() - now.getTime();
-        if (shift.status === 'scheduled' && msToStart > 0 && await confirmationRequired(driver, acmCache)) {
-            if (!shift.reminder24SentAt && msToStart <= DRIVER_REMINDER_MS && msToStart > UNCONFIRMED_REMINDER_MS) {
-                await ShiftRecord.updateOne({ _id: shift._id }, { $set: { reminder24SentAt: now } });
-                await remindDriver(shift, slot);
-                driverReminders++;
-            }
-            if (!shift.unconfirmedAlertSentAt && msToStart <= UNCONFIRMED_REMINDER_MS) {
-                await ShiftRecord.updateOne({ _id: shift._id }, { $set: { unconfirmedAlertSentAt: now } });
-                await alertAdminUnconfirmed(shift, driver);
-                reminded++;
-            }
         }
     }
-    return { resolved, reminded, driverReminders };
+    return { resolved, ...assignments };
 };
 
 /** A driver's own shift history + upcoming shifts (next 7 days are generated on demand). */
 export const listShiftsForDriver = async (driverId, { fromDate, toDate, limit = 100 } = {}) => {
-    const today = localToday();
-    for (let i = 0; i < 7; i++) await generateShiftsForDate(addLocalDays(today, i), { driverId });
-    const filter = { driverId };
+    const filter = { driverId, zoneId: { $ne: null } };
     if (fromDate || toDate) {
         filter.date = {};
         if (fromDate) filter.date.$gte = midnightUTC(new Date(fromDate));
@@ -320,11 +212,14 @@ export const listShiftsForDriver = async (driverId, { fromDate, toDate, limit = 
     const shifts = await ShiftRecord.find(filter).sort({ date: -1 }).limit(limit).lean();
     const slots = await DeliverySlot.find({ key: { $in: [...new Set(shifts.map((s) => s.slotKey))] } }).select('key name icon startTime endTime').lean();
     const slotByKey = new Map(slots.map((s) => [s.key, s]));
+    const { FoodZone } = await import('../../admin/models/zone.model.js');
+    const zones = await FoodZone.find({ _id: { $in: [...new Set(shifts.map((s) => String(s.zoneId)))] } }).select('name zoneName').lean();
+    const zoneName = new Map(zones.map((z) => [String(z._id), z.zoneName || z.name]));
     const now = Date.now();
     return shifts.map((s) => {
         const slot = slotByKey.get(s.slotKey) || null;
         const startAt = slot ? slotWindow(s.date, slot).startAt : null;
-        return { ...s, slot, startsAt: startAt, canUnconfirm: s.status === 'confirmed' && !s.checkedInAt && startAt && startAt.getTime() - now >= UNCONFIRM_LOCK_MS };
+        return { ...s, slot, zoneName: zoneName.get(String(s.zoneId)) || '', startsAt: startAt, canUnconfirm: s.status === 'confirmed' && !s.checkedInAt && startAt && startAt.getTime() - now >= UNCONFIRM_LOCK_MS };
     });
 };
 
@@ -372,21 +267,21 @@ export const adminAttendanceOverview = async ({ year, month, maxRate, fleetPartn
     return maxRate != null ? out.filter((r) => r.rate != null && r.rate < Number(maxRate)) : out;
 };
 
-/** AP-06's "Tomorrow's Shifts" view (GAP Z): who's confirmed for tomorrow and who isn't yet. */
+/** Tomorrow's assignments and whether each driver has accepted. */
 export const tomorrowConfirmationStatus = async () => {
     const tomorrow = addDays(localToday(), 1);
-    await generateShiftsForDate(tomorrow);
-    const shifts = await ShiftRecord.find({ date: tomorrow, status: { $ne: 'holiday' } }).lean();
-    const driverIds = [...new Set(shifts.map((s) => String(s.driverId)))];
-    const drivers = await FoodDeliveryPartner.find({ _id: { $in: driverIds } }).select('name city phone').lean();
+    const shifts = await ShiftRecord.find({ date: tomorrow, zoneId: { $ne: null }, status: { $ne: 'holiday' } }).lean();
+    const drivers = await FoodDeliveryPartner.find({ _id: { $in: [...new Set(shifts.map((s) => String(s.driverId)))] } }).select('name city phone').lean();
     const driverById = new Map(drivers.map((d) => [String(d._id), d]));
     return shifts.map((s) => ({
         driverId: s.driverId,
         name: driverById.get(String(s.driverId))?.name || 'Unknown',
         city: driverById.get(String(s.driverId))?.city || '',
         phone: driverById.get(String(s.driverId))?.phone || '',
+        zoneId: s.zoneId,
         slotKey: s.slotKey,
-        confirmed: s.status === 'confirmed',
+        state: s.assignment?.state,
+        confirmed: s.assignment?.state === 'accepted',
         confirmedAt: s.confirmedAt
     }));
 };

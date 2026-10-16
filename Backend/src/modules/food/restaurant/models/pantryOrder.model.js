@@ -78,12 +78,15 @@ const pantryOrderSchema = new mongoose.Schema(
             date: { type: Date, required: true },
             dayOfWeek: { type: String, required: true },
             slot: { type: String, required: true },
-            status: { type: String, enum: ['scheduled', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'failed'], default: 'scheduled' },
+            status: { type: String, enum: ['scheduled', 'preparing', 'ready', 'hub_transit', 'out_for_delivery', 'delivered', 'failed'], default: 'scheduled' },
             deliveryPin: { type: String },
+            /** See DMBDailyOrder.bundleId: bags and meals of one stop share one PIN. */
+            bundleId: { type: String, default: '' },
             deliveredAt: { type: Date },
             /** Driver pay for this bag, credited once when the driver confirms the drop. */
             paymentConfirmed: { type: Boolean, default: false },
             riderEarning: { type: Number, default: 0 },
+            earningBreakdown: { type: mongoose.Schema.Types.Mixed, default: undefined },
             gpsMismatch: { type: Boolean, default: false },
             proofMethod: { type: String, default: '' },
             driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' },

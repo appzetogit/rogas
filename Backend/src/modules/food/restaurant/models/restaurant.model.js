@@ -355,6 +355,14 @@ const restaurantSchema = new mongoose.Schema(
     // ─── Amendment v2 Extra ──────────────────────────────────────────────────
     /** Zones this vendor delivers to (Gap X). Empty = its own zoneId only. */
     deliveryZoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
+    /**
+     * Hub (cross-zone hand-over point). Any approved vendor can be one; the transfers it handles are only its own. It sits in
+     * its own zone (`zoneId`). Capacity = most items it may hold at the same time; blank hours = open whenever the slot runs.
+     */
+    isHub: { type: Boolean, default: false, index: true },
+    hubCapacity: { type: Number, default: null, min: 1 },
+    hubActiveHours: { start: { type: String, default: '' }, end: { type: String, default: '' } },
+    hubOperatorName: { type: String, default: '', trim: true, maxlength: 80 },
     /** Weekdays the vendor delivers (JS days 0=Sun…6=Sat). Mon–Fri by default; weekends need ACM-177 (Gap AJ). */
     deliveryWeekdays: { type: [Number], default: [1, 2, 3, 4, 5] },
     /** The vendor may be part of customers' Smart Rotations (Gap AK). */

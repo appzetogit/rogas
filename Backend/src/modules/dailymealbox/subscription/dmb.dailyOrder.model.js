@@ -80,7 +80,7 @@ const dmbDailyOrderSchema = new mongoose.Schema(
          */
         status: {
             type: String,
-            enum: ['scheduled', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'skipped', 'failed'],
+            enum: ['scheduled', 'preparing', 'ready', 'hub_transit', 'out_for_delivery', 'delivered', 'skipped', 'failed'],
             default: 'scheduled',
             index: true
         },
@@ -88,12 +88,16 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         /** Collection PIN for driver to verify pickup from vendor */
         collectionPin: { type: String, default: '' },
         deliveryPin: { type: String, default: '' },
+        /** Items for the same customer, address, day and slot are one stop with one doorbell and ONE delivery PIN. */
+        bundleId: { type: String, default: '', index: true },
 
         pricing: {
             foodCost: { type: Number, default: 0 },
             foodVat: { type: Number, default: 0 },
             foodVatAmount: { type: Number, default: 0 },
             deliveryFee: { type: Number, default: 0 },
+            /** Flat cross-zone surcharge charged with the delivery (hub transfer), outside every discount. */
+            crossZoneSurcharge: { type: Number, default: 0 },
             deliveryVat: { type: Number, default: 0 },
             deliveryVatAmount: { type: Number, default: 0 },
             platformFee: { type: Number, default: 0 },
@@ -113,8 +117,11 @@ const dmbDailyOrderSchema = new mongoose.Schema(
         },
 
         dispatch: {
+            /** The driver who delivers it to the customer (for a cross-zone item: the customer-zone driver). */
             deliveryPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null }
         },
+        /** Cross-zone: the vendor is in another zone than the customer, so a hub transfer carries it (see DMBHubTransfer). */
+        hasCrossZone: { type: Boolean, default: false },
 
         /** Timestamps for status transitions (for analytics & SLA tracking) */
         preparingAt: { type: Date, default: null },
@@ -154,6 +161,8 @@ const dmbDailyOrderSchema = new mongoose.Schema(
 
         /** Payment and Earnings tracking */
         riderEarning: { type: Number, default: 0 },
+        /** How riderEarning was made up: the rate (and which table row won), rate-boost promotions and count bonuses. */
+        earningBreakdown: { type: mongoose.Schema.Types.Mixed, default: undefined },
         paymentMethod: { type: String, enum: ['CASH', 'ONLINE', 'QR', ''], default: '' },
         paymentConfirmed: { type: Boolean, default: false },
 

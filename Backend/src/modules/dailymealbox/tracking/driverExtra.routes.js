@@ -1,9 +1,8 @@
 import express from 'express';
 import { authMiddleware } from '../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../core/roles/role.middleware.js';
-import { unconfirmShift } from '../../food/delivery/services/attendance.service.js';
+import { unconfirmShift, declineShift } from '../../food/delivery/services/attendance.service.js';
 import { reportFailedDelivery, DISPOSITIONS, REASONS } from './failedDelivery.service.js';
-import { isEnabled } from '../platform/platformConfig.service.js';
 
 /** Driver app endpoints added by Amendment v2 Extra. Mounted at /api/v1/dmb (paths start with /driver/). */
 const router = express.Router();
@@ -18,14 +17,39 @@ const send = (fn) => async (req, res) => {
     }
 };
 
-/** GAP Z: is confirmation required for this driver (ACM-152)? */
-router.get('/driver/shift-settings', ...driver, send(async (req) => {
+/** Shift rules the driver app needs: how long before a shift start an accepted shift can still be withdrawn. */
+router.get('/driver/shift-settings', ...driver, send(async () => ({ unconfirmLockHours: 2 })));
+
+/** The driver declines a pending assignment. Body: { reason } */
+router.post('/driver/shifts/:id/decline', ...driver, send(async (req) => ({ shift: await declineShift(did(req), req.params.id, { reason: req.body?.reason }) })));
+
+router.post('/driver/shifts/:id/unconfirm', ...driver, send(async (req) => ({ shift: await unconfirmShift(did(req), req.params.id, new Date(), { reason: req.body?.reason }) })));
+
+/** DA-03: the promotions that apply to this driver, each with this week's progress (the home-screen bars). */
+router.get('/driver/promotions', ...driver, send(async (req) => {
     const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-    const d = await FoodDeliveryPartner.findById(did(req)).select('zoneIds').lean();
-    return { confirmationRequired: await isEnabled('driverShiftConfirmation', { zoneId: d?.zoneIds?.[0] }), unconfirmLockHours: 2 };
+    const { promotionsForDriver } = await import('../delivery/driverEarnings.service.js');
+    const me = await FoodDeliveryPartner.findById(did(req)).select('zoneIds').lean();
+    return { promotions: await promotionsForDriver({ driverId: did(req), zoneIds: (me?.zoneIds || []).map(String) }) };
 }));
 
-router.post('/driver/shifts/:id/unconfirm', ...driver, send(async (req) => ({ shift: await unconfirmShift(did(req), req.params.id) })));
+/** Hub hand-overs: what this driver has to drop at a hub or collect from one. */
+router.get('/driver/hub-tasks', ...driver, send(async (req) => {
+    const { driverHubTasks } = await import('../delivery/hub.service.js');
+    return { tasks: await driverHubTasks({ driverId: did(req) }) };
+}));
+/** PIN 1: the source driver hands an item to the hub. Body: { pin } */
+router.post('/driver/hub/:id/drop', ...driver, send(async (req) => {
+    const { dropAtHub } = await import('../delivery/hub.service.js');
+    const result = await dropAtHub({ transferId: req.params.id, driverId: did(req), pin: req.body?.pin });
+    (await import('../subscription/dmb.dailyOrder.service.js')).notifyDriverOfRouteUpdate(did(req));
+    return { result };
+}));
+/** PIN 2: the zone driver collects an item at the hub. Body: { pin } */
+router.post('/driver/hub/:id/pickup', ...driver, send(async (req) => {
+    const { pickupAtHub } = await import('../delivery/hub.service.js');
+    return { result: await pickupAtHub({ transferId: req.params.id, driverId: did(req), pin: req.body?.pin }) };
+}));
 
 /** DA-07 failed delivery with disposition (Gap P). Body: { type: 'dmb'|'pantry', reason, disposition, photoUrl, note } */
 router.get('/driver/failed-delivery-options', ...driver, send(async () => ({ reasons: REASONS, dispositions: DISPOSITIONS })));

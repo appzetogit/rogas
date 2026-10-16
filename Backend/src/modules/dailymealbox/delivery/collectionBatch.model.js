@@ -1,4 +1,6 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
+import { encryptField, safeDecrypt } from '../../../utils/fieldCrypto.js';
 
 /**
  * CollectionBatch — Driver pickup from vendor with PIN verification
@@ -30,8 +32,6 @@ const collectionBatchSchema = new mongoose.Schema(
         },
         /** Drivers who rejected this pickup request: it is not offered to them again (a vendor resend clears the list). */
         rejectedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }],
-        /** Drivers who rejected this pickup request: it is not offered to them again (a vendor resend clears the list). */
-        rejectedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' }],
         fleetPartnerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'FleetPartner',
@@ -50,6 +50,8 @@ const collectionBatchSchema = new mongoose.Schema(
          * Redis key: collection_pin:{batchId}
          */
         collectionPinHash: { type: String, default: '' },
+        /** The same PIN encrypted, so it can be shown to the vendor and driver without ever being stored in plain text. */
+        collectionPinEnc: { type: String, default: '' },
         pinExpiry: { type: Date, default: null },
         pinVerified: { type: Boolean, default: false, index: true },
         pinAttempts: { type: Number, default: 0, min: 0 },
@@ -117,3 +119,27 @@ collectionBatchSchema.pre('save', function (next) {
 });
 
 export const CollectionBatch = mongoose.model('CollectionBatch', collectionBatchSchema);
+
+// ─── The collection PIN: salted hash to check an entry, encrypted copy to show it ───────────────────────────
+const digest = (id, pin) => crypto.createHash('sha256').update(`${id}:${String(pin ?? '').trim()}`).digest('hex');
+const isLegacyPlain = (batch) => !batch?.collectionPinEnc && /^\d{4}$/.test(String(batch?.collectionPinHash || ''));
+
+/** Sets (or replaces) the PIN of a batch document. */
+export const setCollectionPin = (batch, pin) => {
+    batch.collectionPinHash = digest(batch._id, pin);
+    batch.collectionPinEnc = encryptField(String(pin));
+};
+/** The PIN to show the vendor / driver. Rows written before PINs were hashed still hold the digits in collectionPinHash. */
+export const readCollectionPin = (batch) => {
+    if (!batch) return '';
+    if (batch.collectionPinEnc) return safeDecrypt(batch.collectionPinEnc) || '';
+    return isLegacyPlain(batch) ? String(batch.collectionPinHash) : '';
+};
+/** Whether an entered PIN is the batch's PIN. */
+export const checkCollectionPin = (batch, pin) => {
+    if (!batch || pin === undefined || pin === null || String(pin).trim() === '') return false;
+    if (isLegacyPlain(batch)) return String(batch.collectionPinHash) === String(pin).trim();
+    const a = Buffer.from(String(batch.collectionPinHash || ''));
+    const b = Buffer.from(digest(batch._id, pin));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+};

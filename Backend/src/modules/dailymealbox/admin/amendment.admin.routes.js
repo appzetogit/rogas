@@ -439,6 +439,205 @@ router.get('/reports/growth', requirePermission('reports', 'view'), send(async (
     };
 }));
 
+// ─── Zone x Slot driver assignment, planned the day before ─────────────────────────────────────────────────
+const assignmentScope = async (req) => {
+    const admin = req.adminProfile || (req.adminProfile = await loadAdmin(req));
+    const mine = admin.adminRole === 'CITY_MANAGER' ? (admin.assignedCityIds || []).map(String) : null;
+    return { admin, mine };
+};
+/** A City Manager may only plan the zones of their own cities. */
+const assertZoneInScope = async (req, zoneId) => {
+    const { mine } = await assignmentScope(req);
+    if (!mine) return;
+    const allowed = (await Promise.all(mine.map((c) => zoneIdsForCity(c)))).flat().map(String);
+    if (!allowed.includes(String(zoneId))) throw Object.assign(new Error('That zone is outside your cities'), { statusCode: 403 });
+};
+
+router.get('/assignments/board', requirePermission('driverManagement', 'view'), send(async (req) => {
+    const { planningBoard } = await import('../delivery/driverAssignment.service.js');
+    const { mine } = await assignmentScope(req);
+    let cityIds = req.query.cityId ? [String(req.query.cityId)] : null;
+    if (mine) cityIds = cityIds ? cityIds.filter((c) => mine.includes(c)) : mine;
+    const { localToday, addDays, storageDateStr } = await import('../../../utils/platformTime.js');
+    const date = req.query.date || storageDateStr(addDays(localToday(), 1));
+    return { board: await planningBoard(date, { cityIds }) };
+}));
+
+router.get('/assignments/eligible-drivers', requirePermission('driverManagement', 'view'), send(async (req) => {
+    const { eligibleDrivers } = await import('../delivery/driverAssignment.service.js');
+    await assertZoneInScope(req, req.query.zoneId);
+    return { drivers: await eligibleDrivers({ zoneId: req.query.zoneId, date: req.query.date, slotKey: req.query.slotKey }) };
+}));
+
+router.post('/assignments', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const { assignDriver } = await import('../delivery/driverAssignment.service.js');
+    const { admin } = await assignmentScope(req);
+    await assertZoneInScope(req, req.body?.zoneId);
+    const result = await assignDriver({ date: req.body?.date, zoneId: req.body?.zoneId, slotKey: req.body?.slotKey, driverId: req.body?.driverId, adminId: admin._id });
+    await audit(req, 'driver_assigned', 'ShiftRecord', result.shift._id, null, { zoneId: req.body.zoneId, slotKey: req.body.slotKey, date: req.body.date, driverId: req.body.driverId });
+    return result;
+}));
+
+router.delete('/assignments/:id', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const { unassignDriver } = await import('../delivery/driverAssignment.service.js');
+    const { ShiftRecord } = await import('../../food/delivery/models/shiftRecord.model.js');
+    const shift = await ShiftRecord.findById(req.params.id).select('zoneId').lean();
+    if (shift) await assertZoneInScope(req, shift.zoneId);
+    const { admin } = await assignmentScope(req);
+    const result = await unassignDriver({ shiftId: req.params.id, adminId: admin._id });
+    await audit(req, 'driver_unassigned', 'ShiftRecord', req.params.id, shift, null);
+    return result;
+}));
+
+router.post('/assignments/copy', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const { copyAssignments } = await import('../delivery/driverAssignment.service.js');
+    const { admin, mine } = await assignmentScope(req);
+    if (mine) throw Object.assign(new Error('Copying a whole day is for Super Admins; assign cells one by one'), { statusCode: 403 });
+    return copyAssignments({ fromDate: req.body?.fromDate, toDate: req.body?.toDate, adminId: admin._id });
+}));
+
+router.get('/assignments/cell', requirePermission('driverManagement', 'view'), send(async (req) => {
+    const { cellDetail } = await import('../delivery/cellPlanner.service.js');
+    await assertZoneInScope(req, req.query.zoneId);
+    return { cell: await cellDetail({ zoneId: req.query.zoneId, date: req.query.date, slotKey: req.query.slotKey }) };
+}));
+
+/** Moves one delivery (meal order or pantry bag) to another driver who accepted the same zone and slot. */
+router.post('/assignments/move', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const { moveUnit } = await import('../delivery/cellPlanner.service.js');
+    const { cellDetail } = await import('../delivery/cellPlanner.service.js');
+    await assertZoneInScope(req, req.body?.zoneId);
+    const result = await moveUnit({ kind: req.body?.kind, id: req.body?.id, toDriverId: req.body?.toDriverId });
+    await audit(req, 'delivery_moved', req.body?.kind === 'pantry' ? 'PantryOrder' : 'DMBDailyOrder', req.body?.id, null, { toDriverId: req.body?.toDriverId });
+    return { ...result, cell: await cellDetail({ zoneId: req.body.zoneId, date: req.body.date, slotKey: req.body.slotKey }) };
+}));
+
+// ─── Driver earnings: delivery rates and promotions ─────────────────────────────────────────────────────────
+/** A City Manager may only write rates and promotions of their own cities (a platform-wide row needs a Super Admin). */
+const assertEarningsScope = async (req, { cityId, zoneId }) => {
+    const { mine } = await assignmentScope(req);
+    if (!mine) return;
+    const { cityIdForZone } = await import('../platform/platformConfig.service.js');
+    const city = zoneId ? await cityIdForZone(zoneId) : cityId;
+    if (!city || !mine.includes(String(city))) throw Object.assign(new Error('You can only change rates and promotions of your own cities'), { statusCode: 403 });
+};
+const ownCities = async (req) => (await assignmentScope(req)).mine;
+
+router.get('/earnings/rates', requirePermission('driverManagement', 'view'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    return { rates: await earnings.listRates({ cityIds: await ownCities(req) }), feeSettingsRate: await earnings.feeSettingsRate() };
+}));
+router.post('/earnings/rates', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    await assertEarningsScope(req, req.body || {});
+    const { admin } = await assignmentScope(req);
+    const rate = await earnings.saveRate(req.body || {}, admin._id);
+    await audit(req, 'delivery_rate_saved', 'DMBDeliveryRate', rate._id, null, rate);
+    return { rate };
+}));
+router.put('/earnings/rates/:id', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    await assertEarningsScope(req, req.body || {});
+    const { admin } = await assignmentScope(req);
+    const rate = await earnings.saveRate(req.body || {}, admin._id, req.params.id);
+    await audit(req, 'delivery_rate_saved', 'DMBDeliveryRate', rate._id, null, rate);
+    return { rate };
+}));
+router.delete('/earnings/rates/:id', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    const { DMBDeliveryRate } = await import('../delivery/driverEarnings.models.js');
+    const row = await DMBDeliveryRate.findById(req.params.id).lean();
+    if (row) await assertEarningsScope(req, row);
+    const out = await earnings.removeRate(req.params.id);
+    await audit(req, 'delivery_rate_removed', 'DMBDeliveryRate', req.params.id, row, null);
+    return out;
+}));
+
+router.get('/earnings/promotions', requirePermission('driverManagement', 'view'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    return { promotions: await earnings.listPromotions({ cityIds: await ownCities(req) }) };
+}));
+router.post('/earnings/promotions', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    await assertEarningsScope(req, req.body || {});
+    const { admin } = await assignmentScope(req);
+    const promotion = await earnings.savePromotion(req.body || {}, admin._id);
+    await audit(req, 'driver_promotion_saved', 'DMBDriverPromotion', promotion._id, null, promotion);
+    return { promotion };
+}));
+router.put('/earnings/promotions/:id', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    await assertEarningsScope(req, req.body || {});
+    const { admin } = await assignmentScope(req);
+    const promotion = await earnings.savePromotion(req.body || {}, admin._id, req.params.id);
+    await audit(req, 'driver_promotion_saved', 'DMBDriverPromotion', promotion._id, null, promotion);
+    return { promotion };
+}));
+router.patch('/earnings/promotions/:id/status', requirePermission('driverManagement', 'edit'), send(async (req) => {
+    const earnings = await import('../delivery/driverEarnings.service.js');
+    const { DMBDriverPromotion } = await import('../delivery/driverEarnings.models.js');
+    const row = await DMBDriverPromotion.findById(req.params.id).lean();
+    if (row) await assertEarningsScope(req, row);
+    const { admin } = await assignmentScope(req);
+    const promotion = await earnings.setPromotionStatus(req.params.id, req.body?.status, admin._id);
+    await audit(req, 'driver_promotion_status', 'DMBDriverPromotion', req.params.id, row, promotion);
+    return { promotion };
+}));
+
+// ─── Hubs and cross-zone transfers ──────────────────────────────────────────────────────────────────────────
+router.get('/hubs', requirePermission('vendorManagement', 'view'), send(async (req) => {
+    const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+    const { mine } = await assignmentScope(req);
+    const zoneFilter = mine ? { zoneId: { $in: (await Promise.all(mine.map((c) => zoneIdsForCity(c)))).flat() } } : {};
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const filter = { status: 'approved', ...zoneFilter, ...(req.query.onlyHubs === 'true' ? { isHub: true } : {}) };
+    let vendors = await FoodRestaurant.find(filter).select('restaurantName zoneId zoneName isHub hubCapacity hubActiveHours hubOperatorName addressLine1').sort({ isHub: -1, restaurantName: 1 }).limit(500).lean();
+    if (search) vendors = vendors.filter((v) => String(v.restaurantName || '').toLowerCase().includes(search));
+    vendors = vendors.slice(0, 200);
+    return { vendors };
+}));
+router.put('/hubs/:vendorId', requirePermission('vendorManagement', 'edit'), send(async (req) => {
+    const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+    const v = await FoodRestaurant.findById(req.params.vendorId).select('status zoneId isHub').lean();
+    if (!v || v.status !== 'approved') throw Object.assign(new Error('Only an approved vendor can be a hub'), { statusCode: 400 });
+    if (!v.zoneId) throw Object.assign(new Error('The vendor has no delivery zone'), { statusCode: 400 });
+    await assertZoneInScope(req, v.zoneId);
+    const body = req.body || {};
+    const set = { isHub: Boolean(body.isHub) };
+    if (body.hubCapacity !== undefined) {
+        const cap = body.hubCapacity === '' || body.hubCapacity === null ? null : Math.floor(Number(body.hubCapacity));
+        if (cap !== null && !(cap >= 1 && cap <= 1000)) throw Object.assign(new Error('Capacity must be between 1 and 1000'), { statusCode: 400 });
+        set.hubCapacity = cap;
+    }
+    if (body.hubOperatorName !== undefined) set.hubOperatorName = String(body.hubOperatorName || '').trim().slice(0, 80);
+    if (body.hubActiveHours !== undefined) {
+        const t = (x) => { const s = String(x || '').trim(); if (s && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(s)) throw Object.assign(new Error('Hours must be HH:MM'), { statusCode: 400 }); return s; };
+        set.hubActiveHours = { start: t(body.hubActiveHours?.start), end: t(body.hubActiveHours?.end) };
+    }
+    if (set.isHub === false && v.isHub) {
+        const { DMBHubTransfer } = await import('../delivery/hub.models.js');
+        if (await DMBHubTransfer.exists({ hubVendorId: v._id, status: { $in: ['pending_drop', 'holding'] } })) throw Object.assign(new Error('This hub still has items on the way or waiting. Switch it off after they are collected.'), { statusCode: 409 });
+    }
+    const vendor = await FoodRestaurant.findByIdAndUpdate(v._id, { $set: set }, { new: true }).select('restaurantName zoneId isHub hubCapacity hubActiveHours hubOperatorName').lean();
+    await audit(req, 'hub_updated', 'FoodRestaurant', v._id, v, set);
+    return { vendor };
+}));
+router.get('/hubs/transfers', requirePermission('vendorManagement', 'view'), send(async (req) => {
+    const { adminTransfers } = await import('../delivery/hub.service.js');
+    const { mine } = await assignmentScope(req);
+    const zoneIds = mine ? (await Promise.all(mine.map((c) => zoneIdsForCity(c)))).flat() : null;
+    return { transfers: await adminTransfers({ date: req.query.date, zoneIds }) };
+}));
+router.post('/hubs/transfers/:id/regenerate-pin', requirePermission('vendorManagement', 'edit'), send(async (req) => {
+    const { regeneratePin } = await import('../delivery/hub.service.js');
+    const { DMBHubTransfer } = await import('../delivery/hub.models.js');
+    const t = await DMBHubTransfer.findById(req.params.id).select('destZoneId').lean();
+    if (t) await assertZoneInScope(req, t.destZoneId);
+    const out = await regeneratePin({ transferId: req.params.id, which: req.body?.which });
+    await audit(req, 'hub_pin_regenerated', 'DMBHubTransfer', req.params.id, null, { which: req.body?.which });
+    return out;
+}));
+
 // ─── Gap N: security & encryption status (AP-09) ─────────────────────────────────────────────────────────
 router.get('/security/status', requirePermission('systemSettings', 'view'), send(async () => {
     const { securityStatus } = await import('../platform/security.js');

@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 import { DMBOneTimeOrder } from './orders.models.js';
 import { canSell } from './stock.service.js';
 import { getControl, isEnabled, cityIdForZone } from '../platform/platformConfig.service.js';
-import { deliveryFeeForZone } from '../platform/zoneFee.js';
+import { deliveryFeeFor } from '../platform/zoneFee.js';
+import { coveredDeliveryKeys, coveredCrossZoneKeys, deliveryKey } from '../subscription/deliveryBundling.js';
+import { crossZoneFeasibility, crossZoneSettings } from '../delivery/hub.service.js';
 import { holidaySetForCity } from '../platform/holiday.service.js';
 import { offeredSlots, listSlots } from '../deliverySlot/deliverySlot.service.js';
 import { servedZoneIds, vendorServesZone } from '../subscription/pricing.service.js';
@@ -40,17 +42,25 @@ const vatRates = async () => {
     return { foodVat: Number(plan?.foodVat) || 0, deliveryVat: Number(plan?.deliveryVat) || 0 };
 };
 
-const priceOneTime = async ({ meal, quantity, zoneId }) => {
-    const [{ fee }, sel, vat] = await Promise.all([deliveryFeeForZone(zoneId), getControl('selectMode', { zoneId }), vatRates()]);
+const priceOneTime = async ({ meal, quantity, zoneId, userId, slotKey, dateStr, crossZone = null }) => {
+    const [{ fee }, sel, vat] = await Promise.all([deliveryFeeFor({ zoneId, slotKey }), getControl('selectMode', { zoneId }), vatRates()]);
+    // One fee per slot: a delivery the customer already has in this zone, day and slot (bought earlier) carries this meal too.
+    const covered = await coveredDeliveryKeys({ userId, zoneId, dates: [dateStr] });
     const foodCost = r2(meal.pricePerDay * quantity);
-    const deliveryFee = r2(fee * (Number(sel.oneTimeFeeMultiplier) || 1));
+    const deliveryFee = covered.has(deliveryKey(dateStr, slotKey)) ? 0 : r2(fee * (Number(sel.oneTimeFeeMultiplier) || 1));
+    // A cross-zone item pays the flat surcharge once per slot (never discounted); an earlier cross-zone trip that slot covers it.
+    let crossZoneSurcharge = 0;
+    if (crossZone?.surchargePln > 0) {
+        const already = await coveredCrossZoneKeys({ userId, dates: [dateStr] });
+        if (!already.has(deliveryKey(dateStr, slotKey))) crossZoneSurcharge = r2(crossZone.surchargePln);
+    }
     const foodVatAmount = r2(foodCost * vat.foodVat / 100);
-    const deliveryVatAmount = r2(deliveryFee * vat.deliveryVat / 100);
+    const deliveryVatAmount = r2((deliveryFee + crossZoneSurcharge) * vat.deliveryVat / 100);
     const { resolvePaymentContext } = await import('../../payments/payments.settings.js');
     const { currency } = await resolvePaymentContext({ zoneId });
     return {
-        foodCost, foodVat: vat.foodVat, foodVatAmount, deliveryFee, deliveryVat: vat.deliveryVat, deliveryVatAmount, platformFee: 0,
-        totalPrice: r2(foodCost + foodVatAmount + deliveryFee + deliveryVatAmount), currency
+        foodCost, foodVat: vat.foodVat, foodVatAmount, deliveryFee, crossZoneSurcharge, deliveryVat: vat.deliveryVat, deliveryVatAmount, platformFee: 0,
+        totalPrice: r2(foodCost + foodVatAmount + deliveryFee + crossZoneSurcharge + deliveryVatAmount), currency
     };
 };
 
@@ -75,9 +85,18 @@ export const browseSelectMeals = async ({ zoneId, date, slot, filters = {} }) =>
 
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
     const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
-    const vendors = (await FoodRestaurant.find({ status: 'approved', vacationMode: { $ne: true }, isAcceptingOrders: { $ne: false } })
-        .select('restaurantName profileImage coverImages rating mealRating zoneId deliveryZoneIds deliveryWeekdays ecoPackaging vendorType').lean())
-        .filter((v) => servedZoneIds(v).includes(String(zoneId)))
+    const candidates = await FoodRestaurant.find({ status: 'approved', vacationMode: { $ne: true }, isAcceptingOrders: { $ne: false } })
+        .select('restaurantName profileImage coverImages rating mealRating zoneId deliveryZoneIds deliveryWeekdays ecoPackaging vendorType location').lean();
+    // Vendors of another zone are offered only through a hub, and only if the food can reach it in time for THIS slot.
+    const crossZoneOf = new Map();
+    if ((await crossZoneSettings(zoneId)).enabled) {
+        for (const v of candidates.filter((x) => !servedZoneIds(x).includes(String(zoneId)))) {
+            const f = await crossZoneFeasibility({ vendor: v, customerZoneId: zoneId, slotKey: slotDef.key });
+            if (f.ok) crossZoneOf.set(String(v._id), f.surchargePln);
+        }
+    }
+    const vendors = candidates
+        .filter((v) => servedZoneIds(v).includes(String(zoneId)) || crossZoneOf.has(String(v._id)))
         .filter((v) => !Array.isArray(v.deliveryWeekdays) || !v.deliveryWeekdays.length || v.deliveryWeekdays.includes(dow));
     const byId = new Map(vendors.map((v) => [String(v._id), v]));
     const mealFilter = { vendorId: { $in: vendors.map((v) => v._id) }, status: 'active' };
@@ -95,12 +114,13 @@ export const browseSelectMeals = async ({ zoneId, date, slot, filters = {} }) =>
             photo: menu?.photo || meal.photos?.[0] || '', price: meal.pricePerDay, nutrition: meal.nutrition, allergens: meal.allergens,
             dietTags: meal.dietTags, temperatureType: meal.temperatureType || null, reheatInstructions: meal.reheatInstructions || '',
             vendorId: meal.vendorId, vendorName: v?.restaurantName || '', vendorRating: v?.mealRating?.average || v?.rating || null,
+            crossZone: crossZoneOf.has(String(meal.vendorId)), crossZoneSurchargePln: crossZoneOf.get(String(meal.vendorId)) || 0,
             remaining: stock.remaining, soldOut: stock.soldOut || closed
         });
     }
     out.sort((a, b) => Number(a.soldOut) - Number(b.soldOut) || a.price - b.price);
     const sel = await getControl('selectMode', { zoneId });
-    const { fee } = await deliveryFeeForZone(zoneId);
+    const { fee } = await deliveryFeeFor({ zoneId, slotKey: slotDef.key });
     return {
         date: storageDateStr(day), slot: slotDef.key, slots: slots.filter((s) => s.availableDays.includes(dow)).map((s) => ({ key: s.key, name: s.name, icon: s.icon, startTime: s.startTime, endTime: s.endTime })),
         orderingClosed: closed, deliveryFee: r2(fee * (Number(sel.oneTimeFeeMultiplier) || 1)), meals: out
@@ -141,15 +161,21 @@ export const createSelectOrder = async ({ userId, mealPlanId, quantity = 1, date
     if (!meal || meal.status !== 'active') throw new OneTimeError('This meal is not available');
     const vendor = await FoodRestaurant.findById(meal.vendorId).select('status zoneId location deliveryZoneIds restaurantName vacationMode').lean();
     if (!vendor || vendor.status !== 'approved' || vendor.vacationMode) throw new OneTimeError('This maker is not taking orders');
-    if (!vendorServesZone(vendor, zoneId)) throw new OneTimeError(`${vendor.restaurantName} does not deliver to your address`, 409, 'ZONE_MISMATCH');
+    // Another zone: only through a hub, and only if the food can reach it in time for this slot.
+    let crossZone = null;
+    if (!vendorServesZone(vendor, zoneId)) {
+        const f = await crossZoneFeasibility({ vendor, customerZoneId: zoneId, slotKey: slotDef.key });
+        if (!f.ok) throw new OneTimeError(f.code === 'CROSS_ZONE_DISABLED' ? `${vendor.restaurantName} does not deliver to your address` : `${vendor.restaurantName}: ${f.reason}`, 409, f.code === 'CROSS_ZONE_DISABLED' ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
+        crossZone = { surchargePln: f.surchargePln };
+    }
     if (!(await vendorHasValidLocation(vendor))) throw new OneTimeError(`${vendor.restaurantName} is not available right now`, 409, 'VENDOR_LOCATION_INVALID');
     const stock = await canSell(meal, day, qty);
     if (!stock.ok) throw new OneTimeError(stock.soldOut ? 'Sold out' : `Only ${stock.remaining} portion(s) left`, 409, 'SOLD_OUT');
 
-    const pricing = await priceOneTime({ meal, quantity: qty, zoneId });
+    const pricing = await priceOneTime({ meal, quantity: qty, zoneId, userId, slotKey: slotDef.key, dateStr: storageDateStr(day), crossZone });
     const order = await DMBOneTimeOrder.create({
         type: 'select', userId, vendorId: meal.vendorId, mealPlanId: meal._id, quantity: qty, deliveryDate: day, deliverySlot: slotDef.key,
-        zoneId, deliveryAddress: address, pricing, status: 'pending_payment'
+        zoneId, deliveryAddress: address, pricing, crossZone: Boolean(crossZone), status: 'pending_payment'
     });
     return order.toObject();
 };
@@ -167,7 +193,7 @@ export const fulfilOneTimeOrder = async (oneTimeId, { paidWith = 'online', trans
         orderType: order.type === 'pre_order' ? 'pre_order' : 'one_time_select',
         userId: order.userId, vendorId: order.vendorId, zoneId: order.zoneId,
         meals: [{ mealPlanId: order.mealPlanId, name: meal?.name || '', quantity: order.quantity, temperatureType: meal?.temperatureType || null }],
-        hasColdMeal: meal?.temperatureType === 'cold',
+        hasColdMeal: meal?.temperatureType === 'cold', hasCrossZone: Boolean(order.crossZone),
         deliveryDate: order.deliveryDate, deliverySlot: order.deliverySlot, status: 'scheduled',
         pricing: order.pricing, deliveryAddress: order.deliveryAddress,
         paymentStatus: 'paid', paymentTransactionId: transactionId || order.paymentTransactionId || ''
@@ -235,7 +261,7 @@ export const reservePreOrder = async ({ userId, mealPlanId, quantity = 1, slot, 
     const qty = Math.max(1, Math.min(10, Math.floor(Number(quantity) || 1)));
     const existing = await DMBOneTimeOrder.findOne({ userId, mealPlanId, type: 'pre_order', status: { $in: ['reserved', 'payment_pending'] } });
     if (existing) throw new OneTimeError('You already reserved this meal', 409, 'ALREADY_RESERVED');
-    const pricing = await priceOneTime({ meal, quantity: qty, zoneId });
+    const pricing = await priceOneTime({ meal, quantity: qty, zoneId, userId, slotKey: slotDef.key, dateStr: storageDateStr(meal.launchDate) });
     const order = await DMBOneTimeOrder.create({
         type: 'pre_order', userId, vendorId: meal.vendorId, mealPlanId: meal._id, quantity: qty,
         deliveryDate: new Date(storageDateStr(meal.launchDate)), deliverySlot: slotDef.key, zoneId, deliveryAddress: address, pricing, status: 'reserved'

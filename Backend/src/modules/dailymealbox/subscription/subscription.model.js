@@ -217,6 +217,11 @@ const subscriptionSchema = new mongoose.Schema(
         familyDiscountPct: { type: Number, default: 0 },
         /** Server-side quote this subscription was sold at (line items, totals, per-delivery prices). */
         quote: { type: mongoose.Schema.Types.Mixed, default: undefined },
+        /**
+         * When this delivery arrangement was first bought. A renewal or change inherits it from the subscription it replaces, so
+         * "who rides on whose trip" (one delivery fee per slot) never flips when a plan renews. Older rows fall back to createdAt.
+         */
+        feeSeniorityAt: { type: Date, default: null },
 
         /** Plan changes (Gap S). */
         cancelAt: { type: Date, default: null },

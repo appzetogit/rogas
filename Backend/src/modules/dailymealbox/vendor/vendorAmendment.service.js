@@ -326,21 +326,6 @@ export const unlinkPreferredPartner = async (vendorId) => {
     return { vendorId, previous };
 };
 
-/**
- * Routing priority (ACM-170): among the drivers that could take a vendor's pickup, the vendor's preferred partner's
- * drivers go first; when none of them is available the whole pool is used. Silent fallback.
- */
-export const prioritisePreferredDrivers = async (vendor, drivers) => {
-    try {
-        if (!vendor?.preferredFleetPartnerId || !drivers?.length) return { drivers, preferred: false };
-        if (!(await isEnabled('preferredFleetRouting', { zoneId: vendor.zoneId }))) return { drivers, preferred: false };
-        const own = drivers.filter((d) => String(d.fleetPartnerId || '') === String(vendor.preferredFleetPartnerId));
-        return own.length ? { drivers: own, preferred: true } : { drivers, preferred: false };
-    } catch {
-        return { drivers, preferred: false };
-    }
-};
-
 // ─── Gap AI: eco packaging ───────────────────────────────────────────────────────────────────────────────
 
 const ECO_TYPES = ['biodegradable', 'recyclable', 'paper', 'reusable'];

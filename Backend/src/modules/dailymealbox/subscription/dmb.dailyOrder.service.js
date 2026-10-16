@@ -843,7 +843,7 @@ import { localToday, localParts, addDays as addLocalDays } from '../../../utils/
 import { applyCustomerOrderVisibility } from '../platform/visibility.js';
 import { DMBSubscription } from './subscription.model.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
-import { CollectionBatch } from '../delivery/collectionBatch.model.js';
+import { CollectionBatch, setCollectionPin, readCollectionPin } from '../delivery/collectionBatch.model.js';
 import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../food/delivery/models/deliveryPartner.model.js';
 import { getIO } from '../../../config/socket.js';
@@ -1215,7 +1215,8 @@ export const checkAdminTimingWindow = async (slot) => {
 
         const slotCfg = timing[slot];
 
-        if (!slotCfg) return { allowed: true }; // unknown slot → don't block
+        // A slot the settings do not know (deleted or never created) is refused: nothing can be prepared for it.
+        if (!slotCfg) return { allowed: false, message: 'This delivery slot no longer exists, so it cannot be prepared.' };
         if (slotCfg.isEnabled === false) return { allowed: true }; // slot timing disabled → no restriction
 
         const now = new Date();
@@ -1224,7 +1225,7 @@ export const checkAdminTimingWindow = async (slot) => {
         const start = hhmmToMinutes(slotCfg.startTime);
         const end = hhmmToMinutes(slotCfg.endTime);
 
-        if (start === null || end === null) return { allowed: true };
+        if (start === null || end === null) return { allowed: false, message: 'The preparation window of this slot is not set up correctly. Please tell the admin.' };
 
         if (curMinutes >= start && curMinutes <= end) {
             return { allowed: true };
@@ -1244,8 +1245,9 @@ export const checkAdminTimingWindow = async (slot) => {
             message: `⏰ ${slotLabel} preparation is only allowed between ${fmt(start)} and ${fmt(end)}. Current time is outside this window.`
         };
     } catch (err) {
-        logger.warn(`[TIMING] Failed to fetch vendor timing settings: ${err.message}`);
-        return { allowed: true }; // fail-open so backend issues don't break vendor ops
+        // Not being able to read the rules never means "allowed": the action stops and the cause is logged.
+        logger.error(`[TIMING] Failed to fetch vendor timing settings: ${err.message}`);
+        throw new Error('The preparation timing rules could not be loaded. Please try again in a moment.');
     }
 };
 
@@ -1257,93 +1259,44 @@ const getLocalDateString = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-// ─── FIX 1: Build a robust driver filter that handles missing city/zone ──────
-const buildDriverFilter = (vendor) => {
-    const baseFilter = {
-        availabilityStatus: 'online',
-        status: 'approved'
-    };
-
-    const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
-    // Normalize city — trim whitespace, handle multiple fields
-    const vendorCity = (vendor?.city || vendor?.location?.city || '').trim();
-
-    if (!vendorZoneId && !vendorCity) {
-        // FIX: If vendor has no zone/city, log a clear warning but still
-        // attempt to match ALL online approved drivers as a fallback
-        // instead of returning early with zero results.
-        logger.warn(`Vendor ${vendor?._id} has no zoneId or city — broadcasting to ALL online drivers as fallback`);
-        return baseFilter; // no location filter → matches all online drivers
+/** Tells the admin a ready pickup has nobody who can take it (no zone on the vendor, or no online driver in the zone). */
+const alertNoDriverForPickup = async ({ vendor, batch, slot, reason }) => {
+    try {
+        const p = await import('../platform/platformConfig.service.js');
+        const cityId = vendor?.zoneId ? await p.cityIdForZone(vendor.zoneId) : null;
+        await p.raiseAdminAlert({
+            type: 'pickup_no_driver', severity: 'critical', cityId,
+            title: `No driver for pickup: ${vendor?.restaurantName || 'vendor'} (${slot})`,
+            message: `${batch.boxCount} box(es) at ${vendor?.restaurantName || 'a vendor'} for the ${slot} slot are ready but ${reason}. Assign a driver.`,
+            entityType: 'CollectionBatch', entityId: batch._id, link: '/admin/food/delivery-partners/attendance',
+            dedupeKey: `pickup_no_driver:${batch._id}`
+        });
+    } catch (err) {
+        logger.warn(`[DRIVER-NOTIFY] could not raise the no-driver alert: ${err.message}`);
     }
-
-    const locationConditions = [];
-
-    if (vendorZoneId) {
-        locationConditions.push({ zoneIds: vendorZoneId });
-        locationConditions.push({ zoneIds: vendorZoneId.toString() }); // handle ObjectId vs string mismatch
-    }
-
-    if (vendorCity) {
-        // FIX: also match on driver's location.city in case city is nested
-        locationConditions.push({ city: { $regex: new RegExp(`^${vendorCity}$`, 'i') } });
-        locationConditions.push({ 'location.city': { $regex: new RegExp(`^${vendorCity}$`, 'i') } });
-    }
-
-    return {
-        ...baseFilter,
-        $or: locationConditions
-    };
 };
 
 /**
- * Helper to check if vendor has pending/undelivered orders from previous batches or slots
+ * Everything of a vendor's slot is ready: place the units on the drivers who accepted the vendor's zone and slot, then give
+ * each of those drivers their own pre-assigned pickup (with its PIN) and tell them. Units nobody can take wait in an
+ * unassigned batch and the admin is alerted; they are released automatically once a driver accepts the cell.
+ * `reminder` re-notifies drivers whose pickup already exists (the vendor's "resend" button).
  */
-async function checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate) {
-    // Only check batches for the SAME date and SAME slot.
-    // Cross-slot batches (e.g., a Lunch batch still "out_for_delivery") must NEVER block
-    // a different slot (e.g., Dinner) from generating a new collection PIN.
-    // Old batches from previous dates are also irrelevant.
-    const batches = await CollectionBatch.find({
-        vendorId,
-        deliveryDate: targetDate,
-        deliverySlot: requestedSlot
-    });
-
-    for (const batch of batches) {
-        if (!batch.orderIds || batch.orderIds.length === 0) continue;
-
-        // Skip batches that are already completed or failed
-        if (['collected', 'failed'].includes(batch.status)) continue;
-
-        // Skip pending/driver_assigned batches for this same slot — those are the
-        // ones we are about to re-use or update, not a blocking condition.
-        if (['pending', 'driver_assigned'].includes(batch.status)) continue;
-    }
-
-    return { hasPending: false };
-}
-
-/**
- * FIX 2: triggerDriverNotificationIfAllReady — robust driver matching + detailed logs
- */
-export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) => {
+export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot, { reminder = false } = {}) => {
     const targetDate = toDateOnly(date);
     const nextDay = new Date(targetDate);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const summary = { drivers: [], batches: 0, unassigned: 0, reason: '' };
 
-    const filter = {
-        vendorId,
-        deliveryDate: { $gte: targetDate, $lt: nextDay },
-        deliverySlot: slot
-    };
-
-    const allOrdersInSlot = await DMBDailyOrder.find(filter).populate('userId', 'name phone');
+    const allOrdersInSlot = await DMBDailyOrder.find({
+        vendorId, deliveryDate: { $gte: targetDate, $lt: nextDay }, deliverySlot: slot
+    }).populate('userId', 'name phone');
     // A pantry shop's paid bags for the same date and slot travel on the same pickup (one box each).
     const { pantryUnitsFor } = await import('../delivery/pantryPickup.service.js');
     const pantryUnits = await pantryUnitsFor({ vendorId, date: targetDate, slot });
     if (allOrdersInSlot.length === 0 && pantryUnits.length === 0) {
         logger.info(`[DRIVER-NOTIFY] No orders for vendor ${vendorId} slot ${slot} on ${dateStr(targetDate)}`);
-        return;
+        return summary;
     }
 
     const pendingOrders = [
@@ -1351,187 +1304,136 @@ export const triggerDriverNotificationIfAllReady = async (vendorId, date, slot) 
         ...pantryUnits.filter(u => ['scheduled', 'preparing'].includes(u.delivery.status))
     ];
     if (pendingOrders.length > 0) {
-        logger.info(`[DRIVER-NOTIFY] ${pendingOrders.length} orders still pending for vendor ${vendorId} slot ${slot} — skipping broadcast`);
-        return;
+        logger.info(`[DRIVER-NOTIFY] ${pendingOrders.length} orders still pending for vendor ${vendorId} slot ${slot} — skipping dispatch`);
+        return summary;
     }
 
     const readyMeals = allOrdersInSlot.filter(o => o.status === 'ready');
     const readyPantry = pantryUnits.filter(u => u.delivery.status === 'ready');
-    // `readyOrders` is every box in the pickup: meals first, then pantry bags (their ids are the bag's delivery id).
-    const readyOrders = [
-        ...readyMeals,
-        ...readyPantry.map(u => ({ _id: u.delivery._id, orderId: u.order.orderId, status: 'ready', deliveryAddress: u.order.deliveryAddress, userId: u.order.userId, pantryItems: u.order.items, isPantry: true }))
-    ];
-    if (readyOrders.length === 0) {
+    if (readyMeals.length + readyPantry.length === 0) {
         logger.info(`[DRIVER-NOTIFY] No ready orders for vendor ${vendorId} slot ${slot} — all may be skipped`);
-        return;
+        return summary;
     }
 
     try {
         const vendor = await FoodRestaurant.findById(vendorId)
-            .select('restaurantName location zoneId serviceZone city phone addressLine1 preferredFleetPartnerId');
+            .select('restaurantName location zoneId serviceZone city phone addressLine1');
+        const zoneId = vendor?.zoneId || vendor?.serviceZone;
+        const { shiftKeyOf } = await import('../delivery/driverAssignment.service.js');
+        const { splitCell } = await import('../delivery/cellPlanner.service.js');
+        const { DeliverySlot } = await import('../deliverySlot/deliverySlot.model.js');
+        const slotDef = await DeliverySlot.findOne({ key: String(slot).toLowerCase() }).select('key linkedShiftKey').lean();
 
-        // FIX: log vendor details so we can debug city/zone issues easily
-        logger.info(`[DRIVER-NOTIFY] Vendor details — city: "${vendor?.city}", location.city: "${vendor?.location?.city}", zoneId: "${vendor?.zoneId}"`);
-
-        // Find an existing active batch (pending or driver_assigned) for this slot/date.
-        // Ignore collected/failed batches — they are done and should not block a new one.
-        let batch = await CollectionBatch.findOne({
-            vendorId,
-            deliveryDate: targetDate,
-            deliverySlot: slot,
-            status: { $in: ['pending', 'driver_assigned'] }
-        });
-
-        if (!batch) {
-            const pendingCheck = await checkPendingDeliveriesForVendor(vendorId, slot, targetDate);
-            if (pendingCheck.hasPending) {
-                logger.info(`[DRIVER-NOTIFY] New collection PIN cannot be generated for vendor ${vendorId} slot ${slot} because slot ${pendingCheck.slot} still has pending deliveries.`);
-                return;
-            }
-
-            const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
-            batch = await CollectionBatch.create({
-                vendorId,
-                deliveryDate: targetDate,
-                deliverySlot: slot,
-                collectionPinHash: pin,
-                boxCount: readyOrders.length,
-                orderIds: readyOrders.map(o => o._id),
-                status: 'pending'
-            });
-        } else {
-            batch.boxCount = readyOrders.length;
-            batch.orderIds = readyOrders.map(o => o._id);
-            await batch.save();
-            // A rider already holds this pickup: orders that became ready later (e.g. an office order bought after the
-            // first request) join that rider instead of being offered to everybody again.
-            if (batch.driverId) {
-                await DMBDailyOrder.updateMany({ _id: { $in: readyMeals.map(o => o._id) }, 'dispatch.deliveryPartnerId': null }, { $set: { 'dispatch.deliveryPartnerId': batch.driverId } });
-                const { assignPantryDriver } = await import('../delivery/pantryPickup.service.js');
-                await assignPantryDriver(readyPantry.map(u => u.delivery._id), batch.driverId);
-                notifyDriverOfRouteUpdate(batch.driverId);
-                return;
-            }
+        // 1. Place unplaced units on the accepted drivers of the zone and slot (idempotent; admin moves are kept). Items for a
+        // customer in ANOTHER zone are placed (and given their hub transfer) by that customer's zone.
+        const slotShiftKey = slotDef ? shiftKeyOf(slotDef) : String(slot);
+        if (zoneId) await splitCell({ zoneId, date: targetDate, slotKey: slotShiftKey });
+        for (const destZone of new Set(readyMeals.map((o) => String(o.zoneId || '')).filter((z) => z && z !== String(zoneId)))) {
+            await splitCell({ zoneId: destZone, date: targetDate, slotKey: slotShiftKey });
         }
 
-        // FIX: use the robust driver filter
-        const driverFilter = buildDriverFilter(vendor);
-        let onlineDrivers = await FoodDeliveryPartner.find(driverFilter)
-            .select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus fleetPartnerId');
+        // 2. Group what is ready by its driver. Re-read: the split above wrote dispatch.deliveryPartnerId.
+        const freshMeals = await DMBDailyOrder.find({ _id: { $in: readyMeals.map((o) => o._id) } }).select('_id dispatch');
+        const driverOfMeal = new Map(freshMeals.map((o) => [String(o._id), o.dispatch?.deliveryPartnerId ? String(o.dispatch.deliveryPartnerId) : null]));
+        const { PantryOrder } = await import('../../food/restaurant/models/pantryOrder.model.js');
+        const bagDrivers = new Map();
+        const bagOrders = await PantryOrder.find({ 'dailyDeliveries._id': { $in: readyPantry.map((u) => u.delivery._id) } }).select('dailyDeliveries._id dailyDeliveries.driverId').lean();
+        for (const po of bagOrders) for (const dd of po.dailyDeliveries) bagDrivers.set(String(dd._id), dd.driverId ? String(dd.driverId) : null);
 
-        logger.info(`[DRIVER-NOTIFY] Driver query matched ${onlineDrivers.length} online drivers for vendor ${vendorId}`);
-
-        // FIX: log each driver's _id so we can confirm they exist and are online
-        if (onlineDrivers.length === 0) {
-            logger.warn(`[DRIVER-NOTIFY] Zero drivers matched. Filter used: ${JSON.stringify(driverFilter)}`);
-            // FIX: as last-resort fallback, fetch ANY online approved driver in the system
-            const fallbackDrivers = await FoodDeliveryPartner.find({
-                availabilityStatus: 'online',
-                status: 'approved'
-            }).select('_id fcmTokens socketRoomId name phone profilePhoto vehicleNumber lastLat lastLng lastLocationAt availabilityStatus').limit(50);
-            logger.warn(`[DRIVER-NOTIFY] Fallback: found ${fallbackDrivers.length} total online drivers in system`);
-            onlineDrivers = fallbackDrivers;
+        // A hub item is collected by the source driver of its transfer; the zone driver only meets it again at the hub.
+        const { transfersByUnit } = await import('../delivery/hub.service.js');
+        const hubTransfers = await transfersByUnit(readyMeals.map((o) => String(o._id)));
+        const groups = new Map(); // driverId | '' -> { ids, meals, bags }
+        const put = (driverId, id, kind, item) => {
+            const g = groups.get(driverId) || { ids: [], meals: [], bags: [] };
+            g.ids.push(id); g[kind].push(item);
+            groups.set(driverId, g);
+        };
+        for (const o of readyMeals) {
+            const t = hubTransfers.get(String(o._id));
+            put(t ? String(t.sourceDriverId || '') : (driverOfMeal.get(String(o._id)) || ''), o._id, 'meals', o);
         }
+        for (const u of readyPantry) put(bagDrivers.get(String(u.delivery._id)) || '', u.delivery._id, 'bags', u);
 
-        // Gap AD / ACM-170: the vendor's preferred delivery partner's drivers get the pickup first; when none of them is
-        // online the whole pool is used (silent fallback).
-        try {
-            const { prioritisePreferredDrivers } = await import('../vendor/vendorAmendment.service.js');
-            const prioritised = await prioritisePreferredDrivers(vendor, onlineDrivers);
-            if (prioritised.preferred) logger.info(`[DRIVER-NOTIFY] ${prioritised.drivers.length} preferred-partner driver(s) offered the pickup first`);
-            onlineDrivers = prioritised.drivers;
-        } catch (prefErr) {
-            logger.warn(`[DRIVER-NOTIFY] preferred partner routing skipped: ${prefErr.message}`);
-        }
-
+        const { visibilityFor, driverCustomerView } = await import('../platform/visibility.js');
+        const driverVis = await visibilityFor('driver', { zoneId });
+        const { notify } = await import('../notifications/notify.js');
+        const { msg } = await import('../../i18n/i18n.service.js');
         const io = getIO();
-        if (!io) {
-            // Push notifications below still go out; only the real-time socket events are unavailable.
-            logger.error(`[DRIVER-NOTIFY] Socket.IO instance not available — socket events skipped, FCM push still sent`);
+
+        // 3. One pre-assigned pickup per driver.
+        for (const [driverId, g] of groups) {
+            if (!driverId) continue;
+            let batch = await CollectionBatch.findOne({
+                vendorId, deliveryDate: targetDate, deliverySlot: slot, driverId, status: { $in: ['driver_assigned', 'driver_en_route'] }
+            });
+            let isNew = false;
+            if (!batch) {
+                const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
+                batch = new CollectionBatch({
+                    vendorId, deliveryDate: targetDate, deliverySlot: slot, driverId, status: 'driver_assigned', assignedAt: new Date(),
+                    boxCount: g.ids.length, orderIds: g.ids
+                });
+                setCollectionPin(batch, pin);
+                await batch.save();
+                isNew = true;
+            } else {
+                const before = batch.orderIds.length;
+                batch.orderIds = [...new Set([...batch.orderIds.map(String), ...g.ids.map(String)])];
+                batch.boxCount = batch.orderIds.length;
+                await batch.save();
+                isNew = batch.orderIds.length !== before;
+            }
+            summary.drivers.push(driverId);
+            summary.batches += 1;
+
+            const driver = await FoodDeliveryPartner.findById(driverId).select('name phone vehicleNumber profilePhoto');
+            const batchPayload = {
+                batchId: batch.batchId,
+                driver: driver ? { _id: driver._id, name: driver.name, phone: driver.phone, vehicleNumber: driver.vehicleNumber, profilePhoto: driver.profilePhoto } : null,
+                driverName: driver?.name, driverPhone: driver?.phone, driverPhoto: driver?.profilePhoto, driverVehicle: driver?.vehicleNumber,
+                otp: readCollectionPin(batch), boxCount: batch.boxCount, totalOrders: batch.boxCount, slot, status: 'driver_assigned'
+            };
+            io?.to(`vendor_${vendorId}`).emit('batch_accepted', batchPayload);
+            io?.to(`restaurant:${String(vendorId)}`).emit('batch_accepted', batchPayload);
+            notifyDriverOfRouteUpdate(driverId);
+
+            if (isNew || reminder) {
+                await notify({
+                    to: 'driver', id: driverId, event: 'pickup_assigned',
+                    title: msg('Pickup ready'),
+                    body: msg('{{count}} boxes to collect from {{vendor}} ({{slot}}). Open your route.', { count: batch.boxCount, vendor: vendor?.restaurantName || '', slot }),
+                    link: `/food/delivery?batch=${encodeURIComponent(batch.batchId)}`, data: { batchId: batch.batchId, screen: 'pickup_detail' }
+                });
+            }
+            logger.info(`[DRIVER-NOTIFY] Batch ${batch.batchId}: ${batch.boxCount} box(es) for driver ${driverId} from vendor ${vendorId} (${slot})`);
         }
 
-        // Tell the vendor the collection PIN is ready. No driver is named here: nobody has accepted yet, and the real
-        // `batch_accepted` (with the driver) is emitted by POST /dmb/driver/accept-batch.
-        io?.to(`vendor_${vendorId}`).emit('batch_accepted', {
-            batchId: batch.batchId,
-            driver: null,
-            otp: batch.collectionPinHash,
-            boxCount: batch.boxCount,
-            slot: slot,
-            status: 'pending'
-        });
-        logger.info(`[DRIVER-NOTIFY] Emitted batch_accepted to vendor_${vendorId} with OTP/PIN ${batch.collectionPinHash}`);
-
-
-        if (onlineDrivers.length > 0) {
-            // Customer details per the driver visibility controls (ACM-141/142/143).
-            const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
-            const driverVis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
-            const ordersDetails = readyOrders.map(o => ({
-                _id: o._id,
-                orderId: o.orderId,
-                status: o.status,
-                deliveryAddress: o.deliveryAddress,
-                meals: o.isPantry ? (o.pantryItems || []).map(i => ({ name: i.title, quantity: i.quantity })) : o.meals,
-                type: o.isPantry ? 'pantry' : undefined,
-                isFamilyBox: Boolean(o.isFamilyBox),
-                setCount: o.setCount || 1,
-                hasColdMeal: Boolean(o.hasColdMeal),
-                customer: driverCustomerView({ name: o.userId?.name || '', phone: o.userId?.phone || '' }, driverVis),
-                pricing: driverPricingView(o.pricing || {}, driverVis)
-            }));
-
-            let feePerOrder = 18; // fallback default
-            try {
-                const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-                const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-                if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
-                    feePerOrder = Number(feeConfig.feePerOrder);
-                }
-            } catch (feeErr) {
-                logger.error(`[DRIVER-NOTIFY] Failed to fetch fee settings: ${feeErr.message}`);
+        // 4. Units nobody can take: one unassigned batch + an admin alert. Released automatically when a driver accepts.
+        const orphan = groups.get('');
+        let pending = await CollectionBatch.findOne({ vendorId, deliveryDate: targetDate, deliverySlot: slot, driverId: null, status: 'pending' });
+        if (orphan?.ids.length) {
+            summary.unassigned = orphan.ids.length;
+            if (!pending) {
+                const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
+                pending = new CollectionBatch({ vendorId, deliveryDate: targetDate, deliverySlot: slot, boxCount: orphan.ids.length, orderIds: orphan.ids, status: 'pending' });
+                setCollectionPin(pending, pin);
+                await pending.save();
+            } else {
+                pending.boxCount = orphan.ids.length; pending.orderIds = orphan.ids;
+                await pending.save();
             }
-            const totalEarnings = feePerOrder * batch.boxCount;
-
-            const payload = {
-                batchId: batch.batchId,
-                slotType: slot,
-                totalMealBoxCount: batch.boxCount,
-                vendorInfo: {
-                    vendorId: vendor._id,
-                    vendorName: vendor.restaurantName,
-                    vendorLocation: vendor.location,
-                    vendorAddress: vendor.addressLine1 || '',
-                    vendorPhone: vendor.phone || ''
-                },
-                pickupStatus: batch.status,
-                orders: ordersDetails,
-                totalEarnings: totalEarnings,
-                // backward compat
-                vendorId: vendor._id,
-                vendorName: vendor.restaurantName,
-                vendorLocation: vendor.location,
-                boxCount: batch.boxCount,
-                slot,
-                totalOrders: batch.boxCount
-            };
-
-            // Socket pop-up AND an FCM push to every driver (the push covers closed apps / dropped sockets).
-            const { offerPickupToDrivers } = await import('../delivery/pickupOffer.service.js');
-            const offer = await offerPickupToDrivers({
-                driverIds: onlineDrivers.map((d) => d._id),
-                batch,
-                vendor,
-                payload,
-                mode: 'initial'
-            });
-
-            logger.info(`[DRIVER-NOTIFY] Broadcast complete: batch ${batch.batchId}, slot ${slot}, ${onlineDrivers.length} drivers (${offer.socketLive} live on socket, ${offer.pushDelivered} push delivered)`);
+            const { driversForPickup } = await import('../delivery/driverAssignment.service.js');
+            summary.reason = (await driversForPickup({ vendor, date: targetDate, slotKey: slot })).reason || 'the orders could not be placed on a driver';
+            logger.warn(`[DRIVER-NOTIFY] Pickup ${pending.batchId} not assigned: ${summary.reason}`);
+            await alertNoDriverForPickup({ vendor, batch: pending, slot, reason: summary.reason });
+        } else if (pending) {
+            await pending.deleteOne();
         }
     } catch (err) {
         logger.error(`[DRIVER-NOTIFY] Error in triggerDriverNotificationIfAllReady: ${err.message}`, err);
     }
+    return summary;
 };
 
 export const notifyDriverOfRouteUpdate = (driverId) => {
@@ -1835,7 +1737,7 @@ export async function notifyVendorsOfDriverUpdate(driver) {
                     vehicleNumber: driver.vehicleNumber,
                     profilePhoto: driver.profilePhoto
                 },
-                otp: batch ? batch.collectionPinHash : null,
+                otp: batch ? readCollectionPin(batch) : null,
                 boxCount: batch ? batch.boxCount : 0,
                 slot: batch ? batch.deliverySlot : null
             });

@@ -169,7 +169,9 @@ const deliveryPartnerSchema = new mongoose.Schema(
         },
         /** Language chosen by the driver (admin-managed language code). null = default language. */
         languagePreference: { type: String, default: null, trim: true, lowercase: true },
-        /** Assigned delivery zones */
+        /** The driver's normal area. Always one of `zoneIds`. */
+        primaryZoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone', default: null },
+        /** Every zone the driver is authorised to deliver in (the primary zone plus any additional ones). */
         zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
         /** Allowed shifts for vendor assignment */
         allowedShifts: [{ type: String }],

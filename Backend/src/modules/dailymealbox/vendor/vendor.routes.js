@@ -11,7 +11,6 @@ import { DMBSubscription } from '../subscription/subscription.model.js';
 import { sendNotificationToUser } from '../../../core/notifications/notification.service.js';
 import { createInboxNotifications } from '../../../core/notifications/notification.service.js';
 import { logger } from '../../../utils/logger.js';
-import { offerPickupToDrivers } from '../delivery/pickupOffer.service.js';
 import { getCityVatRates } from '../../food/admin/services/cityVat.service.js';
 import {
     getVendorDailyOrders,
@@ -1000,14 +999,16 @@ router.post('/daily-orders/regenerate-pin', authMiddleware, requireRoles('RESTAU
         if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
         if (['collected', 'failed'].includes(batch.status)) return res.status(409).json({ success: false, message: 'This batch has already been collected' });
         const crypto = await import('crypto');
-        batch.collectionPinHash = String(crypto.randomInt(1000, 10000));
+        const { setCollectionPin: setPin } = await import('../delivery/collectionBatch.model.js');
+        setPin(batch, String(crypto.randomInt(1000, 10000)));
         batch.pinAttempts = 0;
         batch.pinAlertSent = false;
         await batch.save();
         const { getIO } = await import('../../../config/socket.js');
-        const payload = { batchId: batch.batchId, driver: null, otp: batch.collectionPinHash, boxCount: batch.boxCount, slot: batch.deliverySlot, status: batch.status };
+        const { readCollectionPin: readPin } = await import('../delivery/collectionBatch.model.js');
+        const payload = { batchId: batch.batchId, driver: null, otp: readPin(batch), boxCount: batch.boxCount, slot: batch.deliverySlot, status: batch.status };
         getIO()?.to(`vendor_${vendorId}`).emit('batch_accepted', payload);
-        res.json({ success: true, otp: batch.collectionPinHash });
+        res.json({ success: true, otp: readPin(batch) });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
@@ -1045,7 +1046,7 @@ router.post('/daily-orders/verify-batch-otp', authMiddleware, requireRoles('REST
             return res.status(400).json({ success: false, message: 'Batch already collected' });
         }
 
-        if (batch.collectionPinHash !== otp) {
+        if (!(await import('../delivery/collectionBatch.model.js')).checkCollectionPin(batch, otp)) {
             return res.status(400).json({ success: false, message: 'Invalid OTP' });
         }
 
@@ -1161,202 +1162,14 @@ router.post('/daily-orders/resend-batch', authMiddleware, requireRoles('RESTAURA
             });
         }
 
-        // 6. Check for pending deliveries across previous/current slots before generating a new PIN / batch
-        const pendingCheck = await checkPendingDeliveriesForVendor(vendorId, requestedSlot, targetDate);
-        if (pendingCheck.hasPending) {
-            return res.status(400).json({
-                success: false,
-                message: `A new collection PIN cannot be generated because there are pending deliveries for the ${pendingCheck.slot} slot (Batch: ${pendingCheck.batchId}). Please wait until the driver completes all deliveries.`
-            });
+        // 6. Re-run dispatch: ready orders are placed on the drivers who accepted this zone and slot, and each driver is
+        // (re)notified of their pickup. Nothing is broadcast to anyone else.
+        const { triggerDriverNotificationIfAllReady } = await import('../subscription/dmb.dailyOrder.service.js');
+        const result = await triggerDriverNotificationIfAllReady(vendorId, targetDate, requestedSlot, { reminder: true });
+        if (!result.drivers.length) {
+            return res.status(400).json({ success: false, message: `No driver to ask: ${result.reason || 'no driver is assigned to this pickup'}. The admin has been alerted.` });
         }
-
-        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
-        let batch = await CollectionBatch.findOne({
-            vendorId,
-            deliveryDate: targetDate,
-            deliverySlot: requestedSlot,
-            status: { $in: ['pending', 'driver_assigned'] }
-        });
-
-        if (batch) {
-            // Resending is only for a request nobody has accepted yet. Once a driver holds the batch it must not be
-            // re-offered (that would silently strip the driver who already accepted it).
-            if (batch.status === 'driver_assigned' || batch.driverId) {
-                return res.status(409).json({ success: false, message: 'A delivery partner has already accepted this pickup, so the request cannot be resent.' });
-            }
-            // Refresh the box list in case orders were added/changed since the first request.
-            batch.boxCount = readyOrders.length;
-            batch.orderIds = readyOrders.map(o => o._id);
-            batch.rejectedBy = []; // a resend offers the pickup to every driver again
-            await batch.save();
-        } else {
-            // Create a new batch for these ready orders!
-            const crypto = await import('crypto');
-            const pin = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
-            batch = await CollectionBatch.create({
-                vendorId,
-                deliveryDate: targetDate,
-                deliverySlot: requestedSlot,
-                collectionPinHash: pin,
-                boxCount: readyOrders.length,
-                orderIds: readyOrders.map(o => o._id),
-                status: 'pending'
-            });
-        }
-
-        const vendor = await FoodRestaurant.findById(vendorId).select('restaurantName location zoneId serviceZone city phone addressLine1');
-        const vendorZoneId = vendor?.zoneId || vendor?.serviceZone;
-        const vendorCity = vendor?.city || vendor?.location?.city;
-
-        if (!vendorZoneId && !vendorCity) {
-            return res.status(400).json({ success: false, message: 'Vendor zone/city not configured.' });
-        }
-
-        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
-
-        const driverFilter = {
-            availabilityStatus: 'online',
-            status: 'approved',
-        };
-
-        const locationConditions = [];
-
-        if (vendorZoneId) {
-            locationConditions.push({ zoneIds: vendorZoneId });
-            locationConditions.push({ zoneIds: vendorZoneId.toString() }); // handle ObjectId vs string mismatch
-            try {
-                const mongoose = (await import('mongoose')).default;
-                if (mongoose.Types.ObjectId.isValid(vendorZoneId)) {
-                    locationConditions.push({ zoneIds: new mongoose.Types.ObjectId(vendorZoneId.toString()) });
-                }
-            } catch (e) {
-                // ignore
-            }
-        }
-
-        if (vendorCity) {
-            const trimmedCity = vendorCity.trim();
-            if (trimmedCity) {
-                locationConditions.push({ city: { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
-                locationConditions.push({ 'location.city': { $regex: new RegExp(`^${trimmedCity}$`, 'i') } });
-            }
-        }
-
-        if (locationConditions.length > 0) {
-            driverFilter.$or = locationConditions;
-        }
-
-        let onlineDrivers = await FoodDeliveryPartner.find(driverFilter).select('_id');
-
-        if (onlineDrivers.length === 0) {
-            logger.warn(`[VENDOR-RESEND] Zero drivers matched zone/city. Filter: ${JSON.stringify(driverFilter)}`);
-            // Last-resort fallback: fetch ANY online approved driver in the system
-            const fallbackDrivers = await FoodDeliveryPartner.find({
-                availabilityStatus: 'online',
-                status: 'approved'
-            }).select('_id').limit(50);
-            logger.warn(`[VENDOR-RESEND] Fallback: found ${fallbackDrivers.length} online drivers in system`);
-            onlineDrivers = fallbackDrivers;
-        }
-
-        const io = (await import('../../../config/socket.js')).getIO();
-
-        // In development mode, retrieve all currently connected WebSocket drivers and add them to target list
-        if (process.env.NODE_ENV === 'development' && io) {
-            try {
-                const activeSockets = await io.fetchSockets();
-                for (const socket of activeSockets) {
-                    if (socket.user?.role === 'DELIVERY_PARTNER' && socket.user?.userId) {
-                        const driverIdStr = socket.user.userId.toString();
-                        if (!onlineDrivers.some(d => d._id.toString() === driverIdStr)) {
-                            const mongoose = (await import('mongoose')).default;
-                            onlineDrivers.push({ _id: new mongoose.Types.ObjectId(driverIdStr) });
-                        }
-                    }
-                }
-            } catch (err) {
-                logger.warn(`[VENDOR-RESEND] Failed to fetch active socket connections: ${err.message}`);
-            }
-        }
-
-        if (onlineDrivers.length === 0) {
-            return res.status(400).json({ success: false, message: 'No online delivery partners found.' });
-        }
-
-        let offerSummary = null;
-        {
-            const ordersInBatch = await DMBDailyOrder.find({ _id: { $in: batch.orderIds } }).populate('userId', 'name phone');
-            const bagIds = new Set(batch.orderIds.map(String));
-            const pantryDetails = pantryUnits.filter(u => bagIds.has(String(u.delivery._id))).map(u => ({
-                _id: u.delivery._id,
-                orderId: u.order.orderId,
-                status: u.delivery.status,
-                type: 'pantry',
-                deliveryAddress: u.order.deliveryAddress,
-                meals: (u.order.items || []).map(i => ({ name: i.title, quantity: i.quantity })),
-                customer: { name: u.order.userId?.name || '', phone: u.order.userId?.phone || '' }
-            }));
-            const ordersDetails = ordersInBatch.map(o => ({
-                _id: o._id,
-                orderId: o.orderId,
-                status: o.status,
-                deliveryAddress: o.deliveryAddress,
-                meals: o.meals,
-                customer: {
-                    name: o.userId?.name || '',
-                    phone: o.userId?.phone || ''
-                },
-                pricing: o.pricing
-            })).concat(pantryDetails);
-
-            let feePerOrder = 18; // fallback default
-            try {
-                const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-                const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-                if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
-                    feePerOrder = Number(feeConfig.feePerOrder);
-                }
-            } catch (feeErr) {
-                logger.error(`[VENDOR-RESEND] Failed to fetch fee settings: ${feeErr.message}`);
-            }
-            const totalEarnings = feePerOrder * batch.boxCount;
-
-            const payload = {
-                batchId: batch.batchId,
-                slotType: batch.deliverySlot,      // Slot Type
-                totalMealBoxCount: batch.boxCount, // Total Meal Box Count for that slot
-                vendorInfo: {
-                    vendorId: vendor._id,
-                    vendorName: vendor.restaurantName,
-                    vendorLocation: vendor.location,
-                    vendorAddress: vendor.addressLine1 || '',
-                    vendorPhone: vendor.phone || ''
-                },
-                pickupStatus: batch.status,
-                orders: ordersDetails,
-
-                // Backward compatibility
-                vendorId: vendor._id,
-                vendorName: vendor.restaurantName,
-                vendorLocation: vendor.location,
-                boxCount: batch.boxCount,
-                slot: batch.deliverySlot,
-                totalOrders: batch.boxCount
-            };
-
-            offerSummary = await offerPickupToDrivers({
-                driverIds: onlineDrivers.map((d) => d._id),
-                batch,
-                vendor,
-                payload: { ...payload, totalEarnings },
-                mode: 'resend'
-            });
-        }
-
-        const pushNote = offerSummary
-            ? ` (${offerSummary.socketLive} live in the app, ${offerSummary.pushDelivered} reached by push notification)`
-            : '';
-        res.json({ success: true, message: `Request resent to ${onlineDrivers.length} online drivers${pushNote}.`, summary: offerSummary });
+        res.json({ success: true, message: `Pickup sent again to ${result.drivers.length} assigned driver(s).`, summary: result });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -1459,7 +1272,7 @@ router.get('/daily-orders/assigned-driver', authMiddleware, requireRoles('RESTAU
                 isOnline: driver.availabilityStatus === 'online'
             } : null,
             batchId: batch ? batch.batchId : null,
-            otp: batch ? batch.collectionPinHash : null,
+            otp: batch ? (await import('../delivery/collectionBatch.model.js')).readCollectionPin(batch) : null,
             boxCount: boxCount,
             batchStatus: batch ? batch.status : null,
             slot: batch ? batch.deliverySlot : (slot || null)

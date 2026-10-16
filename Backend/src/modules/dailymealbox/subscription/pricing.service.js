@@ -8,7 +8,9 @@ import { FoodRestaurant } from '../../food/restaurant/models/restaurant.model.js
 import { buildPeriod, cycleFromPlanDuration, cleanDaySlots, cleanWeekdays, DAY_PRESETS, deliveriesOn, deliveryWeekdays } from './schedule.js';
 import { getControl, cityIdForZone } from '../platform/platformConfig.service.js';
 import { holidaySetForCity } from '../platform/holiday.service.js';
-import { deliveryFeeForZone } from '../platform/zoneFee.js';
+import { deliveryFeeFor } from '../platform/zoneFee.js';
+import { coveredDeliveryKeys, coveredCrossZoneKeys, deliveryKey } from './deliveryBundling.js';
+import { crossZoneFeasibility } from '../delivery/hub.service.js';
 import { offeredSlots } from '../deliverySlot/deliverySlot.service.js';
 import { addDays, dateOnlyFromStr, localToday, storageDateStr, zonedInstant } from '../../../utils/platformTime.js';
 
@@ -246,13 +248,22 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     if (plan.vendorId && !vendorIds.includes(String(plan.vendorId))) throw new QuoteError('This plan belongs to another maker. Choose one of the plans this maker offers.', 'PLAN_VENDOR_MISMATCH');
     const vendors = await FoodRestaurant.find({ _id: { $in: vendorIds } }).select('restaurantName status vendorType zoneId location deliveryZoneIds vacationMode isAcceptingOrders deliveryWeekdays cookTrack track1Paused').lean();
     const vendorMap = new Map(vendors.map((v) => [String(v._id), v]));
+    const crossZone = { vendors: new Set(), surchargePln: 0 };
     const allowedTypes = rotTypes.allowed || [];
     const { blockedCookIds } = await import('../legal/legal.service.js');
     const blockedCooks = await blockedCookIds(vendors);
     for (const id of vendorIds) {
         const v = vendorMap.get(id);
         if (!v || v.status !== 'approved' || blockedCooks.has(id)) throw new QuoteError('This maker is not available', 'VENDOR_UNAVAILABLE');
-        if (!vendorServesZone(v, zoneId)) throw new QuoteError(`${v.restaurantName} does not deliver to your zone`, 'ZONE_MISMATCH');
+        if (!vendorServesZone(v, zoneId)) {
+            // Another zone: only through a hub, and only if the food can get there in time for every slot the customer chose.
+            for (const key of deliverySlots) {
+                const f = await crossZoneFeasibility({ vendor: v, customerZoneId: zoneId, slotKey: key });
+                if (!f.ok) throw new QuoteError(f.code === 'CROSS_ZONE_DISABLED' ? `${v.restaurantName} does not deliver to your zone` : `${v.restaurantName}: ${f.reason}`, f.code === 'CROSS_ZONE_DISABLED' ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
+                crossZone.surchargePln = f.surchargePln;
+            }
+            crossZone.vendors.add(id);
+        }
         if (!(await vendorHasValidLocation(v))) throw new QuoteError(`${v.restaurantName} is not available right now (its kitchen location is not set up correctly).`, 'VENDOR_LOCATION_INVALID');
         if (isRotation && v.vendorType && !allowedTypes.includes(v.vendorType)) throw new QuoteError(`${v.restaurantName} cannot be part of a rotation`, 'ROTATION_TYPE');
         const vendorDays = Array.isArray(v.deliveryWeekdays) && v.deliveryWeekdays.length ? v.deliveryWeekdays : null;
@@ -305,7 +316,24 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     }
 
     // ── Prices ────────────────────────────────────────────────────────────────────────────────────────
-    const { fee: deliveryFee, source: feeSource } = await deliveryFeeForZone(zoneId);
+    const feeBySlot = {};
+    for (const key of deliverySlots) feeBySlot[key] = await deliveryFeeFor({ zoneId, slotKey: key });
+    const deliveryFee = feeBySlot[deliverySlots[0]].fee; // the first slot's fee, for screens that show one number
+    const feeSource = feeBySlot[deliverySlots[0]].source;
+    // One delivery fee per slot: days and slots the customer already has a delivery for (bought earlier) cost no second fee.
+    const replaced = oid(input.replacesSubscriptionId) ? await DMBSubscription.findById(input.replacesSubscriptionId).select('createdAt feeSeniorityAt').lean() : null;
+    const feeSeniorityAt = replaced ? new Date(replaced.feeSeniorityAt || replaced.createdAt) : new Date();
+    const covered = await coveredDeliveryKeys({
+        userId, zoneId, dates: period.dates.map((x) => storageDateStr(x.date)),
+        excludeSubscriptionIds: [input.replacesSubscriptionId], before: feeSeniorityAt
+    });
+    const waived = new Set();
+    // Flat cross-zone surcharge: once per slot that has an item coming through a hub, never per vendor, and never discounted.
+    const crossKeys = new Set();
+    for (const { date, deliveries } of period.dates) for (const dv of deliveries) if (crossZone.vendors.has(String(dv.vendorId))) crossKeys.add(deliveryKey(date, dv.slot));
+    const alreadyCross = await coveredCrossZoneKeys({ userId, dates: period.dates.map((x) => storageDateStr(x.date)), excludeSubscriptionIds: [input.replacesSubscriptionId], before: feeSeniorityAt });
+    const surchargeKeys = [...crossKeys].filter((k) => !alreadyCross.has(k)).sort();
+    const surcharge = r2(surchargeKeys.length * crossZone.surchargePln);
     const foodVatRate = Number(plan.foodVat) || 0;
     const deliveryVatRate = Number(plan.deliveryVat) || 0;
     const familyPct = isFamily ? Math.max(0, Math.min(50, Number(family.discountPct) || 0)) : 0;
@@ -329,17 +357,19 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         const foodAfterPlan = foodAfterFamily * (1 - planPct / 100);
         const factor = 1 - pct / 100;
         const foodNet = foodAfterPlan * factor;
-        const fee = deliveryFee * factor;
+        const key = deliveryKey(date, dv.slot);
+        const feeGross = covered.has(key) ? 0 : feeBySlot[dv.slot].fee;
+        const fee = feeGross * factor;
         const qty = dv.meals.reduce((s, m) => s + (m.quantity || 1), 0);
         const vatBase = plan.applyFoodVatOnMenu ? (avgByVendor.get(String(dv.vendorId)) || 0) * qty * (1 - familyPct / 100) * (1 - planPct / 100) * factor : foodNet;
-        return { date: storageDateStr(date), slot: dv.slot, vendorId: String(dv.vendorId), food, foodAfterPlan, foodNet, fee, foodVat: vatBase * foodVatRate / 100, deliveryVat: fee * deliveryVatRate / 100 };
+        return { date: storageDateStr(date), slot: dv.slot, vendorId: String(dv.vendorId), food, foodAfterPlan, foodNet, fee, feeGross, key, foodVat: vatBase * foodVatRate / 100, deliveryVat: fee * deliveryVatRate / 100 };
     };
 
     // Trial min order check uses the undiscounted first week.
     let firstWeekGross = 0;
     for (const { date, deliveries } of period.dates) {
         if (date >= trialWindowEnd) break;
-        for (const dv of deliveries) firstWeekGross += priceOne(date, dv, 0).foodNet + deliveryFee;
+        for (const dv of deliveries) { const p0 = priceOne(date, dv, 0); firstWeekGross += p0.foodNet + p0.feeGross; }
     }
     const trialApplied = trialPct > 0 && firstWeekGross >= (Number(trial.minOrderAmount) || 0);
 
@@ -354,7 +384,8 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
             foodAfterFamily += p.food * (1 - familyPct / 100);
             foodAfterPlanSum += p.foodAfterPlan;
             foodNet += p.foodNet;
-            deliveryGross += deliveryFee;
+            deliveryGross += p.feeGross;
+            if (covered.has(p.key)) waived.add(p.key);
             deliveryNet += p.fee;
             foodVat += p.foodVat;
             deliveryVat += p.deliveryVat;
@@ -370,9 +401,12 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
     if (periodDiscount > 0.004) lines.push({ key: annualPct > 0 ? 'annual_discount' : 'trial_discount', label: annualPct > 0 ? 'Annual plan discount' : 'First-week trial discount', amount: -r2(periodDiscount) });
     if (foodVat > 0.004) lines.push({ key: 'food_vat', label: `Food VAT (${foodVatRate}%)`, amount: r2(foodVat), rate: foodVatRate });
     lines.push({ key: 'delivery', label: 'Delivery', amount: r2(deliveryGross) });
+    if (surcharge > 0) lines.push({ key: 'cross_zone_surcharge', label: 'Cross-zone delivery surcharge', amount: surcharge });
     if (deliveryVat > 0.004) lines.push({ key: 'delivery_vat', label: `Delivery VAT (${deliveryVatRate}%)`, amount: r2(deliveryVat), rate: deliveryVatRate });
     if (platformFee > 0) lines.push({ key: 'platform_fee', label: 'Platform fee (one-time)', amount: r2(platformFee) });
-    const total = r2(foodNet + foodVat + deliveryNet + deliveryVat + platformFee);
+    const surchargeVat = surcharge * deliveryVatRate / 100;
+    deliveryVat += surchargeVat;
+    const total = r2(foodNet + foodVat + deliveryNet + surcharge + deliveryVat + platformFee);
 
     const { resolvePaymentContext } = await import('../../payments/payments.settings.js');
     const { currency } = await resolvePaymentContext({ zoneId });
@@ -406,12 +440,20 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
         unitPrices,
         deliveryFeePerOrder: r2(deliveryFee),
         deliveryFeeSource: feeSource,
+        deliveryFeeBySlot: Object.fromEntries(Object.entries(feeBySlot).map(([k, v]) => [k, r2(v.fee)])),
+        deliveryFeeWaived: [...waived].sort(),
+        deliveryFeeWaivedCount: waived.size,
+        crossZone: crossZone.vendors.size > 0,
+        crossZoneSurchargePerSlot: crossZone.surchargePln,
+        crossZoneKeys: [...crossKeys].sort(),
+        crossZoneSurchargeKeys: surchargeKeys,
+        feeSeniorityAt: feeSeniorityAt.toISOString(),
         foodVatRate,
         deliveryVatRate,
         applyFoodVatOnMenu: Boolean(plan.applyFoodVatOnMenu),
         discounts: { familyPct, annualPct, planPct, trial: { eligible: trialEligible, applied: trialApplied, pct: trialApplied ? trialPct : 0, endsAt: trialApplied ? storageDateStr(trialWindowEnd) : null, minOrderAmount: Number(trial.minOrderAmount) || 0 } },
         lines,
-        totals: { food: r2(foodNet), foodGross: r2(foodGross), foodVat: r2(foodVat), delivery: r2(deliveryNet), deliveryVat: r2(deliveryVat), platformFee: r2(platformFee), discount: r2(familyDiscount + planDiscount + periodDiscount), total },
+        totals: { crossZoneSurcharge: surcharge, food: r2(foodNet), foodGross: r2(foodGross), foodVat: r2(foodVat), delivery: r2(deliveryNet), deliveryVat: r2(deliveryVat), platformFee: r2(platformFee), discount: r2(familyDiscount + planDiscount + periodDiscount), total },
         preview: period.dates.slice(0, 14).map((x) => ({ date: storageDateStr(x.date), slots: x.deliveries.map((d) => d.slot), vendorId: String(x.deliveries[0]?.vendorId || '') }))
     };
 };
@@ -431,7 +473,13 @@ export const priceDailyOrder = (sub, date, delivery) => {
     const factor = 1 - pct / 100;
     const planPct = Number(q.discounts?.planPct) || 0;
     const foodCost = r2(food * (1 - familyPct / 100) * (1 - planPct / 100) * factor);
-    const deliveryFee = r2((Number(sub.pricing?.deliveryFeePerDay) || 0) * factor);
+    // One fee per slot: a delivery that rides on another order's trip was quoted without a fee. Older subscriptions have
+    // no per-slot table, so their frozen per-day fee applies.
+    const waived = (q.deliveryFeeWaived || []).includes(deliveryKey(date, delivery.slot));
+    const slotFee = q.deliveryFeeBySlot?.[delivery.slot];
+    const baseFee = waived ? 0 : (slotFee !== undefined ? slotFee : (Number(sub.pricing?.deliveryFeePerDay) || 0));
+    const surcharge = (q.crossZoneSurchargeKeys || []).includes(deliveryKey(date, delivery.slot)) ? Number(q.crossZoneSurchargePerSlot) || 0 : 0;
+    const deliveryFee = r2(baseFee * factor + surcharge);
     const foodVat = Number(sub.pricing?.foodVat) || 0;
     const deliveryVat = Number(sub.pricing?.deliveryVat) || 0;
     const foodVatAmount = r2(foodCost * foodVat / 100);
@@ -470,6 +518,7 @@ export const subscriptionFieldsFromQuote = (q) => ({
     annualDiscountPct: q.discounts.annualPct,
     familyDiscountPct: q.discounts.familyPct,
     quote: { ...q, preview: undefined },
+    feeSeniorityAt: new Date(q.feeSeniorityAt),
     pricing: {
         basePricePerDay: r2(q.meals.reduce((s, m) => s + (q.unitPrices[m.mealPlanId] || 0) * m.quantity, 0)),
         deliveryFeePerDay: q.deliveryFeePerOrder,

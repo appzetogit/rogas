@@ -10,6 +10,7 @@ import { listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.j
 import { localToday, localDateStr, addDays, storageDateStr } from '../../../utils/platformTime.js';
 import { newDeliveryPin } from '../delivery/pantryPickup.service.js';
 import { getPantryDeliveryFee } from '../platform/pantryFee.js';
+import { coveredDeliveryKeys, deliveryKey } from '../subscription/deliveryBundling.js';
 
 const router = express.Router();
 
@@ -85,6 +86,8 @@ const startOfWeek = () => {
  */
 const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAddress, minimumTotal = 0 }) => {
     const cfg = await loadCartPricingConfig(vendorId);
+    const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+    const shopZoneId = (await FoodRestaurant.findById(vendorId).select('zoneId').lean())?.zoneId || null;
     const priced = [];
     let itemsTotalAll = 0;
     let totalDeliveries = 0;
@@ -127,9 +130,11 @@ const createPendingPantryOrders = async ({ userId, vendorId, groups, deliveryAdd
         const charged = round2(groupItemsTotal * deliveries);
         itemsTotalAll = round2(itemsTotalAll + charged);
         // One driver visit per distinct day + slot of the whole cart: a visit two groups share is charged once.
+        // A visit the customer already has coming (a subscription, a single meal or an earlier bag in that slot) costs no second fee.
+        const covered = await coveredDeliveryKeys({ userId, zoneId: shopZoneId, dates: group.deliveryDates });
         let feeDeliveries = 0;
         for (const d of group.deliveryDates) for (const sl of group.deliverySlots) {
-            if (!visits.has(`${d}|${sl}`)) { visits.add(`${d}|${sl}`); feeDeliveries += 1; }
+            if (!visits.has(`${d}|${sl}`)) { visits.add(`${d}|${sl}`); if (!covered.has(deliveryKey(d, sl))) feeDeliveries += 1; }
         }
         totalDeliveries += feeDeliveries;
         priced.push({ group, processedItems, itemsTotal: groupItemsTotal, charged, deliveries: feeDeliveries });

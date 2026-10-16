@@ -125,10 +125,15 @@ export async function getEligibleVendorsForDeliveryPartner(partnerId, zoneIds, a
  * Update a delivery partner's assignment configuration and their assigned vendors list.
  */
 export async function updateDeliveryPartnerAssignment(partnerId, payload) {
-    const { zoneIds, allowedShifts, maxVendorCapacity, selectedVendorIds } = payload;
+    const { zoneIds, primaryZoneId, allowedShifts, maxVendorCapacity, selectedVendorIds } = payload;
     
     if (!zoneIds || !Array.isArray(zoneIds) || zoneIds.length === 0) {
         throw new Error('At least one valid Zone ID must be selected');
+    }
+
+    // The primary zone is the driver's normal area and must be one of the authorised zones; it is never guessed.
+    if (!primaryZoneId || !zoneIds.map(String).includes(String(primaryZoneId))) {
+        throw new Error('Choose the primary zone from the assigned zones');
     }
 
     if (selectedVendorIds.length > maxVendorCapacity && maxVendorCapacity > 0) {
@@ -147,6 +152,7 @@ export async function updateDeliveryPartnerAssignment(partnerId, payload) {
 
     // Update the partner document
     partner.zoneIds = zoneIds.map(z => new mongoose.Types.ObjectId(z));
+    partner.primaryZoneId = new mongoose.Types.ObjectId(String(primaryZoneId));
     partner.allowedShifts = allowedShifts || [];
     partner.maxVendorCapacity = Number(maxVendorCapacity) || 0;
     partner.assignedVendors = newVendorIds.map(v => new mongoose.Types.ObjectId(v));

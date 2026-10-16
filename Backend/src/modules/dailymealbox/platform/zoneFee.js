@@ -34,6 +34,21 @@ export const deliveryFeeForZone = async (zoneId) => {
     return override ? { fee: Number(override.feePerOrder) || 0, source: 'zone' } : { fee: base, source: 'platform' };
 };
 
+/**
+ * Customer delivery fee for one delivery in a zone and slot. Most specific wins: the zone override (ACM-157, while on),
+ * then the slot's own fee, then the platform fee.
+ */
+export const deliveryFeeFor = async ({ zoneId, slotKey }) => {
+    const zone = await deliveryFeeForZone(zoneId);
+    if (zone.source === 'zone') return zone;
+    if (slotKey) {
+        const { DeliverySlot } = await import('../deliverySlot/deliverySlot.model.js');
+        const slot = await DeliverySlot.findOne({ key: String(slotKey).toLowerCase() }).select('deliveryFee').lean();
+        if (slot && slot.deliveryFee !== null && slot.deliveryFee !== undefined) return { fee: Number(slot.deliveryFee) || 0, source: 'slot' };
+    }
+    return zone;
+};
+
 export const listZoneFees = async () => {
     const { FoodZone } = await import('../../food/admin/models/zone.model.js');
     const [zones, fees, base] = await Promise.all([

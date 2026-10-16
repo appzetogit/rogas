@@ -23,6 +23,15 @@ const send = (fn) => async (req, res) => {
     }
 };
 
+/** VM-HUB-01: the Hub Activity tab. Only a vendor admin made a hub sees anything, and only its own transfers. */
+router.get('/vendor/hub', ...vendor, send(async (req) => {
+    const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+    const me = await FoodRestaurant.findById(vid(req)).select('isHub restaurantName hubCapacity hubActiveHours hubOperatorName').lean();
+    if (!me?.isHub) return { isHub: false };
+    const { hubBoard } = await import('../delivery/hub.service.js');
+    return { isHub: true, hub: { name: me.restaurantName, operator: me.hubOperatorName || '', capacity: me.hubCapacity || null, hours: me.hubActiveHours || null }, board: await hubBoard({ hubVendorId: vid(req) }) };
+}));
+
 /** Everything the vendor app needs to decide which new sections to show. */
 router.get('/vendor/amendment-config', ...vendor, send(async (req) => {
     const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');

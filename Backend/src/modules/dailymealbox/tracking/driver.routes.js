@@ -297,6 +297,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                     deliveryAddress: po.deliveryAddress,
                     deliverySlot: dailyDelivery.slot,
                     deliveryPin: dailyDelivery.deliveryPin || po.deliveryPin || null,
+                    bundleId: dailyDelivery.bundleId || '',
                     items: po.items, // optional, for driver details
                     // We can store a reference back to the parent order
                     parentOrderId: po._id
@@ -364,7 +365,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                     deliveryDate: today,
                     deliverySlot: targetSlot
                 }).lean();
-                collectionPin = existingBatch?.collectionPinHash || vendorOrders[0]?.collectionPin || null;
+                collectionPin = (await import('../delivery/collectionBatch.model.js')).readCollectionPin(existingBatch) || vendorOrders[0]?.collectionPin || null;
             }
 
             // Pickup stop status: 'completed' if all orders are picked up, else 'pending'
@@ -419,6 +420,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         orderId: order._id,
                         boxCount: mealBoxesOf(order),
                         deliveryPin: order.deliveryPin || '',
+                        bundleId: order.bundleId || '',
                         status: order.status === 'delivered' ? 'completed' : 'pending',
                         isSlotActive,
                         vendorId,
@@ -445,6 +447,7 @@ router.get('/slot-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), asyn
                         orderId: order._id,
                         boxCount: mealBoxesOf(order),
                         deliveryPin: order.deliveryPin || '',
+                        bundleId: order.bundleId || '',
                         status: 'pending',
                         awaitingPickup: true,  // customer stop locked until vendor pickup done
                         isSlotActive,
@@ -497,6 +500,11 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             driverId: (req.user.userId || req.user._id),
             status: { $in: ['driver_assigned', 'driver_en_route', 'collected'] }
         }).populate('vendorId', 'restaurantName location addressLine1 phone').sort({ createdAt: -1 });
+
+        // Hub hand-overs of this driver (drop an item at a hub / collect one from it): a separate list, so the stops below keep
+        // their two familiar types.
+        const { driverHubTasks } = await import('../delivery/hub.service.js');
+        const hubTasks = await driverHubTasks({ driverId: req.user.userId || req.user._id });
 
         const { getVendorTimingSettings } = await import('../../food/admin/services/admin.service.js');
         const timingSettings = await getVendorTimingSettings();
@@ -551,7 +559,6 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 .populate('userId', 'name phone');
 
             const mappedPantryOrders = [];
-            const pantryDriverFee = candidatePantryOrders.length ? await configuredDriverFee() : null;
             for (const po of candidatePantryOrders) {
                 // One order can hold several bags in this pickup (e.g. two days): each bag is its own stop.
                 for (const delivery of po.dailyDeliveries.filter(d => candidate.orderIds.some(id => id.toString() === d._id.toString()))) {
@@ -565,7 +572,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                         deliveryAddress: po.deliveryAddress,
                         deliverySlot: delivery.slot,
                         deliveryPin: delivery.deliveryPin,
-                        riderEarning: pantryDriverFee || 0,
+                        bundleId: delivery.bundleId || '',
                         parentOrderId: po._id
                     });
                 }
@@ -573,14 +580,15 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
 
             const allCandidateOrders = [...candidateOrders, ...mappedPantryOrders];
 
-            const isCompleted = allCandidateOrders.length > 0 && allCandidateOrders.every(o => ['delivered', 'skipped', 'failed'].includes(o.status));
+            // An item on its way to a hub is no longer this driver's delivery to wait for.
+            const isCompleted = allCandidateOrders.length > 0 && allCandidateOrders.every(o => ['delivered', 'skipped', 'failed', 'hub_transit'].includes(o.status));
             if (!isCompleted && allCandidateOrders.length > 0) {
                 active.push({ batch: candidate, orders: candidateOrders, pOrders: mappedPantryOrders });
             }
         }
 
         if (!active.length) {
-            return res.json({ success: true, stops: [], orders: [], totalBoxes: 0 });
+            return res.json({ success: true, stops: [], orders: [], totalBoxes: 0, hubTasks });
         }
 
         // Today's pickups together; when none is for today (a leftover), the newest one as before.
@@ -588,31 +596,30 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
         const chosen = (todays.length ? todays : [active[0]]).sort((x, y) => new Date(x.batch.createdAt) - new Date(y.batch.createdAt));
         const batch = chosen[0].batch;
 
-        // Fetch dynamic delivery fee configured by Admin
-        let riderEarningSetting = 0;
-        try {
-            const { DeliveryOrderFeeSettings } = await import('../../food/admin/models/deliveryOrderFeeSettings.model.js');
-            const feeConfig = await DeliveryOrderFeeSettings.findOne({ isActive: true }).lean();
-            if (feeConfig && Number(feeConfig.feePerOrder) > 0) {
-                riderEarningSetting = Number(feeConfig.feePerOrder);
-            }
-        } catch (err) {
-            console.error("Failed to fetch DeliveryOrderFeeSettings in /my-route", err);
-        }
+        // What each stop pays: the rate table's most specific rate for its zone, slot and day, plus running rate boosts.
+        const { previewDeliveryEarning } = await import('../delivery/driverEarnings.service.js');
+        const { FoodRestaurant: RouteVendor } = await import('../../food/restaurant/models/restaurant.model.js');
+        const vendorZones = new Map((await RouteVendor.find({ _id: { $in: chosen.flatMap((c) => [c.batch.vendorId, ...c.pOrders.map((o) => o.vendorId?._id || o.vendorId)]) } }).select('zoneId').lean()).map((v) => [String(v._id), v.zoneId]));
+        const earningOf = async (order) => {
+            if (Number(order.riderEarning) > 0) return Number(order.riderEarning);
+            const zoneId = order.zoneId || vendorZones.get(String(order.vendorId?._id || order.vendorId)) || null;
+            return (await previewDeliveryEarning({ zoneId, slotKey: order.deliverySlot, date: order.deliveryDate || chosen[0].batch.deliveryDate }))?.amount || 0;
+        };
 
         // Orders of each pickup, with pins and earnings.
         for (const entry of chosen) {
             const batchOtpMap = new Map();
-            if (entry.batch.orderIds && entry.batch.collectionPinHash) {
-                for (const oId of entry.batch.orderIds) batchOtpMap.set(oId.toString(), entry.batch.collectionPinHash);
+            const batchPin = (await import('../delivery/collectionBatch.model.js')).readCollectionPin(entry.batch);
+            if (entry.batch.orderIds && batchPin) {
+                for (const oId of entry.batch.orderIds) batchOtpMap.set(oId.toString(), batchPin);
             }
             entry.withPins = [];
+            entry.pickupLoad = [];
             for (const order of [...entry.orders, ...entry.pOrders]) {
                 const orderObj = order.toObject ? order.toObject() : order;
                 orderObj.pin = batchOtpMap.get(orderObj._id.toString()) || '';
 
-                // Assign Admin-configured delivery fee to riderEarning
-                orderObj.riderEarning = orderObj.riderEarning || riderEarningSetting;
+                orderObj.riderEarning = await earningOf(orderObj);
 
                 if (!orderObj.deliveryPin) {
                     const randomPin = String(Math.floor(1000 + Math.random() * 9000));
@@ -628,6 +635,10 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                             .catch(err => console.error(`Error background updating deliveryPin: ${err.message}`));
                     }
                 }
+                // What the pickup carries includes items bound for a hub; only the driver who delivers an item gets its stop.
+                entry.pickupLoad.push(orderObj);
+                const someoneElsesDrop = orderObj.type !== 'pantry' && (orderObj.status === 'hub_transit' || (orderObj.dispatch?.deliveryPartnerId && String(orderObj.dispatch.deliveryPartnerId) !== currentDriverId));
+                if (someoneElsesDrop) continue;
                 entry.withPins.push(orderObj);
             }
         }
@@ -666,6 +677,7 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             boxNumber: idx + 1,
             vendorId: order.vendorId?._id || order.vendorId,
             slot: order.deliverySlot,
+            bundleId: order.bundleId || '',
             ...extra
         });
 
@@ -681,10 +693,10 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
                 name: entry.batch.vendorId?.restaurantName || '',
                 address: entry.batch.vendorId?.addressLine1 || '',
                 status: 'READY',
-                orderId: entry.withPins[0]?._id,
+                orderId: entry.pickupLoad[0]?._id,
                 // The pickup is ONE stop for every order in the batch: all customers of this vendor and slot.
-                orderCount: entry.withPins.length,
-                boxCount: entry.withPins.reduce((sum, o) => sum + mealBoxesOf(o), 0),
+                orderCount: entry.pickupLoad.length,
+                boxCount: entry.pickupLoad.reduce((sum, o) => sum + mealBoxesOf(o), 0),
                 vendorLat: lat,
                 vendorLng: lng,
                 vendorId: entry.batch.vendorId?._id || entry.batch.vendorId,
@@ -724,7 +736,8 @@ router.get('/my-route', authMiddleware, requireRoles('DELIVERY_PARTNER'), async 
             slotType,
             totalMealBoxCount,
             stopsCount,
-            deliveryDeadline
+            deliveryDeadline,
+            hubTasks
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -815,7 +828,7 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
             }
 
             // Verify PIN against batch
-            if (batch.collectionPinHash !== String(pin)) {
+            if (!(await import('../delivery/collectionBatch.model.js')).checkCollectionPin(batch, pin)) {
                 batch.pinAttempts = (batch.pinAttempts || 0) + 1;
                 const locked = batch.pinAttempts >= MAX_PIN_ATTEMPTS;
                 if (locked) batch.pinAlertSent = true;
@@ -846,9 +859,11 @@ router.post('/verify-collection-pin', authMiddleware, requireRoles('DELIVERY_PAR
             if (!batch.driverId) batch.driverId = driverId;
             await batch.save();
 
-            // Update all orders in batch to out_for_delivery
+            // Items bound for a hub go into transit to it (another driver delivers them); the rest go out for delivery.
+            const { markCollectedForHub } = await import('../delivery/hub.service.js');
+            const toHub = new Set(await markCollectedForHub({ unitIds: batch.orderIds, driverId }));
             await DMBDailyOrder.updateMany(
-                { _id: { $in: batch.orderIds } },
+                { _id: { $in: batch.orderIds.filter((id) => !toHub.has(String(id))) } },
                 { $set: { status: 'out_for_delivery', pickedUpAt: new Date(), 'dispatch.deliveryPartnerId': driverId } }
             );
             // Pantry bags in the same pickup go out for delivery too, and the driver is recorded on each bag.
@@ -939,7 +954,8 @@ const batchRequestPayload = async (batch) => {
         .flatMap((po) => po.dailyDeliveries.filter((dd) => bagIds.has(String(dd._id))).map((dd) => ({ po, dd })));
     const { visibilityFor, driverCustomerView, driverPricingView } = await import('../platform/visibility.js');
     const vis = await visibilityFor('driver', { zoneId: vendor?.zoneId });
-    const feePerOrder = (await configuredDriverFee()) || 0;
+    const { previewDeliveryEarning } = await import('../delivery/driverEarnings.service.js');
+    const feePerOrder = (await previewDeliveryEarning({ zoneId: vendor?.zoneId, slotKey: batch.deliverySlot, date: batch.deliveryDate }))?.amount || 0;
     return {
         batchId: batch.batchId,
         slotType: batch.deliverySlot,
@@ -1006,9 +1022,11 @@ router.get('/batch-request/:batchId', authMiddleware, requireRoles('DELIVERY_PAR
 router.get('/pending-requests', authMiddleware, requireRoles('DELIVERY_PARTNER'), async (req, res) => {
     try {
         const driverId = req.user.userId || req.user._id;
-        const driver = await FoodDeliveryPartner.findById(driverId).select('status availabilityStatus zoneIds city fleetPartnerId').lean();
-        if (!driver || driver.status !== 'approved' || driver.availabilityStatus !== 'online') return res.json({ success: true, requests: [] });
+        const driver = await FoodDeliveryPartner.findById(driverId).select('status').lean();
+        if (!driver || driver.status !== 'approved') return res.json({ success: true, requests: [] });
 
+        // Pickups are assigned to drivers by the admin's Zone x Slot plan. The only batches a driver can still see here are
+        // unassigned ones in a cell the driver accepted (they are normally placed automatically); never other zones.
         const today = localToday();
         const pending = await CollectionBatch.find({
             status: 'pending', driverId: null, deliveryDate: { $gte: today, $lt: addDays(today, 1) }, rejectedBy: { $ne: driverId }
@@ -1016,29 +1034,15 @@ router.get('/pending-requests', authMiddleware, requireRoles('DELIVERY_PARTNER')
         if (!pending.length) return res.json({ success: true, requests: [] });
 
         const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
-        const vendors = new Map((await FoodRestaurant.find({ _id: { $in: pending.map((b) => b.vendorId) } })
-            .select('zoneId city location.city preferredFleetPartnerId').lean()).map((v) => [String(v._id), v]));
-        const myZones = new Set((driver.zoneIds || []).map(String));
-        const myCity = String(driver.city || '').trim().toLowerCase();
-        const preferredOnline = new Map(); // fleet partner -> has an online driver
+        const { driversForPickup } = await import('../delivery/driverAssignment.service.js');
+        const vendors = new Map((await FoodRestaurant.find({ _id: { $in: pending.map((b) => b.vendorId) } }).select('zoneId serviceZone').lean()).map((v) => [String(v._id), v]));
 
         const requests = [];
         for (const batch of pending) {
             const v = vendors.get(String(batch.vendorId));
-            if (!v) continue;
-            // Same reach as the broadcast: the vendor's zone or city (a vendor with neither is open to everyone).
-            const vz = v.zoneId ? String(v.zoneId) : '';
-            const vc = String(v.city || v.location?.city || '').trim().toLowerCase();
-            if ((vz || vc) && !((vz && myZones.has(vz)) || (vc && vc === myCity))) continue;
-            if (openBlockingIssue(batch)) continue;
-            // The vendor's preferred delivery partner gets first call while it has a driver online.
-            const pref = v.preferredFleetPartnerId ? String(v.preferredFleetPartnerId) : '';
-            if (pref && String(driver.fleetPartnerId || '') !== pref) {
-                if (!preferredOnline.has(pref)) {
-                    preferredOnline.set(pref, Boolean(await FoodDeliveryPartner.exists({ fleetPartnerId: pref, availabilityStatus: 'online', status: 'approved' })));
-                }
-                if (preferredOnline.get(pref)) continue;
-            }
+            if (!v || openBlockingIssue(batch)) continue;
+            const eligible = await driversForPickup({ vendor: v, date: batch.deliveryDate, slotKey: batch.deliverySlot });
+            if (!eligible.driverIds.some((id) => String(id) === String(driverId))) continue;
             requests.push(await batchRequestPayload(batch));
         }
         res.json({ success: true, requests });
@@ -1067,16 +1071,32 @@ router.post('/accept-batch', authMiddleware, requireRoles('DELIVERY_PARTNER'), a
         const driver = await FoodDeliveryPartner.findById((req.user.userId || req.user._id));
         if (!driver) return res.status(404).json({ success: false, message: 'Driver profile not found' });
 
+        // Only a driver who accepted this vendor's zone and slot may take an unassigned pickup.
+        const target = await CollectionBatch.findOne({ batchId }).select('vendorId deliveryDate deliverySlot').lean();
+        if (target) {
+            const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
+            const { driversForPickup } = await import('../delivery/driverAssignment.service.js');
+            const vendor = await FoodRestaurant.findById(target.vendorId).select('zoneId serviceZone').lean();
+            const eligible = await driversForPickup({ vendor, date: target.deliveryDate, slotKey: target.deliverySlot });
+            if (!eligible.driverIds.some((id) => String(id) === String(driver._id))) {
+                return res.status(403).json({ success: false, code: 'NOT_ASSIGNED', message: 'This pickup is not in a zone and slot you are assigned to' });
+            }
+        }
+
         // Generate 4-digit OTP for the vendor to verify this driver
         const otp = String(Math.floor(1000 + crypto.randomInt(9000))).padStart(4, '0');
 
         // Claimed in ONE step: with several drivers seeing the same request (push, pop-up and polling), exactly one wins.
-        // The raw OTP is kept in `collectionPinHash`; the driver shows it to the vendor.
         const batch = await CollectionBatch.findOneAndUpdate(
             { batchId, driverId: null, status: 'pending' },
-            { $set: { driverId: (req.user.userId || req.user._id), status: 'driver_assigned', assignedAt: new Date(), collectionPinHash: otp, pinAttempts: 0 } },
+            { $set: { driverId: (req.user.userId || req.user._id), status: 'driver_assigned', assignedAt: new Date(), pinAttempts: 0 } },
             { new: true }
         );
+        if (batch) {
+            const { setCollectionPin } = await import('../delivery/collectionBatch.model.js');
+            setCollectionPin(batch, otp);
+            await batch.save();
+        }
         if (!batch) {
             const exists = await CollectionBatch.exists({ batchId });
             return res.status(exists ? 400 : 404).json({ success: false, code: exists ? 'TAKEN' : undefined, message: exists ? 'Batch already assigned to another driver' : 'Batch not found' });
@@ -1146,22 +1166,35 @@ router.post('/confirm-payment', authMiddleware, requireRoles('DELIVERY_PARTNER')
         const { FoodOrder } = await import('../../food/orders/models/order.model.js');
         const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
 
-        // A pantry bag is identified by its delivery id; the driver earns the configured fee once per bag.
+        const { settleMealDelivery, settlePantryDelivery, EarningsError } = await import('../delivery/driverEarnings.service.js');
+        const earningsReply = (err) => res.status(err.statusCode || 400).json({ success: false, code: err.code, message: err.message });
+
+        // A pantry bag is identified by its delivery id; the driver earns the rate for its zone and slot once per bag.
         const pantry = await findPantryDelivery(orderId);
         if (pantry) {
             const { delivery } = pantry;
             if (!delivery.driverId || String(delivery.driverId) !== String(driverId)) return res.status(403).json({ success: false, message: 'This delivery is not assigned to you' });
             if (delivery.status !== 'delivered') return res.status(409).json({ success: false, message: 'Deliver the bag before confirming payment' });
-            const fee = await configuredDriverFee();
-            if (!fee) return res.status(409).json({ success: false, code: 'DRIVER_FEE_NOT_SET', message: 'The delivery fee for drivers is not configured yet. Admin has been told; please try again later.' });
-            // Claim the bag first so two taps can never credit it twice.
-            const claimed = await PantryOrder.updateOne(
-                { 'dailyDeliveries._id': orderId, 'dailyDeliveries.paymentConfirmed': { $ne: true } },
-                { $set: { 'dailyDeliveries.$.paymentConfirmed': true, 'dailyDeliveries.$.riderEarning': fee } }
-            );
-            if (!claimed.modifiedCount) return res.status(400).json({ success: false, message: 'Payment already confirmed for this order' });
-            await FoodDeliveryPartner.findByIdAndUpdate(driverId, { $inc: { earningsToday: fee, deliveriesToday: 1 } });
-            return res.json({ success: true, riderEarning: fee, message: 'Payment confirmed successfully' });
+            try {
+                const paid = await settlePantryDelivery({ deliveryId: orderId, driverId });
+                return res.json({ success: true, riderEarning: paid.riderEarning, breakdown: paid, message: 'Payment confirmed successfully' });
+            } catch (err) {
+                if (err instanceof EarningsError) return earningsReply(err);
+                throw err;
+            }
+        }
+
+        // A subscription / single-meal order is paid by the rate table; a legacy food order keeps its own fee.
+        const dmbOrder = await DMBDailyOrder.findById(orderId).select('dispatch paymentConfirmed').lean();
+        if (dmbOrder) {
+            if (!dmbOrder.dispatch?.deliveryPartnerId || String(dmbOrder.dispatch.deliveryPartnerId) !== String(driverId)) return res.status(403).json({ success: false, message: 'This delivery is not assigned to you' });
+            try {
+                const paid = await settleMealDelivery({ orderId, driverId, method });
+                return res.json({ success: true, riderEarning: paid.riderEarning, breakdown: paid, message: 'Payment confirmed successfully' });
+            } catch (err) {
+                if (err instanceof EarningsError) return earningsReply(err);
+                throw err;
+            }
         }
 
         // Check if it has already been paid/confirmed to prevent double earnings
