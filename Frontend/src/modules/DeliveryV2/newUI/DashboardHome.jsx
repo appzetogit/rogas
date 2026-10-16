@@ -2,6 +2,8 @@ import { Bell, ShoppingBag, DollarSign, Star, Navigation, Wallet, HeartHandshake
 import { useState, useEffect } from "react";
 import { deliveryAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
+import { PromotionBars } from "./PromotionBars";
+import { HubTasks } from "./HubTasks";
 
 const DashboardHome = ({
   stats,
@@ -178,6 +180,10 @@ const DashboardHome = ({
         <p className="text-xs font-medium">{t("Check back later for new bonus challenges and earning opportunities.")}</p>
       </div>
     )}
+
+    <HubTasks />
+
+    <PromotionBars />
 
     {
       /* Secondary Info Cards */

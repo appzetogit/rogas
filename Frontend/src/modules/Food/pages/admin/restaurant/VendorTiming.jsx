@@ -23,7 +23,7 @@ const COLORS = ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#0ea5e9', '#8b5cf6'
 const EMPTY = {
   name: '', key: '', description: '', icon: '🍽️', color: '#f97316',
   startTime: '11:00', endTime: '15:00', maxPrepMinutes: 60,
-  deliveryStartTime: '', deliveryEndTime: '', orderCutoffHours: 0,
+  deliveryStartTime: '', deliveryEndTime: '', orderCutoffHours: 0, deliveryFee: '', driverStartTime: '',
   availableDays: [1, 2, 3, 4, 5, 6, 0], sortOrder: 0, isEnabled: true,
 };
 
@@ -65,6 +65,8 @@ function SlotModal({ initial, onClose, onSaved, onError }) {
         startTime: form.startTime, endTime: form.endTime, maxPrepMinutes: Number(form.maxPrepMinutes) || 60,
         deliveryStartTime: form.deliveryStartTime, deliveryEndTime: form.deliveryEndTime,
         orderCutoffHours: Number(form.orderCutoffHours) || 0, availableDays: form.availableDays,
+        deliveryFee: form.deliveryFee === '' || form.deliveryFee === null || form.deliveryFee === undefined ? null : Number(form.deliveryFee),
+        driverStartTime: form.driverStartTime || '',
         sortOrder: Number(form.sortOrder) || 0, isEnabled: form.isEnabled,
       };
       if (editing) await adminAPI.updateDeliverySlot(initial._id, body);
@@ -145,6 +147,12 @@ function SlotModal({ initial, onClose, onSaved, onError }) {
             </Field>
             <Field label="Skip cutoff (hrs)" hint="0 = global rule">
               <input type="number" min={0} className={inputCls} value={form.orderCutoffHours} onChange={(e) => set('orderCutoffHours', e.target.value)} />
+            </Field>
+            <Field label="Drivers start" hint="Needed for deliveries from another zone through a hub (the hand-off deadline counts back from it)">
+              <input type="time" className={inputCls} value={form.driverStartTime || ''} onChange={(e) => set('driverStartTime', e.target.value)} />
+            </Field>
+            <Field label="Delivery fee" hint="Per delivery. Empty = platform fee. A zone fee overrides it.">
+              <input type="number" min={0} max={1000} step="0.5" className={inputCls} value={form.deliveryFee ?? ''} onChange={(e) => set('deliveryFee', e.target.value)} />
             </Field>
           </div>
 
@@ -352,6 +360,7 @@ export default function VendorTiming() {
                       {s.deliveryStartTime && s.deliveryEndTime ? `${to12h(s.deliveryStartTime)} – ${to12h(s.deliveryEndTime)}` : 'Same as prep'}
                     </p>
                     {s.orderCutoffHours > 0 && <p className="text-[11px] text-slate-400">skip cutoff {s.orderCutoffHours}h before</p>}
+                    {s.deliveryFee !== null && s.deliveryFee !== undefined && <p className="text-[11px] text-slate-400">delivery fee {s.deliveryFee}</p>}
                   </div>
                 </div>
 

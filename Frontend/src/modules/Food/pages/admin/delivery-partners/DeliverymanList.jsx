@@ -28,6 +28,7 @@ export default function DeliverymanList() {
   const [isEditAssignmentMode, setIsEditAssignmentMode] = useState(false)
   const [editAssignmentData, setEditAssignmentData] = useState({
     zoneIds: [],
+    primaryZoneId: '',
     allowedShifts: [],
     maxVendorCapacity: 0,
     selectedVendorIds: []
@@ -228,6 +229,7 @@ export default function DeliverymanList() {
     
     setEditAssignmentData({
       zoneIds: initialZones,
+      primaryZoneId: viewDetails.primaryZoneId || '',
       allowedShifts: initialShifts,
       maxVendorCapacity: viewDetails.maxVendorCapacity || 0,
       selectedVendorIds: viewDetails.assignedVendors?.map(v => typeof v === 'object' ? v._id || v.id : v) || []
@@ -275,6 +277,7 @@ export default function DeliverymanList() {
   const handleAssignmentChange = async (key, value) => {
     setEditAssignmentData(prev => {
       const updated = { ...prev, [key]: value }
+      if (key === 'zoneIds' && !value.includes(updated.primaryZoneId)) updated.primaryZoneId = ''
       if (key === 'zoneIds' || key === 'allowedShifts') {
         fetchEligibleVendors(viewDetails._id, updated.zoneIds, updated.allowedShifts)
       }
@@ -283,6 +286,10 @@ export default function DeliverymanList() {
   }
 
   const handleSaveAssignment = async () => {
+    if (!editAssignmentData.primaryZoneId) {
+      toast.error("Choose the primary zone")
+      return
+    }
     if (editAssignmentData.selectedVendorIds.length > editAssignmentData.maxVendorCapacity && editAssignmentData.maxVendorCapacity > 0) {
       toast.error(`Cannot assign ${editAssignmentData.selectedVendorIds.length} vendors when capacity is ${editAssignmentData.maxVendorCapacity}`)
       return
@@ -1146,6 +1153,18 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                                   </label>
                                 ))}
                               </div>
+                              <label className="text-xs font-bold text-slate-700 uppercase mt-3 mb-2 block">Primary Zone <span className="text-red-500">*</span></label>
+                              <select
+                                value={editAssignmentData.primaryZoneId}
+                                onChange={(e) => handleAssignmentChange('primaryZoneId', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm"
+                              >
+                                <option value="">Select the normal area</option>
+                                {availableZones.filter(z => editAssignmentData.zoneIds.includes(z._id)).map(z => (
+                                  <option key={z._id} value={z._id}>{z.name || z.zoneName}</option>
+                                ))}
+                              </select>
+                              <p className="text-[11px] text-slate-500 mt-1">Other assigned zones count as additional zones the driver can cover when needed.</p>
                             </div>
                             
                             <div>

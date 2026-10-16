@@ -112,7 +112,7 @@ function TomorrowTab({ notify }) {
           {rows === null ? (
             <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Loading…</td></tr>
           ) : rows.length === 0 ? (
-            <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">No shifts scheduled for tomorrow yet.</td></tr>
+            <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">No drivers are assigned for tomorrow yet.</td></tr>
           ) : rows.map((r, i) => (
             <tr key={`${r.driverId}-${r.slotKey}-${i}`} className="border-t border-slate-100">
               <td className="px-4 py-3 font-semibold text-slate-800">{r.name}</td>
@@ -120,8 +120,10 @@ function TomorrowTab({ notify }) {
               <td className="px-4 py-3 text-slate-700 capitalize">{r.slotKey}</td>
               <td className="px-4 py-3">
                 {r.confirmed
-                  ? <span className="inline-flex items-center gap-1.5 text-green-700 font-semibold text-xs"><CheckCircle size={14} /> Confirmed</span>
-                  : <span className="inline-flex items-center gap-1.5 text-amber-600 font-semibold text-xs"><AlertTriangle size={14} /> Not confirmed</span>}
+                  ? <span className="inline-flex items-center gap-1.5 text-green-700 font-semibold text-xs"><CheckCircle size={14} /> Accepted</span>
+                  : r.state === 'declined' || r.state === 'expired'
+                    ? <span className="inline-flex items-center gap-1.5 text-red-600 font-semibold text-xs"><XCircle size={14} /> {r.state === 'declined' ? 'Declined' : 'No answer'}</span>
+                    : <span className="inline-flex items-center gap-1.5 text-amber-600 font-semibold text-xs"><AlertTriangle size={14} /> Waiting for the driver</span>}
               </td>
             </tr>
           ))}
@@ -140,7 +142,7 @@ export default function DriverAttendance() {
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center"><CalendarCheck size={22} /></div>
-        <div><h1 className="text-2xl font-black text-slate-800">Driver Attendance</h1><p className="text-sm text-slate-500">Attendance rate per driver, and tomorrow's shift confirmations.</p></div>
+        <div><h1 className="text-2xl font-black text-slate-800">Driver Attendance</h1><p className="text-sm text-slate-500">Attendance rate per driver, and tomorrow's assignment answers.</p></div>
       </div>
       <div className="flex gap-2 mb-6" role="tablist">
         {[['rates', 'Attendance rate'], ['tomorrow', "Tomorrow's shifts"]].map(([id, label]) => (

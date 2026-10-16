@@ -87,6 +87,9 @@ const EarningAddon = lazy(() => import("@food/pages/admin/delivery-partners/Earn
 const EarningAddonHistory = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddonHistory"));
 const DeliveryEarnings = lazy(() => import("@food/pages/admin/delivery-partners/DeliveryEarnings"));
 const DriverAttendance = lazy(() => import("@food/pages/admin/delivery-partners/DriverAttendance"));
+const DriverAssignments = lazy(() => import("@food/pages/admin/delivery-partners/DriverAssignments"));
+const DriverRates = lazy(() => import("@food/pages/admin/delivery-partners/DriverRates"));
+const Hubs = lazy(() => import("@food/pages/admin/delivery-partners/Hubs"));
 // Disbursement Management
 // Report Management
 const TransactionReport = lazy(() => import("@food/pages/admin/reports/TransactionReport"));
@@ -318,6 +321,9 @@ export default function AdminRouter() {
             <Route path="delivery-partners/earnings" element={<DeliveryEarnings />} />
             <Route path="delivery-partners/shift-requests" element={<ShiftChangeRequests />} />
             <Route path="delivery-partners/attendance" element={<DriverAttendance />} />
+            <Route path="delivery-partners/assignments" element={<DriverAssignments />} />
+            <Route path="delivery-partners/rates" element={<DriverRates />} />
+            <Route path="delivery-partners/hubs" element={<Hubs />} />
             <Route path="order-based-delivery-fee" element={<OrderBasedDeliveryFee />} />
             <Route path="pantry-delivery-fee" element={<PantryDeliveryFee />} />
 

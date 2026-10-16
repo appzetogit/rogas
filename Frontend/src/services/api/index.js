@@ -2307,6 +2307,7 @@ export const dmbLegalAPI = { user: legalFor(userClient), vendor: legalFor(restau
 /** Vendor app. */
 export const dmbExtraVendorAPI = {
   config: () => restaurantClient.get("/dmb/vendor/amendment-config"),
+  hub: () => restaurantClient.get("/dmb/vendor/hub"),
   reviews: (params) => restaurantClient.get("/dmb/vendor/reviews", { params }),
   respondToReview: (orderId, text) => restaurantClient.post(`/dmb/vendor/reviews/${orderId}/response`, { text }),
   stock: (params) => restaurantClient.get("/dmb/vendor/stock", { params }),
@@ -2350,6 +2351,11 @@ export const dmbExtraVendorAPI = {
 export const dmbExtraDriverAPI = {
   shiftSettings: () => deliveryClient.get("/dmb/driver/shift-settings"),
   unconfirmShift: (id) => deliveryClient.post(`/dmb/driver/shifts/${id}/unconfirm`),
+  promotions: () => deliveryClient.get("/dmb/driver/promotions"),
+  hubTasks: () => deliveryClient.get("/dmb/driver/hub-tasks"),
+  hubDrop: (id, pin) => deliveryClient.post(`/dmb/driver/hub/${id}/drop`, { pin }),
+  hubPickup: (id, pin) => deliveryClient.post(`/dmb/driver/hub/${id}/pickup`, { pin }),
+  declineShift: (id, reason) => deliveryClient.post(`/dmb/driver/shifts/${id}/decline`, { reason: reason || undefined }),
   failedDeliveryOptions: () => deliveryClient.get("/dmb/driver/failed-delivery-options"),
   reportFailedDelivery: (id, body) => deliveryClient.post(`/dmb/driver/stops/${id}/fail`, body),
   /** Problem at the vendor before pickup (not ready, items missing, closed ...). */
@@ -2373,6 +2379,28 @@ export const dmbExtraAdminAPI = {
   alerts: (params) => adminClient.get(dmbAdmin("/alerts"), { params }),
   /** `action` answers a pickup-problem alert: "resume" (driver carries on) or "release_driver". */
   updateAlert: (id, status, action) => adminClient.patch(dmbAdmin(`/alerts/${id}`), action ? { action } : { status }),
+  // Zone x slot driver assignment, planned the day before
+  assignmentBoard: (params = {}) => adminClient.get(dmbAdmin("/assignments/board"), { params }),
+  assignmentDrivers: (params = {}) => adminClient.get(dmbAdmin("/assignments/eligible-drivers"), { params }),
+  assignDriver: (body) => adminClient.post(dmbAdmin("/assignments"), body),
+  unassignDriver: (id) => adminClient.delete(dmbAdmin(`/assignments/${id}`)),
+  copyAssignments: (body) => adminClient.post(dmbAdmin("/assignments/copy"), body),
+  assignmentCell: (params) => adminClient.get(dmbAdmin("/assignments/cell"), { params }),
+  moveDelivery: (body) => adminClient.post(dmbAdmin("/assignments/move"), body),
+  // Driver earnings: delivery rates and promotions
+  earningsRates: () => adminClient.get(dmbAdmin("/earnings/rates")),
+  createEarningsRate: (body) => adminClient.post(dmbAdmin("/earnings/rates"), body),
+  updateEarningsRate: (id, body) => adminClient.put(dmbAdmin(`/earnings/rates/${id}`), body),
+  deleteEarningsRate: (id) => adminClient.delete(dmbAdmin(`/earnings/rates/${id}`)),
+  earningsPromotions: () => adminClient.get(dmbAdmin("/earnings/promotions")),
+  createEarningsPromotion: (body) => adminClient.post(dmbAdmin("/earnings/promotions"), body),
+  updateEarningsPromotion: (id, body) => adminClient.put(dmbAdmin(`/earnings/promotions/${id}`), body),
+  setEarningsPromotionStatus: (id, status) => adminClient.patch(dmbAdmin(`/earnings/promotions/${id}/status`), { status }),
+  // Hubs and cross-zone transfers
+  hubs: (params = {}) => adminClient.get(dmbAdmin("/hubs"), { params }),
+  saveHub: (vendorId, body) => adminClient.put(dmbAdmin(`/hubs/${vendorId}`), body),
+  hubTransfers: (params = {}) => adminClient.get(dmbAdmin("/hubs/transfers"), { params }),
+  regenerateHubPin: (id, which) => adminClient.post(dmbAdmin(`/hubs/transfers/${id}/regenerate-pin`), { which }),
   jobs: () => adminClient.get(dmbAdmin("/jobs")),
   runJob: (name) => adminClient.post(dmbAdmin(`/jobs/${name}/run`)),
   // Delivery slot lifecycle (Gap A)

@@ -34,6 +34,7 @@ import useKeyboardOpen from '../../shared/hooks/useKeyboardOpen';
 import VendorServicePage from './components/VendorServicePage';
 import { VendorLegalPage } from './components/VendorLegalPage';
 import VendorHub, { MenuCoverageNudge } from './components/amendment/VendorHub';
+import HubActivity, { HubEntry } from './components/HubActivity';
 import LegalAcceptanceGate from '../../shared/components/LegalAcceptanceGate';
 // Import DMB Services & Clients
 import { requestRestaurantOtp, verifyRestaurantOtp, getMe, logout } from '../../services/api/auth';
@@ -893,6 +894,11 @@ export default function App() {
 
           {/* Main Content Area */}
           <main className={`flex-grow ${isDashboardPage ? 'pt-0 md:pt-6' : 'pt-14 md:pt-16'} pb-[83px] md:pb-6 bg-slate-50/50 flex flex-col`}>
+            {isDashboardPage && (
+              <div className="px-4 md:px-8 pt-3 max-w-5xl w-full">
+                <HubEntry onOpen={() => navigate('/vendor/hub')} />
+              </div>
+            )}
             {isDashboardPage && profile.vendorType !== 'pantry_shop' && (
               <div className="px-4 md:px-8 pt-3 max-w-5xl w-full">
                 <MenuCoverageNudge onOpen={() => navigate('/vendor/more/menu-coverage')} />
@@ -912,6 +918,7 @@ export default function App() {
               )}
               <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
               <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />
+              <Route path="/hub" element={<HubActivity />} />
               <Route path="/subscribers" element={<SubscribersScreen />} />
               <Route path="/subscription-plans" element={<SubscriptionPlansScreen />} />
               <Route path="/service" element={<VendorServicePage />} />

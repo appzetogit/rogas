@@ -153,6 +153,12 @@ const StopCard = ({ stop, index, isFirst, onClick, isSlotActive }) => {
                {stop.name || ''}
             </h4>
 
+            {stop.bundleCount > 1 && (
+               <p className="text-[10px] font-bold text-[#3B82F6] mb-1">
+                  {t("{{count}} items - one doorbell, one PIN", { count: stop.bundleCount })}
+               </p>
+            )}
+
             {/* Order count for vendor stops */}
             {isPickup && stop.orderCount > 0 && (
                <p className="text-[10px] font-bold text-[#1F7A63] mb-1">
@@ -406,8 +412,26 @@ export const RoutesView = ({ onSelectStop }) => {
    const totalOrders = routeData?.totalOrders || 0;
    const totalVendors = routeData?.totalVendors || 0;
 
-   const pendingStops = stops.filter(s => s.status !== 'completed');
-   const completedStops = stops.filter(s => s.status === 'completed');
+   // One doorbell: delivery stops that share a bundle are shown as a single stop (one PIN delivers them all).
+   const mergeBundles = (list) => {
+      const byBundle = new Map();
+      const out = [];
+      for (const s of list) {
+         if (s.type !== 'delivery' || !s.bundleId) { out.push(s); continue; }
+         const first = byBundle.get(s.bundleId);
+         if (!first) {
+            const merged = { ...s, bundleCount: 1, bundleBoxCount: s.boxCount || 1 };
+            byBundle.set(s.bundleId, merged);
+            out.push(merged);
+         } else {
+            first.bundleCount += 1;
+            first.bundleBoxCount += s.boxCount || 1;
+         }
+      }
+      return out;
+   };
+   const pendingStops = mergeBundles(stops.filter(s => s.status !== 'completed'));
+   const completedStops = mergeBundles(stops.filter(s => s.status === 'completed'));
    const readyVendors = stops.filter(s => s.type === 'pickup' && s.vendorStatus === 'ready').length;
    const totalVendorStops = stops.filter(s => s.type === 'pickup').length;
 
