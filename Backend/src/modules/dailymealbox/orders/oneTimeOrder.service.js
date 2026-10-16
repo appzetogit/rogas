@@ -165,7 +165,8 @@ export const createSelectOrder = async ({ userId, mealPlanId, quantity = 1, date
     let crossZone = null;
     if (!vendorServesZone(vendor, zoneId)) {
         const f = await crossZoneFeasibility({ vendor, customerZoneId: zoneId, slotKey: slotDef.key });
-        if (!f.ok) throw new OneTimeError(f.code === 'CROSS_ZONE_DISABLED' ? `${vendor.restaurantName} does not deliver to your address` : `${vendor.restaurantName}: ${f.reason}`, 409, f.code === 'CROSS_ZONE_DISABLED' ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
+        const plain = ['CROSS_ZONE_DISABLED', 'NO_HUB', 'DIFFERENT_CITY'].includes(f.code);
+        if (!f.ok) throw new OneTimeError(plain ? `${vendor.restaurantName} does not deliver to your address` : `${vendor.restaurantName}: ${f.reason}`, 409, plain ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
         crossZone = { surchargePln: f.surchargePln };
     }
     if (!(await vendorHasValidLocation(vendor))) throw new OneTimeError(`${vendor.restaurantName} is not available right now`, 409, 'VENDOR_LOCATION_INVALID');

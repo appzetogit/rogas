@@ -259,7 +259,9 @@ export const quoteSubscription = async (input = {}, { userId = null } = {}) => {
             // Another zone: only through a hub, and only if the food can get there in time for every slot the customer chose.
             for (const key of deliverySlots) {
                 const f = await crossZoneFeasibility({ vendor: v, customerZoneId: zoneId, slotKey: key });
-                if (!f.ok) throw new QuoteError(f.code === 'CROSS_ZONE_DISABLED' ? `${v.restaurantName} does not deliver to your zone` : `${v.restaurantName}: ${f.reason}`, f.code === 'CROSS_ZONE_DISABLED' ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
+                // No switch, no hub, or another city: for the customer the maker simply does not deliver to them.
+                const plain = ['CROSS_ZONE_DISABLED', 'NO_HUB', 'DIFFERENT_CITY'].includes(f.code);
+                if (!f.ok) throw new QuoteError(plain ? `${v.restaurantName} does not deliver to your zone` : `${v.restaurantName}: ${f.reason}`, plain ? 'ZONE_MISMATCH' : `CROSS_ZONE_${f.code}`);
                 crossZone.surchargePln = f.surchargePln;
             }
             crossZone.vendors.add(id);

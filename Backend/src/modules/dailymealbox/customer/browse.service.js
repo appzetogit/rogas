@@ -38,8 +38,16 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
 
     let vendors = (await FoodRestaurant.find({ status: 'approved', vendorType: { $ne: 'pantry_shop' } })
         .select('restaurantName ownerName profileImage coverImages cuisines city vendorType zoneId location deliveryZoneIds deliveryWeekdays ecoPackaging specialisms mealRating rating totalRatings vacationMode isAcceptingOrders rotationAvailable cookTrack track1Paused')
-        .lean())
-        .filter((v) => servedZoneIds(v).includes(zone));
+        .lean());
+    // Makers of the customer's own sub-zone, plus those of the other sub-zones of the SAME city when the city's hub can carry them.
+    const { crossZoneReach } = await import('../delivery/hub.service.js');
+    const reach = await crossZoneReach(zone);
+    const crossIds = new Set();
+    vendors = vendors.filter((v) => {
+        if (servedZoneIds(v).includes(zone)) return true;
+        if (reach.available && v.zoneId && reach.zoneIds.includes(String(v.zoneId))) { crossIds.add(String(v._id)); return true; }
+        return false;
+    });
     // A kitchen whose saved pin is missing or outside its zone (e.g. a default location) must not be offered: its distance,
     // ETA and driver matching would all be wrong.
     {
@@ -110,6 +118,8 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
                 preOrder: vm.some((m) => m.status === 'pre_order' && m.launchDate && new Date(m.launchDate) > localToday())
             },
             deliveryWeekdays: days,
+            crossZone: crossIds.has(String(v._id)),
+            crossZoneSurchargePln: crossIds.has(String(v._id)) ? reach.surchargePln : 0,
             rotationCapable,
             onVacation: Boolean(v.vacationMode),
             // AI: eco packaging lifts the vendor for customers who prefer it (+0.2), it never hides anyone.
@@ -140,7 +150,9 @@ export const vendorMeals = async ({ vendorId, zoneId }) => {
         err.statusCode = 404;
         throw err;
     }
-    if (zoneId && !servedZoneIds(vendor).includes(String(zoneId))) {
+    const { crossZoneReach } = await import('../delivery/hub.service.js');
+    const reachable = zoneId && !servedZoneIds(vendor).includes(String(zoneId)) ? await crossZoneReach(zoneId) : null;
+    if (zoneId && !servedZoneIds(vendor).includes(String(zoneId)) && !(reachable?.available && vendor.zoneId && reachable.zoneIds.includes(String(vendor.zoneId)))) {
         const err = new Error(`${vendor.restaurantName} does not deliver to your zone`);
         err.statusCode = 409;
         err.code = 'ZONE_MISMATCH';
