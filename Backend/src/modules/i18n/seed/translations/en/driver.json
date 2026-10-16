@@ -1,4 +1,6 @@
 {
+ "{{count}} items - one doorbell, one PIN_one": "{{count}} item - one doorbell, one PIN",
+ "{{count}} items - one doorbell, one PIN_other": "{{count}} items - one doorbell, one PIN",
  "📦 {{count}} meal box to collect_one": "📦 {{count}} meal box to collect",
  "📦 {{count}} meal box to collect_other": "📦 {{count}} meal boxes to collect",
  "Deliver {{count}} more order to earn {{targetAmount}} PLN extra_one": "Deliver {{count}} more order to earn {{targetAmount}} PLN extra",

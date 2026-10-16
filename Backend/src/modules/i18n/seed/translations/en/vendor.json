@@ -1,4 +1,8 @@
 {
  "{{count}} delivered · {{expected}} expected today_one": "{{count}} delivered · {{expected}} expected today",
- "{{count}} delivered · {{expected}} expected today_other": "{{count}} delivered · {{expected}} expected today"
+ "{{count}} delivered · {{expected}} expected today_other": "{{count}} delivered · {{expected}} expected today",
+ "{{count}} item(s) handled today_one": "{{count}} item handled today",
+ "{{count}} item(s) handled today_other": "{{count}} items handled today",
+ "{{count}} item(s) to hand over_one": "{{count}} item to hand over",
+ "{{count}} item(s) to hand over_other": "{{count}} items to hand over"
 }
