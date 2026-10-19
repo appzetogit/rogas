@@ -1,8 +1,11 @@
 import express from 'express';
 import { upload } from '../../../middleware/upload.js';
-import { uploadFileBuffer, uploadImageBuffer, uploadVideoBuffer } from '../../../services/cloudinary.service.js';
+import { uploadRateLimiter } from '../../../middleware/rateLimit.js';
+import { uploadFileBuffer, uploadImageBuffer, uploadVideoBuffer } from '../../../services/upload.service.js';
 
 const router = express.Router();
+
+router.use(uploadRateLimiter);
 
 // POST /v1/uploads/image
 router.post('/image', upload.single('file'), async (req, res, next) => {

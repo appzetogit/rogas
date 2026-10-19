@@ -2,7 +2,9 @@ import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
 const errorHandler = (err, req, res, next) => {
-    const statusCode = err.statusCode || 500;
+    // Multer rejections (file too large, unexpected field) are the client's fault, not a server error.
+    const multerStatus = err.name === 'MulterError' ? (err.code === 'LIMIT_FILE_SIZE' ? 413 : 400) : null;
+    const statusCode = err.statusCode || multerStatus || 500;
     const message = err.message || 'Server Error';
     const requestId = req.requestId || '-';
 

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { FoodAdmin } from './src/core/admin/admin.model.js';
-import { AdminRole } from './src/modules/food/admin/models/role.model.js';
+import { FoodAdmin } from '../src/core/admin/admin.model.js';
+import { AdminRole } from '../src/modules/food/admin/models/role.model.js';
 
 dotenv.config();
 

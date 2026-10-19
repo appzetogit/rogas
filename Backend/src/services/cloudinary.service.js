@@ -28,14 +28,15 @@ export const uploadImageBuffer = async (buffer, folder = 'uploads') => {
     });
 };
 
-export const uploadImageBufferDetailed = async (buffer, folder = 'uploads') => {
+/** `extra` is passed straight to Cloudinary (e.g. public_id, quality). */
+export const uploadImageBufferDetailed = async (buffer, folder = 'uploads', extra = {}) => {
     if (!buffer) {
         throw new Error('File buffer is required');
     }
 
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: 'image' },
+            { ...extra, folder, resource_type: 'image' },
             (error, result) => {
                 if (error) {
                     return reject(error);
@@ -145,6 +146,9 @@ export const uploadFileBufferDetailed = async (buffer, folder = 'uploads', optio
     });
 };
 
+export const deleteCloudinaryAsset = async (publicId, resourceType = 'image') => {
+    return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+};
 
 const stripTrailingExtension = (value) => {
     if (!value) return '';

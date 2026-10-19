@@ -10,6 +10,9 @@ export const apiRateLimiter = rateLimit({
     max: config.nodeEnv === 'development' ? Math.max(config.rateLimitMaxRequests, 2000) : config.rateLimitMaxRequests,
     standardHeaders: true,
     legacyHeaders: false,
+    // Payment providers call webhooks from a handful of IPs; throttling them would leave payments unconfirmed.
+    // Webhooks are authenticated by their signatures instead.
+    skip: (req) => req.path.startsWith('/v1/payments/webhook/'),
     message: {
         success: false,
         message: 'Too many requests, please try again later.'
@@ -21,7 +24,7 @@ const authWindowMs = config.authRateLimitWindowMinutes * 60 * 1000;
 /** Stricter rate limit for auth routes (OTP, login, refresh, logout). Applied in addition to global limiter. */
 export const authRateLimiter = rateLimit({
     windowMs: authWindowMs,
-    // Dev UX: login/otp testing can be frequent. Keep production strict (e.g. 30), 
+    // Dev UX: login/otp testing can be frequent. Keep production strict (e.g. 30),
     // but relax local development to avoid 429 when testing flows.
     max: config.nodeEnv === 'development' ? Math.max(config.authRateLimitMax, 100) : config.authRateLimitMax,
     standardHeaders: true,
@@ -32,3 +35,14 @@ export const authRateLimiter = rateLimit({
     }
 });
 
+/** Limit for the public file upload endpoints (they accept files before login, e.g. during onboarding). */
+export const uploadRateLimiter = rateLimit({
+    windowMs: authWindowMs,
+    max: config.nodeEnv === 'development' ? Math.max(config.uploadRateLimitMax, 500) : config.uploadRateLimitMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many uploads. Please try again later.'
+    }
+});

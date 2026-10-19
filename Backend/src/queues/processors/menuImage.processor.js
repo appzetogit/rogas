@@ -1,15 +1,7 @@
 import { logger } from '../../utils/logger.js';
 import { FoodItem } from '../../modules/food/admin/models/food.model.js';
-import { v2 as cloudinary } from 'cloudinary';
-import { config } from '../../config/env.js';
+import { uploadImageBuffer } from '../../services/upload.service.js';
 import { HfInference } from '@huggingface/inference';
-
-// Configure cloudinary
-cloudinary.config({
-    cloud_name: config.cloudinaryCloudName,
-    api_key: config.cloudinaryApiKey,
-    api_secret: config.cloudinaryApiSecret
-});
 
 let hfClient = null;
 
@@ -21,23 +13,10 @@ if (process.env.HUGGINGFACE_API_KEY) {
     }
 }
 
-async function uploadBufferToCloudinary(buffer, itemName) {
-    return new Promise((resolve, reject) => {
-        const publicId = `${itemName.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
-        const stream = cloudinary.uploader.upload_stream(
-            {
-                folder: 'restaurants/menu_items',
-                public_id: publicId,
-                quality: 'auto',
-                fetch_format: 'auto',
-                resource_type: 'image'
-            },
-            (error, result) => {
-                if (error) return reject(error);
-                resolve(result.secure_url);
-            }
-        );
-        stream.end(buffer);
+async function uploadGeneratedImage(buffer, itemName) {
+    const publicId = `${itemName.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
+    return uploadImageBuffer(buffer, 'restaurants/menu_items', {
+        cloudinary: { public_id: publicId, quality: 'auto', fetch_format: 'auto' }
     });
 }
 
@@ -91,7 +70,7 @@ export async function generateMenuImageForItem({ restaurantId, itemId, itemName,
 
     const arrayBuffer = await blob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const imageUrl = await uploadBufferToCloudinary(buffer, itemName);
+    const imageUrl = await uploadGeneratedImage(buffer, itemName);
 
     // Update DB
     const itemDoc = await FoodItem.findOne({ _id: itemId, restaurantId });

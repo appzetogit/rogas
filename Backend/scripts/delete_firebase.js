@@ -1,4 +1,4 @@
-import { initializeFirebaseRealtime, getFirebaseDB } from './src/config/firebase.js';
+import { initializeFirebaseRealtime, getFirebaseDB } from '../src/config/firebase.js';
 
 async function run() {
     try {

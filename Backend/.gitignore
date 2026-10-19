@@ -4,7 +4,9 @@ node_modules/
 # environment variables
 .env
 .env.*
-!.env.example
+
+# user uploads (local development; production stores them in UPLOAD_DIR, /var/www/uploads)
+uploads/*
 
 # logs
 npm-debug.log*

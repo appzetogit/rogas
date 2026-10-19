@@ -2,7 +2,7 @@ import { logger } from '../../../../utils/logger.js';
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
-import { buildRawDownloadUrlFromFileUrl } from '../../../../services/cloudinary.service.js';
+import { buildRawDownloadUrlFromFileUrl } from '../../../../services/upload.service.js';
 import { queueEmail } from '../../../email/email.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { DeliveryShiftChangeRequest } from '../../delivery/models/shiftChangeRequest.model.js';

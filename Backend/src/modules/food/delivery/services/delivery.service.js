@@ -6,7 +6,7 @@ import { AdminComplaint } from '../../admin/models/complaint.model.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { FoodEarningAddon } from '../../admin/models/earningAddon.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
-import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
+import { uploadImageBuffer } from '../../../../services/upload.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { checkPhoneConflict } from '../../../../core/auth/auth.service.js';
 import { normalizeStoredPhone } from '../../../../core/auth/phone.util.js';

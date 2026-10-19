@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -83,8 +84,24 @@ app.use('/api', apiRateLimiter);
 // Optional: log API response time (method, path, status, duration) - no sensitive data
 app.use('/api', responseTimeLogger);
 
-// Serve uploaded files statically
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files (UPLOAD_DIR; /var/www/uploads in production). The apps run on another origin, so allow
+// cross-origin embedding (helmet defaults to same-origin), and never let an uploaded SVG run scripts.
+const uploadsStaticOptions = {
+    index: false,
+    dotfiles: 'ignore',
+    maxAge: '30d',
+    setHeaders: (res, filePath) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        if (filePath.toLowerCase().endsWith('.svg')) {
+            res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        }
+    }
+};
+app.use('/uploads', express.static(config.uploadDir, uploadsStaticOptions));
+// Older files saved in the project's own uploads/ folder keep their URLs.
+if (config.uploadDir !== path.resolve('uploads')) {
+    app.use('/uploads', express.static('uploads', uploadsStaticOptions));
+}
 
 // API Routes
 app.use('/api', routes);

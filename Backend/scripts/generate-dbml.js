@@ -78,7 +78,7 @@ async function generateDBML() {
     }
   }
 
-  const outputPath = path.join(__dirname, '..', 'db_diagram.dbml');
+  const outputPath = path.join(__dirname, '..', '..', 'docs', 'db_diagram.dbml');
   fs.writeFileSync(outputPath, dbmlCode);
   console.log(`DBML diagram generated at ${outputPath}`);
 }

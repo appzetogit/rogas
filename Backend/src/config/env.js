@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
+
+const isProduction = (process.env.NODE_ENV || 'development') === 'production';
+const apiPublicUrl = String(process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/+$/, '');
 
 export const config = {
     // Basic server config
@@ -32,15 +36,21 @@ export const config = {
 
     // Rate limiting
     rateLimitWindowMinutes: Number(process.env.RATE_LIMIT_WINDOW || 15),
-    rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX || 100),
+    // 600/15 min per IP: an office's employees all share one public IP.
+    rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX || 600),
     authRateLimitWindowMinutes: Number(process.env.AUTH_RATE_LIMIT_WINDOW || 15),
     authRateLimitMax: Number(process.env.AUTH_RATE_LIMIT_MAX || 30),
+    uploadRateLimitMax: Number(process.env.UPLOAD_RATE_LIMIT_MAX || 60),
 
     // Security
     bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
 
-    // Uploads
-    uploadPath: process.env.UPLOAD_PATH || 'uploads/',
+    // Uploads: production stores files on this server's disk, development on Cloudinary (UPLOAD_DRIVER overrides).
+    uploadDriver: String(process.env.UPLOAD_DRIVER || (isProduction ? 'local' : 'cloudinary')).toLowerCase(),
+    uploadDir: path.resolve(process.env.UPLOAD_DIR || (isProduction ? '/var/www/uploads' : 'uploads')),
+    // Public base URL the stored files are served from (this API serves UPLOAD_DIR at /uploads).
+    uploadPublicUrl: String(process.env.UPLOAD_PUBLIC_URL || `${apiPublicUrl}/uploads`).replace(/\/+$/, ''),
+    uploadMaxFileMb: Number(process.env.UPLOAD_MAX_FILE_MB || 100),
 
     // Redis
     redisEnabled: process.env.REDIS_ENABLED === 'true',

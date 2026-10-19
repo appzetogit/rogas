@@ -1,5 +1,5 @@
 import { FoodHeroBanner } from '../models/heroBanner.model.js';
-import { v2 as cloudinary } from 'cloudinary';
+import { uploadImageBufferDetailed, deleteUploadedFile } from '../../../../services/upload.service.js';
 
 export const listHeroBanners = async () => {
     return FoodHeroBanner.find()
@@ -21,16 +21,7 @@ export const createHeroBannersFromFiles = async (files, meta = {}) => {
 
     for (const file of files) {
         try {
-            const uploadResult = await new Promise((resolve, reject) => {
-                const stream = cloudinary.uploader.upload_stream(
-                    { folder: 'food/hero-banners', resource_type: 'image' },
-                    (error, result) => {
-                        if (error) return reject(error);
-                        return resolve(result);
-                    }
-                );
-                stream.end(file.buffer);
-            });
+            const uploadResult = await uploadImageBufferDetailed(file.buffer, 'food/hero-banners');
 
             const banner = await FoodHeroBanner.create({
                 imageUrl: uploadResult.secure_url,
@@ -60,9 +51,9 @@ export const deleteHeroBanner = async (id) => {
 
     if (doc.publicId) {
         try {
-            await cloudinary.uploader.destroy(doc.publicId);
+            await deleteUploadedFile(doc.publicId);
         } catch {
-            // ignore cloudinary deletion errors to avoid blocking deletion
+            // ignore storage deletion errors to avoid blocking deletion
         }
     }
 
