@@ -155,6 +155,7 @@ const ComplaintInbox      = lazy(() => import("@food/pages/admin/ComplaintInbox"
 const ComplaintDetail     = lazy(() => import("@food/pages/admin/ComplaintDetail"));
 const FinancialManagement = lazy(() => import("@food/pages/admin/FinancialManagement"));
 const CityManagement      = lazy(() => import("@food/pages/admin/CityManagement"));
+const MainZoneMap         = lazy(() => import("@food/pages/admin/MainZoneMap"));
 const ManualOrderEntry    = lazy(() => import("@food/pages/admin/ManualOrderEntry"));
 const EnvironmentManagement = lazy(() => import("@food/pages/admin/EnvironmentManagement"));
 const OTAConfigPage       = lazy(() => import("@food/pages/admin/OTAConfigPage"));
@@ -395,6 +396,7 @@ export default function AdminRouter() {
             <Route path="vat-report" element={<FinancialManagement />} />
             {/* AP-08 City Management */}
             <Route path="cities" element={<CityManagement />} />
+            <Route path="cities/:id/map" element={<MainZoneMap />} />
             {/* AP-10 Manual Order */}
             <Route path="manual-order" element={<ManualOrderEntry />} />
             {/* AP-12 Environment */}

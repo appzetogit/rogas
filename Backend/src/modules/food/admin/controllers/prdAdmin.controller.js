@@ -63,6 +63,36 @@ export async function updateCity(req, res, next) {
     }
 }
 
+export async function getCityMap(req, res, next) {
+    try {
+        const data = await prdAdminService.getCityMap(req.params.id);
+        if (!data) return res.status(404).json({ success: false, message: 'City not found' });
+        ok(res, 'Main zone map fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createSubZone(req, res, next) {
+    try {
+        const zone = await prdAdminService.createSubZone(req.params.id, req.body || {}, req);
+        if (!zone) return res.status(404).json({ success: false, message: 'City not found' });
+        created(res, 'Sub-zone created successfully', { zone });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateSubZone(req, res, next) {
+    try {
+        const zone = await prdAdminService.updateSubZone(req.params.id, req.params.zoneId, req.body || {}, req);
+        if (!zone) return res.status(404).json({ success: false, message: 'Sub-zone not found in this main zone' });
+        ok(res, 'Sub-zone updated successfully', { zone });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getCityChecklist(req, res, next) {
     try {
         const data = await prdAdminService.getCityChecklist(req.params.id);

@@ -86,6 +86,9 @@ router.get('/reports/vat', requirePermission('reports', 'view'), prdAdminExtCont
 router.get('/cities', requirePermission('zoneCityManagement', 'view'), prdAdminController.listCities);
 router.post('/cities', requirePermission('zoneCityManagement', 'create'), prdAdminController.createCity);
 router.patch('/cities/:id', requirePermission('zoneCityManagement', 'edit'), prdAdminController.updateCity);
+router.get('/cities/:id/map', requirePermission('zoneCityManagement', 'view'), prdAdminController.getCityMap);
+router.post('/cities/:id/sub-zones', requirePermission('zoneCityManagement', 'create'), prdAdminController.createSubZone);
+router.patch('/cities/:id/sub-zones/:zoneId', requirePermission('zoneCityManagement', 'edit'), prdAdminController.updateSubZone);
 router.get('/cities/:id/activation-checklist', requirePermission('zoneCityManagement', 'view'), prdAdminController.getCityChecklist);
 
 // ----- AP-09 API & Integration Settings -----

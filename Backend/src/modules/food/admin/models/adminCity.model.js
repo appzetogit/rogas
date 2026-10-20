@@ -55,6 +55,11 @@ const adminCitySchema = new mongoose.Schema(
         defaultLanguage: { type: String, trim: true, default: 'en' },
         enabledLanguages: { type: [String], default: ['en'] },
         paymentGateways: { type: [gatewaySchema], default: [] },
+        /** The main zone's outline on the map. Its sub-zones (zoneIds) are drawn inside it. */
+        boundary: {
+            type: [new mongoose.Schema({ latitude: { type: Number, required: true }, longitude: { type: Number, required: true } }, { _id: false })],
+            default: []
+        },
         zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoodZone' }],
         activationChecklist: { type: activationChecklistSchema, default: () => ({}) },
         metadata: { type: mongoose.Schema.Types.Mixed, default: {} },

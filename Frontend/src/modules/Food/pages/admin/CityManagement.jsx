@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Globe, Plus, CheckCircle, XCircle, Clock, ChevronRight, Activity } from "lucide-react";
+import { Globe, Plus, CheckCircle, XCircle, Clock, Map as MapIcon, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { adminClient } from "@food/api/axios";
 
 const STATUS_CONFIG = {
@@ -118,6 +119,7 @@ function ChecklistModal({ city, checklist, onClose }) {
 }
 
 export default function CityManagement() {
+  const navigate = useNavigate();
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -249,8 +251,10 @@ export default function CityManagement() {
                     {loadingChecklist[city._id] ? <div className="animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full" /> : <Activity className="w-3 h-3" />}
                     Checklist
                   </button>
-                  <button className="py-2 px-3 rounded-xl bg-gray-800 text-gray-400 hover:bg-gray-700 transition">
-                    <ChevronRight className="w-4 h-4" />
+                  <button onClick={() => navigate(`/admin/food/cities/${city._id}/map`)}
+                    className="flex-1 py-2 rounded-xl bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 text-xs font-semibold flex items-center justify-center gap-1 transition">
+                    <MapIcon className="w-3 h-3" />
+                    Map &amp; sub-zones{city.zoneIds?.length ? ` (${city.zoneIds.length})` : ""}
                   </button>
                 </div>
               </div>

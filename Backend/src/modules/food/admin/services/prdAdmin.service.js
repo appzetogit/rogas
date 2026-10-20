@@ -12,6 +12,8 @@ import { AdminAuditLog } from '../models/auditLog.model.js';
 import { AdminCity } from '../models/adminCity.model.js';
 import { getCityVatRates, parseVatBody } from './cityVat.service.js';
 import { invalidateZoneCityCache } from '../../../dailymealbox/platform/platformConfig.service.js';
+import { invalidateZoneCache } from '../../../dailymealbox/zones/zoneGeo.service.js';
+import { normalizePolygon, assertSubZoneFits, assertBoundaryHoldsZones, cityHoldingAny } from './zoneHierarchy.service.js';
 import { AdminFeatureToggle } from '../models/featureToggle.model.js';
 import { AdminIntegrationSetting } from '../models/integrationSetting.model.js';
 import { AdminEnvironmentSetting } from '../models/environmentSetting.model.js';
@@ -166,16 +168,24 @@ export async function createCity(body = {}, req) {
     const name = String(body.name || '').trim();
     const country = String(body.country || '').trim();
     if (!name || !country) throw new ValidationError('City name and country are required');
+    const boundary = body.boundary !== undefined && body.boundary !== null && body.boundary.length ? normalizePolygon(body.boundary, 'The main zone boundary') : [];
+    const zoneIds = Array.isArray(body.zoneIds) ? body.zoneIds.filter((id) => objectIdOrNull(id)) : [];
+    if (zoneIds.length) {
+        const taken = await cityHoldingAny(zoneIds);
+        if (taken) throw new ValidationError(`A zone you picked already belongs to "${taken.name}". A zone belongs to one main zone only`);
+        if (boundary.length) await assertBoundaryHoldsZones({ boundary, zoneIds });
+    }
     const city = await AdminCity.create({
         name,
         country,
+        boundary,
         status: body.status || 'planned',
         currency: String(body.currency || 'INR').trim().toUpperCase(),
         vat: parseVatBody(body.vat) || {},
         defaultLanguage: String(body.defaultLanguage || 'en').trim(),
         enabledLanguages: Array.isArray(body.enabledLanguages) ? body.enabledLanguages : ['en'],
         paymentGateways: Array.isArray(body.paymentGateways) ? body.paymentGateways : [],
-        zoneIds: Array.isArray(body.zoneIds) ? body.zoneIds.filter((id) => objectIdOrNull(id)) : [],
+        zoneIds,
         metadata: body.metadata || {},
         createdBy: objectIdOrNull(req?.user?.userId)
     });
@@ -197,7 +207,25 @@ export async function updateCity(id, body = {}, req) {
     if (body.vat !== undefined) city.vat = parseVatBody(body.vat);
     if (body.enabledLanguages !== undefined) city.enabledLanguages = Array.isArray(body.enabledLanguages) ? body.enabledLanguages : [];
     if (body.paymentGateways !== undefined) city.paymentGateways = Array.isArray(body.paymentGateways) ? body.paymentGateways : [];
-    if (body.zoneIds !== undefined) city.zoneIds = Array.isArray(body.zoneIds) ? body.zoneIds.filter((zoneId) => objectIdOrNull(zoneId)) : [];
+    if (body.zoneIds !== undefined) {
+        const next = Array.isArray(body.zoneIds) ? body.zoneIds.filter((zoneId) => objectIdOrNull(zoneId)) : [];
+        const added = next.filter((z) => !city.zoneIds.some((old) => String(old) === String(z)));
+        if (added.length) {
+            const taken = await cityHoldingAny(added, city._id);
+            if (taken) throw new ValidationError(`A zone you picked already belongs to "${taken.name}". A zone belongs to one main zone only`);
+            if (city.boundary?.length >= 3) {
+                for (const zone of await FoodZone.find({ _id: { $in: added } }).select('coordinates').lean()) {
+                    await assertSubZoneFits({ city, coordinates: zone.coordinates, excludeZoneId: zone._id });
+                }
+            }
+        }
+        city.zoneIds = next;
+    }
+    if (body.boundary !== undefined) {
+        const boundary = body.boundary && body.boundary.length ? normalizePolygon(body.boundary, 'The main zone boundary') : [];
+        if (boundary.length) await assertBoundaryHoldsZones({ boundary, zoneIds: city.zoneIds });
+        city.boundary = boundary;
+    }
     if (body.metadata !== undefined) city.metadata = body.metadata || {};
     city.updatedBy = objectIdOrNull(req?.user?.userId);
     city.activationChecklist = await computeCityChecklist(city);
@@ -206,6 +234,64 @@ export async function updateCity(id, body = {}, req) {
     const after = city.toObject();
     await writeAudit(req, 'city.update', 'AdminCity', city._id, before, after, body.reason);
     return after;
+}
+
+/** The main zone with its boundary and every sub-zone, for the map screens. */
+export async function getCityMap(id) {
+    if (!objectIdOrNull(id)) throw new ValidationError('Invalid city id');
+    const city = await AdminCity.findById(id).select('name country status boundary zoneIds').lean();
+    if (!city) return null;
+    const subZones = await FoodZone.find({ _id: { $in: city.zoneIds || [] } }).select('name zoneName country unit coordinates isActive').lean();
+    return { city: { _id: city._id, name: city.name, country: city.country, status: city.status, boundary: city.boundary || [] }, subZones };
+}
+
+/** Draws a new sub-zone inside the main zone. */
+export async function createSubZone(cityId, body = {}, req) {
+    if (!objectIdOrNull(cityId)) throw new ValidationError('Invalid city id');
+    const city = await AdminCity.findById(cityId);
+    if (!city) return null;
+    const name = String(body.name || body.zoneName || '').trim();
+    if (!name) throw new ValidationError('Sub-zone name is required');
+    const coordinates = normalizePolygon(body.coordinates, 'The sub-zone');
+    await assertSubZoneFits({ city, coordinates });
+    const zone = await FoodZone.create({
+        name, zoneName: name, country: city.country, serviceLocation: city.name,
+        unit: body.unit === 'miles' ? 'miles' : 'kilometer', coordinates, isActive: body.isActive !== false
+    });
+    city.zoneIds.push(zone._id);
+    city.activationChecklist = await computeCityChecklist(city);
+    await city.save();
+    invalidateZoneCache();
+    invalidateZoneCityCache();
+    await writeAudit(req, 'city.subzone.create', 'FoodZone', zone._id, null, zone.toObject(), body.reason);
+    return zone.toObject();
+}
+
+/** Redraws or renames a sub-zone of the main zone. */
+export async function updateSubZone(cityId, zoneId, body = {}, req) {
+    if (!objectIdOrNull(cityId) || !objectIdOrNull(zoneId)) throw new ValidationError('Invalid id');
+    const city = await AdminCity.findById(cityId);
+    if (!city || !city.zoneIds.some((z) => String(z) === String(zoneId))) return null;
+    const zone = await FoodZone.findById(zoneId);
+    if (!zone) return null;
+    const before = zone.toObject();
+    if (body.name !== undefined || body.zoneName !== undefined) {
+        const name = String(body.name ?? body.zoneName).trim();
+        if (!name) throw new ValidationError('Sub-zone name is required');
+        zone.name = name; zone.zoneName = name;
+    }
+    if (body.unit !== undefined) zone.unit = body.unit === 'miles' ? 'miles' : 'kilometer';
+    if (body.isActive !== undefined) zone.isActive = body.isActive !== false;
+    if (body.coordinates !== undefined) {
+        const coordinates = normalizePolygon(body.coordinates, 'The sub-zone');
+        await assertSubZoneFits({ city, coordinates, excludeZoneId: zone._id });
+        zone.coordinates = coordinates;
+    }
+    await zone.save();
+    invalidateZoneCache();
+    invalidateZoneCityCache();
+    await writeAudit(req, 'city.subzone.update', 'FoodZone', zone._id, before, zone.toObject(), body.reason);
+    return zone.toObject();
 }
 
 export async function getCityChecklist(id) {

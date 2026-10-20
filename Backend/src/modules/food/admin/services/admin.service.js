@@ -5551,6 +5551,12 @@ export async function createZone(body) {
 export async function updateZone(id, body) {
     const zone = await FoodZone.findById(id);
     if (!zone) return null;
+    const { cityOfZone, assertSubZoneFits } = await import('./zoneHierarchy.service.js');
+    const owner = Array.isArray(body.coordinates) && body.coordinates.length >= 3 ? await cityOfZone(zone._id) : null;
+    // A sub-zone of a main zone that has a boundary must stay inside it and clear of its sibling sub-zones.
+    if (owner?.boundary?.length >= 3) {
+        await assertSubZoneFits({ city: owner, coordinates: body.coordinates.map((c) => ({ latitude: Number(c.latitude), longitude: Number(c.longitude) })), excludeZoneId: zone._id });
+    }
 
     if (body.name !== undefined) zone.name = String(body.name).trim();
     if (body.zoneName !== undefined) zone.zoneName = String(body.zoneName).trim();
@@ -5573,6 +5579,10 @@ export async function updateZone(id, body) {
 
 export async function deleteZone(id) {
     const zone = await FoodZone.findByIdAndDelete(id);
+    if (zone) {
+        const { AdminCity } = await import('../models/adminCity.model.js');
+        await AdminCity.updateMany({ zoneIds: zone._id }, { $pull: { zoneIds: zone._id } });
+    }
     invalidateZoneCache();
     invalidateZoneCityCache();
     return zone ? { id } : null;
