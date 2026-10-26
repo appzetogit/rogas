@@ -35,7 +35,9 @@ export function VendorLegalPage({ pageType }) {
           res = await publicAPI.getTerms("terms");
           setTitle(res.data?.data?.title || t("Terms and Conditions"));
         } else {
-          res = await publicAPI.getPrivacy("privacy");
+          // The vendor's own policy; the general one when admin has not written it.
+          res = await publicAPI.getPrivacy("privacy_restaurant");
+          if (!res.data?.data?.content) res = await publicAPI.getPrivacy("privacy");
           setTitle(res.data?.data?.title || t("Privacy Policy"));
         }
         setContent(res.data?.data?.content || "Content not available.");
