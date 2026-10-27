@@ -773,7 +773,7 @@ export default function OrdersPage({ statusKey = "all" }) {
       setRefundModalOpen(true)
     } else {
       // For non-wallet payments, use the old confirm dialog flow
-      const confirmMessage = `Are you sure you want to process refund for order ${order.orderId}?\n\nThis will initiate a Razorpay refund to the customer's original payment method.`;
+      const confirmMessage = `Are you sure you want to process refund for order ${order.orderId}?\n\nThis will refund the customer.`;
       
       if (!confirm(confirmMessage)) {
         return

@@ -81,10 +81,6 @@ export const config = {
     // Socket.io
     socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
 
-    // Razorpay (payments)
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-    razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
-    razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET, // ✅ NEW
 
     // Email (SMTP) – for admin forgot password OTP etc.
     emailHost: process.env.EMAIL_HOST,

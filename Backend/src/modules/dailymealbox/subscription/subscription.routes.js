@@ -557,49 +557,15 @@ router.post('/daily-orders/:orderId/tip/payment-order', authMiddleware, requireR
                 cancelPath: cancelPath || '/user/orders',
                 refs: { tipTransactionId: String(tipTx._id), orderId: String(order._id) }
             });
-            tipTx.razorpayOrderId = payment.provider === 'razorpay' ? payment.action.orderId : payment.transactionId;
+            // razorpayOrderId is the record's historical name for the provider order id; it now holds our transaction id.
+            tipTx.razorpayOrderId = payment.transactionId;
             await tipTx.save();
-
-            const body = { success: true, payment };
-            if (payment.provider === 'razorpay') {
-                // Shape older clients read.
-                body.razorpay = { key: payment.action.key, amount: payment.action.amount, currency: payment.action.currency, order_id: payment.action.orderId, name: 'Rogas Delivery Tip', description: payment.action.description };
-            }
-            return res.json(body);
+            return res.json({ success: true, payment });
         } catch (err) {
             await FoodDeliveryTipTransaction.deleteOne({ _id: tipTx._id, status: 'pending' });
             if (err instanceof PaymentsError) return res.status(err.statusCode).json({ success: false, message: err.message, code: err.code });
             throw err;
         }
-    } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
-    }
-});
-
-// ─── Razorpay only: the app reports a finished pop-up; verify it and credit the driver tip ───
-// POST /dmb/subscriptions/daily-orders/:orderId/tip/verify-payment
-router.post('/daily-orders/:orderId/tip/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
-    try {
-        const userId = req.user._id || req.user.userId;
-        const { razorpay_order_id, transactionId } = req.body;
-
-        const order = await DMBDailyOrder.findOne({ _id: req.params.orderId, userId });
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-
-        const { findOwnedTransaction, confirmRazorpayPayment, PaymentsError } = await import('../../payments/payments.service.js');
-        const tx = await findOwnedTransaction({ publicId: transactionId, providerOrderId: razorpay_order_id, purpose: 'tip', ownerId: userId });
-        if (!tx || String(tx.refs?.orderId) !== String(order._id)) return res.status(404).json({ success: false, message: 'Tip transaction not found' });
-
-        try {
-            const after = await confirmRazorpayPayment(tx, req.body);
-            if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) {
-                return res.status(400).json({ success: false, message: 'Payment is not completed yet' });
-            }
-        } catch (err) {
-            if (err instanceof PaymentsError) return res.status(err.statusCode).json({ success: false, message: err.message });
-            throw err;
-        }
-        res.json({ success: true, message: 'Payment verified and tip credited successfully' });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

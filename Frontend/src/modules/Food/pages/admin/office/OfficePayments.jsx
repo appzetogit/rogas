@@ -239,7 +239,7 @@ export default function OfficePayments() {
                 </div>
               ))}
 
-              {/* Razorpay IDs */}
+              {/* Payment IDs */}
               <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <p style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Transaction IDs</p>
                 <div>

@@ -294,34 +294,16 @@ export const syncFromProvider = async (tx) => {
     }
 };
 
-/** The browser says a Razorpay pop-up finished. The signature and the payment itself are verified before anything changes. */
-export const confirmRazorpayPayment = async (tx, body) => {
-    if (tx.provider !== 'razorpay') throw new PaymentsError('This payment was not started with Razorpay', 400);
-    if (PAID_LIKE.includes(tx.status)) return fulfil(tx);
-    let result;
-    try {
-        result = await getProvider('razorpay').confirmClientPayment(tx, body);
-    } catch (err) {
-        await PaymentTransaction.updateOne({ _id: tx._id }, { $push: { events: eventOf('client_confirm_rejected', 'client', err.message) } });
-        throw new PaymentsError(err.message, 400, 'VERIFICATION_FAILED');
-    }
-    return applyProviderResult(tx, result, 'client');
-};
-
 /** Development-only instant success. Refuses to run unless mock mode is on (never in production). */
 export const confirmMockPayment = async (tx) => {
     if (tx.provider !== 'mock') throw new PaymentsError('Not a test payment', 400);
     return applyProviderResult(tx, { state: 'paid', providerPaymentId: `mock_${tx.publicId}`, amountMinor: tx.amountMinor, currency: tx.currency }, 'mock');
 };
 
-/**
- * Finds a payment that belongs to `ownerId`. Used by the per-flow "verify" endpoints that older clients still call
- * with only the provider's order id.
- */
-export const findOwnedTransaction = async ({ publicId, providerOrderId, purpose, ownerId }) => {
+/** Finds a payment that belongs to `ownerId`. */
+export const findOwnedTransaction = async ({ publicId, purpose, ownerId }) => {
     const filter = { ...(purpose ? { purpose } : {}) };
     if (publicId) filter.publicId = String(publicId);
-    else if (providerOrderId) Object.assign(filter, { provider: 'razorpay', providerOrderId: String(providerOrderId) });
     else return null;
     const tx = await PaymentTransaction.findOne(filter);
     if (!tx) return null;
@@ -409,12 +391,6 @@ export const handleWebhook = async (providerId, req) => {
         throw new PaymentsError('Invalid webhook', 400, 'BAD_WEBHOOK');
     }
     await processEvents(providerId, parsed.events || []);
-};
-
-/** Razorpay's webhook is verified by the pre-existing controller; this applies its events to the new payment records. */
-export const handleRazorpayEvents = async (body) => {
-    const events = getProvider('razorpay').eventsFromWebhookBody(body);
-    if (events.length) await processEvents('razorpay', events);
 };
 
 // ─── Refunds ─────────────────────────────────────────────────────────────────

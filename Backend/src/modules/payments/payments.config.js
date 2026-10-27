@@ -41,11 +41,5 @@ export const stripeConfig = () => ({
     apiProtocol: env().STRIPE_API_PROTOCOL || ''
 });
 
-export const razorpayConfig = () => ({
-    keyId: String(env().RAZORPAY_KEY_ID || ''),
-    keySecret: String(env().RAZORPAY_KEY_SECRET || ''),
-    webhookSecret: String(env().RAZORPAY_WEBHOOK_SECRET || '')
-});
-
 /** How long a customer has to finish paying before we stop waiting. */
 export const PAYMENT_WINDOW_MINUTES = 30;

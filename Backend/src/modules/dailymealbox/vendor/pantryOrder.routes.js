@@ -4,7 +4,7 @@ import { requireRoles } from '../../../core/roles/role.middleware.js';
 import { PantryOrder } from '../../food/restaurant/models/pantryOrder.model.js';
 import { FoodItem } from '../../food/admin/models/food.model.js';
 import { FoodUser } from '../../../core/users/user.model.js';
-import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
+import { startPayment, PaymentsError } from '../../payments/payments.service.js';
 import { resolvePaymentContext, resolveProviders } from '../../payments/payments.settings.js';
 import { listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.js';
 import { localToday, localDateStr, addDays, storageDateStr } from '../../../utils/platformTime.js';
@@ -270,13 +270,8 @@ const checkoutPantry = async (req, res, { groups, minimumTotal, expectedTotal })
             cancelPath: cancelPath || '/user/cart',
             refs: { orderIds: orders.map((o) => o.orderId) }
         });
-        await PantryOrder.updateMany({ _id: { $in: orders.map((o) => o._id) } }, { $set: { paymentOrderId: payment.provider === 'razorpay' ? payment.action.orderId : payment.transactionId } });
-        const body = { success: true, payment, order: orders[0], orders };
-        if (payment.provider === 'razorpay') {
-            // Fields the existing checkout screen reads. razorpayAmount is in minor units (paise/grosze).
-            Object.assign(body, { razorpayOrderId: payment.action.orderId, razorpayKeyId: payment.action.key, razorpayAmount: payment.action.amount });
-        }
-        return res.status(200).json(body);
+        await PantryOrder.updateMany({ _id: { $in: orders.map((o) => o._id) } }, { $set: { paymentOrderId: payment.transactionId } });
+        return res.status(200).json({ success: true, payment, order: orders[0], orders });
     } catch (error) {
         if (orders.length) await PantryOrder.deleteMany({ _id: { $in: orders.map((o) => o._id) }, status: 'pending_payment' }).catch(() => {});
         if (error instanceof PaymentsError) return res.status(error.statusCode).json({ success: false, code: error.code, message: error.message });
@@ -307,39 +302,6 @@ router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), a
     } catch (error) {
         console.error('Error creating pantry order:', error);
         return res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-});
-
-// 2. Verify Payment (Razorpay only; hosted-page providers settle through their webhook)
-router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
-    try {
-        const { orderId, transactionId, razorpayOrderId } = req.body;
-        const userId = req.user?._id || req.user?.userId || req.user?.accountId || req.user?.id;
-
-        const order = orderId ? await PantryOrder.findOne({ orderId, userId }) : null;
-        const tx = await findOwnedTransaction({
-            publicId: transactionId,
-            providerOrderId: razorpayOrderId || order?.paymentOrderId,
-            purpose: 'pantry',
-            ownerId: userId
-        });
-        if (!tx) return res.status(404).json({ success: false, message: 'Order not found' });
-        if (order && !(tx.refs?.orderIds || []).includes(order.orderId)) return res.status(400).json({ success: false, message: 'Payment does not belong to this order' });
-
-        const after = await confirmRazorpayPayment(tx, {
-            razorpay_order_id: tx.providerOrderId,
-            razorpay_payment_id: req.body.razorpayPaymentId,
-            razorpay_signature: req.body.razorpaySignature
-        });
-        if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) {
-            return res.status(400).json({ success: false, message: 'Payment is not completed yet' });
-        }
-        const orders = await PantryOrder.find({ orderId: { $in: tx.refs?.orderIds || [] }, userId });
-        res.status(200).json({ success: true, message: 'Payment verified successfully', order: orders[0], orders });
-    } catch (error) {
-        if (error instanceof PaymentsError) return res.status(error.statusCode).json({ success: false, message: error.message });
-        console.error('Error verifying pantry payment:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 });
 

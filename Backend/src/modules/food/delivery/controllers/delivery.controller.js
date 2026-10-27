@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, updateDeliveryLocation, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, getDeliveryDashboardStats, getDeliveryPartnerRatings, getDeliveryPartnerTips, createShiftChangeRequest, getActiveShiftChangeRequest } from '../services/delivery.service.js';
-import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
+import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { validateDeliveryRegisterDto, validateDeliveryProfileUpdateDto, validateDeliveryBankDetailsDto } from '../validators/delivery.validator.js';
@@ -233,21 +233,6 @@ export const createCashDepositOrderController = async (req, res, next) => {
         const { amount, provider, zoneId, returnPath, cancelPath, language } = req.body || {};
         const data = await createDeliveryCashDepositOrder(deliveryPartnerId, amount, { provider, zoneId, returnPath, cancelPath, language });
         return sendResponse(res, 201, 'Cash deposit order created successfully', data);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const verifyCashDepositPaymentController = async (req, res, next) => {
-    try {
-        const deliveryPartnerId = req.user?.userId;
-        const data = await verifyDeliveryCashDepositPayment(deliveryPartnerId, {
-            transactionId: req.body?.transactionId,
-            razorpayOrderId: req.body?.razorpay_order_id,
-            razorpayPaymentId: req.body?.razorpay_payment_id,
-            razorpaySignature: req.body?.razorpay_signature
-        });
-        return sendResponse(res, 200, 'Cash deposit verified successfully', data);
     } catch (error) {
         next(error);
     }

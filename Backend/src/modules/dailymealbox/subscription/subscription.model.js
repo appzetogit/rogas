@@ -139,8 +139,8 @@ const subscriptionSchema = new mongoose.Schema(
         // ─── Payment ──────────────────────────────────────────────────────────
         paymentMethod: {
             type: String,
-            enum: ['razorpay', 'przelewy24', 'stripe', 'cash', 'wallet'],
-            default: 'razorpay'
+            // 'razorpay' only for subscriptions paid before it was removed. Set to the real provider when payment starts.
+            enum: ['przelewy24', 'stripe', 'cash', 'wallet', 'razorpay']
         },
 
         // ─── Skip Management (PRD ACM-13) ─────────────────────────────────────

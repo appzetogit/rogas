@@ -109,7 +109,7 @@ export const createPendingSubscription = async ({ userId, input, deliveryAddress
         ...fields,
         deliveryAddress: address,
         dayAddresses: perDay?.length ? perDay : undefined,
-        paymentMethod: paymentMethod || 'razorpay',
+        paymentMethod: paymentMethod || undefined,
         invoiceType: invoice.invoiceType === 'vat' ? 'b2b_vat' : (invoice.invoiceType === 'simple' ? 'receipt' : (invoice.invoiceType || 'receipt')),
         companyNip: invoice.companyNip || '',
         companyName: invoice.companyName || '',

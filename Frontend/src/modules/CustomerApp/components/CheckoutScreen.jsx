@@ -13,19 +13,6 @@ import { getCurrentLanguage } from "@/shared/i18n";
 import { useQuote, QuoteSummary } from "./amendment/quote";
 import { trackEvent } from "../../../shared/analytics/ga4";
 
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sp9r61lI2A4BxN";
-
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 export function CheckoutScreen({
   onGoBack,
   onConfirmSubscription,
@@ -144,58 +131,9 @@ export function CheckoutScreen({
       const { redirected } = await continueHostedPayment(orderRes.data.payment, { panel: "user" });
       if (redirected) return;
 
-      // Step 2b: Razorpay: pay inside the pop-up.
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        onShowNotificationToast(" " + t("Razorpay failed to load. Check network."));
-        setPaying(false);
-        return;
-      }
-
-      const { razorpayOrderId, razorpayKeyId, amount, currency, subscription: subData, payment } = orderRes.data;
-
-      const options = {
-        key: razorpayKeyId || RAZORPAY_KEY_ID,
-        amount,
-        currency: currency || "INR",
-        name: "DailyMealBox",
-        description: t("Subscription: {{durationLabel}} ({{deliveryDays}})", { durationLabel, deliveryDays }),
-        image: plan.vendorImage || undefined,
-        order_id: razorpayOrderId,
-        handler: async (response) => {
-          try {
-            // Step 3: Verify payment + activate subscription
-            await dmbCustomerAPI.verifySubscriptionPayment({
-              transactionId: payment?.transactionId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              subscriptionId: subData.subscriptionId || subData._id,
-            });
-            onConfirmSubscription();
-          } catch (err) {
-            onShowNotificationToast("Payment verification failed: " + (err?.response?.data?.message || err.message));
-          }
-        },
-        prefill: {
-          name: invoicePrefs?.companyName || "",
-          email: invoicePrefs?.billingEmail || "",
-        },
-        theme: { color: "#1F7A63" },
-        modal: {
-          ondismiss: () => {
-            setPaying(false);
-            onShowNotificationToast(t("Payment cancelled"));
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (resp) => {
-        onShowNotificationToast(" Payment failed: " + resp.error.description);
-        setPaying(false);
-      });
-      rzp.open();
+      // No hosted page came back: the server offered no payment method this screen can open.
+      onShowNotificationToast(t("This payment method is not available. Please choose another one."));
+      setPaying(false);
     } catch (err) {
       if (err?.response?.data?.code === "PRICE_CHANGED") {
         await refreshQuote();

@@ -133,7 +133,7 @@ export default function App() {
   // 2. Meal Subscription Actions (Assignment / Unassignment)
   /**
    * Starts the payment for an order the office reviewed. The server prices it again and refuses a total the office did
-   * not see; the meals are assigned when the payment is confirmed (hosted page, test payment or Razorpay pop-up — all
+   * not see; the meals are assigned when the payment is confirmed (hosted page or test payment — all
    * end on the shared return page, which brings the office back to Assigned Meal Plans). Resolves true when the
    * payment page took over.
    */

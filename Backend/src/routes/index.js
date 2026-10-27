@@ -89,7 +89,7 @@ router.use('/v1/dmb/driver', authMiddleware, driverDmbRoutes);
 router.use('/v1/dmb/vendor', vendorDmbRoutes);
 // Pantry Orders routes
 router.use('/v1/dmb/pantry-orders', pantryOrderRoutes);
-// DMB Payment routes (Razorpay)
+// DMB Payment routes (Przelewy24 / Stripe)
 router.use('/v1/dmb/payments', dmbPaymentRoutes);
 // DMB Office routes
 router.use('/v1/dmb/office/auth', officeAuthRoutes);

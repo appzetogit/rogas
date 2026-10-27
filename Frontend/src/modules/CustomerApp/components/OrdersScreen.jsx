@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { RatingDialog } from "./amendment/ratings";
 import { dmbCustomerAPI, publicGetOnce } from "@food/api";
 import { Star, Coins, X, Loader2, Flag, User, ArrowRight, Receipt, XCircle, ChevronRight, ArrowRightLeft, PauseCircle, UtensilsCrossed, Check, ArrowLeft } from 'lucide-react';
-import { initRazorpayPayment } from "../../Food/utils/razorpay";
 import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 import useDeliverySlots, { fetchDeliverySlots, to12h } from "../../../shared/hooks/useDeliverySlots";
 import { useTranslation } from "react-i18next";
@@ -648,54 +647,9 @@ export function OrdersScreen({ onGoBack, onTrackLive, onRaiseComplaint, onGoToPr
         const { redirected } = await continueHostedPayment(res.data.payment, { panel: "user" });
         if (redirected) return;
 
-        const rpOpts = res.data.razorpay;
-
-        const checkoutOptions = {
-          key: rpOpts.key,
-          amount: rpOpts.amount,
-          currency: rpOpts.currency,
-          order_id: rpOpts.order_id,
-          name: rpOpts.name,
-          description: rpOpts.description,
-          handler: async function (response) {
-            try {
-              const verifyRes = await dmbCustomerAPI.verifyTipPayment(order._id, {
-                transactionId: res.data.payment?.transactionId,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              });
-              if (verifyRes.data?.success) {
-                onShowNotificationToast?.(tr("Tip payment verified and credited!"));
-                const patch = (list) =>
-                  list.map(o =>
-                    o._id === order._id
-                      ? { ...o, driverTip: (o.driverTip || 0) + numAmount }
-                      : o
-                  );
-                setOrders(prev => patch(prev));
-                patchCache("past", patch);
-                setTipModal({ show: false, order: null, amount: "", loading: false });
-              } else {
-                onShowNotificationToast?.(tr("Failed to verify tip payment signature"));
-                setTipModal(prev => ({ ...prev, loading: false }));
-              }
-            } catch (err) {
-              onShowNotificationToast?.(err.response?.data?.message || tr("Verification failed"));
-              setTipModal(prev => ({ ...prev, loading: false }));
-            }
-          },
-          onError: function (err) {
-            onShowNotificationToast?.("Payment failed: " + (err.description || "Try again"));
-            setTipModal(prev => ({ ...prev, loading: false }));
-          },
-          onClose: function () {
-            onShowNotificationToast?.(tr("Payment modal closed"));
-            setTipModal(prev => ({ ...prev, loading: false }));
-          }
-        };
-
-        await initRazorpayPayment(checkoutOptions);
+        // No hosted page came back: the server offered no payment method this screen can open.
+        onShowNotificationToast?.(tr("This payment method is not available. Please choose another one."));
+        setTipModal(prev => ({ ...prev, loading: false }));
       } else {
         onShowNotificationToast?.(tr("Failed to create tip order"));
         setTipModal(prev => ({ ...prev, loading: false }));

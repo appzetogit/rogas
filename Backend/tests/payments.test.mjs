@@ -1,5 +1,5 @@
 /**
- * Integration tests for the payments module (Przelewy24, Stripe, Razorpay routing, webhooks, refunds, fulfilment).
+ * Integration tests for the payments module (Przelewy24 / Stripe routing, webhooks, refunds, fulfilment).
  *
  * Needs a LOCAL MongoDB (default mongodb://127.0.0.1:27017). It creates a throw-away database and drops it
  * afterwards, and refuses to run against anything that is not localhost. The providers themselves are replaced by
@@ -149,7 +149,6 @@ before(async () => {
         P24_MERCHANT_ID: String(P24.merchantId), P24_POS_ID: String(P24.merchantId), P24_CRC: P24.crc, P24_API_KEY: P24.apiKey,
         P24_SANDBOX: 'true', P24_BASE_URL: p24.url,
         STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_HOST: '127.0.0.1', STRIPE_API_PORT: String(st.port), STRIPE_API_PROTOCOL: 'http',
-        RAZORPAY_KEY_ID: 'rzp_test_key', RAZORPAY_KEY_SECRET: 'rzp_secret_value', RAZORPAY_WEBHOOK_SECRET: 'rzp_webhook',
         API_PUBLIC_URL: 'https://api.example.test', APP_PUBLIC_URL: 'https://app.example.test',
         PAYMENTS_MODE: 'live', PAYMENTS_JOBS: 'false'
     });
@@ -230,12 +229,23 @@ test('country and currency helpers', () => {
 
 // ─── Routing and admin settings ──────────────────────────────────────────────
 
-test('routing: Poland -> Przelewy24, other countries -> Stripe, India -> Razorpay (INR only)', async () => {
+test('routing: Poland -> Przelewy24, every other country -> Stripe', async () => {
     assert.deepEqual(await settings.resolveProviders({ country: 'PL', currency: 'PLN' }), ['przelewy24']);
     assert.deepEqual(await settings.resolveProviders({ country: 'DE', currency: 'EUR' }), ['stripe']);
-    assert.deepEqual(await settings.resolveProviders({ country: 'IN', currency: 'INR' }), ['razorpay']);
-    // Razorpay cannot charge PLN even if an admin points a rule at it.
-    assert.deepEqual(await settings.resolveProviders({ country: 'IN', currency: 'PLN' }), ['stripe']);
+    assert.deepEqual(await settings.resolveProviders({ country: 'IN', currency: 'INR' }), ['stripe']);
+});
+
+test('routing: settings saved while Razorpay existed are read without it', async () => {
+    await models.PaymentSettings.collection.updateOne(
+        { _id: 'default' },
+        { $set: { countryRules: [{ country: 'PL', providers: ['przelewy24'] }, { country: 'IN', providers: ['razorpay'] }, { country: '*', providers: ['stripe'] }], 'providers.razorpay': { enabled: true }, 'providers.przelewy24': { enabled: true }, 'providers.stripe': { enabled: true } } },
+        { upsert: true }
+    );
+    settings.invalidateSettingsCache();
+    assert.deepEqual((await settings.getSettings()).countryRules.map((r) => r.country), ['PL', '*']);
+    assert.deepEqual(await settings.resolveProviders({ country: 'IN', currency: 'INR' }), ['stripe']);
+    assert.deepEqual((await settings.getProviderStatuses()).map((p) => p.id), ['przelewy24', 'stripe']);
+    await assert.rejects(topup({ provider: 'razorpay' }), (e) => e.code === 'PROVIDER_NOT_AVAILABLE');
 });
 
 test('routing: switching a provider off falls back to the "other countries" rule; nothing usable -> empty', async () => {
@@ -247,11 +257,11 @@ test('routing: switching a provider off falls back to the "other countries" rule
 });
 
 test('routing: an admin can offer several providers for one country (customer chooses)', async () => {
-    await settings.updateSettings({ countryRules: [{ country: 'PL', providers: ['przelewy24', 'stripe'] }, { country: 'IN', providers: ['razorpay'] }, { country: '*', providers: ['stripe'] }] }, 'admin');
+    await settings.updateSettings({ countryRules: [{ country: 'PL', providers: ['przelewy24', 'stripe'] }, { country: '*', providers: ['stripe'] }] }, 'admin');
     assert.deepEqual(await settings.resolveProviders({ country: 'PL', currency: 'PLN' }), ['przelewy24', 'stripe']);
     const { payment } = await topup({ provider: 'stripe' });
     assert.equal(payment.provider, 'stripe');
-    await assert.rejects(topup({ provider: 'razorpay' }), (e) => e.code === 'PROVIDER_NOT_AVAILABLE');
+    await assert.rejects(topup({ provider: 'mock' }), (e) => e.code === 'PROVIDER_NOT_AVAILABLE');
 });
 
 test('admin settings validation', async () => {
@@ -261,7 +271,8 @@ test('admin settings validation', async () => {
     await assert.rejects(settings.updateSettings({ providers: { stripe: { enabled: true } } }, 'a'), /credentials are missing/);
     process.env.STRIPE_SECRET_KEY = before;
 
-    await assert.rejects(settings.updateSettings({ countryRules: [{ country: 'PL', providers: ['razorpay'] }, { country: '*', providers: ['stripe'] }] }, 'a'), /Razorpay cannot charge PLN/);
+    await assert.rejects(settings.updateSettings({ countryRules: [{ country: 'PL', providers: ['razorpay'] }, { country: '*', providers: ['stripe'] }] }, 'a'), /Unknown provider/);
+    await assert.rejects(settings.updateSettings({ providers: { razorpay: { enabled: true } } }, 'a'), /Unknown provider/);
     await assert.rejects(settings.updateSettings({ countryRules: [{ country: 'PL', providers: ['przelewy24'] }] }, 'a'), /Other countries/);
     await assert.rejects(settings.updateSettings({ countryRules: [{ country: 'PL', providers: [] }, { country: '*', providers: ['stripe'] }] }, 'a'), /at least one/);
     await assert.rejects(settings.updateSettings({ countryRules: [{ country: 'Atlantis', providers: ['stripe'] }, { country: '*', providers: ['stripe'] }] }, 'a'), /Unknown country/);
@@ -496,66 +507,6 @@ test('Stripe: the return page settles from Stripe when the webhook is late', asy
     const status = await svc.getPublicStatus(transaction.publicId, transaction.statusToken);
     assert.equal(status.status, 'paid');
     assert.deepEqual(await walletBalance(ownerId), { balance: 9, credits: 1 });
-});
-
-// ─── Razorpay ────────────────────────────────────────────────────────────────
-
-const rzpSignature = (orderId, paymentId) => crypto.createHmac('sha256', 'rzp_secret_value').update(`${orderId}|${paymentId}`).digest('hex');
-let rzpProvider;
-const stubRazorpay = async (paymentByOrder) => {
-    rzpProvider = await import('../src/modules/payments/providers/razorpay.provider.js');
-    rzpProvider._setRazorpayClientForTests(() => ({
-        orders: { create: async (o) => ({ id: `order_${o.receipt}`, amount: o.amount, currency: o.currency }), fetchPayments: async (id) => ({ items: paymentByOrder[id] ? [paymentByOrder[id]] : [] }) },
-        payments: { fetch: async (id) => Object.values(paymentByOrder).find((p) => p.id === id), refund: async () => ({ id: 'rfnd_1', status: 'processed' }) }
-    }));
-};
-const inrTopup = (overrides = {}) => topup({ provider: 'razorpay', country: 'IN', currency: 'INR', amount: 500, language: 'en', ...overrides });
-
-test('Razorpay: pop-up result with a valid signature settles; bad signature or foreign order is rejected', async () => {
-    const paymentByOrder = {};
-    await stubRazorpay(paymentByOrder);
-    const ownerId = new mongoose.Types.ObjectId();
-    const { payment, transaction } = await inrTopup({ ownerId });
-    assert.equal(payment.action.type, 'razorpay');
-    assert.equal(payment.action.amount, 50000);
-    assert.equal(payment.action.currency, 'INR');
-    const orderId = payment.action.orderId;
-
-    await assert.rejects(svc.confirmRazorpayPayment(transaction, { razorpay_order_id: orderId, razorpay_payment_id: 'pay_1', razorpay_signature: 'nope' }), /invalid signature/);
-    await assert.rejects(svc.confirmRazorpayPayment(transaction, { razorpay_order_id: 'order_other', razorpay_payment_id: 'pay_1', razorpay_signature: rzpSignature('order_other', 'pay_1') }), /does not belong/);
-    assert.equal((await models.PaymentTransaction.findById(transaction._id)).status, 'pending');
-
-    // The signed payment exists at Razorpay but is for a smaller amount: refused.
-    paymentByOrder[orderId] = { id: 'pay_1', order_id: orderId, amount: 100, currency: 'INR', status: 'captured' };
-    await svc.confirmRazorpayPayment(transaction, { razorpay_order_id: orderId, razorpay_payment_id: 'pay_1', razorpay_signature: rzpSignature(orderId, 'pay_1') });
-    assert.ok((await models.PaymentTransaction.findById(transaction._id)).flags.includes('amount_mismatch'));
-    assert.deepEqual(await walletBalance(ownerId), { balance: 0, credits: 0 });
-
-    paymentByOrder[orderId] = { id: 'pay_2', order_id: orderId, amount: 50000, currency: 'INR', status: 'captured' };
-    const after = await svc.confirmRazorpayPayment(transaction, { razorpay_order_id: orderId, razorpay_payment_id: 'pay_2', razorpay_signature: rzpSignature(orderId, 'pay_2') });
-    assert.equal(after.status, 'paid');
-    assert.deepEqual(await walletBalance(ownerId), { balance: 500, credits: 1 });
-});
-
-test('Razorpay: the webhook settles a payment whose browser confirmation never arrived', async () => {
-    await stubRazorpay({});
-    const ownerId = new mongoose.Types.ObjectId();
-    const { payment } = await inrTopup({ ownerId, amount: 200 });
-    await svc.handleRazorpayEvents({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_w', order_id: payment.action.orderId, amount: 20000, currency: 'INR' } } } });
-    await svc.handleRazorpayEvents({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_w', order_id: payment.action.orderId, amount: 20000, currency: 'INR' } } } });
-    assert.deepEqual(await walletBalance(ownerId), { balance: 200, credits: 1 });
-});
-
-test('Razorpay: a failed attempt does not fail the payment (the customer can retry in the pop-up)', async () => {
-    await stubRazorpay({});
-    const { payment, transaction } = await inrTopup();
-    await svc.handleRazorpayEvents({ event: 'payment.failed', payload: { payment: { entity: { id: 'pay_f', order_id: payment.action.orderId, error_description: 'card declined' } } } });
-    assert.equal((await models.PaymentTransaction.findById(transaction._id)).status, 'pending');
-});
-
-test('Razorpay: refuses to start for a non-INR payment', async () => {
-    await stubRazorpay({});
-    await assert.rejects(topup({ provider: 'razorpay' }), (e) => e.code === 'PROVIDER_NOT_AVAILABLE');
 });
 
 // ─── Delivering what was paid for ────────────────────────────────────────────
@@ -874,27 +825,27 @@ test('HTTP admin API: overview, audited settings, provider test, transaction lis
         const overview = await call('GET', '/');
         assert.equal(overview.status, 200);
         const byId = Object.fromEntries(overview.body.data.providers.map((p) => [p.id, p]));
-        assert.deepEqual(Object.keys(byId).sort(), ['przelewy24', 'razorpay', 'stripe']);
+        assert.deepEqual(Object.keys(byId).sort(), ['przelewy24', 'stripe']);
         assert.equal(byId.przelewy24.configured, true);
         assert.equal(byId.przelewy24.mode, 'sandbox');
         assert.equal(byId.stripe.mode, 'test');
-        assert.equal(JSON.stringify(overview.body).includes('rzp_secret_value'), false, 'no secret ever leaves the server');
         assert.equal(JSON.stringify(overview.body).includes('sk_test_fake'), false);
         assert.match(overview.body.data.urls.webhooks.przelewy24, /\/api\/v1\/payments\/webhook\/przelewy24$/);
         assert.ok(overview.body.data.warnings.some((w) => /SANDBOX/.test(w)));
 
-        const off = await call('PUT', '/settings', { providers: { razorpay: { enabled: false } }, reason: 'no India yet' });
+        const off = await call('PUT', '/settings', { providers: { przelewy24: { enabled: false } }, reason: 'P24 maintenance' });
         assert.equal(off.status, 200);
-        assert.equal(off.body.data.providers.find((p) => p.id === 'razorpay').available, false);
-        assert.deepEqual(await settings.resolveProviders({ country: 'IN', currency: 'INR' }), ['stripe']);
+        assert.equal(off.body.data.providers.find((p) => p.id === 'przelewy24').available, false);
+        assert.deepEqual(await settings.resolveProviders({ country: 'PL', currency: 'PLN' }), ['stripe']);
         const bad = await call('PUT', '/settings', { countryRules: [{ country: 'PL', providers: ['razorpay'] }, { country: '*', providers: ['stripe'] }] });
         assert.equal(bad.status, 400);
-        assert.match(bad.body.message, /Razorpay cannot charge PLN/);
+        assert.match(bad.body.message, /Unknown provider/);
+        assert.equal((await call('PUT', '/settings', { providers: { przelewy24: { enabled: true } }, reason: 'P24 back' })).status, 200);
 
         const { AdminAuditLog } = await import('../src/modules/food/admin/models/auditLog.model.js');
         const audit = await AdminAuditLog.findOne({ action: 'payments.settings.update' }).lean();
         assert.ok(audit, 'settings changes are written to the audit log');
-        assert.equal(audit.reason, 'no India yet');
+        assert.equal(audit.reason, 'P24 maintenance');
 
         assert.equal((await call('POST', '/providers/przelewy24/test')).body.data.ok, true);
         assert.equal((await call('POST', '/providers/bitcoin/test')).status, 404);

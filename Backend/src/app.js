@@ -61,7 +61,7 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json({
     verify: (req, res, buf) => {
-        // ✅ Store rawBody for signature verification (Razorpay, Przelewy24 and Stripe webhooks)
+        // ✅ Store rawBody for signature verification (Przelewy24 and Stripe webhooks)
         if (req.originalUrl && req.originalUrl.includes('/payments/webhook/')) {
             req.rawBody = buf;
         }

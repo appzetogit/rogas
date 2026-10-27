@@ -28,6 +28,13 @@ export const getSettings = async () => {
         await PaymentSettings.updateOne({ _id: 'default' }, { $setOnInsert: {} }, { upsert: true });
         doc = await PaymentSettings.findById('default').lean();
     }
+    // Settings saved while Razorpay existed may still name it; only providers that exist now are kept.
+    doc = {
+        ...doc,
+        countryRules: (doc.countryRules || [])
+            .map((r) => ({ ...r, providers: (r.providers || []).filter((id) => SWITCHABLE_PROVIDERS.includes(id)) }))
+            .filter((r) => r.providers.length)
+    };
     settingsCache = { at: Date.now(), value: doc };
     return doc;
 };

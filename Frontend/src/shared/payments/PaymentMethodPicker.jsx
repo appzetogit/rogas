@@ -10,7 +10,6 @@ export default function PaymentMethodPicker({ providers, selected, onSelect, loa
   const describe = (id) => {
     if (id === "przelewy24") return { title: t("Przelewy24 / BLIK"), hint: t("BLIK, bank transfer and cards") };
     if (id === "stripe") return { title: t("Card, Apple Pay, Google Pay"), hint: t("Secure card payment by Stripe") };
-    if (id === "razorpay") return { title: t("Razorpay"), hint: t("UPI · Cards · Net Banking · Wallets") };
     if (id === "mock") return { title: t("Test payment"), hint: t("Instant payment for development only") };
     return { title: id, hint: "" };
   };

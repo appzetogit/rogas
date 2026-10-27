@@ -194,7 +194,7 @@ export default function CustomerWalletScreen() {
                                                 {tx.razorpayOrderId && (
                                                     <div className="col-span-2 mt-2 pt-2 border-t border-gray-200">
                                                         <div className="grid grid-cols-1 gap-1">
-                                                            <div><span className="font-medium">Razorpay Order ID:</span> <span className="font-mono">{tx.razorpayOrderId}</span></div>
+                                                            <div><span className="font-medium">Payment Order ID:</span> <span className="font-mono">{tx.razorpayOrderId}</span></div>
                                                             {tx.razorpayPaymentId && <div><span className="font-medium">Payment ID:</span> <span className="font-mono">{tx.razorpayPaymentId}</span></div>}
                                                             {tx.metadata?.mode && <div><span className="font-medium">Mode:</span> {tx.metadata.mode}</div>}
                                                         </div>

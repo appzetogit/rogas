@@ -28,7 +28,7 @@ const collectWarnings = async (statuses) => {
     const warnings = [];
     const settings = await getSettings();
     const api = apiPublicUrl();
-    const needsWebhooks = statuses.some((s) => s.available && ['przelewy24', 'stripe', 'razorpay'].includes(s.id));
+    const needsWebhooks = statuses.some((s) => s.available && ['przelewy24', 'stripe'].includes(s.id));
     if (needsWebhooks && isLocalUrl(api)) {
         warnings.push(`API_PUBLIC_URL is ${api}, which payment providers cannot reach. Payments still complete when the customer returns to the app, but automatic confirmations (webhooks) will not arrive until API_PUBLIC_URL is a public address.`);
     }
@@ -62,8 +62,7 @@ adminPaymentsRouter.get('/', requirePermission('systemSettings', 'view'), handle
                 api: apiPublicUrl(),
                 webhooks: {
                     przelewy24: `${apiPublicUrl()}/api/v1/payments/webhook/przelewy24`,
-                    stripe: `${apiPublicUrl()}/api/v1/payments/webhook/stripe`,
-                    razorpay: `${apiPublicUrl()}/api/v1/payments/webhook/razorpay`
+                    stripe: `${apiPublicUrl()}/api/v1/payments/webhook/stripe`
                 }
             },
             przelewy24: { posId: p24Config().posId || null, sandbox: p24Config().sandbox },

@@ -1596,12 +1596,6 @@ export const deliveryAPI = {
       `/food/delivery/orders/${String(orderId)}/verify-drop-otp`,
       { otp: String(otp) }
     ),
-  /** POST /food/delivery/orders/:orderId/collect/qr - create Razorpay payment link (COD collection) */
-  createCollectQr: (orderId, body = {}) =>
-    deliveryClient.post(
-      `/food/delivery/orders/${String(orderId)}/collect/qr`,
-      body ?? {}
-    ),
   /** GET /food/delivery/orders/:orderId/payment-status - check COD/QR payment status */
   getPaymentStatus: (orderId) =>
     deliveryClient.get(`/food/delivery/orders/${String(orderId)}/payment-status`),
@@ -1664,8 +1658,6 @@ export const deliveryAPI = {
     deliveryClient.post("/food/delivery/wallet/withdraw", body ?? {}),
   createDepositOrder: (amount, extra = {}) =>
     deliveryClient.post("/food/delivery/wallet/deposit/order", { amount, ...extra }),
-  verifyDepositPayment: (body) =>
-    deliveryClient.post("/food/delivery/wallet/deposit/verify", body ?? {}),
   /** Wallet transactions - from wallet response (no separate backend endpoint) */
   getWalletTransactions: (params) =>
     deliveryClient
@@ -1778,9 +1770,6 @@ export const userAPI = {
       "/food/user/wallet/topup/order",
       { amount: Number(amount) }
     ),
-  /** POST /food/user/wallet/topup/verify (Bearer USER) */
-  verifyWalletTopupPayment: (body) =>
-    userClient.post("/food/user/wallet/topup/verify", body ?? {}),
   /** GET /food/user/addresses (Bearer USER). Deduped + short-cached. */
   getAddresses: (() => {
     let inFlight = null;
@@ -2151,15 +2140,12 @@ export const dmbCustomerAPI = {
   getVendorPantryItems: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pantry-items`),
   getPantryItemById: (itemId) => userClient.get(`/dmb/vendor/pantry-items/${itemId}`),
   getVendorPricingConfig: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/pricing-config`),
-  /** Create Razorpay order + pending subscription (auth: USER) */
+  /** Create the pending subscription and start its payment (Przelewy24 / Stripe) (auth: USER) */
   createSubscriptionOrder: (data) => userClient.post("/dmb/payments/create-order", data),
-  /** Verify Razorpay payment + activate subscription (auth: USER) */
-  verifySubscriptionPayment: (data) => userClient.post("/dmb/payments/verify-payment", data),
   // Pantry Orders (USER)
   createPantryOrder: (data) => userClient.post("/dmb/pantry-orders/create-order", data),
   /** One payment for the whole cart: { vendorId, groups: [{ items, deliveryDates, deliverySlots }], deliveryAddress, expectedTotal, provider, returnPath, cancelPath } */
   createPantryCheckout: (data) => userClient.post("/dmb/pantry-orders/checkout", data),
-  verifyPantryPayment: (data) => userClient.post("/dmb/pantry-orders/verify-payment", data),
   getMyPantryOrders: (params) => {
     if (typeof params === 'string') return userClient.get("/dmb/pantry-orders/my-orders", { params: { type: params } });
     return userClient.get("/dmb/pantry-orders/my-orders", { params });
@@ -2205,14 +2191,11 @@ export const dmbCustomerAPI = {
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
   /** Rate a delivered order (rating + optional feedback + tip) */
   rateOrder: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/rate`, data),
-  /** Create Razorpay order for tip */
+  /** Start the payment for a driver tip */
   createTipOrder: (orderId, amount, extra = {}) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/payment-order`, { amount, ...extra }),
-  /** Verify Razorpay payment signature for tip */
-  verifyTipPayment: (orderId, data) => userClient.post(`/dmb/subscriptions/daily-orders/${orderId}/tip/verify-payment`, data),
   /** Customer Wallet APIs */
   getWallet: () => userClient.get("/food/user/wallet"),
   createWalletTopupOrder: (amount, extra = {}) => userClient.post("/food/user/wallet/topup/order", { amount, ...extra }),
-  verifyWalletTopupPayment: (data) => userClient.post("/food/user/wallet/topup/verify", data),
   /** Admin Customer Wallet API */
   getAllCustomerWallets: () => adminClient.get("/food/admin/customers/wallet/wallet-transactions"),
 };

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodUserWallet } from '../models/userWallet.model.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
-import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../../payments/payments.service.js';
+import { startPayment, PaymentsError } from '../../../payments/payments.service.js';
 import { resolvePaymentContext } from '../../../payments/payments.settings.js';
 
 const ensureWallet = async (userId) => {
@@ -81,9 +81,7 @@ export const creditWalletFromPayment = async (userId, amount, meta = {}) => {
                             amount: value,
                             status: 'Completed',
                             description: 'Wallet top-up',
-                            metadata: { source: 'wallet_topup', ...meta },
-                            razorpayOrderId: meta.provider === 'razorpay' ? meta.providerOrderId || null : null,
-                            razorpayPaymentId: meta.provider === 'razorpay' ? meta.providerPaymentId || null : null
+                            metadata: { source: 'wallet_topup', ...meta }
                         }
                     ],
                     $position: 0
@@ -95,8 +93,7 @@ export const creditWalletFromPayment = async (userId, amount, meta = {}) => {
 };
 
 /**
- * Starts a wallet top-up. The provider (Przelewy24 / Stripe / Razorpay) and the currency follow the customer's country.
- * `razorpay` in the result keeps the shape older clients expect.
+ * Starts a wallet top-up. The provider (Przelewy24 / Stripe) and the currency follow the customer's country.
  */
 export const createWalletTopupOrder = async (userId, amountValue, opts = {}) => {
     const amount = Number(amountValue);
@@ -124,34 +121,11 @@ export const createWalletTopupOrder = async (userId, amountValue, opts = {}) => 
             returnPath: opts.returnPath || '/user/wallet',
             cancelPath: opts.cancelPath || '/user/wallet'
         });
-        const data = { payment };
-        if (payment.provider === 'razorpay') {
-            data.razorpay = { key: payment.action.key, orderId: payment.action.orderId, amount: payment.action.amount, currency: payment.action.currency };
-        }
-        return data;
+        return { payment };
     } catch (err) {
         if (err instanceof PaymentsError) throw new ValidationError(err.message);
         throw err;
     }
-};
-
-/** Razorpay only: the browser reports the pop-up result. The credited amount comes from our payment record, not the request. */
-export const verifyWalletTopupPayment = async (userId, payload) => {
-    const tx = await findOwnedTransaction({
-        publicId: payload?.transactionId,
-        providerOrderId: String(payload?.razorpayOrderId || '').trim(),
-        purpose: 'wallet_topup',
-        ownerId: userId
-    });
-    if (!tx) throw new ValidationError('Payment not found');
-    try {
-        const after = await confirmRazorpayPayment(tx, payload);
-        if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) throw new ValidationError('Payment is not completed yet');
-    } catch (err) {
-        if (err instanceof PaymentsError) throw new ValidationError(err.message);
-        throw err;
-    }
-    return { wallet: await getUserWallet(userId) };
 };
 
 export const deductWalletBalance = async (userId, amountInr, description = 'Order payment', metadata = {}) => {

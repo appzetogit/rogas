@@ -16,13 +16,6 @@ import { FoodRestaurantCommission } from '../../admin/models/restaurantCommissio
 import { FoodTransaction } from '../models/foodTransaction.model.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
 import { config } from '../../../../config/env.js';
-import {
-  createRazorpayOrder,
-  verifyPaymentSignature,
-  getRazorpayKeyId,
-  isRazorpayConfigured,
-  initiateRazorpayRefund
-} from '../helpers/razorpay.helper.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
 import { fetchPolyline } from '../utils/googleMaps.js';
@@ -157,6 +150,10 @@ export async function createOrder(userId, dto) {
 
   const paymentMethod =
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+  // Online payment in this older order flow went through Razorpay, which the platform no longer uses.
+  if (paymentMethod === "razorpay" || paymentMethod === "razorpay_qr") {
+    throw new ValidationError("Online payment is not available for this order. Please pay by cash or wallet.");
+  }
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
   if (isCash) {
@@ -300,28 +297,6 @@ export async function createOrder(userId, dto) {
     platformProfit,
   });
 
-  let razorpayPayload = null;
-
-  if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
-    const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
-    if (amountPaise < 100)
-      throw new ValidationError("Amount too low for online payment");
-    try {
-      const rzOrder = await createRazorpayOrder(amountPaise, "INR", order._id.toString());
-      razorpayPayload = {
-        key: getRazorpayKeyId(),
-        orderId: rzOrder.id,
-        amount: rzOrder.amount,
-        currency: rzOrder.currency || "INR",
-      };
-      // Store Razorpay order id in local payment snapshot (ledger will store it)
-      payment.razorpay = { orderId: rzOrder.id, paymentId: "", signature: "" };
-      payment.status = "created";
-    } catch (err) {
-      throw new ValidationError(err?.message || "Payment gateway error");
-    }
-  }
-
   await order.save();
 
   if (isWallet) {
@@ -342,10 +317,6 @@ export async function createOrder(userId, dto) {
     pricing: normalizedPricing,
     payment,
   });
-
-  if (paymentMethod === "razorpay" && payment?.razorpay?.orderId) {
-    // Audit can still happen here or via FinanceService events
-  }
 
   // Realtime + push notifications.
   try {
@@ -420,79 +391,12 @@ export async function createOrder(userId, dto) {
   }
 
   const saved = normalizeOrderForClient(order);
-  return { order: saved, razorpay: razorpayPayload };
+  return { order: saved };
 }
 
 // ----- Verify payment -----
-export async function verifyPayment(userId, dto) {
-  const identity = buildOrderIdentityFilter(dto.orderId);
-  if (!identity) throw new ValidationError("Order id required");
-
-  const order = await FoodOrder.findOne({
-    ...identity,
-    userId: new mongoose.Types.ObjectId(userId),
-  });
-  if (!order) throw new NotFoundError("Order not found");
-  if (order.payment.status === "paid")
-    return { order: normalizeOrderForClient(order), payment: order.payment };
-
-  const valid = verifyPaymentSignature(
-    dto.razorpayOrderId,
-    dto.razorpayPaymentId,
-    dto.razorpaySignature,
-  );
-  if (!valid) throw new ValidationError("Payment verification failed");
-
-  order.payment.status = "paid";
-  order.payment.razorpay.paymentId = dto.razorpayPaymentId;
-  order.payment.razorpay.signature = dto.razorpaySignature;
-  pushStatusHistory(order, {
-    byRole: "USER",
-    byId: userId,
-    from: order.orderStatus,
-    to: "created",
-    note: "Payment verified",
-  });
-  await order.save();
-
-  await foodTransactionService.updateTransactionStatus(order._id, 'captured', {
-    status: 'captured',
-    razorpayPaymentId: dto.razorpayPaymentId,
-    razorpaySignature: dto.razorpaySignature,
-    recordedByRole: "USER",
-    recordedById: new mongoose.Types.ObjectId(userId)
-  });
-
-  // After online payment is verified, now notify restaurant about the new order.
-  await notifyRestaurantNewOrder(order);
-
-  // Notify Customer about payment success
-  await notifyOwnersSafely([{ ownerType: "USER", ownerId: userId }], {
-    title: "Payment Successful! ✅",
-    body: `We have received your payment of ₹${order.payment.amountDue} for Order #${order._id.toString()}.`,
-    image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
-    data: {
-      type: "payment_success",
-      orderId: String(order._id.toString()),
-      orderMongoId: String(order._id),
-    },
-  });
-
-  const settings = await getDispatchSettings();
-  const dispatchableStatuses = [
-    "confirmed",
-    "preparing",
-    "ready_for_pickup",
-    "ready",
-    "picked_up",
-  ];
-  if (settings.dispatchMode === "auto" && dispatchableStatuses.includes(order.orderStatus)) {
-    try {
-      await tryAutoAssign(order._id);
-    } catch { }
-  }
-
-  return { order: normalizeOrderForClient(order), payment: order.payment };
+export async function verifyPayment() {
+  throw new ValidationError("Online payment is not available for this order type.");
 }
 
 // ----- Auto-assign -----
@@ -801,10 +705,7 @@ export async function cancelOrder(orderId, userId, reason, refundDestination = "
           processedAt: new Date()
         };
       } else {
-        const refundResult = await initiateRazorpayRefund(
-          order.payment.razorpay.paymentId,
-          order.pricing.total
-        );
+        const refundResult = { success: false } /* Razorpay was removed: refund this older card payment by hand */;
 
         if (refundResult.success) {
           order.payment.status = "refunded";
@@ -1265,10 +1166,7 @@ export async function updateOrderStatusRestaurant(
     (!order.payment.refund || order.payment.refund.status !== "processed")
   ) {
     try {
-      const refundResult = await initiateRazorpayRefund(
-        order.payment.razorpay.paymentId,
-        order.pricing.total
-      );
+      const refundResult = { success: false } /* Razorpay was removed: refund this older card payment by hand */;
 
       if (refundResult.success) {
         order.payment.status = "refunded";
@@ -1416,14 +1314,6 @@ export async function updateOrderStatusDelivery(orderId, deliveryPartnerId, orde
 }
 
 // ----- COD QR collection -----
-export async function createCollectQr(
-  orderId,
-  deliveryPartnerId,
-  customerInfo = {},
-) {
-  return paymentService.createCollectQr(orderId, deliveryPartnerId, customerInfo);
-}
-
 export async function getPaymentStatus(orderId, deliveryPartnerId) {
   return paymentService.getPaymentStatus(orderId, deliveryPartnerId);
 }

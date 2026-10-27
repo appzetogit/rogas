@@ -189,7 +189,7 @@ export const createSubscription = async ({
         deliverySlots: finalSlots,
         deliveryAddress: finalAddress,
         pricing: finalPricing,
-        paymentMethod: paymentMethod || 'razorpay',
+        paymentMethod: paymentMethod || undefined,
         invoiceType: invoiceType === 'vat' ? 'b2b_vat' : (invoiceType === 'simple' ? 'receipt' : (invoiceType || 'receipt')),
         companyNip,
         companyName,

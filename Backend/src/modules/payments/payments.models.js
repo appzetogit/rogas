@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 
-export const PROVIDER_IDS = ['razorpay', 'przelewy24', 'stripe', 'mock'];
+// 'razorpay' is no longer offered; it stays valid only so payments recorded before it was removed still load.
+export const PROVIDER_IDS = ['przelewy24', 'stripe', 'mock', 'razorpay'];
 export const PURPOSES = ['subscription', 'pantry', 'wallet_topup', 'tip', 'office', 'driver_deposit', 'one_time_order'];
 export const TX_STATUSES = ['created', 'pending', 'paid', 'failed', 'expired', 'cancelled', 'partially_refunded', 'refunded'];
 
@@ -34,7 +35,7 @@ const eventSchema = new mongoose.Schema(
  */
 const paymentTransactionSchema = new mongoose.Schema(
     {
-        /** Human-friendly id we hand to the provider as its own reference (P24 sessionId, Razorpay receipt, Stripe client_reference_id). */
+        /** Human-friendly id we hand to the provider as its own reference (P24 sessionId, Stripe client_reference_id). */
         publicId: { type: String, required: true, unique: true, index: true },
         /** Random secret in the return URL so the payment-return page can poll status without a login. */
         statusToken: { type: String, required: true },
@@ -121,7 +122,6 @@ const paymentSettingsSchema = new mongoose.Schema(
     {
         _id: { type: String, default: 'default' },
         providers: {
-            razorpay: { enabled: { type: Boolean, default: true } },
             przelewy24: { enabled: { type: Boolean, default: true } },
             stripe: { enabled: { type: Boolean, default: true } }
         },
@@ -129,7 +129,6 @@ const paymentSettingsSchema = new mongoose.Schema(
             type: [{ _id: false, country: { type: String, required: true, uppercase: true, trim: true }, providers: { type: [String], default: [] } }],
             default: () => [
                 { country: 'PL', providers: ['przelewy24'] },
-                { country: 'IN', providers: ['razorpay'] },
                 { country: '*', providers: ['stripe'] }
             ]
         },

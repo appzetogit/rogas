@@ -514,7 +514,7 @@ export default function OrdersTable({
                               }`}
                               title={order.paymentType === "Wallet" || order.payment?.method === "wallet"
                                 ? "Process Wallet Refund (Add to user wallet)"
-                                : "Process Refund via Razorpay"}
+                                : "Process Refund"}
                             >
                               <span className="text-sm">{currencySymbol(order?.currency)}</span>
                               <span>Refund</span>

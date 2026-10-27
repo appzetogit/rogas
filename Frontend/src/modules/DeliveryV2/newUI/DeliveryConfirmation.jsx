@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Phone, MessageSquare, MapPin, CheckCircle, Camera, Check, Clock } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
-import { dmbDeliveryAPI, deliveryAPI, uploadAPI } from "../../../services/api";
+import { dmbDeliveryAPI, uploadAPI } from "../../../services/api";
 import { ActionSlider } from "../components/ui/ActionSlider";
 import { Trans, useTranslation } from "react-i18next";
 import useMoney from "@/shared/payments/money";
@@ -41,9 +41,6 @@ const DeliveryConfirmation = ({
   // Payment Options page states
   const [paymentScreenOpen, setPaymentScreenOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
-  const [qrCodeUrl, setQrCodeUrl] = useState("");
-  const [loadingQr, setLoadingQr] = useState(false);
-  const [qrError, setQrError] = useState("");
 
 
   useEffect(() => {
@@ -68,9 +65,6 @@ const DeliveryConfirmation = ({
     // Reset payment screen state
     setPaymentScreenOpen(false);
     setSelectedPaymentMethod("");
-    setQrCodeUrl("");
-    setLoadingQr(false);
-    setQrError("");
   }, [order?.id]);
 
   useEffect(() => {
@@ -148,42 +142,8 @@ const DeliveryConfirmation = ({
     startCamera();
   };
 
-  const handleSelectQrPayment = async () => {
-    setSelectedPaymentMethod("QR");
-    setLoadingQr(true);
-    setQrError("");
-    setQrCodeUrl("");
-    try {
-      const res = await deliveryAPI.createCollectQr(order.id);
-      if (res.data?.success && res.data?.imageUrl) {
-        setQrCodeUrl(res.data.imageUrl);
-      } else {
-        // No made-up payment details: if the server cannot create the QR code, the driver is told so.
-        setQrError(res.data?.message || t("Could not create the payment QR code. Try again or ask for cash."));
-      }
-    } catch (err) {
-      setQrError(err.response?.data?.message || t("Could not create the payment QR code. Try again or ask for cash."));
-    } finally {
-      setLoadingQr(false);
-    }
-  };
-
   const handleSelectCashPayment = () => {
     setSelectedPaymentMethod("CASH");
-  };
-
-  const handleConfirmQrPayment = async () => {
-    try {
-      setSuccess(true);
-      await dmbDeliveryAPI.confirmPayment(order.id, 'QR');
-      setTimeout(() => {
-        onConfirmDelivered(order.paymentMethod === "CASH" ? order.cashAmount : 0);
-      }, 1000);
-    } catch (err) {
-      console.error(err);
-      setErrorText(err.response?.data?.message || t("Error confirming payment on server."));
-      setSuccess(false);
-    }
   };
 
   const handleConfirmCashPayment = async () => {
@@ -340,19 +300,7 @@ const DeliveryConfirmation = ({
         </div>
 
         {/* Payment Methods Selection */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={handleSelectQrPayment}
-            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === "QR"
-              ? "border-[#00604c] bg-[#9ef3d7]/10"
-              : "border-[#e0e3e0] bg-white hover:border-[#00604c]/40"
-              }`}
-          >
-            <span className="text-2xl mb-1">📱</span>
-            <span className="font-bold text-sm text-gray-900">{t("QR Payment")}</span>
-            <span className="text-[10px] text-gray-500 mt-1">{t("Scan Razorpay QR")}</span>
-          </button>
-
+        <div className="grid grid-cols-1 gap-3">
           <button
             onClick={handleSelectCashPayment}
             className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === "CASH"
@@ -365,38 +313,6 @@ const DeliveryConfirmation = ({
             <span className="text-[10px] text-gray-500 mt-1">{t("Physical Cash")}</span>
           </button>
         </div>
-
-        {/* QR Payment View */}
-        {selectedPaymentMethod === "QR" && (
-          <div className="bg-white border border-[#e0e3e0] rounded-xl p-5 shadow-sm flex flex-col items-center space-y-4 animate-slideUp">
-            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">{t("Razorpay QR Code")}</h3>
-
-            {loadingQr ? (
-              <div className="w-48 h-48 bg-gray-50 border border-dashed rounded-xl flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-[#00604c] border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : qrError ? (
-              <div className="w-48 h-48 bg-red-50 border border-red-200 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                <span className="text-red-500 font-bold text-xs">{qrError}</span>
-              </div>
-            ) : qrCodeUrl ? (
-              <div className="p-2 border border-gray-100 rounded-xl bg-white shadow-inner">
-                <img src={qrCodeUrl} alt={t("Razorpay QR")} className="w-48 h-48 object-contain" />
-              </div>
-            ) : null}
-
-            <p className="text-[10px] font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-100 text-center">
-              {t("Let the customer scan the QR to complete online transfer.")}
-            </p>
-
-            <button
-              onClick={handleConfirmQrPayment}
-              className="w-full h-12 bg-[#00604c] hover:bg-[#1f7a63] text-white font-bold rounded-xl flex items-center justify-center transition-all shadow-md cursor-pointer"
-            >
-              {t("Confirm Paid & Complete")}
-            </button>
-          </div>
-        )}
 
         {/* Cash Payment Slider View */}
         {selectedPaymentMethod === "CASH" && (

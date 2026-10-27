@@ -10,7 +10,7 @@ import { DMBMealPlan } from '../../mealplan/mealPlan.model.js';
 import { DMBSubscription } from '../../subscription/subscription.model.js';
 import { DMBDailyOrder } from '../../subscription/dmb.dailyOrder.model.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
-import { startPayment, findOwnedTransaction, confirmRazorpayPayment, fulfil, PaymentsError } from '../../../payments/payments.service.js';
+import { startPayment, findOwnedTransaction, fulfil, PaymentsError } from '../../../payments/payments.service.js';
 import { resolvePaymentContext } from '../../../payments/payments.settings.js';
 import { PaymentTransaction } from '../../../payments/payments.models.js';
 import {
@@ -424,14 +424,14 @@ export const createAssignmentOrder = async (req, res) => {
             refs: { officePaymentId: String(pending._id) }
         });
 
-        pending.razorpayOrderId = payment.provider === 'razorpay' ? payment.action.orderId : payment.transactionId;
+        // razorpayOrderId is the record's historical name for the provider order id; it now holds our transaction id.
+        pending.razorpayOrderId = payment.transactionId;
         pending.paymentTransactionId = payment.transactionId;
         pending.provider = payment.provider;
         pending.isMock = payment.provider === 'mock';
         await pending.save();
 
         const data = { payment, officePaymentId: String(pending._id), orderId: pending.razorpayOrderId, amount: payment.amountMinor, currency: payment.currency, isMock: payment.provider === 'mock' };
-        if (payment.provider === 'razorpay') data.razorpayKeyId = payment.action.key;
         return sendResponse(res, 200, 'Order created successfully', data);
     } catch (error) {
         if (pending) await OfficePayment.deleteOne({ _id: pending._id, status: 'pending' }).catch(() => {});
@@ -440,7 +440,7 @@ export const createAssignmentOrder = async (req, res) => {
 };
 
 /**
- * POST /office/assignments — older clients call this after the Razorpay pop-up. It only confirms the payment; the meals
+ * POST /office/assignments — the app calls this after returning from the payment page. It only checks the payment; the meals
  * are assigned by the payment's own exactly-once fulfilment (the same one webhooks use), never directly from here.
  */
 export const assignMealPlan = async (req, res) => {
@@ -457,9 +457,6 @@ export const assignMealPlan = async (req, res) => {
 
         const tx = await findOwnedTransaction({ publicId: office.paymentTransactionId, purpose: 'office', ownerId: accountId });
         if (!tx) return sendError(res, 404, 'Payment not found');
-        if (tx.provider === 'razorpay' && req.body.razorpayPaymentId && !PAID_LIKE.includes(tx.status)) {
-            await confirmRazorpayPayment(tx, { ...req.body, razorpayOrderId: tx.providerOrderId });
-        }
         const fresh = await PaymentTransaction.findById(tx._id);
         if (!PAID_LIKE.includes(fresh.status)) return sendError(res, 402, 'Payment has not been completed yet');
         if (!fresh.fulfilment?.done) await fulfil(fresh);

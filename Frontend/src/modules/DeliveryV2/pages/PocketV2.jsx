@@ -10,11 +10,9 @@ import { useNavigate } from 'react-router-dom';
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { formatCurrency } from '@food/utils/currency';
-import { initRazorpayPayment } from "@food/utils/razorpay";
 import { continueHostedPayment, paymentRequestExtras } from "@/shared/payments/api";
 import usePaymentResult from "@/shared/payments/usePaymentResult";
 import useMoney from "@/shared/payments/money";
-import { getCompanyNameAsync } from "@food/utils/businessSettings";
 
 /**
  * PocketV2 - 1:1 Match with Old PocketPage UI.
@@ -134,54 +132,9 @@ export const PocketV2 = () => {
       const { redirected } = await continueHostedPayment(data?.payment, { panel: "delivery" });
       if (redirected) return;
 
-      const rp = data?.razorpay;
-      
-      if (!rp?.orderId) {
-        toast.error("Payment initialization failed");
-        setDepositing(false);
-        return;
-      }
-
-      const profileRes = await deliveryAPI.getProfile();
-      const profile = profileRes?.data?.data?.profile || {};
-      const companyName = await getCompanyNameAsync();
-
-      await initRazorpayPayment({
-        key: rp.key,
-        amount: rp.amount,
-        currency: rp.currency || "INR",
-        order_id: rp.orderId,
-        name: companyName,
-        description: `Cash limit deposit - ${money(amt)}`,
-        prefill: { 
-           name: profile.name, 
-           email: profile.email, 
-           contact: profile.phone 
-        },
-        handler: async (res) => {
-          try {
-            const verifyRes = await deliveryAPI.verifyDepositPayment({
-              transactionId: data?.payment?.transactionId,
-              razorpay_order_id: res.razorpay_order_id,
-              razorpay_payment_id: res.razorpay_payment_id,
-              razorpay_signature: res.razorpay_signature
-            });
-            if (verifyRes?.data?.success) {
-              toast.success("Deposit successful");
-              setShowDepositPopup(false);
-              setDepositAmount("");
-              // Refresh data
-              window.location.reload();
-            }
-          } catch (err) {
-            toast.error("Verification failed");
-          } finally {
-            setDepositing(false);
-          }
-        },
-        onError: () => setDepositing(false),
-        onClose: () => setDepositing(false)
-      });
+      // No hosted page came back: the server offered no payment method this screen can open.
+      toast.error("Payment initialization failed");
+      setDepositing(false);
     } catch (err) {
       setDepositing(false);
       toast.error("Deposit failed to start");

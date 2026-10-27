@@ -14,8 +14,7 @@ import {
 } from '../controllers/userProfile.controller.js';
 import {
     getUserWalletController,
-    createWalletTopupOrderController,
-    verifyWalletTopupPaymentController
+    createWalletTopupOrderController
 } from '../controllers/userWallet.controller.js';
 import {
     getUserReferralDetailsController,
@@ -48,7 +47,6 @@ router.get('/invoices/:orderId/download', downloadInvoiceController);
 // Wallet (Bearer USER)
 router.get('/wallet', getUserWalletController);
 router.post('/wallet/topup/order', createWalletTopupOrderController);
-router.post('/wallet/topup/verify', verifyWalletTopupPaymentController);
 
 // Dietary Preferences
 router.get('/dietary-preferences', getDietaryPreferencesController);

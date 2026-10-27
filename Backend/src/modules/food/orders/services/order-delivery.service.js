@@ -14,10 +14,6 @@ import { buildPaginatedResult, buildPaginationOptions } from '../../../../utils/
 import { logger } from '../../../../utils/logger.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
-import {
-  fetchRazorpayPaymentLink,
-  isRazorpayConfigured,
-} from '../helpers/razorpay.helper.js';
 import { fetchPolyline } from '../utils/googleMaps.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import * as dispatchService from './order-dispatch.service.js';
@@ -227,50 +223,6 @@ function emitOrderUpdate(order, deliveryPartnerId, options = {}) {
   } catch (error) {
     logger.error(`Error emitting delivery order update: ${error?.message || error}`);
   }
-}
-
-async function syncRazorpayQrPayment(orderDoc) {
-  // Phase 2: FoodTransaction is source of truth; avoid relying on FoodOrder.payment.
-  const tx = await FoodTransaction.findOne({ orderId: orderDoc?._id }).lean();
-  const payment = tx?.payment || orderDoc?.payment || null;
-  if (!payment) return null;
-  if (payment.method !== 'razorpay_qr') return payment;
-  if (payment.status === 'paid') return payment;
-
-  const paymentLinkId = payment?.qr?.paymentLinkId;
-  if (!paymentLinkId || !isRazorpayConfigured()) return payment;
-
-  let link;
-  try {
-    link = await fetchRazorpayPaymentLink(paymentLinkId);
-  } catch (error) {
-    logger.warn(
-      `Razorpay payment-link fetch failed for ${paymentLinkId}: ${
-        error?.message || error
-      }`,
-    );
-    return orderDoc.payment;
-  }
-
-  const linkStatus = String(link?.status || '').toLowerCase();
-  if (!linkStatus) return orderDoc.payment;
-
-  await FoodTransaction.updateOne(
-    { orderId: orderDoc?._id },
-    {
-      $set: {
-        'payment.qr.status': linkStatus,
-        'payment.status': ['paid', 'captured', 'authorized'].includes(linkStatus)
-          ? 'paid'
-          : ['expired', 'cancelled', 'canceled', 'failed'].includes(linkStatus)
-            ? 'failed'
-            : (payment.status || 'pending_qr'),
-      },
-    },
-  );
-
-  const updatedTx = await FoodTransaction.findOne({ orderId: orderDoc?._id }).lean();
-  return updatedTx?.payment || payment;
 }
 
 export async function getCurrentTripDelivery(deliveryPartnerId) {
@@ -1080,21 +1032,15 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
 
   /**
    * Final Payment Method Logic:
-   * - If rider chose 'qr', we force 'razorpay_qr'.
+   * - QR collection (a Razorpay payment link) no longer exists; it is refused.
    * - If rider chose 'cash', we force 'cash'. 
    * - Otherwise, we keep the original method.
    */
   let finalPayMethod = payMethod;
-  if (selectedPaymentMethod === 'qr') finalPayMethod = 'razorpay_qr';
-  else if (selectedPaymentMethod === 'cash') finalPayMethod = 'cash';
-
-  // 3. QR Payment Verification (Blocking)
-  if (finalPayMethod === 'razorpay_qr') {
-    const syncedPayment = await syncRazorpayQrPayment(order);
-    if (String(syncedPayment?.status || '').toLowerCase() !== 'paid') {
-      throw new ValidationError('Please wait for the customer to complete the QR payment. Payment not verified yet.');
-    }
+  if (selectedPaymentMethod === 'qr' || finalPayMethod === 'razorpay_qr') {
+    throw new ValidationError('QR payment is no longer available. Please collect the payment in cash.');
   }
+  if (selectedPaymentMethod === 'cash') finalPayMethod = 'cash';
 
   // 4. Update Order State
   order.orderStatus = 'delivered';
@@ -1127,7 +1073,7 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const ledgerKind =
     finalPayMethod === 'cash' 
       ? 'cod_marked_paid_on_delivery' 
-      : (finalPayMethod === 'razorpay_qr' ? 'cod_collect_qr_settled' : 'payment_snapshot_sync');
+      : 'payment_snapshot_sync';
 
   await foodTransactionService.updateTransactionStatus(order._id, ledgerKind, {
     status: 'captured', // This marks payment as 'paid'

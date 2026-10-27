@@ -1,4 +1,4 @@
-# Payments (Przelewy24, Stripe, Razorpay)
+# Payments (Przelewy24, Stripe)
 
 One provider-agnostic payment service. Every purchase in the platform (subscription, pantry order, wallet top-up, driver
 tip, office meal plan, driver cash deposit) goes through it, whichever provider the customer pays with.
@@ -7,7 +7,6 @@ tip, office meal plan, driver cash deposit) goes through it, whichever provider 
 |---|---|---|---|
 | **Przelewy24** | Poland (default for `PL`) | PLN, EUR, CZK, GBP, HUF | Redirect to the Przelewy24 page (BLIK, bank transfer, cards) |
 | **Stripe** | Every other country (default rule `*`) | any | Redirect to Stripe Checkout (cards, Apple/Google Pay, and BLIK / Przelewy24 when enabled in the Stripe dashboard) |
-| **Razorpay** | India (default for `IN`) | INR only | Pop-up inside the app (UPI, cards, net banking) |
 
 Admin panel: **Payments** (sidebar) — switch each provider on or off, choose which providers each country is offered
 (with several ticked the customer chooses at checkout), *Test connection*, and the list of all payments with re-check and
@@ -19,7 +18,7 @@ refund. Every change is written to the audit log.
    currency** (zone of the order → phone country code → the default country) and the **provider** (the customer's choice
    if allowed, otherwise the country rule). It computes the price itself; a price sent by the browser is never trusted.
 2. The server stores a `PaymentTransaction` (`payment_transactions`) and returns what to do next:
-   `redirect` (Przelewy24 / Stripe) or `razorpay` (open the pop-up).
+   `redirect` to the provider's hosted page (Przelewy24 / Stripe).
 3. The customer pays on the provider's page and is sent back to `APP_PUBLIC_URL/payment/return?tx=…&t=…`.
 4. **The provider's webhook is what confirms the payment** (signature checked, amount and currency compared with our
    record, processed exactly once). The return page only asks the server for the result; the server in turn asks the
@@ -40,7 +39,6 @@ States: `created → pending → paid | failed | expired | cancelled → partial
 | `P24_SANDBOX` | `true` (default) for `sandbox.przelewy24.pl`, `false` for production. |
 | `STRIPE_SECRET_KEY` | `sk_test_…` (test) or `sk_live_…`. |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` of the webhook endpoint (see below). |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Razorpay credentials. |
 | `PAYMENTS_MODE` | `mock` adds a *Test payment* option that always succeeds — **development only**; it is ignored when `NODE_ENV=production`. |
 | `PAYMENTS_JOBS` | `false` turns the background upkeep off (tests). |
 
@@ -52,8 +50,6 @@ A provider is offered to customers only when it is **switched on in the admin pa
 * **Stripe** – Dashboard → Developers → Webhooks → add endpoint `{API_PUBLIC_URL}/api/v1/payments/webhook/stripe`, events:
   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
   `checkout.session.expired`, `charge.refunded`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
-* **Razorpay** – Dashboard → Webhooks → `{API_PUBLIC_URL}/api/v1/payments/webhook/razorpay`, events `payment.captured`,
-  `payment.failed`, `refund.processed`; the secret goes into `RAZORPAY_WEBHOOK_SECRET`.
 
 The admin Payments page shows these exact addresses and warns when `API_PUBLIC_URL` is not reachable.
 
@@ -70,7 +66,7 @@ The admin Payments page shows these exact addresses and warns when `API_PUBLIC_U
 ## Going live checklist
 
 * `NODE_ENV=production`, `PAYMENTS_MODE` unset, `P24_SANDBOX=false`, live keys, `API_PUBLIC_URL`/`APP_PUBLIC_URL` on HTTPS.
-* Przelewy24 production needs an approved merchant account; register the live webhook endpoints for Stripe/Razorpay.
+* Przelewy24 production needs an approved merchant account; register the live Stripe webhook endpoint.
 * Make a small real payment per provider and refund it from the admin list.
 * Keep an eye on the admin list filter **Needs attention** (paid but not delivered, or amount mismatch).
 
@@ -92,3 +88,6 @@ are replaced by local fakes that verify the same signatures, so no network or mo
 
 Frontend: `Frontend/src/shared/payments/` (method picker, return page, money formatting) and the admin page
 `Frontend/src/modules/Food/pages/admin/payments/PaymentsPage.jsx`.
+
+Razorpay was removed (October 2026). Payments it recorded earlier keep `provider: 'razorpay'` so they still load, and some
+records keep fields named `razorpayOrderId` / `razorpayPaymentId`, which now hold our own transaction id.

@@ -504,13 +504,8 @@ export const confirmDelivery = async ({ orderId, driverId, method, deliveryGps, 
             const prevPayStatus = String(tx?.payment?.status || order?.payment?.status || 'cod_pending');
             const payMethod = String(tx?.payment?.method || order?.payment?.method || order?.paymentMethod || 'cash');
 
-            let finalPayMethod = payMethod;
-            if (finalPayMethod === 'qr') finalPayMethod = 'razorpay_qr';
-
-            const ledgerKind =
-                finalPayMethod === 'cash'
-                    ? 'cod_marked_paid_on_delivery'
-                    : (finalPayMethod === 'razorpay_qr' ? 'cod_collect_qr_settled' : 'payment_snapshot_sync');
+            const finalPayMethod = payMethod;
+            const ledgerKind = finalPayMethod === 'cash' ? 'cod_marked_paid_on_delivery' : 'payment_snapshot_sync';
 
             await foodTransactionService.updateTransactionStatus(order._id, ledgerKind, {
                 status: 'captured',

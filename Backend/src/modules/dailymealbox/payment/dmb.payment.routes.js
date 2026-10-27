@@ -8,7 +8,7 @@ import { VendorSubscriptionPlan } from '../subscription/vendorSubscriptionPlan.m
 import { effectivePlatformFee } from '../subscription/vendorPlans.service.js';
 import { DMBMealPlan } from '../mealplan/mealPlan.model.js';
 import { logger } from '../../../utils/logger.js';
-import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../payments/payments.service.js';
+import { startPayment, PaymentsError } from '../../payments/payments.service.js';
 import { resolvePaymentContext, resolveProviders } from '../../payments/payments.settings.js';
 
 const router = express.Router();
@@ -79,10 +79,6 @@ export const startSubscriptionPayment = async ({ userId, subscription, amount, z
         payment,
         subscription: { subscriptionId: subscription.subscriptionId, _id: subscription._id, status: subscription.status }
     };
-    if (payment.provider === 'razorpay') {
-        // Fields the existing checkout screen reads.
-        Object.assign(body, { razorpayOrderId: payment.action.orderId, razorpayKeyId: payment.action.key, amount: payment.action.amount, currency: payment.action.currency });
-    }
     return { body, provider: chosen };
 };
 
@@ -126,7 +122,7 @@ router.post('/quote', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (r
  * Step 1: create the pending subscription at the server's quoted price and start a payment with the provider chosen for
  * the customer's country. Body: quote fields + { deliveryAddress | addressId, dayAddresses?, expectedTotal (the total the
  * customer saw), invoiceType, companyNip, companyName, billingEmail, provider?, returnPath?, cancelPath?, language? }.
- * The subscription is activated by the payment webhook (or, for Razorpay, by the confirmation below).
+ * The subscription is activated by the payment webhook.
  */
 router.post('/create-order', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
     let subscription = null;
@@ -203,42 +199,6 @@ router.post('/change', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (
         logger.error(`DMB change error: ${err.message}`);
         if (err instanceof PaymentsError) return res.status(err.statusCode).json({ success: false, code: err.code, message: err.message });
         return sendQuoteError(res, err);
-    }
-});
-
-/**
- * POST /api/v1/dmb/payments/verify-payment  (Razorpay only)
- * Step 2 for the pop-up flow: the browser reports the signed result. Hosted-page providers (Przelewy24, Stripe) never
- * call this: their webhook activates the subscription and the return page just shows the outcome.
- * Body: { subscriptionId?, transactionId?, razorpayOrderId, razorpayPaymentId, razorpaySignature }
- */
-router.post('/verify-payment', authMiddleware, requireRoles('USER', 'EMPLOYEE'), async (req, res) => {
-    try {
-        const userId = req.user?.userId || req.user?._id;
-        const { razorpayOrderId, razorpayPaymentId, razorpaySignature, subscriptionId, transactionId } = req.body;
-        if (!transactionId && (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature)) {
-            return res.status(400).json({ success: false, message: 'All payment fields are required' });
-        }
-
-        const tx = await findOwnedTransaction({ publicId: transactionId, providerOrderId: razorpayOrderId, purpose: 'subscription', ownerId: userId });
-        if (!tx) return res.status(404).json({ success: false, message: 'Payment not found' });
-        const owned = await DMBSubscription.findOne({ subscriptionId: tx.refs?.subscriptionId }).select('_id subscriptionId').lean();
-        if (subscriptionId && owned && ![owned.subscriptionId, String(owned._id)].includes(String(subscriptionId))) {
-            return res.status(400).json({ success: false, message: 'Payment does not belong to this subscription' });
-        }
-
-        const after = await confirmRazorpayPayment(tx, req.body);
-        if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) {
-            return res.status(400).json({ success: false, message: 'Payment is not completed yet' });
-        }
-        const subscription = await DMBSubscription.findOne({ subscriptionId: tx.refs?.subscriptionId });
-        logger.info(`DMB subscription payment confirmed: ${tx.refs?.subscriptionId}, payment: ${after.providerPaymentId}`);
-
-        res.json({ success: true, message: '🎉 Subscription confirmed! Your first meal box is on its way.', subscription });
-    } catch (err) {
-        logger.error(`DMB verify-payment error: ${err.message}`);
-        const status = err instanceof PaymentsError ? err.statusCode : 400;
-        res.status(status).json({ success: false, message: err.message });
     }
 });
 

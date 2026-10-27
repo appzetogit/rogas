@@ -1,11 +1,9 @@
 ﻿import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { deliveryAPI } from "@food/api"
-import { initRazorpayPayment } from "@food/utils/razorpay"
 import { continueHostedPayment, paymentRequestExtras } from "@/shared/payments/api"
 import useMoney from "@/shared/payments/money"
 import { toast } from "sonner"
-import { getCompanyNameAsync } from "@food/utils/businessSettings"
 
 export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
   const { money, symbol } = useMoney()
@@ -47,62 +45,9 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
       const { redirected } = await continueHostedPayment(data?.payment, { panel: "delivery" })
       if (redirected) return
 
-      const rp = data?.razorpay
-      if (!rp?.orderId || !rp?.key) {
-        toast.error("Payment gateway not ready. Please try again.")
-        setLoading(false)
-        return
-      }
+      // No hosted page came back: the server offered no payment method this screen can open.
+      toast.error("Payment gateway not ready. Please try again.")
       setLoading(false)
-
-      let profile = {}
-      try {
-        const pr = await deliveryAPI.getProfile()
-        profile = pr?.data?.data?.profile || pr?.data?.profile || {}
-      } catch (_) {}
-
-      const phone = (profile?.phone || "").replace(/\D/g, "").slice(-10)
-      const email = profile?.email || ""
-      const name = profile?.name || ""
-
-      const companyName = await getCompanyNameAsync()
-      setProcessing(true)
-      await initRazorpayPayment({
-        key: rp.key,
-        amount: rp.amount,
-        currency: rp.currency || "INR",
-        order_id: rp.orderId,
-        name: companyName,
-        description: `Cash limit deposit - ${money(amt)}`,
-        prefill: { name, email, contact: phone },
-        handler: async (res) => {
-          try {
-            const verifyRes = await deliveryAPI.verifyDepositPayment({
-              transactionId: data?.payment?.transactionId,
-              razorpay_order_id: res.razorpay_order_id,
-              razorpay_payment_id: res.razorpay_payment_id,
-              razorpay_signature: res.razorpay_signature
-            })
-            if (verifyRes?.data?.success) {
-              toast.success(`Deposit of ${money(amt)} successful. Available limit updated.`)
-              setAmount("")
-              window.dispatchEvent(new CustomEvent("deliveryWalletStateUpdated"))
-              if (onSuccess) onSuccess()
-            } else {
-              toast.error(verifyRes?.data?.message || "Verification failed")
-            }
-          } catch (err) {
-            toast.error(err?.response?.data?.message || "Verification failed. Contact support.")
-          } finally {
-            setProcessing(false)
-          }
-        },
-        onError: (e) => {
-          toast.error(e?.description || "Payment failed")
-          setProcessing(false)
-        },
-        onClose: () => setProcessing(false)
-      })
     } catch (err) {
       setLoading(false)
       setProcessing(false)

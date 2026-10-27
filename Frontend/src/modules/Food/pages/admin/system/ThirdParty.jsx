@@ -31,18 +31,6 @@ const thirdPartyServices = [
     ]
   },
   {
-    id: 3,
-    name: "Razorpay",
-    category: "Payment Gateway",
-    description: "Razorpay payment gateway",
-    enabled: false,
-    configured: false,
-    fields: [
-      { key: "keyId", label: "Key ID", value: "", type: "text" },
-      { key: "keySecret", label: "Key Secret", value: "", type: "password" }
-    ]
-  },
-  {
     id: 4,
     name: "Twilio",
     category: "SMS Service",

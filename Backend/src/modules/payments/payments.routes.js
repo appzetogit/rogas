@@ -5,7 +5,7 @@ import { PaymentTransaction } from './payments.models.js';
 import { resolvePaymentContext, resolveProviders } from './payments.settings.js';
 import { getProvider } from './providers/index.js';
 import {
-    getPublicStatus, confirmRazorpayPayment, confirmMockPayment, handleWebhook, PaymentsError
+    getPublicStatus, confirmMockPayment, handleWebhook, PaymentsError
 } from './payments.service.js';
 import { paymentsMode } from './payments.config.js';
 import { logger } from '../../utils/logger.js';
@@ -56,18 +56,6 @@ paymentsRouter.get('/methods', async (req, res) => {
 paymentsRouter.get('/:publicId/status', async (req, res) => {
     try {
         res.json({ success: true, ...(await getPublicStatus(req.params.publicId, req.query.t)) });
-    } catch (err) {
-        fail(res, err);
-    }
-});
-
-/** POST /api/v1/payments/:publicId/razorpay-confirm: the Razorpay pop-up finished (signature + payment are verified). */
-paymentsRouter.post('/:publicId/razorpay-confirm', authMiddleware, async (req, res) => {
-    try {
-        const tx = await PaymentTransaction.findOne({ publicId: req.params.publicId });
-        if (!tx || !ownsTransaction(req, tx)) throw new PaymentsError('Payment not found', 404, 'NOT_FOUND');
-        const after = await confirmRazorpayPayment(tx, req.body || {});
-        res.json({ success: true, status: after.status, fulfilled: Boolean(after.fulfilment?.done) });
     } catch (err) {
         fail(res, err);
     }

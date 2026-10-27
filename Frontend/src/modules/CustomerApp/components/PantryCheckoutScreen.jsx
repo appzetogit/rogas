@@ -15,17 +15,6 @@ import { tKey } from "../../../shared/i18n";
 const mapContainerStyle = { width: '100%', height: '100%' };
 const MAP_LIBRARIES = ["places", "drawing", "geometry"];
 
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 const formatDateForApi = (d) => {
   const offset = d.getTimezoneOffset();
   const normalized = new Date(d.getTime() - (offset * 60 * 1000));
@@ -338,42 +327,8 @@ export function PantryCheckoutScreen() {
       const { redirected } = await continueHostedPayment(res.data.payment, { panel: 'user' });
       if (redirected) return;
 
-      // 3b. Razorpay: pay inside the pop-up.
-      const loaded = await loadRazorpayScript();
-      if (!loaded || !window.Razorpay) {
-        toast.error(t("Razorpay SDK not loaded."));
-        return;
-      }
-      const { order: firstOrder, razorpayOrderId, razorpayKeyId, razorpayAmount, payment } = res.data;
-      const options = {
-        key: razorpayKeyId,
-        amount: razorpayAmount,
-        currency: payment?.currency || 'INR',
-        name: 'Rogas Pantry',
-        description: t("Pantry Order — {{count}} group", { count: groups.length }),
-        order_id: razorpayOrderId,
-        handler: async (response) => {
-          try {
-            const verifyRes = await dmbCustomerAPI.verifyPantryPayment({
-              orderId: firstOrder.orderId,
-              transactionId: payment?.transactionId,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            });
-            if (!verifyRes.data?.success) throw new Error('Payment verification failed');
-            clearCart();
-            toast.success(t("Payment successful! Your orders are placed."));
-            navigate('/user/orders');
-          } catch (err) {
-            toast.error(t("Payment verification failed. Contact support."));
-          }
-        },
-        theme: { color: '#1F7A63' },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', () => toast.error(t("Payment failed or cancelled.")));
-      rzp.open();
+      // No hosted page came back: the server offered no payment method this screen can open.
+      toast.error(t("This payment method is not available. Please choose another one."));
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || t("Payment initiation failed."));

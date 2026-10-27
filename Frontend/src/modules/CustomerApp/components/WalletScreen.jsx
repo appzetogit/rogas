@@ -7,17 +7,6 @@ import usePaymentMethods from "../../../shared/payments/usePaymentMethods";
 import PaymentMethodPicker from "../../../shared/payments/PaymentMethodPicker";
 import { continueHostedPayment, paymentRequestExtras } from "../../../shared/payments/api";
 
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 export function WalletScreen({ onBack, currentUser }) {
     const { t } = useTranslation("customer");
     const { money, currency } = useMoney({ dialCode: currentUser?.countryCode });
@@ -65,50 +54,8 @@ export function WalletScreen({ onBack, currentUser }) {
             const { redirected } = await continueHostedPayment(data.payment, { panel: 'user' });
             if (redirected) return;
 
-            // 2b. Razorpay: pay inside the pop-up.
-            const loaded = await loadRazorpayScript();
-            if (!loaded) {
-                console.error("Razorpay SDK failed to load");
-                return;
-            }
-            const { orderId: razorpayOrderId, amount: orderAmount, currency, key: rzpKey } = data.razorpay;
-            const options = {
-                key: rzpKey || import.meta.env.VITE_RAZORPAY_KEY_ID || '',
-                amount: orderAmount,
-                currency: currency,
-                name: 'DailyMealBox',
-                description: t("Wallet Top-up"),
-                order_id: razorpayOrderId,
-                handler: async (response) => {
-                    try {
-                        const verifyRes = await dmbCustomerAPI.verifyWalletTopupPayment({
-                            transactionId: data.payment?.transactionId,
-                            razorpayOrderId: response.razorpay_order_id,
-                            razorpayPaymentId: response.razorpay_payment_id,
-                            razorpaySignature: response.razorpay_signature
-                        });
-                        if (verifyRes.data?.success) {
-                            setWalletData(verifyRes.data.data.wallet);
-                            setShowTopupModal(false);
-                            setTopupAmount('');
-                        }
-                    } catch (err) {
-                        console.error("Verification failed", err);
-                    }
-                },
-                prefill: {
-                    name: currentUser?.name || '',
-                    email: currentUser?.email || '',
-                    contact: currentUser?.phone || ''
-                },
-                theme: { color: '#1f7a63' }
-            };
-
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                console.error("Payment failed", response.error);
-            });
-            rzp.open();
+            // No hosted page came back: the server offered no payment method this screen can open.
+            console.error("No payment page was returned for this top-up");
         } catch (error) {
             console.error("Topup error", error);
         } finally {

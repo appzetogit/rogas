@@ -5,9 +5,8 @@ import { adminAPI } from '../../../../../services/api';
 const PROVIDER_INFO = {
   przelewy24: { name: 'Przelewy24', currencies: 'PLN, EUR, CZK, GBP, HUF', blurb: 'Polish bank transfers, BLIK and cards. Customer is redirected to the Przelewy24 page.' },
   stripe: { name: 'Stripe', currencies: 'All currencies', blurb: 'Cards, Apple Pay, Google Pay (and BLIK / Przelewy24 when enabled in your Stripe dashboard). Hosted Stripe Checkout page.' },
-  razorpay: { name: 'Razorpay', currencies: 'INR only', blurb: 'UPI, cards, net banking and wallets in a pop-up. Only offered where the currency is INR.' },
 };
-const PROVIDER_ORDER = ['przelewy24', 'stripe', 'razorpay'];
+const PROVIDER_ORDER = ['przelewy24', 'stripe'];
 
 const STATUS_STYLE = {
   paid: 'bg-green-100 text-green-700', partially_refunded: 'bg-amber-100 text-amber-700', refunded: 'bg-slate-200 text-slate-700',
@@ -201,7 +200,6 @@ function ProvidersTab({ notify }) {
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {[['Przelewy24 notifications (urlStatus)', data.urls.webhooks.przelewy24, 'Sent automatically with every payment, no dashboard setting needed.'],
             ['Stripe webhook endpoint', data.urls.webhooks.stripe, 'Add in Stripe Dashboard > Developers > Webhooks. Events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded.'],
-            ['Razorpay webhook', data.urls.webhooks.razorpay, 'Events: payment.captured, payment.failed, refund.processed.'],
             ['App return address', `${data.urls.app}/payment/return`, 'Where customers land after paying on a provider page.']].map(([label, url, hint]) => (
             <div key={label} className="p-4 flex items-start justify-between gap-3">
               <div className="min-w-0">

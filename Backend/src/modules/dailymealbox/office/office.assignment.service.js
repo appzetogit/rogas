@@ -41,7 +41,7 @@ const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const LIVE = ['active', 'paused'];
 // While a payment's employees are being given their subscriptions nobody else may start the same work.
 const FULFIL_CLAIM_MS = 10 * 60_000;
-const PAYMENT_METHODS = ['razorpay', 'przelewy24', 'stripe'];
+const PAYMENT_METHODS = ['przelewy24', 'stripe'];
 
 // ─── Delivery address ───────────────────────────────────────────────────────
 

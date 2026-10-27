@@ -7,7 +7,7 @@ import { FoodDeliveryPartner } from '../models/deliveryPartner.model.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
-import { startPayment, findOwnedTransaction, confirmRazorpayPayment, PaymentsError } from '../../../payments/payments.service.js';
+import { startPayment, PaymentsError } from '../../../payments/payments.service.js';
 import { resolvePaymentContext } from '../../../payments/payments.settings.js';
 
 /**
@@ -225,7 +225,6 @@ export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
 /**
  * A driver pays (part of) the cash they hold to the platform. The provider and currency follow the driver's country;
  * the deposit row itself is only written once the money has really arrived (see the driver_deposit payment purpose).
- * `razorpay` in the result keeps the shape older clients expect.
  */
 export const createDeliveryCashDepositOrder = async (deliveryPartnerId, amountValue, opts = {}) => {
     const amount = Number(amountValue);
@@ -258,33 +257,10 @@ export const createDeliveryCashDepositOrder = async (deliveryPartnerId, amountVa
             returnPath: opts.returnPath || '/food/delivery/pocket',
             cancelPath: opts.cancelPath || '/food/delivery/pocket'
         });
-        const data = { payment };
-        if (payment.provider === 'razorpay') {
-            data.razorpay = { key: payment.action.key, orderId: payment.action.orderId, amount: payment.action.amount, currency: payment.action.currency };
-        }
-        return data;
+        return { payment };
     } catch (err) {
         if (err instanceof PaymentsError) throw new ValidationError(err.message);
         throw err;
     }
 };
 
-/** Razorpay only: the app reports the pop-up result; the deposited amount is the one stored on our payment record. */
-export const verifyDeliveryCashDepositPayment = async (deliveryPartnerId, payload = {}) => {
-    const tx = await findOwnedTransaction({
-        publicId: payload?.transactionId,
-        providerOrderId: String(payload?.razorpayOrderId || '').trim(),
-        purpose: 'driver_deposit',
-        ownerId: deliveryPartnerId
-    });
-    if (!tx) throw new ValidationError('Payment not found');
-    try {
-        const after = await confirmRazorpayPayment(tx, payload);
-        if (!['paid', 'partially_refunded', 'refunded'].includes(after.status)) throw new ValidationError('Payment is not completed yet');
-    } catch (err) {
-        if (err instanceof PaymentsError) throw new ValidationError(err.message);
-        throw err;
-    }
-    const deposit = await FoodDeliveryCashDeposit.findOne({ paymentTransactionId: tx.publicId }).lean();
-    return { deposit, wallet: await getDeliveryPartnerWalletEnhanced(deliveryPartnerId) };
-};

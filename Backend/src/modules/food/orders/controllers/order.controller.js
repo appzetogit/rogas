@@ -300,18 +300,6 @@ export async function getCurrentTripDeliveryController(req, res, next) {
     }
 }
 
-export async function createCollectQrController(req, res, next) {
-    try {
-        const deliveryPartnerId = req.user?.userId;
-        const orderId = req.params.orderId;
-        const customerInfo = req.body || {};
-        const result = await orderService.createCollectQr(orderId, deliveryPartnerId, customerInfo);
-        return sendResponse(res, 200, 'QR created', result);
-    } catch (err) {
-        next(err);
-    }
-}
-
 export async function getOrderByIdDeliveryController(req, res, next) {
     try {
         const deliveryPartnerId = req.user?.userId;
