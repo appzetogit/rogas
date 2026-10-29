@@ -9,6 +9,8 @@
  "⏸️ Subscription paused for {{count}} day_other": "⏸️ Subscription paused for {{count}} days",
  "⚠️ Your subscription has <0>{{count}} day</0> remaining._one": "⚠️ Your subscription has <0>{{count}} day</0> remaining.",
  "⚠️ Your subscription has <0>{{count}} day</0> remaining._other": "⚠️ Your subscription has <0>{{count}} days</0> remaining.",
+ "✅ Subscription paused for {{count}} day_one": "✅ Subscription paused for {{count}} day",
+ "✅ Subscription paused for {{count}} day_other": "✅ Subscription paused for {{count}} days",
  "Pause {{count}} Day_one": "Pause {{count}} Day",
  "Pause {{count}} Day_other": "Pause {{count}} Days",
  "Subscription paused for {{count}} day._one": "Subscription paused for {{count}} day.",

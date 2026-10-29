@@ -61,7 +61,7 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
 
     const { DMBMealPlan } = await import('../mealplan/mealPlan.model.js');
     const meals = await DMBMealPlan.find({ vendorId: { $in: vendors.map((v) => v._id) }, status: { $in: ['active', 'pre_order'] } })
-        .select('vendorId temperatureType planCategory status launchDate pricePerDay dietTags').lean();
+        .select('vendorId name temperatureType planCategory status launchDate pricePerDay dietTags').lean();
     const byVendor = new Map();
     for (const m of meals) {
         const k = String(m.vendorId);
@@ -95,7 +95,7 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
         if (filters.temperature && (!temperatureVisible(display, filters.temperature) || !activeMeals.some((m) => m.temperatureType === filters.temperature))) continue;
         if (truthy(filters.rotation) && !rotationCapable) continue;
         if (filters.diet && !activeMeals.some((m) => (m.dietTags || []).includes(String(filters.diet).toLowerCase()) || m.planCategory === filters.diet)) continue;
-        if (search && !`${v.restaurantName} ${v.ownerName} ${(v.cuisines || []).join(' ')}`.toLowerCase().includes(search)) continue;
+        if (search && !`${v.restaurantName} ${v.ownerName} ${v.city || ''} ${(v.cuisines || []).join(' ')} ${vm.map((m) => m.name).join(' ')}`.toLowerCase().includes(search)) continue;
 
         const rating = v.mealRating?.count ? v.mealRating.average : (v.rating || 0);
         out.push({
@@ -106,6 +106,8 @@ export const browseVendors = async ({ zoneId, filters = {}, userId = null }) => 
             image: v.coverImages?.[0] || v.profileImage || '',
             profileImage: v.profileImage || '',
             cuisines: v.cuisines || [],
+            // Names of the meals on offer, so the app's search can find a kitchen by its dishes.
+            mealNames: [...new Set(vm.map((m) => m.name).filter(Boolean))],
             city: v.city,
             rating: rating ? Math.round(rating * 10) / 10 : null,
             ratingCount: v.mealRating?.count || v.totalRatings || 0,

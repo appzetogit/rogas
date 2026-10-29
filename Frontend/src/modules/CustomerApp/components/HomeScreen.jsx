@@ -20,6 +20,10 @@ import { useNavigate } from "react-router-dom";
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
+/** Lower-case and strip accents so "pierogi" finds "Pierogi" and "lodz" finds "Łódź". */
+const normalizeText = (value) =>
+  String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0142/gi, "l").toLowerCase().trim();
+
 const normalizeImageUrl = (imageUrl) => {
   if (!imageUrl) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
   if (typeof imageUrl === "object") return imageUrl.url || imageUrl.secure_url || "";
@@ -388,20 +392,22 @@ export function HomeScreen({
     onShowNotificationToast?.(t("Added {{name}} to pantry bag!", { name: item.title }));
   };
 
-  // Filtered lists based on search
-  const filteredVendors = vendors.filter((v) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    const nameMatch = (v.name || v.restaurantName || "").toLowerCase().includes(q);
-    const cuisineMatch = (v.cuisines || []).some((c) => (typeof c === "string" ? c : c.name || "").toLowerCase().includes(q));
-    return nameMatch || cuisineMatch;
-  });
-
-  const filteredPantry = pantryItems.filter((i) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (i.title || "").toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q);
-  });
+  // Search: every word typed must match (accents and case ignored) a kitchen's name, chef, city, cuisines or dishes,
+  // or a pantry item's name, description or category.
+  const searchTokens = normalizeText(searchQuery).split(/\s+/).filter(Boolean);
+  const isSearching = searchTokens.length > 0;
+  const matchesSearch = (...parts) => {
+    const haystack = normalizeText(parts.flat().filter(Boolean).join(" "));
+    return searchTokens.every((token) => haystack.includes(token));
+  };
+  const cuisineNames = (v) => (v.cuisines || []).map((c) => (typeof c === "string" ? c : c?.name || ""));
+  const filteredVendors = vendors.filter(
+    (v) => !isSearching || matchesSearch(v.name, v.restaurantName, v.chefName, v.city, cuisineNames(v), v.mealNames)
+  );
+  const dishHits = (v) =>
+    isSearching ? (v.mealNames || []).filter((n) => searchTokens.some((token) => normalizeText(n).includes(token))).slice(0, 3) : [];
+  const filteredPantry = pantryItems.filter((i) => !isSearching || matchesSearch(i.title, i.description, i.categoryName));
+  const nothingFound = isSearching && !vendorsLoading && !pantryLoading && filteredVendors.length === 0 && filteredPantry.length === 0;
 
   // ─── Render Active Meal Card ──────────────────────────────────────────────
   const renderMealCard = (meal, label, isToday = false) => {
@@ -572,12 +578,21 @@ export function HomeScreen({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur(); // closes the phone keyboard so the results are visible
+                if (e.key === "Escape") setSearchQuery("");
+              }}
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              aria-label={t("Search meals, tiffin kitchens, pantry grocery...")}
               placeholder={t("Search meals, tiffin kitchens, pantry grocery...")}
               className="w-full h-12 pl-12 pr-10 bg-white text-slate-900 rounded-2xl text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 shadow-md transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
+                aria-label={t("Clear search")}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
               >
                 <X size={18} />
@@ -588,10 +603,10 @@ export function HomeScreen({
       </header>
 
       {/* ─── Main Content Container ────────────────────────────────────────── */}
-      <main className="px-4 sm:px-8 max-w-6xl mx-auto -mt-6 space-y-7 relative z-20">
+      <main className={`px-4 sm:px-8 max-w-6xl mx-auto ${isSearching ? "mt-5" : "-mt-6"} space-y-7 relative z-20`}>
 
         {/* Multi-Meal Alert Banner - Clean Mint Theme */}
-        {showBanner && (
+        {showBanner && !isSearching && (
           <div className="bg-emerald-50/90 text-emerald-950 border border-emerald-200/80 p-4 rounded-2xl flex justify-between items-center shadow-xs">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-[#1F7A63] text-white shadow-xs">
@@ -611,6 +626,8 @@ export function HomeScreen({
           </div>
         )}
 
+        {!isSearching && (
+        <>
         {/* ─── Category Quick-Action Hub with Seeded 3D Images ────────────── */}
         <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-100">
           <div className="grid grid-cols-5 gap-2 sm:gap-4 items-start">
@@ -749,14 +766,19 @@ export function HomeScreen({
           </>
         )}
 
+        </>
+        )}
+
+        {(!isSearching || vendorsLoading || filteredVendors.length > 0) && (
+        <>
         {/* ─── Featured Kitchens & Tiffin Makers ──────────────────────────── */}
         <section className="space-y-4">
           <div className="flex items-start sm:items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
-                Top Home Kitchens & Makers
+                {isSearching ? t("Kitchens") : "Top Home Kitchens & Makers"}
               </h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Curated daily meal plans prepared fresh in your zone</p>
+              {!isSearching && <p className="text-xs text-slate-500 font-medium mt-0.5">Curated daily meal plans prepared fresh in your zone</p>}
             </div>
             <button
               onClick={onGoToPlans}
@@ -780,12 +802,11 @@ export function HomeScreen({
           ) : filteredVendors.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-xs space-y-3">
               <span className="text-4xl">👨‍🍳</span>
-              <h3 className="text-base font-bold text-slate-800">No Kitchens Found Matching Search</h3>
-              <p className="text-xs text-slate-500">Try searching for other cuisines or clear the search query.</p>
+              <h3 className="text-base font-bold text-slate-800">{t("No kitchens deliver to your area yet.")}</h3>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {filteredVendors.slice(0, 6).map((vendor) => {
+              {(isSearching ? filteredVendors : filteredVendors.slice(0, 6)).map((vendor) => {
                 const cover = normalizeImageUrl(
                   vendor.coverImages?.[0] || vendor.profileImage || vendor.logo
                 );
@@ -837,6 +858,14 @@ export function HomeScreen({
                         ))}
                       </div>
 
+                      {dishHits(vendor).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {dishHits(vendor).map((name) => (
+                            <span key={name} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">🍽️ {name}</span>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                         <button
                           onClick={() => setOpenPlansFor(vendor)}
@@ -860,16 +889,23 @@ export function HomeScreen({
           )}
         </section>
 
+        </>
+        )}
+
+        {(!isSearching || pantryLoading || filteredPantry.length > 0) && (
+        <>
         {/* ─── Pantry Essentials Store (Direct In-Home Ordering) ───────────── */}
         <section id="pantry-section" className="space-y-4 pt-2">
           <div className="flex items-start sm:items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
-                Pantry Essentials & Daily Staples
+                {isSearching ? t("Pantry Items") : "Pantry Essentials & Daily Staples"}
               </h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Breads, milk, sweets & groceries bundled with your meal delivery
-              </p>
+              {!isSearching && (
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Breads, milk, sweets & groceries bundled with your meal delivery
+                </p>
+              )}
             </div>
             <button
               onClick={() => onGoToPlans()}
@@ -898,7 +934,7 @@ export function HomeScreen({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-              {filteredPantry.slice(0, 8).map((item) => {
+              {(isSearching ? filteredPantry : filteredPantry.slice(0, 8)).map((item) => {
                 const img = normalizeImageUrl(item.image);
                 const qty = getItemQuantity(item._id);
 
@@ -962,6 +998,25 @@ export function HomeScreen({
           )}
         </section>
 
+        </>
+        )}
+
+        {nothingFound && (
+          <section className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-xs space-y-3">
+            <span className="text-4xl">🔍</span>
+            <h3 className="text-base font-bold text-slate-800">{t("No results for “{{query}}”", { query: searchQuery.trim() })}</h3>
+            <p className="text-xs text-slate-500">{t("Try a different word or check the spelling.")}</p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="px-4 py-2 rounded-xl bg-[#1F7A63] text-white text-xs font-extrabold active:scale-95 transition-all cursor-pointer"
+            >
+              {t("Clear search")}
+            </button>
+          </section>
+        )}
+
+        {!isSearching && (
+        <>
         {/* ─── Why Rogas / DailyMealBox (Trust & Value Props) ───────────────── */}
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="text-center max-w-md mx-auto space-y-1">
@@ -1075,6 +1130,8 @@ export function HomeScreen({
           )}
         </section>
 
+        </>
+        )}
       </main>
 
       {/* ─── Floating Pantry Cart Bottom Bar ───────────────────────────────── */}
