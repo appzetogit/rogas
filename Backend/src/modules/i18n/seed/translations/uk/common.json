@@ -64,6 +64,8 @@
  "Delivery days": "Дні доставки",
  "Delivery VAT": "ПДВ на доставку",
  "Description": "Опис",
+ "Details loaded from the official registry (VAT status: {{status}}). You can edit them.": "Дані завантажено з офіційного реєстру (статус ПДВ: {{status}}). Їх можна змінити.",
+ "Details loaded from the official registry. You can edit them.": "Дані завантажено з офіційного реєстру. Їх можна змінити.",
  "Didn't receive code? Resend": "Не отримали код? Надіслати ще раз",
  "Documents": "Документи",
  "Done": "Готово",

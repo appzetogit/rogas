@@ -2238,6 +2238,8 @@ export const serviceManagementAPI = {
 // ─── Amendment v2 Extra (gaps A–Z, AA–AL) ────────────────────────────────────────────────────────────────────
 /** Customer app. Every call returns axios's response; bodies are { success, ... }. */
 export const dmbExtraCustomerAPI = {
+  /** Company details (name, street, post code, city, VAT status) for a Polish NIP, from the official VAT registry. */
+  nipLookup: (nip) => userClient.get(`/dmb/customer/nip-lookup/${encodeURIComponent(String(nip))}`),
   // Pricing & checkout (server quote is authoritative; checkout sends the total the customer saw as expectedTotal)
   quote: (body) => userClient.post("/dmb/payments/quote", body),
   /** vendorId: the plans that maker created. Without it: the platform plans (used by rotations). */

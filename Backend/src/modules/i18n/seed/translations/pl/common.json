@@ -64,6 +64,8 @@
  "Delivery days": "Dni dostaw",
  "Delivery VAT": "VAT od dostawy",
  "Description": "Opis",
+ "Details loaded from the official registry (VAT status: {{status}}). You can edit them.": "Dane wczytane z oficjalnego rejestru (status VAT: {{status}}). Możesz je edytować.",
+ "Details loaded from the official registry. You can edit them.": "Dane wczytane z oficjalnego rejestru. Możesz je edytować.",
  "Didn't receive code? Resend": "Nie otrzymano kodu? Wyślij ponownie",
  "Documents": "Dokumenty",
  "Done": "Gotowe",

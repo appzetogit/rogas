@@ -64,6 +64,8 @@
  "Delivery days": "Liefertage",
  "Delivery VAT": "MwSt. auf Lieferung",
  "Description": "Beschreibung",
+ "Details loaded from the official registry (VAT status: {{status}}). You can edit them.": "Daten aus dem offiziellen Register geladen (USt-Status: {{status}}). Du kannst sie bearbeiten.",
+ "Details loaded from the official registry. You can edit them.": "Daten aus dem offiziellen Register geladen. Du kannst sie bearbeiten.",
  "Didn't receive code? Resend": "Code nicht erhalten? Erneut senden",
  "Documents": "Dokumente",
  "Done": "Fertig",

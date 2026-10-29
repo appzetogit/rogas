@@ -23,6 +23,7 @@
     "test:payments": "node --test tests/payments.test.mjs",
     "test:plan-pricing": "node --test tests/planPricing.test.mjs",
     "test:email": "node --test tests/email.test.mjs",
+    "test:nip-lookup": "node --test tests/nipLookup.test.mjs",
     "test:subscription-emails": "node --test tests/subscriptionEmails.test.mjs",
     "test:attendance": "node --test tests/attendance.test.mjs",
     "test:subscription-engine": "node --test tests/subscriptionEngine.test.mjs",

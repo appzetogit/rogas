@@ -10,6 +10,7 @@ import {
     changeSubscriptionAddress, overrideOrderAddress, upcomingDeliveries, updateRotation, findCustomerSubscription
 } from '../subscription/subscriptionManage.service.js';
 import { replaceSubscriptionSlot } from '../deliverySlot/slotMigration.service.js';
+import { nipLookupRateLimiter } from '../../../middleware/rateLimit.js';
 
 /**
  * Customer endpoints added by Amendment v2 Extra. Mounted at /api/v1/dmb.
@@ -91,6 +92,16 @@ router.put('/customer/invoice-delivery', ...customer, send(async (req) => {
     await FoodUser.updateOne({ _id: uid(req) }, { $set: update });
     return { invoiceDeliveryMethod: method, whatsappNumber: number };
 }));
+
+// ─── NIP -> company details: pre-fills the customer's VAT-invoice form (official VAT registry, no key) ───────────
+router.get('/customer/nip-lookup/:nip', ...customer, nipLookupRateLimiter, async (req, res) => {
+    try {
+        const { lookupNip } = await import('../office/nipLookup.service.js');
+        res.json({ success: true, company: await lookupNip(req.params.nip) });
+    } catch (err) {
+        res.status(err.status || 500).json({ success: false, message: err.status ? err.message : 'Could not look up this NIP right now.' });
+    }
+});
 
 // ─── Gap AI: eco preference (ranking boost only) ─────────────────────────────────────────────────────────
 router.put('/customer/eco-preference', ...customer, send(async (req) => {

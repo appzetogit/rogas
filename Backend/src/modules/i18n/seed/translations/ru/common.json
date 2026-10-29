@@ -64,6 +64,8 @@
  "Delivery days": "Дни доставки",
  "Delivery VAT": "НДС на доставку",
  "Description": "Описание",
+ "Details loaded from the official registry (VAT status: {{status}}). You can edit them.": "Данные загружены из официального реестра (статус НДС: {{status}}). Их можно изменить.",
+ "Details loaded from the official registry. You can edit them.": "Данные загружены из официального реестра. Их можно изменить.",
  "Didn't receive code? Resend": "Не получили код? Отправить снова",
  "Documents": "Документы",
  "Done": "Готово",

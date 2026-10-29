@@ -46,3 +46,17 @@ export const uploadRateLimiter = rateLimit({
         message: 'Too many uploads. Please try again later.'
     }
 });
+
+/** NIP lookups ask a public government service: each signed-in customer gets a modest hourly allowance. */
+export const nipLookupRateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: config.nodeEnv === 'development' ? 500 : 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => String(req.user?.userId || req.user?._id || 'anonymous'),
+    validate: { keyGeneratorIpFallback: false },
+    message: {
+        success: false,
+        message: 'Too many company lookups. Please try again later.'
+    }
+});

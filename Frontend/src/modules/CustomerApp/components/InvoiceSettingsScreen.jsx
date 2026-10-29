@@ -1,25 +1,90 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { IMAGES } from "../types";
 import { ArrowLeft, Download } from 'lucide-react';
-import { dmbCustomerAPI } from "@food/api";
+import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
 const fieldCls = "w-full h-12 px-4 bg-white border border-[#bec9c3] focus:border-primary rounded-xl text-sm text-on-surface outline-none";
+
+// The address is kept as one line on the profile and on invoices; the screen edits it as street, post code and city.
+const splitAddress = (raw) => {
+  const text = String(raw || "").trim();
+  const m = text.match(/(\d{2}-\d{3})\s+(.+)$/);
+  if (!m) return { street: text, postCode: "", city: "" };
+  return { street: text.slice(0, m.index).replace(/[,\s]+$/, "").trim(), postCode: m[1], city: m[2].trim() };
+};
+const joinAddress = ({ street, postCode, city }) =>
+  [street.trim(), [postCode.trim(), city.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+const digitsOf = (value) => String(value || "").replace(/\D/g, "");
 export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, currentUser, selectedPlanDetails }) {
   const { t } = useTranslation("customer");
   const [receiptType, setReceiptType] = useState(initialSettings.receiptType);
   const [companyName, setCompanyName] = useState(initialSettings.companyName || currentUser?.companyName || '');
   const [nipVat, setNipVat] = useState(initialSettings.nipVat || currentUser?.companyNip || '');
-  const [companyAddress, setCompanyAddress] = useState(initialSettings.companyAddress || currentUser?.registeredAddress || '');
+  const [address, setAddress] = useState(() => splitAddress(initialSettings.companyAddress || currentUser?.registeredAddress || ''));
   const [billingEmail, setBillingEmail] = useState(initialSettings.billingEmail || currentUser?.billingEmail || currentUser?.email || '');
   const handleSave = () => {
     onSave({
       receiptType,
       companyName,
       nipVat,
-      companyAddress,
+      companyAddress: joinAddress(address),
       billingEmail
     });
   };
+
+  // NIP -> company details from the official VAT registry. Runs only when the customer changes the NIP (never on the
+  // number that was already saved), and fills fields that stay editable.
+  const [nipState, setNipState] = useState({ status: "idle", message: "" }); // idle | loading | found | error
+  const lastLookedUp = useRef(digitsOf(initialSettings.nipVat || currentUser?.companyNip));
+  const autoFilledFor = useRef(""); // the NIP whose registry details are currently in the form
+  useEffect(() => {
+    const nip = digitsOf(nipVat);
+    if (nip.length !== 10) {
+      // Still typing: an old message about a previous number no longer applies.
+      setNipState((state) => (state.status === "idle" ? state : { status: "idle", message: "" }));
+      return undefined;
+    }
+    if (receiptType !== "vat" || nip === lastLookedUp.current) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      lastLookedUp.current = nip;
+      setNipState({ status: "loading", message: "" });
+      try {
+        const res = await dmbExtraCustomerAPI.nipLookup(nip);
+        if (cancelled) return;
+        const c = res.data?.company || {};
+        autoFilledFor.current = nip;
+        setCompanyName(c.companyName || "");
+        setAddress({ street: c.street || c.address || "", postCode: c.postCode || "", city: c.city || "" });
+        const status = c.vatStatus;
+        setNipState({
+          status: "found",
+          message: status && status !== "Czynny"
+            ? t("Details loaded from the official registry (VAT status: {{status}}). You can edit them.", { status })
+            : t("Details loaded from the official registry. You can edit them."),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        lastLookedUp.current = ""; // let the customer try the same number again
+        if (autoFilledFor.current && autoFilledFor.current !== nip) {
+          // The form still holds another company's details: leaving them next to this NIP would invoice the wrong company.
+          autoFilledFor.current = "";
+          setCompanyName("");
+          setAddress({ street: "", postCode: "", city: "" });
+        }
+        const code = err?.response?.status;
+        setNipState({
+          status: "error",
+          message: code === 400 ? t("This NIP number is not valid. Please check the 10 digits.")
+            : code === 404 ? t("No company found for this NIP in the VAT registry.")
+            : code === 429 ? t("Too many company lookups. Please try again later.")
+            : t("The company registry is not reachable right now. Please type the details manually."),
+        });
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nipVat, receiptType]);
 
   // The invoice that can be downloaded is the one of a real, paid subscription (built by the server from what was charged).
   const [invoiceSub, setInvoiceSub] = useState(null);
@@ -136,7 +201,10 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("NIP VAT Number")}
               </label>
-              <input type="text" inputMode="numeric" value={nipVat} onChange={(e) => setNipVat(e.target.value)} className={fieldCls} />
+              <input type="text" inputMode="numeric" autoComplete="off" value={nipVat} onChange={(e) => setNipVat(e.target.value)} className={fieldCls} />
+              {nipState.status === "loading" && <p className="text-xs text-[#6e7a74] ml-1">{t("Looking up the company…")}</p>}
+              {nipState.status === "found" && <p className="text-xs text-[#287965] font-semibold ml-1">{nipState.message}</p>}
+              {nipState.status === "error" && <p className="text-xs text-red-600 font-semibold ml-1">{nipState.message}</p>}
             </div>
 
             {/* Input 3 */}
@@ -144,7 +212,13 @@ export function InvoiceSettingsScreen({ onGoBack, onSave, initialSettings, curre
               <label className="text-[11px] font-bold text-[#6e7a74] uppercase tracking-wider ml-1">
                 {t("Company Address")}
               </label>
-              <input type="text" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} className={fieldCls} />
+              <div className="space-y-2">
+                <input type="text" value={address.street} onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))} placeholder={t("Street and number")} className={fieldCls} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={address.postCode} onChange={(e) => setAddress((a) => ({ ...a, postCode: e.target.value }))} placeholder={t("Postcode")} className={fieldCls} />
+                  <input type="text" value={address.city} onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))} placeholder={t("City")} className={fieldCls} />
+                </div>
+              </div>
             </div>
 
             {/* Input 4 */}

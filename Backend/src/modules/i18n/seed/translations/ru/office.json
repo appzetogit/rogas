@@ -96,8 +96,6 @@
  "Department": "Отдел",
  "Design": "Дизайн",
  "Designation": "Должность",
- "Details loaded from the official registry (VAT status: {{status}}). You can edit them.": "Данные загружены из официального реестра (статус НДС: {{status}}). Их можно изменить.",
- "Details loaded from the official registry. You can edit them.": "Данные загружены из официального реестра. Их можно изменить.",
  "Didn't receive a code?": "Не получили код?",
  "Discover, manage, and assign subscriptions from verified organic kitchens.": "Находите, управляйте и назначайте подписки от проверенных органических кухонь.",
  "Documents & Certificates": "Документы и сертификаты",
