@@ -41,10 +41,10 @@ const MaterialIcon = ({ name, filled = false, style = {}, className = "" }) => (
 );
 
 const VEHICLES = [
-  { id: "bicycle", icon: "pedal_bike", label: tKey("Bicycle"), rate: "18-22 PLN/h" },
-  { id: "ebike",   icon: "electric_bolt", label: tKey("E-bike"),  rate: "20-25 PLN/h" },
-  { id: "scooter", icon: "moped",       label: tKey("Scooter"), rate: "26-32 PLN/h" },
-  { id: "car",     icon: "directions_car", label: tKey("Car"),  rate: "22-28 PLN/h" },
+  { id: "bicycle", icon: "pedal_bike", label: tKey("Bicycle") },
+  { id: "ebike",   icon: "electric_bolt", label: tKey("E-bike") },
+  { id: "scooter", icon: "moped",       label: tKey("Scooter") },
+  { id: "car",     icon: "directions_car", label: tKey("Car") },
 ];
 
 const DOCUMENTS_LIST = [
@@ -281,13 +281,6 @@ function VehicleCard({ vehicle, selected, onSelect }) {
       </div>
       <div>
         <p style={{ fontWeight: 700, fontSize: "16px", lineHeight: "24px", margin: 0 }}>{tr(vehicle.label)}</p>
-        <p style={{
-          fontSize: "12px", lineHeight: "16px", letterSpacing: "0.05em", fontWeight: 600, margin: 0,
-          color: selected ? COLORS.primaryFixed : COLORS.onSurfaceVariant,
-          opacity: selected ? 0.9 : 1,
-        }}>
-          {vehicle.rate}
-        </p>
       </div>
     </div>
   );

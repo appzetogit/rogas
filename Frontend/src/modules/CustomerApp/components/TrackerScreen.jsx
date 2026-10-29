@@ -221,7 +221,7 @@ export function TrackerScreen({ onGoBack, onShowNotificationToast, tomorrowMeal,
                 <div>
                   <h2 className="text-lg font-extrabold text-slate-900">{stage.title}</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {t("{{meal}} by {{vendor}}", { meal: tomorrowMeal?.name || t("Meal"), vendor: kitchenName })}
+                    {t("{{meal}} by {{vendor}}", { meal: trackedOrder?.meals?.[0]?.mealPlanName || trackedOrder?.meals?.[0]?.name || tomorrowMeal?.name || t("Meal"), vendor: kitchenName })}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-[#1F7A63]/10 rounded-2xl flex items-center justify-center text-[#1F7A63]">

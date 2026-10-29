@@ -1,6 +1,6 @@
-import useMoney from "@/shared/payments/money";
+import useDriverMoney from "../hooks/useDriverMoney";
 import { useState, useEffect } from "react";
-import { Info, Gift, CalendarDays, ShieldCheck, Coins } from "lucide-react";
+import { Info, Gift, Coins } from "lucide-react";
 import { deliveryAPI } from "@food/api";
 import { toast } from "sonner";
 import { Trans, useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ const formatDate = (dateStr) => {
 
 const EarningsView = ({ stats }) => {
   const { t } = useTranslation("driver");
-  const { money } = useMoney();
+  const { money } = useDriverMoney();
   const [activeTab, setActiveTab] = useState("today");
   const getTotalsByTab = () => {
     const periodData = stats[activeTab === "week" ? "week" : activeTab === "month" ? "month" : "today"] || {
@@ -39,29 +39,7 @@ const EarningsView = ({ stats }) => {
       orders: periodData.deliveries
     };
 
-    switch (activeTab) {
-      case "today":
-        return {
-          ...baseData,
-          progressText: "Progress 4/10",
-          progressPercent: 40,
-          progressDesc: "Deliver 6 more orders today to earn 25 PLN extra."
-        };
-      case "week":
-        return {
-          ...baseData,
-          progressText: "Progress 8/10",
-          progressPercent: 80,
-          progressDesc: "Deliver 8 more shifts this week to achieve Elite partner status."
-        };
-      case "month":
-        return {
-          ...baseData,
-          progressText: "Progress 10/10",
-          progressPercent: 100,
-          progressDesc: "Monthly quest completed! Enjoy your 250 PLN bonus payout."
-        };
-    }
+    return baseData;
   };
   const data = getTotalsByTab();
 
@@ -99,12 +77,12 @@ const EarningsView = ({ stats }) => {
     const minLimit = walletData?.deliveryWithdrawalLimit || 100;
 
     if (amount < minLimit) {
-      toast.error(t("Minimum withdrawal amount is {{minLimit}} PLN", { minLimit }));
+      toast.error(t("Minimum withdrawal amount is {{minLimit}}", { minLimit: money(minLimit, { compact: true }) }));
       return;
     }
 
     if (amount > pocketBalance) {
-      toast.error(t("Insufficient balance. Max withdrawable: {{pocketBalance}} PLN", { pocketBalance: pocketBalance.toFixed(2) }));
+      toast.error(t("Insufficient balance. Max withdrawable: {{pocketBalance}}", { pocketBalance: money(pocketBalance) }));
       return;
     }
 
@@ -196,8 +174,7 @@ const EarningsView = ({ stats }) => {
         </div>
         
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-extrabold text-[#00604c] tracking-tight">{walletBalance > 0 ? walletBalance.toFixed(2) : data.total.toFixed(2)}</span>
-          <span className="text-sm font-bold text-[#00604c] opacity-80 uppercase">{t("PLN")}</span>
+          <span className="text-3xl font-extrabold text-[#00604c] tracking-tight">{money(walletBalance > 0 ? walletBalance : data.total)}</span>
         </div>
 
         <hr className="my-4 border-[#e0e3e0]" />
@@ -205,7 +182,7 @@ const EarningsView = ({ stats }) => {
         <div className="space-y-3.5">
           <div className="flex justify-between items-center text-xs">
             <span className="font-semibold text-[#3e4945]">{t("Delivery earnings")}</span>
-            <span className="font-bold text-gray-900">{t("{{deliveries}} PLN", { deliveries: data.deliveries.toFixed(2) })}</span>
+            <span className="font-bold text-gray-900">{money(data.deliveries)}</span>
           </div>
           
           <div className="flex justify-between items-center text-xs">
@@ -214,13 +191,13 @@ const EarningsView = ({ stats }) => {
               {activeTab === "today" && <span className="bg-[#9ef3d7] text-[#005140] text-[8px] font-extrabold px-1.5 py-0.5 rounded-full tracking-wider animate-pulse">
                   {t("NEW")}
                 </span>}
-              <span className="font-bold text-gray-900">{t("{{tips}} PLN", { tips: data.tips.toFixed(2) })}</span>
+              <span className="font-bold text-gray-900">{money(data.tips)}</span>
             </div>
           </div>
 
           <div className="flex justify-between items-center text-xs">
             <span className="font-semibold text-[#3e4945]">{t("Guarantee top-up")}</span>
-            <span className="font-bold text-gray-900">{t("{{topUp}} PLN", { topUp: data.topUp.toFixed(2) })}</span>
+            <span className="font-bold text-gray-900">{money(data.topUp)}</span>
           </div>
         </div>
       </section>
@@ -231,14 +208,14 @@ const EarningsView = ({ stats }) => {
           <div>
             <h4 className="font-extrabold text-sm text-[#181d1b]">{t("AVAILABLE TO WITHDRAW")}</h4>
             <p className="text-[11px] text-[#3e4945] font-semibold mt-0.5">
-              <Trans t={t} i18nKey={"Pocket Balance: <0>{{pocketBalance}} PLN</0>"} defaults={"Pocket Balance: <0>{{pocketBalance}} PLN</0>"} values={{ pocketBalance: walletData?.pocketBalance?.toFixed(2) || "0.00" }} components={[<span 
+              <Trans t={t} i18nKey={"Pocket Balance: <0>{{pocketBalance}}</0>"} defaults={"Pocket Balance: <0>{{pocketBalance}}</0>"} values={{ pocketBalance: money(walletData?.pocketBalance || 0) }} components={[<span 
                 className="font-bold text-[#00604c] cursor-pointer hover:underline"
                 onClick={() => setWithdrawAmount(String(walletData?.pocketBalance || 0))}
                 title={t("Click to fill full balance")} />]} />
             </p>
           </div>
           <span className="text-[10px] font-bold text-[#3e4945] bg-[#ebefeb] px-2.5 py-1 rounded-lg">
-            {t("Min Limit: {{deliveryWithdrawalLimit}} PLN", { deliveryWithdrawalLimit: walletData?.deliveryWithdrawalLimit || 100 })}
+            {t("Min Limit: {{deliveryWithdrawalLimit}}", { deliveryWithdrawalLimit: money(walletData?.deliveryWithdrawalLimit || 100, { compact: true }) })}
           </span>
         </div>
 
@@ -295,8 +272,8 @@ const EarningsView = ({ stats }) => {
               
               <p className="text-xs text-[#3e4945] font-medium leading-relaxed">
                 {progressPercent >= 100 
-                  ? t("Completed! Enjoy your {{targetAmount}} PLN bonus payout.", { targetAmount: addon.targetAmount }) 
-                  : t("Deliver {{count}} more order to earn {{targetAmount}} PLN extra.", { count: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
+                  ? t("Completed! Enjoy your {{targetAmount}} bonus payout.", { targetAmount: money(addon.targetAmount, { compact: true }) }) 
+                  : t("Deliver {{count}} more order to earn {{targetAmount}} extra.", { count: addon.targetOrders - addon.currentOrders, targetAmount: money(addon.targetAmount, { compact: true }) })}
               </p>
             </section>
           );
@@ -310,102 +287,6 @@ const EarningsView = ({ stats }) => {
           <p className="text-xs font-medium">{t("Check back later for new bonus challenges and earning opportunities.")}</p>
         </section>
       )}
-
-      {
-    /* 7-Day Chart Section drawing beautiful custom visual layout blocks echoing the screenshot */
-  }
-      <section className="bg-white border border-[#e0e3e0] rounded-2xl p-5 shadow-sm space-y-3">
-        <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest mb-4">{t("7-DAY HISTORIC EARNINGS")}</h3>
-        
-        <div className="flex items-end justify-between h-36 gap-2 pt-2">
-          {
-    /* Monday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "35%" }} title={t("Monday: 45 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Mon")}</span>
-          </div>
-          
-          {
-    /* Tuesday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "65%" }} title={t("Tuesday: 92 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Tue")}</span>
-          </div>
-          
-          {
-    /* Wednesday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "50%" }} title={t("Wednesday: 70 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Wed")}</span>
-          </div>
-          
-          {
-    /* Thursday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "80%" }} title={t("Thursday: 115 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Thu")}</span>
-          </div>
-          
-          {
-    /* Friday (ACTIVE Selected Hottest!) */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#00604c] rounded-t-lg shadow-sm" style={{ height: "100%" }} title={t("Friday: 144 PLN (Hottest Day)")} />
-            <span className="text-[9px] font-extrabold text-[#00604c] underline">{t("Fri")}</span>
-          </div>
-          
-          {
-    /* Saturday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "25%" }} title={t("Saturday: 30 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Sat")}</span>
-          </div>
-          
-          {
-    /* Sunday */
-  }
-          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-            <div className="w-full bg-[#e0e3e0] rounded-t-lg transition-all hover:bg-[#bec9c3]" style={{ height: "18%" }} title={t("Sunday: 22 PLN")} />
-            <span className="text-[9px] font-bold text-[#3e4945]">{t("Sun")}</span>
-          </div>
-        </div>
-      </section>
-
-      {
-    /* Payout Information Section */
-  }
-      <section className="bg-white border border-[#e0e3e0] rounded-2xl p-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-[#9ef3d7] rounded-full flex items-center justify-center text-[#005140]">
-            <CalendarDays className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-extrabold text-sm text-[#181d1b]">{t("AUTOMATED PAYOUT")}</h4>
-            <p className="text-xs text-[#3e4945] font-medium">{t("Next payout: Friday 16 May")}</p>
-          </div>
-        </div>
-        <button className="bg-[#00604c] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1f7a63] cursor-pointer shadow-sm active:scale-95 transition-transform">
-          {t("DETAILS")}
-        </button>
-      </section>
-
-      {
-    /* Min Guarantee Status Badge */
-  }
-      <div className="bg-[#00604c]/5 border border-[#00604c]/20 rounded-2xl p-4 flex gap-3 shadow-xs">
-        <ShieldCheck className="w-5 h-5 text-[#00604c] flex-shrink-0" />
-        <div className="space-y-0.5">
-          <p className="font-bold text-sm text-[#00604c]">{t("Min guarantee active")}</p>
-          <p className="text-xs text-[#3e4945] leading-relaxed">
-            <Trans t={t} i18nKey={"You are earning a minimum of <0>32 PLN/hr guaranteed</0> for this active shift. Keep accepting assignments!"} defaults={"You are earning a minimum of <0>32 PLN/hr guaranteed</0> for this active shift. Keep accepting assignments!"} components={[<span className="font-bold" />]} />
-          </p>
-        </div>
-      </div>
 
       {/* Dedicated Tips Overview & History Section */}
       <section className="bg-white border border-[#e0e3e0] rounded-2xl p-5 shadow-sm space-y-4">

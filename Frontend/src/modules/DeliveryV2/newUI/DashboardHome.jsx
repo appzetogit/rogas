@@ -4,6 +4,7 @@ import { deliveryAPI } from "@food/api";
 import { useTranslation } from "react-i18next";
 import { PromotionBars } from "./PromotionBars";
 import { HubTasks } from "./HubTasks";
+import useDriverMoney from "../hooks/useDriverMoney";
 
 const DashboardHome = ({
   stats,
@@ -12,6 +13,7 @@ const DashboardHome = ({
   onNavigateToPickup
 }) => {
   const { t } = useTranslation("driver");
+  const { money } = useDriverMoney();
   const [addons, setAddons] = useState([]);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ const DashboardHome = ({
 
       <div className="bg-white p-4 rounded-xl border border-[#e0e3e0] flex flex-col items-center justify-center text-center">
         <DollarSign className="w-5 h-5 text-[#00604c] mb-1" />
-        <span className="text-lg font-bold text-[#181d1b]">{t("{{value}} PLN", { value: (stats?.today?.earned || 0).toFixed(0) })}</span>
+        <span className="text-lg font-bold text-[#181d1b]">{money(stats?.today?.earned || 0, { compact: true })}</span>
         <span className="text-[10px] uppercase font-bold text-[#3e4945] tracking-wider">{t("Earned")}</span>
       </div>
 
@@ -165,8 +167,8 @@ const DashboardHome = ({
             </div>
             <p className="mt-2.5 text-xs text-[#3e4945]">
               {progressPercent >= 100 
-                ? t("Completed! Enjoy your {{targetAmount}} PLN bonus payout.", { targetAmount: addon.targetAmount }) 
-                : t("Deliver {{count}} more order to earn {{targetAmount}} PLN extra", { count: addon.targetOrders - addon.currentOrders, targetAmount: addon.targetAmount })}
+                ? t("Completed! Enjoy your {{targetAmount}} bonus payout.", { targetAmount: money(addon.targetAmount, { compact: true }) }) 
+                : t("Deliver {{count}} more order to earn {{targetAmount}} extra", { count: addon.targetOrders - addon.currentOrders, targetAmount: money(addon.targetAmount, { compact: true }) })}
             </p>
           </div>
         );
@@ -193,7 +195,7 @@ const DashboardHome = ({
         <Wallet className="w-5 h-5 text-amber-600" />
         <div>
           <span className="text-[11px] font-semibold text-[#3e4945] block uppercase tracking-wider">{t("Cash (COD)")}</span>
-          <span className="text-lg font-bold text-gray-900">{t("{{cashInHand}} PLN", { cashInHand: stats.cashInHand ? stats.cashInHand.toFixed(2) : "0.00" })}</span>
+          <span className="text-lg font-bold text-gray-900">{money(stats.cashInHand || 0)}</span>
         </div>
       </div>
 
@@ -201,7 +203,7 @@ const DashboardHome = ({
         <HeartHandshake className="w-5 h-5 text-[#00604c]" />
         <div>
           <span className="text-[11px] font-semibold text-[#3e4945] block uppercase tracking-wider font-sans">{t("Tips Today")}</span>
-          <span className="text-lg font-bold text-gray-900">{t("{{tips}} PLN", { tips: stats.today?.tips ? stats.today.tips.toFixed(2) : "0.00" })}</span>
+          <span className="text-lg font-bold text-gray-900">{money(stats.today?.tips || 0)}</span>
         </div>
       </div>
     </div>

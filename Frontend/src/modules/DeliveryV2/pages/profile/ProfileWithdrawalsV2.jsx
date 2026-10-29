@@ -5,9 +5,11 @@ import { toast } from 'sonner';
 import useDeliveryBackNavigation from '../../hooks/useDeliveryBackNavigation';
 import { useTranslation } from "react-i18next";
 import { getCurrentLanguage } from "@/shared/i18n";
+import useDriverMoney from '../../hooks/useDriverMoney';
 
 export const ProfileWithdrawalsV2 = () => {
   const { t } = useTranslation("driver");
+  const { money } = useDriverMoney();
   const goBack = useDeliveryBackNavigation();
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState(null);
@@ -66,7 +68,7 @@ export const ProfileWithdrawalsV2 = () => {
             return withdrawals.map((tx) => (
               <div key={tx.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-bold text-[#2B2B2B]">{t("{{amount}} PLN", { amount: tx.amount.toFixed(2) })}</p>
+                  <p className="text-sm font-bold text-[#2B2B2B]">{money(tx.amount)}</p>
                   <p className="text-[11px] text-gray-500 font-semibold mt-1">{formatDate(tx.date)}</p>
                 </div>
                 <span className={`text-[10px] font-extrabold px-3 py-1 rounded-lg border uppercase tracking-wider ${

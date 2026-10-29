@@ -347,6 +347,7 @@ export const adminSidebarMenu = [
     roles: ["SUPER_ADMIN", "CITY_MANAGER"],
     items: [
       { type: "link", label: "Zone Setup", path: "/admin/food/zone-setup", icon: "MapPin" },
+      { type: "link", label: "City & Sub-Zones", path: "/admin/food/cities", icon: "Globe" },
       { type: "link", label: "Zone Ranking", path: "/admin/food/zone-ranking", icon: "MapPin" },
     ],
   },

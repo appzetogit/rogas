@@ -75,7 +75,7 @@ const RouteView = ({
         );
     }
 
-    const currentStop = stops[0];
+    const currentStop = stops.find(s => s.status !== 'completed' && s.status !== 'COMPLETED') || stops[0];
 
     const isPickupStop = (st) => st?.type === 'pickup' || st?.type === 'P';
     const targetLat = currentStop?.lat ?? (isPickupStop(currentStop) ? (currentStop?.vendorLat ?? routeMetadata?.vendorLocation?.latitude) : currentStop?.customerLat);
@@ -222,7 +222,11 @@ const RouteView = ({
                             onClick={onNextStep}
                             className="w-full h-[52px] bg-[#1F7A63] text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#1F7A63]/90 shadow-md shadow-[#1F7A63]/10"
                         >
-                            {t("START PICKUP STEP")} <ArrowRight className="w-5 h-5" />
+                            {isPickupStop(currentStop) ? (
+                                <>{t("START PICKUP STEP")} <ArrowRight className="w-5 h-5" /></>
+                            ) : (
+                                <>{t("START DELIVERY STEP")} <ArrowRight className="w-5 h-5" /></>
+                            )}
                         </button>
                     )}
                 </div>
@@ -232,7 +236,7 @@ const RouteView = ({
             <div>
                 <h3 className="text-xs font-bold text-[#3e4945] uppercase tracking-widest px-1 mb-3">{t("UPCOMING STOPS")}</h3>
                 <div className="space-y-3">
-                    {stops.slice(1).map((stop) => {
+                    {stops.filter(s => s !== currentStop).map((stop) => {
                         const pickup = isPickupStop(stop);
                         const st = statusOf(stop);
                         const phone = dialable(stop.phone);

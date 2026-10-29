@@ -1,3 +1,4 @@
+import '../../../core/users/user.model.js';
 import { getSlotPriorityMap, listSlots, slotServesDay } from '../deliverySlot/deliverySlot.service.js';
 // import { DMBDailyOrder } from './dmb.dailyOrder.model.js';
 // import { DMBSubscription } from './subscription.model.js';
@@ -1702,7 +1703,7 @@ export async function notifyVendorsOfDriverUpdate(driver) {
 
     try {
         const { FoodRestaurant } = await import('../../food/restaurant/models/restaurant.model.js');
-        const { CollectionBatch } = await import('../delivery/collectionBatch.model.js');
+        const { CollectionBatch, readCollectionPin } = await import('../delivery/collectionBatch.model.js');
         const { getIO } = await import('../../../config/socket.js');
         const io = getIO();
         if (!io) return;

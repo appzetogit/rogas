@@ -191,6 +191,23 @@ const DeliveryConfirmation = ({
     }
   };
 
+  // Meal boxes and pantry bags are paid online when they are ordered, so once the customer's PIN or the photo has been
+  // accepted there is nothing to collect: the delivery is finished straight away. Only an order marked CASH still goes
+  // through the cash-collection screen.
+  const finishAfterProof = async () => {
+    if (order?.paymentMethod === "CASH") {
+      setPaymentScreenOpen(true);
+      return;
+    }
+    try {
+      await dmbDeliveryAPI.confirmPayment(order.id, "ONLINE");
+      onConfirmDelivered(0);
+    } catch (err) {
+      console.error(err);
+      setErrorText(err.response?.data?.message || t("Error confirming payment on server."));
+    }
+  };
+
   const handleConfirm = async () => {
     // Lock the current order as the active selection so live socket updates don't prematurely switch screens
     if (onSelectOrder && order?.id) {
@@ -230,7 +247,7 @@ const DeliveryConfirmation = ({
           // Submit photo url to delivery endpoint
           const res = await dmbDeliveryAPI.uploadDeliveryPhoto(order.id, photoUrl);
           if (res.data?.success) {
-            setPaymentScreenOpen(true);
+            await finishAfterProof();
           } else {
             setErrorText(res.data?.message || t("Failed to verify photo proof"));
           }
@@ -246,7 +263,7 @@ const DeliveryConfirmation = ({
           setSuccess(false);
           const res = await dmbDeliveryAPI.verifyDeliveryPin(order.id, pinStr);
           if (res.data?.success) {
-            setPaymentScreenOpen(true);
+            await finishAfterProof();
           } else {
             setErrorText(res.data?.message || t("Invalid customer PIN"));
           }

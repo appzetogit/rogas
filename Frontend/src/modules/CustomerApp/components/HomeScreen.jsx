@@ -2,16 +2,37 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import ScrollStickyBar from "../../../shared/components/ScrollStickyBar";
 import { IMAGES } from "../types";
 import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
+import { API_BASE_URL } from "@food/api/config";
 import useDeliverySlots from "../../../shared/hooks/useDeliverySlots";
-import { ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check } from 'lucide-react';
+import { 
+  ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check, 
+  ShoppingBag, Plus, Minus, Search, Star, MapPin, Calendar, Clock, ShieldCheck, 
+  HeartHandshake, Truck, RefreshCw, ChefHat, Award, ArrowUpRight, Store, 
+  AlertCircle, Phone, Info, Leaf, Navigation
+} from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import { getCurrentLanguage } from "@/shared/i18n";
+import { usePantryCart } from "./PantryCartContext";
+import { useAddresses } from "./amendment/addresses";
+import { SubscribeSheet } from "./amendment/SubscribeSheet";
+import { useNavigate } from "react-router-dom";
 
+const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+
+const normalizeImageUrl = (imageUrl) => {
+  if (!imageUrl) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
+  if (typeof imageUrl === "object") return imageUrl.url || imageUrl.secure_url || "";
+  if (typeof imageUrl === "string") {
+    if (/^(https?:)?\/\//i.test(imageUrl)) return imageUrl;
+    return `${BACKEND_ORIGIN}${imageUrl.startsWith("/") ? imageUrl : "/" + imageUrl}`;
+  }
+  return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
+};
 
 const STATUS_COLORS = {
   scheduled: "bg-[#E8F3F0] text-primary",
-  preparing: "bg-amber-100 text-amber-700",
+  preparing: "bg-emerald-50 text-emerald-800",
   ready: "bg-blue-100 text-blue-700",
   out_for_delivery: "bg-purple-100 text-purple-700",
   delivered: "bg-green-100 text-green-700",
@@ -20,10 +41,10 @@ const STATUS_COLORS = {
 
 const STATUS_LABELS = {
   scheduled: "Scheduled",
-  preparing: "In Preparation ",
+  preparing: "In Preparation 👨‍🍳",
   ready: "Ready for Pickup ✓",
-  out_for_delivery: "On the Way ",
-  delivered: "Delivered ",
+  out_for_delivery: "On the Way 🛵",
+  delivered: "Delivered 🎉",
   skipped: "Skipped",
 };
 
@@ -31,9 +52,8 @@ const FALLBACK_MEAL_PHOTO =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60";
 
 // ─── Module-level cache (survives tab switches, cleared on logout) ──────────
-// Structure: { data: { today, tomorrow }, fetchedAt: timestamp }
 let _mealCache = null;
-const CACHE_TTL_MS = 60_000; // 1 minute
+const CACHE_TTL_MS = 60_000;
 
 export function clearMealCache() {
   _mealCache = null;
@@ -57,6 +77,9 @@ export function HomeScreen({
   onGoToCalendar,
   onGoToOrders,
   onGoToProfile,
+  onGoToWallet,
+  onSelectPlan,
+  onTrackLive,
   onShowNotificationToast,
   tomorrowMeal,
   setTomorrowMeal,
@@ -68,15 +91,36 @@ export function HomeScreen({
   const { t } = useTranslation("customer");
   const { money } = useMoney();
   const { label: slotLabel } = useDeliverySlots();
+  const navigate = useNavigate();
+  const { cart, addItem, removeItem, getItemQuantity, cartTotal, totalItems } = usePantryCart();
+  const { addresses } = useAddresses();
+
+  // Zone detection
+  const defaultAddress = addresses?.find((a) => a.isDefault) || addresses?.[0];
+  const [zoneId, setZoneId] = useState(
+    defaultAddress?.zoneId ? String(defaultAddress.zoneId) : localStorage.getItem("userZoneId") || ""
+  );
+  const [zoneName, setZoneName] = useState(defaultAddress?.city || "Indore");
+
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // ── Strategy 1: Initialise state from cache immediately (no spinner flash) ─
+  // ── Strategy 1: Initialise state from cache immediately ─
   const cached = getCachedMeals();
   const [todayMeal, setTodayMeal] = useState(cached?.today ?? null);
   const [tomorrowMealData, setTomorrowMealData] = useState(cached?.tomorrow ?? null);
-  // If we already have cached data, don't show the loading spinner at all
   const [loading, setLoading] = useState(!cached);
+  const filteredTodayMeal = todayMeal;
+  const filteredTomorrowMealData = tomorrowMealData;
+
+  // ─── Real Vendors & Pantry Items State ────────────────────────────────────
+  const [vendors, setVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(true);
+  const [pantryItems, setPantryItems] = useState([]);
+  const [pantryLoading, setPantryLoading] = useState(true);
+  const [openPlansFor, setOpenPlansFor] = useState(null); // Opens SubscribeSheet directly
 
   // ─── Manage Sheet State ──────────────────────────────────────────────────
   const [manageOrder, setManageOrder] = useState(null);
@@ -85,10 +129,82 @@ export function HomeScreen({
   const [selectedMealIds, setSelectedMealIds] = useState([]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [pauseDays, setPauseDays] = useState(1);
-  // Subscribers whose next delivery is further out than tomorrow (weekend, a start date next week): the
-  // today/tomorrow cards are empty, so the header and card come from the delivery calendar instead.
-  // undefined = still checking, so the "Start Your Meal Plan" card doesn't flash for subscribers.
   const [upcoming, setUpcoming] = useState(undefined);
+
+  // ─── Resolve Zone Fallback ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!zoneId) {
+      dmbCustomerAPI.getPublicZones()
+        .then((res) => {
+          const list = res.data?.data?.zones || res.data?.zones || [];
+          if (list.length > 0) {
+            const firstZone = list[0];
+            const zId = String(firstZone._id);
+            setZoneId(zId);
+            setZoneName(firstZone.name || firstZone.city || "Indore");
+            localStorage.setItem("userZoneId", zId);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [zoneId]);
+
+  // ─── Fetch Real Vendors ───────────────────────────────────────────────────
+  useEffect(() => {
+    let alive = true;
+    setVendorsLoading(true);
+
+    const fetchVendors = async () => {
+      try {
+        if (zoneId) {
+          const res = await dmbExtraCustomerAPI.browseVendors({ zoneId });
+          if (alive && res.data?.vendors) {
+            setVendors(res.data.vendors);
+            setVendorsLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        // fallback to public plans if zone error
+      }
+
+      // Fallback: fetch via public active vendors / plans
+      try {
+        const res = await dmbCustomerAPI.getPublicZones();
+        const zones = res.data?.data?.zones || res.data?.zones || [];
+        if (zones.length > 0 && !zoneId) {
+          const fallbackZoneId = String(zones[0]._id);
+          const vRes = await dmbExtraCustomerAPI.browseVendors({ zoneId: fallbackZoneId });
+          if (alive && vRes.data?.vendors) {
+            setVendors(vRes.data.vendors);
+            setVendorsLoading(false);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      if (alive) setVendorsLoading(false);
+    };
+
+    fetchVendors();
+    return () => { alive = false; };
+  }, [zoneId]);
+
+  // ─── Fetch Real Pantry Items ──────────────────────────────────────────────
+  useEffect(() => {
+    let alive = true;
+    setPantryLoading(true);
+    dmbCustomerAPI.getAllPantryItems(zoneId || undefined)
+      .then((res) => {
+        if (alive && res.data?.success) {
+          setPantryItems((res.data.items || []).filter((i) => i.isAvailable !== false));
+        }
+      })
+      .catch((err) => console.error("Pantry fetch err:", err))
+      .finally(() => { if (alive) setPantryLoading(false); });
+
+    return () => { alive = false; };
+  }, [zoneId]);
 
   // ─── Fetch meals from API ────────────────────────────────────────────────
   const loadTodayMeals = useCallback(async ({ bustCache = false } = {}) => {
@@ -96,15 +212,12 @@ export function HomeScreen({
       const token = localStorage.getItem("user_accessToken");
       if (!token) { setLoading(false); return; }
 
-      // ── Strategy 2: Return immediately from cache, refetch silently ────────
       if (!bustCache) {
         const hit = getCachedMeals();
         if (hit) {
           setTodayMeal(hit.today);
           setTomorrowMealData(hit.tomorrow);
           setLoading(false);
-          // Still do a background revalidation so data stays fresh
-          // (won't cause a visible spinner since loading is already false)
         }
       }
 
@@ -122,12 +235,12 @@ export function HomeScreen({
           setTomorrowMeal((prev) => ({
             ...prev,
             name: tomorrowName,
-            status: tomorrow.status,
+            status: tomorrow.status === "skipped" ? "Skipped" : "Scheduled",
           }));
         }
       }
     } catch {
-      // Not logged in or no active subscription — silently ignore
+      // Offline fallback
     } finally {
       setLoading(false);
     }
@@ -137,57 +250,21 @@ export function HomeScreen({
     loadTodayMeals();
   }, [loadTodayMeals]);
 
-  // ─── Socket.IO real-time updates ─────────────────────────────────────────
+  // Listen to live socket order status updates
   useEffect(() => {
     if (!socket) return;
-
     const handleStatusUpdate = (data) => {
-      const updatedDate = new Date(data.deliveryDate).toDateString();
-      const patchCard = (card) => {
-        if (!card) return card;
-        return new Date(card.deliveryDate).toDateString() === updatedDate
-          ? { 
-              ...card, 
-              status: data.status,
-              meals: data.meals && data.meals.length > 0 ? data.meals.map((m, i) => ({
-                ...(card.meals?.[i] || {}),
-                ...m,
-                mealPlanName: m.mealPlanName || m.name
-              })) : card.meals
-            }
-          : card;
-      };
-      setTodayMeal((prev) => {
-        const next = patchCard(prev);
-        if (next !== prev && _mealCache) {
-          _mealCache.data.today = next; // keep cache in sync
-        }
-        return next;
-      });
-      setTomorrowMealData((prev) => {
-        const next = patchCard(prev);
-        if (next !== prev && _mealCache) {
-          _mealCache.data.tomorrow = next;
-        }
-        return next;
-      });
-    };
-
-    const handleDailyMenuUpdated = (data) => {
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.(t("📢 Tomorrow's meal updated to: \"{{dishName}}\"!", { dishName: data.dishName }));
     };
-
-    socket.on("order_status_updated", handleStatusUpdate);
-    socket.on("daily_menu_updated", handleDailyMenuUpdated);
-
+    socket.on("order_status_update", handleStatusUpdate);
+    socket.on("daily_order_update", handleStatusUpdate);
     return () => {
-      socket.off("order_status_updated", handleStatusUpdate);
-      socket.off("daily_menu_updated", handleDailyMenuUpdated);
+      socket.off("order_status_update", handleStatusUpdate);
+      socket.off("daily_order_update", handleStatusUpdate);
     };
-  }, [socket, loadTodayMeals, onShowNotificationToast]);
+  }, [socket, loadTodayMeals]);
 
-  // ─── Action Handlers ─────────────────────────────────────────────────────
+  // ─── Manage Sheet Handlers ────────────────────────────────────────────────
   const closeManage = useCallback(() => {
     setManageOrder(null);
     setManageMode(null);
@@ -201,22 +278,21 @@ export function HomeScreen({
     try {
       await dmbCustomerAPI.skipDailyOrder(manageOrder._id);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.(t("✅ Order skipped. Credit will be added to your wallet."));
+      onShowNotificationToast?.(t("✅ Delivery skipped"));
       closeManage();
     } catch (err) {
-      onShowNotificationToast?.(err.response?.data?.message || t("Failed to skip order"));
+      onShowNotificationToast?.(err.response?.data?.message || t("Failed to skip"));
     } finally {
       setLoadingAction(false);
     }
   }, [manageOrder, loadTodayMeals, onShowNotificationToast, closeManage, t]);
 
-  const handleUndoSkip = useCallback(async (meal) => {
-    if (!meal) return;
+  const handleUndoSkip = useCallback(async (order) => {
     setLoadingAction(true);
     try {
-      await dmbCustomerAPI.undoSkipDailyOrder(meal._id);
+      await dmbCustomerAPI.undoSkipDailyOrder(order._id);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.(t("✅ Order skip undone. Meal restored."));
+      onShowNotificationToast?.(t("✅ Skip cancelled!"));
     } catch (err) {
       onShowNotificationToast?.(err.response?.data?.message || t("Failed to undo skip"));
     } finally {
@@ -228,15 +304,10 @@ export function HomeScreen({
     if (!manageOrder) return;
     setLoadingAction(true);
     try {
-      await dmbCustomerAPI.pauseSubscription(
-        manageOrder.subscriptionId,
-        pauseDays,
-        "Customer requested pause from Home"
-      );
+      const subId = manageOrder.subscriptionId?._id || manageOrder.subscriptionId;
+      await dmbCustomerAPI.pauseSubscription(subId, pauseDays);
       loadTodayMeals({ bustCache: true });
-      onShowNotificationToast?.(
-        t("⏸️ Subscription paused for {{count}} day", { count: pauseDays })
-      );
+      onShowNotificationToast?.(t("✅ Subscription paused for {{count}} day", { count: pauseDays }));
       closeManage();
     } catch (err) {
       onShowNotificationToast?.(err.response?.data?.message || t("Failed to pause subscription"));
@@ -250,12 +321,10 @@ export function HomeScreen({
     setSelectedMealIds(order.meals?.map((m) => m.mealPlanId || m._id) ?? []);
     setManageMode("change_meal");
     try {
-      const vendorId = order.vendorId?._id || order.vendorId || order._id;
-      const res = await dmbCustomerAPI.getVendorMenu(vendorId);
+      const vId = order.vendorId?._id || order.vendorId || order._id;
+      const res = await dmbCustomerAPI.getVendorMenu(vId);
       setAvailableMeals(res.data?.menu ?? res.data?.meals ?? res.data?.plans ?? []);
-    } catch {
-      // Menu fetch failed — show empty state
-    }
+    } catch {}
   }, []);
 
   const handleChangeMeal = useCallback(async () => {
@@ -277,22 +346,11 @@ export function HomeScreen({
     setSelectedMealIds([id]);
   }, []);
 
-  // ─── Derived values ───────────────────────────────────────────────────────
-  const userName = currentUser?.name?.split(" ")[0] || "there";
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? t("Good morning") : hour < 17 ? t("Good afternoon") : t("Good evening");
-  const pointsPercent = Math.min((points / 300) * 100, 100);
-
-  // A delivery whose vendor hasn't picked the day's dish yet ("No meal set") is still a real, paid delivery:
-  // hiding it told subscribers they had nothing coming. The cards fall back to the plan name.
-  const filteredTodayMeal = todayMeal;
-  const filteredTomorrowMealData = tomorrowMealData;
-
+  // ─── Upcoming Check ───────────────────────────────────────────────────────
   useEffect(() => {
     if (loading || todayMeal || tomorrowMealData) {
       setUpcoming(null);
-      return undefined;
+      return;
     }
     let alive = true;
     dmbExtraCustomerAPI
@@ -308,69 +366,44 @@ export function HomeScreen({
       .catch(() => {
         if (alive) setUpcoming({ hasSubscription: false, paused: false, next: null });
       });
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [loading, todayMeal, tomorrowMealData]);
+
+  // User Greeting
+  const userName = currentUser?.name?.split(" ")[0] || "there";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? t("Good morning") : hour < 17 ? t("Good afternoon") : t("Good evening");
+  const pointsPercent = Math.min((points / 300) * 100, 100);
 
   const nextDayLabel = (date) =>
     new Date(`${date}T12:00:00`).toLocaleDateString(getCurrentLanguage(), { weekday: "long", day: "numeric", month: "short" });
 
-  // ─── Render helpers ───────────────────────────────────────────────────────
-  const renderTomorrowMealPreviewCard = (meal) => {
-    if (!meal) return null;
-    const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
-    const mealPhoto = meal.meals?.[0]?.photo || FALLBACK_MEAL_PHOTO;
-    // Only show calories the vendor really entered (never an invented default).
-    const calories = meal.meals?.[0]?.nutrition?.calories || null;
-
-    return (
-      <section className="bg-white rounded-2xl p-5 shadow-md border border-[#e4e2e1] transition-all duration-300 space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-[17px] font-extrabold text-on-surface">
-            {t("Tomorrow's Menu Preview 🍽️")}
-          </h2>
-          <button
-            onClick={onGoToOrders}
-            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 active:scale-90 transition-all cursor-pointer"
-          >
-            <ChevronRight className="text-on-surface-variant text-[20px]" />
-          </button>
-        </div>
-
-        <div
-          onClick={onGoToOrders}
-          className="relative rounded-xl overflow-hidden h-44 shadow-inner group cursor-pointer"
-        >
-          <img
-            src={mealPhoto}
-            alt={mealName}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4">
-            <h3 className="text-xl font-extrabold text-white tracking-wide drop-shadow-md">{mealName}</h3>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-5 text-[13px] text-on-surface-variant font-bold px-1">
-          {calories && (
-            <div className="flex items-center gap-1.5">
-              <Flame className="text-amber-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-              <span>{t("{{calories}} kcal", { calories })}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <Timer className="text-sky-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span>{t("5 min prep")}</span>
-          </div>
-        </div>
-      </section>
-    );
+  // Handle adding pantry item to cart
+  const handleAddPantryItem = (item) => {
+    const vId = item.vendorId?._id || item.vendorId;
+    if (cart.vendorId && cart.vendorId !== vId && cart.items?.length > 0) {
+      onShowNotificationToast?.(t("Cart cleared: switching to new vendor"));
+    }
+    addItem(item, vId);
+    onShowNotificationToast?.(t("Added {{name}} to pantry bag!", { name: item.title }));
   };
 
+  // Filtered lists based on search
+  const filteredVendors = vendors.filter((v) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const nameMatch = (v.name || v.restaurantName || "").toLowerCase().includes(q);
+    const cuisineMatch = (v.cuisines || []).some((c) => (typeof c === "string" ? c : c.name || "").toLowerCase().includes(q));
+    return nameMatch || cuisineMatch;
+  });
+
+  const filteredPantry = pantryItems.filter((i) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (i.title || "").toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q);
+  });
+
+  // ─── Render Active Meal Card ──────────────────────────────────────────────
   const renderMealCard = (meal, label, isToday = false) => {
     if (!meal) return null;
     const mealName = meal.meals?.[0]?.mealPlanName || meal.meals?.[0]?.name || "Your Meal";
@@ -386,56 +419,81 @@ export function HomeScreen({
     });
 
     return (
-      <section
-        className={`bg-white rounded-2xl p-5 border-l-4 ${isToday ? "border-primary-container" : "border-[#bec9c3]"
-          } shadow-md transition-all duration-300`}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xl">{isToday ? "🍽️" : "🚚"}</span>
-          <h2 className="text-[17px] font-extrabold text-on-surface">{label}</h2>
-          <span className="ml-auto text-[11px] text-on-surface-variant font-medium">
-            {dateStr} · {slot}
-          </span>
-        </div>
+      <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+        {/* Glow accent */}
+        <div className={`absolute top-0 left-0 w-2 h-full ${isToday ? "bg-[#1F7A63]" : "bg-blue-500"}`} />
 
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-base font-bold text-on-surface leading-snug">{mealName}</h3>
-            {vendorName && (
-              <p className="text-[13px] text-on-surface-variant font-medium mt-0.5">{t("by {{vendorName}}", { vendorName })}</p>
-            )}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700 text-lg">
+              {isToday ? "🍽️" : "🚚"}
+            </span>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">{label}</h2>
+              <p className="text-xs text-slate-500 font-medium">{dateStr} · {slot}</p>
+            </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${statusColor}`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${statusColor}`}>
             {statusLabel}
           </span>
         </div>
 
+        <div className="flex items-start justify-between bg-slate-50/80 rounded-2xl p-4 mb-4 border border-slate-100">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-800">{mealName}</h3>
+            {vendorName && (
+              <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1">
+                <ChefHat size={13} className="text-[#1F7A63]" /> {t("by {{vendorName}}", { vendorName })}
+              </p>
+            )}
+          </div>
+          {meal.deliveryPin && status === "out_for_delivery" && (
+            <div className="text-right bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">PIN</span>
+              <span className="text-base font-black text-[#1F7A63] tracking-widest">{meal.deliveryPin}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Live Tracking CTA when out for delivery */}
+        {status === "out_for_delivery" && (
+          <button
+            onClick={() => onTrackLive ? onTrackLive(meal) : onGoToOrders()}
+            className="w-full mb-3 py-3 rounded-2xl bg-gradient-to-r from-[#1F7A63] to-emerald-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+          >
+            <Truck size={18} className="animate-bounce" />
+            <span>{t("Track Live Delivery on Map")}</span>
+            <ChevronRight size={16} />
+          </button>
+        )}
+
+        {/* Actions for upcoming orders */}
         {!isToday && status === "scheduled" && (
-          <div className="flex gap-3 mt-3 pt-3 border-t border-[#f0eded]">
+          <div className="flex gap-2.5 pt-2 border-t border-slate-100">
             <button
               onClick={() => { setManageOrder(meal); setManageMode("confirm_skip"); }}
-              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+              className="flex-1 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 text-center cursor-pointer active:scale-95 transition-all"
             >{t("Skip")}</button>
             <button
               onClick={() => { setManageOrder(meal); setManageMode("pause"); }}
-              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+              className="flex-1 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 text-center cursor-pointer active:scale-95 transition-all"
             >{t("Pause")}</button>
             <button
               onClick={() => openChangeMeal(meal)}
-              className="flex-1 py-2 rounded-full border border-[#bec9c3] hover:bg-slate-50 text-[13px] font-semibold text-on-surface text-center cursor-pointer active:scale-95 transition-all"
+              className="flex-1 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 text-center cursor-pointer active:scale-95 transition-all"
             >{t("Change")}</button>
           </div>
         )}
 
         {!isToday && status === "skipped" && (
-          <div className="flex gap-3 mt-3 pt-3 border-t border-[#f0eded]">
+          <div className="pt-2 border-t border-slate-100">
             <button
               onClick={() => handleUndoSkip(meal)}
               disabled={loadingAction}
-              className="flex-grow py-2 rounded-full border border-primary text-primary hover:bg-[#e8f3f0] text-[13px] font-semibold text-center cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl border border-[#1F7A63] text-[#1F7A63] hover:bg-emerald-50 text-xs font-bold text-center cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              {loadingAction && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
-              {t("Undo Skip")}
+              {loadingAction && <div className="w-4 h-4 border-2 border-[#1F7A63] border-t-transparent rounded-full animate-spin" />}
+              {t("Undo Skip & Deliver")}
             </button>
           </div>
         )}
@@ -444,180 +502,601 @@ export function HomeScreen({
   };
 
   return (
-    <div className="bg-[#F5F5F0] text-on-surface min-h-[880px] pb-32">
-      <ScrollStickyBar title={`${greeting}, ${userName}`} right={<button onClick={onGoToProfile} className="w-8 h-8 rounded-full bg-white/20 text-white font-bold text-[14px]" aria-label={t("Profile")}>{userName ? userName.charAt(0).toUpperCase() : "U"}</button>} />
-      {/* Top Header */}
-      <header className="bg-primary px-5 pt-12 pb-8 rounded-b-[32px] shadow-md relative z-10 text-white">
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex flex-col">
-            <h1 className="text-[22px] font-extrabold tracking-tight">
-              {greeting}, {userName} 👋
+    <div className="bg-[#F8FAFC] text-slate-900 min-h-screen pb-36">
+      <ScrollStickyBar 
+        title={`${greeting}, ${userName}`} 
+        right={
+          <button 
+            onClick={onGoToProfile} 
+            className="w-9 h-9 rounded-full bg-white/20 text-white font-bold text-sm shadow-xs flex items-center justify-center"
+            aria-label={t("Profile")}
+          >
+            {userName ? userName.charAt(0).toUpperCase() : "U"}
+          </button>
+        } 
+      />
+
+      {/* ─── Top Header & Hero Gradient ────────────────────────────────────── */}
+      <header className="bg-gradient-to-br from-[#124b3c] via-[#1F7A63] to-[#2aa385] px-5 sm:px-8 pt-10 pb-12 rounded-b-[36px] shadow-lg relative z-10 text-white">
+        <div className="max-w-6xl mx-auto">
+          {/* Top Location Bar & Profile */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-semibold">
+              <MapPin size={14} className="text-[#9ef3d7]" />
+              <span className="text-white/90 truncate max-w-[180px] sm:max-w-xs">{zoneName}</span>
+              <button onClick={() => navigate("/user/addresses")} className="text-[#9ef3d7] text-[11px] font-bold hover:underline">
+                Change
+              </button>
+            </div>
+
+            <button
+              onClick={onGoToProfile}
+              className="relative w-11 h-11 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow flex items-center justify-center bg-white/20 text-white font-black text-base"
+            >
+              <span>{userName ? userName.charAt(0).toUpperCase() : "U"}</span>
+              {currentUser?.profileImage && (
+                <img
+                  alt={t("User profile")}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  src={currentUser.profileImage}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
+            </button>
+          </div>
+
+          {/* Greeting Headline */}
+          <div className="mb-5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+              {greeting}, {userName} <span className="animate-pulse">👋</span>
             </h1>
-            <p className="text-[14px] opacity-90 font-medium">
+            <p className="text-sm text-emerald-100 font-medium mt-1">
               {filteredTomorrowMealData
-                ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "long" }) })
+                ? t("Next delivery: {{slotLabel}} · {{date}}", { 
+                    slotLabel: slotLabel(filteredTomorrowMealData.deliverySlot), 
+                    date: new Date(filteredTomorrowMealData.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "long" }) 
+                  })
                 : upcoming?.next
-                  ? t("Next delivery: {{slotLabel}} · {{date}}", { slotLabel: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName, date: nextDayLabel(upcoming.next.date) })
-                  : t("No upcoming deliveries")}
+                  ? t("Next delivery: {{slotLabel}} · {{date}}", { 
+                      slotLabel: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName, 
+                      date: nextDayLabel(upcoming.next.date) 
+                    })
+                  : t("Fresh homestyle meals & pantry essentials delivered daily")}
             </p>
           </div>
-          <button
-            onClick={onGoToProfile}
-            className="relative w-12 h-12 rounded-full border-2 border-[#9ef3d7] overflow-hidden hover:scale-105 active:scale-95 transition-transform shadow flex items-center justify-center bg-white/20 text-white font-bold text-[18px]"
-          >
-            <span className="z-0">{userName ? userName.charAt(0).toUpperCase() : "U"}</span>
-            {currentUser?.profileImage && currentUser.profileImage.trim() !== "" && (
-              <img
-                alt={t("User profile")}
-                className="absolute inset-0 w-full h-full object-cover z-10"
-                src={currentUser.profileImage}
-                loading="eager"
-                onError={(e) => e.target.style.display = 'none'}
-              />
+
+          {/* Smart Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("Search meals, tiffin kitchens, pantry grocery...")}
+              className="w-full h-12 pl-12 pr-10 bg-white text-slate-900 rounded-2xl text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 shadow-md transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={18} />
+              </button>
             )}
-          </button>
+          </div>
         </div>
       </header>
 
-      <main className="px-5 -mt-5 space-y-5 relative z-20">
-        {/* Banner */}
+      {/* ─── Main Content Container ────────────────────────────────────────── */}
+      <main className="px-4 sm:px-8 max-w-6xl mx-auto -mt-6 space-y-7 relative z-20">
+
+        {/* Multi-Meal Alert Banner - Clean Mint Theme */}
         {showBanner && (
-          <div className="bg-[#F59E0B] text-white p-4 rounded-xl flex justify-between items-center shadow-lg">
+          <div className="bg-emerald-50/90 text-emerald-950 border border-emerald-200/80 p-4 rounded-2xl flex justify-between items-center shadow-xs">
             <div className="flex items-center gap-3">
-              <Sparkles className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-              <p className="text-[13px] font-bold">{t("Multi-meal subscriptions now available!")}</p>
+              <div className="p-2 rounded-xl bg-[#1F7A63] text-white shadow-xs">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-extrabold text-emerald-950">{t("Multi-Meal Subscriptions Live!")}</p>
+                <p className="text-[11px] text-emerald-700 font-medium">{t("Bundle lunch & dinner in one plan with zero extra delivery fee.")}</p>
+              </div>
             </div>
             <button
               onClick={() => setShowBanner(false)}
-              className="p-1 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center cursor-pointer"
+              className="p-1 hover:bg-emerald-100 text-emerald-700 rounded-full transition-colors cursor-pointer"
             >
-              <X className="text-[18px]" />
+              <X size={16} />
             </button>
           </div>
         )}
 
-        {/* ── Strategy 3: Show skeleton instead of full spinner ───────────── */}
+        {/* ─── Category Quick-Action Hub with Seeded 3D Images ────────────── */}
+        <section className="bg-white rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-100">
+          <div className="grid grid-cols-5 gap-2 sm:gap-4 items-start">
+            {[
+              { id: "plans", label: "Meal Plans", image: "/categories/meal_plan.jpg", action: () => onGoToPlans() },
+              { id: "pantry", label: "Pantry Store", image: "/categories/pantry_store.jpg", action: () => {
+                const el = document.getElementById("pantry-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+                else onGoToPlans();
+              }},
+              { id: "calendar", label: "Calendar", image: "/categories/calendar.jpg", action: () => onGoToCalendar() },
+              { id: "orders", label: "My Orders", image: "/categories/orders.jpg", action: () => onGoToOrders() },
+              { id: "wallet", label: "Wallet", image: "/categories/wallet.jpg", action: () => onGoToWallet ? onGoToWallet() : onGoToProfile() },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={cat.action}
+                className="flex flex-col items-center justify-start h-full w-full p-1 sm:p-2 rounded-2xl hover:bg-slate-50/80 transition-all active:scale-95 group cursor-pointer"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 aspect-square rounded-2xl overflow-hidden bg-white shadow-xs border border-slate-100 mb-2 group-hover:scale-105 group-hover:shadow-md transition-all duration-300 flex items-center justify-center p-0.5">
+                  <img src={cat.image} alt={cat.label} className="w-full h-full object-cover rounded-xl" />
+                </div>
+                <div className="h-8 sm:h-9 w-full flex items-start justify-center">
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-800 text-center leading-tight line-clamp-2">
+                    {cat.label}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── Active Meal Subscriptions Status (Today / Tomorrow) ─────────── */}
         {loading ? (
-          <div className="bg-white rounded-2xl p-5 shadow-md space-y-3 animate-pulse">
-            <div className="h-4 bg-slate-200 rounded w-1/2" />
-            <div className="h-3 bg-slate-100 rounded w-3/4" />
-            <div className="h-28 bg-slate-100 rounded-xl" />
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4 animate-pulse">
+            <div className="h-5 bg-slate-200 rounded w-1/3" />
+            <div className="h-4 bg-slate-100 rounded w-2/3" />
+            <div className="h-28 bg-slate-100 rounded-2xl" />
           </div>
         ) : (
           <>
-            {filteredTodayMeal && renderMealCard(filteredTodayMeal, t("Today's Delivery"), true)}
-            {filteredTomorrowMealData && renderMealCard(filteredTomorrowMealData, t("Tomorrow's Delivery"), false)}
+            {todayMeal && renderMealCard(todayMeal, t("Today's Delivery"), true)}
+            {tomorrowMealData && renderMealCard(tomorrowMealData, t("Tomorrow's Delivery"), false)}
 
-            {!filteredTodayMeal && !filteredTomorrowMealData && upcoming?.hasSubscription && (
+            {/* Upcoming subscription but no meals today/tomorrow */}
+            {!todayMeal && !tomorrowMealData && upcoming?.hasSubscription && (
               <section
                 onClick={onGoToCalendar}
-                className="bg-white rounded-2xl p-5 border-l-4 border-primary-container shadow-md cursor-pointer hover:shadow-lg transition-all"
+                className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-sm cursor-pointer hover:shadow-md transition-all group"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">📅</span>
-                  <h2 className="text-[17px] font-extrabold text-on-surface">{t("Your meal plan is all set")}</h2>
-                </div>
-                <p className="text-[14px] text-on-surface-variant font-medium mb-4">
-                  {upcoming.paused
-                    ? t("This subscription is paused — no deliveries until you resume it.")
-                    : upcoming.next
-                      ? t("Next delivery: {{date}} · {{slot}} · {{vendor}}", { date: nextDayLabel(upcoming.next.date), slot: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName, vendor: upcoming.next.slot.vendorName })
-                      : t("No upcoming deliveries")}
-                </p>
-                <div className="flex items-center gap-2 text-primary font-bold text-[14px]">
-                  <span>{t("Open calendar")}</span>
-                  <ArrowRight className="text-[18px]" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl p-2 bg-emerald-50 rounded-2xl">📅</span>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-black text-slate-900">{t("Your Meal Plan is Active")}</h2>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {upcoming.paused
+                          ? t("Plan currently paused. Resume anytime from Calendar.")
+                          : upcoming.next
+                            ? t("Next delivery: {{date}} · {{slot}}", { date: nextDayLabel(upcoming.next.date), slot: slotLabel(upcoming.next.slot.slot) || upcoming.next.slot.slotName })
+                            : t("No pending deliveries for this week")}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="text-slate-400 group-hover:translate-x-1 transition-transform" />
                 </div>
               </section>
             )}
 
-            {!filteredTodayMeal && !filteredTomorrowMealData && upcoming !== undefined && !upcoming?.hasSubscription && (
-              <section
-                onClick={onGoToPlans}
-                className="bg-white rounded-2xl p-5 border-l-4 border-primary-container shadow-md cursor-pointer hover:shadow-lg transition-all"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">🍱</span>
-                  <h2 className="text-[17px] font-extrabold text-on-surface">{t("Start Your Meal Plan")}</h2>
+            {/* Non-subscriber hero callout */}
+            {!todayMeal && !tomorrowMealData && upcoming !== undefined && !upcoming?.hasSubscription && (
+              <section className="bg-gradient-to-r from-emerald-800 to-[#1F7A63] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="relative z-10 max-w-lg space-y-3">
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-black uppercase tracking-wider text-emerald-200 inline-block">
+                    🍱 Daily Tiffin Subscription
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black leading-tight text-white">
+                    Healthy, Home-Style Meals Delivered Every Day
+                  </h2>
+                  <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                    Choose from verified local home chefs and kitchens. Enjoy fresh rotis, sabzi, dal and rice right at your home or office.
+                  </p>
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <button
+                      onClick={onGoToPlans}
+                      className="px-5 py-3 rounded-xl bg-white text-[#1F7A63] font-extrabold text-sm hover:bg-emerald-50 active:scale-95 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      <span>Explore Meal Plans</span>
+                      <ArrowRight size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById("pantry-section");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                        else onGoToPlans();
+                      }}
+                      className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+                    >
+                      Shop Pantry Essentials
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[14px] text-on-surface-variant font-medium mb-4">
-                  {t("Subscribe to a daily meal plan from local vendors. Fresh, healthy, delivered daily.")}
-                </p>
-                <div className="flex items-center gap-2 text-primary font-bold text-[14px]">
-                  <span>{t("Browse Plans")}</span>
-                  <ArrowRight className="text-[18px]" />
+
+                <div className="absolute right-[-20px] bottom-[-20px] opacity-15 text-[160px] pointer-events-none select-none">
+                  🍱
                 </div>
               </section>
             )}
           </>
         )}
 
-        {/* Loyalty Points Widget */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm space-y-3">
+        {/* ─── Featured Kitchens & Tiffin Makers ──────────────────────────── */}
+        <section className="space-y-4">
+          <div className="flex items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                Top Home Kitchens & Makers
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Curated daily meal plans prepared fresh in your zone</p>
+            </div>
+            <button
+              onClick={onGoToPlans}
+              className="shrink-0 text-xs sm:text-sm font-bold text-[#1F7A63] hover:text-[#175C4B] hover:underline flex items-center gap-1 cursor-pointer whitespace-nowrap self-start sm:self-center pt-1 sm:pt-0"
+            >
+              <span>View All</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {vendorsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm animate-pulse space-y-3">
+                  <div className="h-36 bg-slate-200 rounded-2xl" />
+                  <div className="h-4 bg-slate-200 rounded w-2/3" />
+                  <div className="h-3 bg-slate-100 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : filteredVendors.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-xs space-y-3">
+              <span className="text-4xl">👨‍🍳</span>
+              <h3 className="text-base font-bold text-slate-800">No Kitchens Found Matching Search</h3>
+              <p className="text-xs text-slate-500">Try searching for other cuisines or clear the search query.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {filteredVendors.slice(0, 6).map((vendor) => {
+                const cover = normalizeImageUrl(
+                  vendor.coverImages?.[0] || vendor.profileImage || vendor.logo
+                );
+                const rating = vendor.rating ? Number(vendor.rating).toFixed(1) : "4.8";
+                const vendorTypeLabel = vendor.vendorType === "home_cook" ? "Home Chef" : vendor.vendorType === "restaurant" ? "Kitchen" : "Tiffin Center";
+
+                return (
+                  <div
+                    key={vendor._id || vendor.id}
+                    className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
+                  >
+                    {/* Cover image */}
+                    <div className="relative h-40 overflow-hidden bg-slate-100">
+                      <img
+                        src={cover}
+                        alt={vendor.restaurantName || vendor.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.target.src = FALLBACK_MEAL_PHOTO; }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/90 text-slate-800 backdrop-blur-md shadow-xs">
+                          {vendorTypeLabel}
+                        </span>
+                        <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-xs font-black">
+                          <Star size={12} className="text-amber-400 fill-amber-400" />
+                          <span>{rating}</span>
+                        </div>
+                      </div>
+
+                      <div className="absolute bottom-3 left-3 right-3 text-white">
+                        <h3 className="text-base font-black truncate">{vendor.restaurantName || vendor.name}</h3>
+                        <p className="text-[11px] text-white/80 font-medium truncate flex items-center gap-1">
+                          <MapPin size={11} /> {vendor.city || "Indore"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Kitchen Info & CTA */}
+                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(vendor.cuisines || ["North Indian", "Homestyle", "Veg"]).slice(0, 3).map((c, i) => (
+                          <span key={i} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            {typeof c === "string" ? c : c.name || "Meal"}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setOpenPlansFor(vendor)}
+                          className="flex-1 py-2.5 rounded-xl bg-[#1F7A63] hover:bg-[#155a49] text-white text-xs font-extrabold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Subscribe</span>
+                          <ArrowRight size={13} />
+                        </button>
+                        <button
+                          onClick={onGoToPlans}
+                          className="px-3 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Menu
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ─── Pantry Essentials Store (Direct In-Home Ordering) ───────────── */}
+        <section id="pantry-section" className="space-y-4 pt-2">
+          <div className="flex items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                Pantry Essentials & Daily Staples
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Breads, milk, sweets & groceries bundled with your meal delivery
+              </p>
+            </div>
+            <button
+              onClick={() => onGoToPlans()}
+              className="shrink-0 text-xs sm:text-sm font-bold text-[#1F7A63] hover:text-[#175C4B] hover:underline flex items-center gap-1 cursor-pointer whitespace-nowrap self-start sm:self-center pt-1 sm:pt-0"
+            >
+              <span>See All</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {pantryLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="bg-white rounded-3xl p-4 border border-slate-100 animate-pulse space-y-3">
+                  <div className="h-28 bg-slate-200 rounded-2xl" />
+                  <div className="h-4 bg-slate-200 rounded w-2/3" />
+                  <div className="h-3 bg-slate-100 rounded w-1/3" />
+                </div>
+              ))}
+            </div>
+          ) : filteredPantry.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-xs space-y-2">
+              <span className="text-4xl">🛒</span>
+              <h3 className="text-base font-bold text-slate-800">No Pantry Items Available</h3>
+              <p className="text-xs text-slate-500">Pantry essentials will be stocked in your zone shortly.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {filteredPantry.slice(0, 8).map((item) => {
+                const img = normalizeImageUrl(item.image);
+                const qty = getItemQuantity(item._id);
+
+                return (
+                  <div
+                    key={item._id}
+                    className="bg-white rounded-3xl p-3 sm:p-4 border border-slate-100 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      {/* Product Image */}
+                      <div className="relative h-28 sm:h-32 rounded-2xl overflow-hidden bg-slate-50 mb-2.5">
+                        <img
+                          src={img}
+                          alt={item.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { e.target.src = FALLBACK_MEAL_PHOTO; }}
+                        />
+                      </div>
+
+                      {/* Title & Price */}
+                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 line-clamp-1">{item.title}</h4>
+                      <p className="text-[11px] text-slate-400 font-medium line-clamp-1">{item.categoryName || "Grocery staple"}</p>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-black text-slate-900">
+                        {money(item.price)}
+                      </span>
+
+                      {qty === 0 ? (
+                        <button
+                          onClick={() => handleAddPantryItem(item)}
+                          className="px-3 py-1.5 rounded-full bg-emerald-50 text-[#1F7A63] hover:bg-[#1F7A63] hover:text-white font-black text-xs transition-colors flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                        >
+                          <Plus size={13} />
+                          <span>Add</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 bg-[#1F7A63] text-white rounded-full px-1.5 py-0.5 shadow-xs">
+                          <button
+                            onClick={() => removeItem(item._id)}
+                            className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/20 text-white font-bold text-xs"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className="text-xs font-black min-w-[14px] text-center">{qty}</span>
+                          <button
+                            onClick={() => handleAddPantryItem(item)}
+                            className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/20 text-white font-bold text-xs"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ─── Why Rogas / DailyMealBox (Trust & Value Props) ───────────────── */}
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="text-center max-w-md mx-auto space-y-1">
+            <span className="text-xs font-black uppercase tracking-widest text-[#1F7A63]">Daily Subscription Made Simple</span>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">Why Customers Love DailyMealBox</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                icon: "🥗",
+                title: "100% Homestyle Fresh",
+                desc: "Cooked freshly by certified local home chefs using pure, wholesome ingredients."
+              },
+              {
+                icon: "⏱️",
+                title: "Scheduled Slot Delivery",
+                desc: "Choose Lunch (12–3 PM) or Dinner (5–8 PM). Guaranteed hot & timely arrivals."
+              },
+              {
+                icon: "🔄",
+                title: "Pause or Skip Anytime",
+                desc: "Travelling or eating out? Pause or cancel days with zero penalties or charges."
+              },
+              {
+                icon: "🔒",
+                title: "One-Doorbell PIN",
+                desc: "Multi-vendor orders bundled securely. Handover verified via 4-digit secret PIN."
+              }
+            ].map((prop, idx) => (
+              <div key={idx} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 space-y-2">
+                <span className="text-3xl block mb-1">{prop.icon}</span>
+                <h3 className="text-sm font-extrabold text-slate-900">{prop.title}</h3>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">{prop.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── 3-Step Guide (How Subscriptions Work) - Clean Light Background ─── */}
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-xs space-y-6">
+          <div className="text-center max-w-md mx-auto space-y-1">
+            <span className="text-xs font-black uppercase tracking-widest text-[#1F7A63]">Simple & Transparent</span>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">How Daily Delivery Works</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 relative">
+            {[
+              {
+                step: "01",
+                title: "Choose Your Plan",
+                desc: "Pick your preferred kitchen, plan duration (Weekly or Monthly), and meal type (Veg, Diet, or Non-Veg)."
+              },
+              {
+                step: "02",
+                title: "Set Delivery Schedule",
+                desc: "Select Lunch or Dinner slots, customize delivery weekdays (Mon–Fri or 7 Days), and add pantry grocery bags."
+              },
+              {
+                step: "03",
+                title: "Enjoy Daily Fresh Food",
+                desc: "Track delivery boy live on map, share your 4-digit PIN at the door, and savor hot homemade food."
+              }
+            ].map((st, i) => (
+              <div key={i} className="bg-slate-50/70 hover:bg-emerald-50/40 border border-slate-100 rounded-2xl p-5 relative space-y-2 transition-colors">
+                <span className="text-2xl font-black text-[#1F7A63] block tracking-tight">{st.step}</span>
+                <h3 className="text-base font-extrabold text-slate-900">{st.title}</h3>
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">{st.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── Loyalty Rewards Widget ───────────────────────────────────────── */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 space-y-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">⭐</span>
-              <span className="text-[18px] font-extrabold text-on-surface">{t("{{points}} points", { points })}</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl p-2 rounded-2xl bg-amber-50">⭐</span>
+              <div>
+                <span className="text-base sm:text-lg font-black text-slate-900">{t("{{points}} Reward Points", { points })}</span>
+                <p className="text-xs text-slate-400 font-medium">Earn 10 points on every meal delivery</p>
+              </div>
             </div>
             <button
               onClick={() => setShowPointsHist((v) => !v)}
-              className="text-primary-container hover:text-primary font-bold text-[13px]"
+              className="text-[#1F7A63] hover:underline font-extrabold text-xs cursor-pointer"
             >
               {showPointsHist ? t("Close") : t("History")}
             </button>
           </div>
 
           {showPointsHist ? (
-            <div className="bg-[#f6f3f2] p-3 rounded-lg space-y-2 text-[12px] font-medium border border-[#e4e2e1]">
-              <div className="flex justify-between"><span>{t("Welcome Bonus")}</span><span className="text-primary font-bold">{t("+200 pts")}</span></div>
-              <div className="flex justify-between"><span>{t("First Subscription")}</span><span className="text-primary font-bold">{t("+50 pts")}</span></div>
-              <div className="flex justify-between"><span>{t("Profile setup complete")}</span><span className="text-primary font-bold">{t("+30 pts")}</span></div>
+            <div className="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs font-semibold border border-slate-100">
+              <div className="flex justify-between"><span>{t("Welcome Bonus")}</span><span className="text-emerald-700 font-black">{t("+200 pts")}</span></div>
+              <div className="flex justify-between"><span>{t("First Subscription")}</span><span className="text-emerald-700 font-black">{t("+50 pts")}</span></div>
+              <div className="flex justify-between"><span>{t("Profile setup complete")}</span><span className="text-emerald-700 font-black">{t("+30 pts")}</span></div>
             </div>
           ) : (
-            <>
-              <div className="w-full bg-[#eae7e7] h-2.5 rounded-full overflow-hidden">
+            <div className="space-y-2">
+              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-primary-container h-full rounded-full transition-all duration-1000 ease-out"
+                  className="bg-gradient-to-r from-emerald-500 to-[#1F7A63] h-full rounded-full transition-all duration-1000 ease-out"
                   style={{ width: `${pointsPercent}%` }}
                 />
               </div>
-              <p className="text-[12px] text-on-surface-variant font-medium">
-                {t("10 pts per delivery · Redeem for discounts")}
-              </p>
-            </>
+              <div className="flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                <span>{points} / 300 pts</span>
+                <span className="text-[#1F7A63] font-bold">Redeem for discounts at checkout</span>
+              </div>
+            </div>
           )}
         </section>
 
-        {/* Tomorrow's Meal Preview */}
-        {!loading && filteredTomorrowMealData && renderTomorrowMealPreviewCard(filteredTomorrowMealData)}
-
-        <div className="h-8" />
       </main>
 
-      {/* ─── Manage Bottom Sheet ──────────────────────────────────────────── */}
+      {/* ─── Floating Pantry Cart Bottom Bar ───────────────────────────────── */}
+      {totalItems > 0 && (
+        <div className="fixed bottom-20 left-0 w-full md:left-64 md:w-[calc(100%_-_16rem)] px-4 sm:px-8 z-40 animate-in slide-in-from-bottom duration-300">
+          <button 
+            onClick={() => navigate('/user/pantry-checkout')}
+            className="w-full max-w-4xl mx-auto bg-[#1F7A63] hover:bg-[#155a49] text-white py-4 px-6 rounded-2xl flex items-center justify-between shadow-[0_12px_32px_rgba(31,122,99,0.4)] transition-all active:scale-98 cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <ShoppingBag size={20} />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-white/90">{totalItems} pantry item{totalItems > 1 ? "s" : ""} in bag</p>
+                <p className="text-base font-black">{money(cartTotal)}</p>
+              </div>
+            </div>
+            <span className="text-sm font-black flex items-center gap-1 bg-white text-[#1F7A63] px-4 py-2 rounded-xl shadow-xs">
+              {t("Checkout")} <ChevronRight size={16} />
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* ─── Manage Bottom Sheet (Skip / Pause / Change Meal) ──────────────── */}
       {manageOrder && manageMode && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={closeManage}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative bg-white rounded-t-3xl shadow-2xl w-full max-w-[390px] mx-auto px-5 pt-5 pb-10 animate-slideUp text-left"
+            className="relative bg-white rounded-t-3xl shadow-2xl w-full max-w-lg mx-auto px-5 pt-5 pb-10 text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1.5 bg-[#ddd] rounded-full mx-auto mb-4" />
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-5" />
 
             {manageMode === "confirm_skip" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Skip This Delivery?")}</h2>
-                <p className="text-[13px] text-on-surface-variant mb-6 leading-relaxed">
+                <h2 className="text-lg font-black text-slate-900 mb-2">{t("Skip This Delivery?")}</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">
                   {manageOrder.paidBy
                     ? t("Your delivery for {{date}} will be skipped. Your company paid for this meal, so nothing is credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })
                     : t("Your delivery for {{date}} will be skipped and the day's amount will be credited to your wallet.", { date: new Date(manageOrder.deliveryDate).toLocaleDateString(getCurrentLanguage(), { weekday: "short", day: "numeric", month: "short" }) })}
                 </p>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant hover:bg-slate-50">{t("Cancel")}</button>
+                  <button onClick={closeManage} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-50">{t("Cancel")}</button>
                   <button
                     onClick={handleSkip}
                     disabled={loadingAction}
-                    className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                    className="flex-1 bg-red-600 text-white py-3 rounded-xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     {t("Confirm Skip")}
@@ -628,26 +1107,27 @@ export function HomeScreen({
 
             {manageMode === "pause" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Pause Subscription")}</h2>
-                <p className="text-[13px] text-on-surface-variant mb-5">{t("Select how many days to pause your subscription.")}</p>
+                <h2 className="text-lg font-black text-slate-900 mb-2">{t("Pause Subscription")}</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mb-5">{t("Select how many days to pause your subscription.")}</p>
                 <div className="flex gap-3 mb-6">
-                  {[1, 2].map((d) => (
+                  {[1, 2, 3].map((d) => (
                     <button
                       key={d}
                       onClick={() => setPauseDays(d)}
-                      className={`flex-1 py-4 rounded-2xl font-bold text-[15px] border-2 transition-all active:scale-95 ${pauseDays === d ? "border-primary bg-[#e8f3f0] text-primary" : "border-[#e4e2e1] bg-white text-on-surface-variant hover:bg-slate-50"
-                        }`}
+                      className={`flex-1 py-4 rounded-2xl font-black text-sm border-2 transition-all active:scale-95 cursor-pointer ${
+                        pauseDays === d ? "border-[#1F7A63] bg-emerald-50 text-[#1F7A63]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
                     >
                       {t("{{count}} Day", { count: d })}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
+                  <button onClick={closeManage} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold text-sm text-slate-700">{t("Cancel")}</button>
                   <button
                     onClick={handlePause}
                     disabled={loadingAction}
-                    className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#1F7A63] hover:bg-[#155a49] text-white py-3 rounded-xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     {t("Pause {{count}} Day", { count: pauseDays })}
@@ -658,14 +1138,13 @@ export function HomeScreen({
 
             {manageMode === "change_meal" && (
               <>
-                <h2 className="text-[17px] font-extrabold text-on-surface mb-2">{t("Change Meal")}</h2>
-                <p className="text-[13px] text-on-surface-variant mb-4">{t("Choose meals for this delivery from the vendor's menu.")}</p>
+                <h2 className="text-lg font-black text-slate-900 mb-2">{t("Change Meal for this Delivery")}</h2>
+                <p className="text-xs text-slate-500 mb-4">{t("Choose a dish from the vendor's active menu.")}</p>
 
                 {availableMeals.length === 0 ? (
-                  <div className="bg-slate-50 rounded-xl p-6 text-center mb-5">
-                    <UtensilsCrossed className="text-[36px] text-slate-300 mb-2" />
-                    <p className="text-[13px] text-slate-500 font-medium">{t("No alternate meals available from this vendor right now.")}</p>
-                    <p className="text-[12px] text-slate-400 mt-1">{t("Current selection will be kept.")}</p>
+                  <div className="bg-slate-50 rounded-2xl p-6 text-center mb-5">
+                    <UtensilsCrossed className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500 font-medium">{t("No alternate meals available from this vendor right now.")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
@@ -676,15 +1155,16 @@ export function HomeScreen({
                         <button
                           key={id}
                           onClick={() => toggleMealSelection(id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${isSelected ? "border-primary bg-[#e8f3f0]" : "border-[#e4e2e1] bg-white hover:bg-slate-50"
-                            }`}
+                          className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left cursor-pointer ${
+                            isSelected ? "border-[#1F7A63] bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
                         >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? "border-primary bg-primary" : "border-[#ccc]"}`}>
-                            {isSelected && <Check className="text-white text-[12px]" />}
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-[#1F7A63] bg-[#1F7A63]" : "border-slate-300"}`}>
+                            {isSelected && <Check size={12} className="text-white" />}
                           </div>
                           <div>
-                            <p className="text-[14px] font-bold text-on-surface">{meal.name}</p>
-                            <p className="text-[11px] text-on-surface-variant font-medium">{t("{{price}}/day", { price: money(meal.pricePerDay || meal.price, { compact: true }) })}</p>
+                            <p className="text-xs sm:text-sm font-extrabold text-slate-800">{meal.name}</p>
+                            <p className="text-[11px] text-slate-500 font-medium">{money(meal.pricePerDay || meal.price)}</p>
                           </div>
                         </button>
                       );
@@ -693,11 +1173,11 @@ export function HomeScreen({
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={closeManage} className="flex-1 border border-[#e4e2e1] py-3 rounded-xl font-bold text-[14px] text-on-surface-variant">{t("Cancel")}</button>
+                  <button onClick={closeManage} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold text-sm text-slate-700">{t("Cancel")}</button>
                   <button
                     onClick={handleChangeMeal}
                     disabled={loadingAction || selectedMealIds.length === 0}
-                    className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="flex-1 bg-[#1F7A63] text-white py-3 rounded-xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer shadow-sm"
                   >
                     {loadingAction && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                     {t("Confirm Change")}
@@ -707,6 +1187,22 @@ export function HomeScreen({
             )}
           </div>
         </div>
+      )}
+
+      {/* ─── Direct Subscribe Sheet from Home ───────────────────────────────── */}
+      {openPlansFor && (
+        <SubscribeSheet
+          vendor={{
+            id: openPlansFor._id || openPlansFor.id,
+            name: openPlansFor.restaurantName || openPlansFor.name
+          }}
+          onClose={() => setOpenPlansFor(null)}
+          onProceedToCheckout={(checkoutData) => {
+            setOpenPlansFor(null);
+            if (onSelectPlan) onSelectPlan(checkoutData);
+            else navigate("/user/checkout");
+          }}
+        />
       )}
     </div>
   );

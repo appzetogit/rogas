@@ -6,29 +6,21 @@ async function run() {
   await mongoose.connect(process.env.MONGO_URI);
   const db = mongoose.connection.db;
 
-  const sampleVendor = await db.collection('food_restaurants').findOne({ status: 'approved' });
-  console.log('Sample Approved Vendor Keys:', Object.keys(sampleVendor || {}));
-  console.log('Sample Vendor Data:', {
-    _id: sampleVendor?._id,
-    restaurantName: sampleVendor?.restaurantName,
-    name: sampleVendor?.name,
-    phone: sampleVendor?.phone,
-    mobile: sampleVendor?.mobile,
-    contactNumber: sampleVendor?.contactNumber,
-    email: sampleVendor?.email,
-    status: sampleVendor?.status,
-    ownerName: sampleVendor?.ownerName,
-    city: sampleVendor?.city,
-    zone: sampleVendor?.zone,
-    zones: sampleVendor?.zones
-  });
+  const vendors = await db.collection('food_restaurants').find({ status: 'approved' }, {
+    projection: { restaurantName: 1, ownerName: 1, ownerPhone: 1, primaryContactNumber: 1, isAcceptingOrders: 1, isOnline: 1, city: 1, zoneId: 1 }
+  }).limit(5).toArray();
 
-  // Also check sample meals/items
-  const sampleMeal = await db.collection('dmb_daily_menus').findOne({});
-  console.log('Sample Meal:', sampleMeal ? { id: sampleMeal._id, name: sampleMeal.name, price: sampleMeal.price, vendorId: sampleMeal.restaurantId || sampleMeal.vendorId } : 'none');
+  const drivers = await db.collection('food_delivery_partners').find({ status: 'approved' }, {
+    projection: { name: 1, phone: 1, isOnline: 1, isApproved: 1, zoneId: 1, city: 1 }
+  }).limit(5).toArray();
 
-  const sampleOneTime = await db.collection('dmb_one_time_orders').findOne({});
-  console.log('Sample OneTime Order:', sampleOneTime ? { id: sampleOneTime._id, orderNumber: sampleOneTime.orderNumber, status: sampleOneTime.status } : 'none');
+  const meals = await db.collection('dmb_daily_menus').find({}).limit(3).toArray();
+  const plans = await db.collection('vendor_subscription_plans').find({}).limit(3).toArray();
+
+  console.log('=== APPROVED VENDORS ===', JSON.stringify(vendors, null, 2));
+  console.log('=== APPROVED DRIVERS ===', JSON.stringify(drivers, null, 2));
+  console.log('=== SAMPLE MEALS ===', meals.map(m => ({ id: m._id, name: m.name || m.title, price: m.price || m.pricePerDay, restaurantId: m.restaurantId })));
+  console.log('=== SAMPLE PLANS ===', plans.map(p => ({ id: p._id, name: p.name, price: p.pricePerDay || p.price, vendorId: p.vendorId || p.restaurantId })));
 
   await mongoose.disconnect();
 }

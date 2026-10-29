@@ -256,7 +256,7 @@ export default function CustomerAppMain() {
   const [tomorrowMeal, setTomorrowMeal] = useState({
     day: "Mon",
     dayNum: 12,
-    name: "Ghar ka Khana",
+    name: "",
     status: "Scheduled",
   });
 
@@ -613,6 +613,12 @@ export default function CustomerAppMain() {
               onGoToCalendar={() => navigate("/user/calendar")}
               onGoToOrders={() => navigate("/user/orders")}
               onGoToProfile={() => navigate("/user/profile")}
+              onGoToWallet={() => navigate("/user/wallet")}
+              onSelectPlan={handlePlanSelectionFlow}
+              onTrackLive={(order) => {
+                setTrackedOrder(order);
+                navigate("/user/tracker");
+              }}
               onShowNotificationToast={showToast}
               tomorrowMeal={tomorrowMeal}
               setTomorrowMeal={setTomorrowMeal}

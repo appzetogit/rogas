@@ -106,7 +106,7 @@ function NewDeliveryDashboard({ children }) {
   }, [selectedOrderId]);
 
   const activeOrder = orders.find(o => o.id === selectedOrderId)
-    || (selectedRouteStop ? (() => {
+    || (selectedRouteStop && selectedRouteStop.status !== 'COMPLETED' && selectedRouteStop.status !== 'completed' ? (() => {
         const stop = selectedRouteStop;
         const isPickup = stop.type === 'pickup' || stop.type === 'P';
         return {
@@ -361,8 +361,10 @@ function NewDeliveryDashboard({ children }) {
 
   const handleNextRouteStep = () => {
     setBackScreen("route");
-    const isPickedUp = activeOrder?.status === "picked_up" || activeOrder?.status === "out_for_delivery";
+    const hasUnpickedOrder = orders.some(o => o.status === "ready" || o.status === "scheduled" || o.status === "preparing");
+    const isPickedUp = activeOrder?.status === "picked_up" || activeOrder?.status === "out_for_delivery" || !hasUnpickedOrder;
     if (isPickedUp) {
+      setSelectedRouteStop(null);
       setCurrentScreen("delivery");
     } else {
       // Navigate to pickup at the kitchen where live Google Map and PIN verification are displayed
@@ -374,14 +376,12 @@ function NewDeliveryDashboard({ children }) {
     // Clear the active selection lock so the new route stops (deliveries) can load completely
     setSelectedOrderId(null);
     selectedOrderIdRef.current = null;
-    
-    // Go back to the route screen so the driver can see their delivery tasks
-    setCurrentScreen("route");
+    setSelectedRouteStop(null);
     
     // Optimistic UI updates: only the vendor just collected from (the route can hold several vendors, e.g. a kitchen and a pantry shop)
     const pickedVendor = selectedRouteStop?.vendorId ? String(selectedRouteStop.vendorId) : null;
     const isPicked = (vendorId) => !pickedVendor || String(vendorId || '') === pickedVendor;
-    setOrders(prev => prev.map(o => (isPicked(o.vendorId) ? { ...o, status: "picked_up" } : o)));
+    setOrders(prev => prev.map(o => (isPicked(o.vendorId) ? { ...o, status: "out_for_delivery" } : o)));
     setStops(prev => prev.map(s => {
       if ((s.type === "pickup" || s.type === "P") && isPicked(s.vendorId)) return { ...s, status: "COMPLETED" };
       if ((s.type === "delivery" || s.type === "D") && isPicked(s.vendorId)) return { ...s, status: "READY" };
@@ -390,6 +390,9 @@ function NewDeliveryDashboard({ children }) {
     
     // Fetch live route from backend to get the actual delivery stops and correct earning amounts
     await fetchActiveRoute();
+    
+    // Navigate straight to delivery handover screen
+    setCurrentScreen("delivery");
   };
 
   const handleConfirmDelivered = async (cashCollected) => {

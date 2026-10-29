@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Gift } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { dmbExtraDriverAPI } from "@food/api";
+import useDriverMoney from "../hooks/useDriverMoney";
 
 /** DA-03: the driver's running promotions, each with this week's progress as a bar. */
 const PromotionBars = () => {
   const { t } = useTranslation("driver");
+  const { money } = useDriverMoney();
   const [promotions, setPromotions] = useState([]);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ const PromotionBars = () => {
               <span className="text-[11px] font-semibold text-[#3e4945] shrink-0">{t("Until {{date}}", { date: until(p.validUntil) })}</span>
             </div>
             {boost ? (
-              <p className="text-xs font-bold text-[#00604c]">{t("+{{amount}} PLN on every delivery", { amount: p.rateBoostPln })}</p>
+              <p className="text-xs font-bold text-[#00604c]">{t("+{{amount}} on every delivery", { amount: money(p.rateBoostPln, { compact: true }) })}</p>
             ) : (
               <>
                 <div className="w-full h-3 bg-[#e5e9e5] rounded-full overflow-hidden">
@@ -42,7 +44,7 @@ const PromotionBars = () => {
                 </div>
                 <div className="mt-2 flex justify-between text-xs text-[#3e4945]">
                   <span>{p.achieved ? t("Bonus earned") : t("{{current}} of {{target}}", { current: p.current, target: p.target })}</span>
-                  <span className="font-bold">{t("{{amount}} PLN bonus", { amount: p.bonusPln })}</span>
+                  <span className="font-bold">{t("{{amount}} bonus", { amount: money(p.bonusPln, { compact: true }) })}</span>
                 </div>
               </>
             )}
