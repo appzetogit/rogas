@@ -113,7 +113,7 @@ export const earliestStartDate = (slotKeys, offeredMap, now = new Date()) => {
     return open ? today : tomorrow;
 };
 
-/**
+/*
  * input: { subscriptionPlanId, vendorId, zoneId, startDate, subscriptionType ('dedicated'|'rotation'),
  *          meals: [{ mealPlanId, quantity }], deliverySlots: [...], deliveryDays ('custom' to use deliveryDaysList),
  *          deliveryDaysList: [0..6], daySlots: { "1": ["lunch"] }, familyBox: { members: [{ label, meals, slots }] },

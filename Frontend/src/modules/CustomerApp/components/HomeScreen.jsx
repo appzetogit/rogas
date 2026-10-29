@@ -8,7 +8,7 @@ import {
   ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check, 
   ShoppingBag, Plus, Minus, Search, Star, MapPin, Calendar, Clock, ShieldCheck, 
   HeartHandshake, Truck, RefreshCw, ChefHat, Award, ArrowUpRight, Store, 
-  AlertCircle, Phone, Info, Leaf, Navigation
+  AlertCircle, Phone, Info, Leaf, Navigation, Shuffle
 } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
@@ -640,6 +640,33 @@ export function HomeScreen({
                 </div>
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* ─── Smart Multi-Vendor Rotation Feature Card ────────────────────── */}
+        <section 
+          onClick={() => navigate("/user/rotation")}
+          className="bg-gradient-to-r from-emerald-900 via-[#1F7A63] to-teal-800 rounded-3xl p-4 sm:p-5 text-white shadow-sm hover:shadow-xl transition-all cursor-pointer flex items-center justify-between gap-4 group"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Shuffle className="text-white" size={24} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm sm:text-base tracking-tight">Smart Rotation</span>
+                <span className="text-[10px] font-extrabold bg-white/20 border border-white/20 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Multi-Vendor
+                </span>
+              </div>
+              <p className="text-xs text-emerald-100/90 font-medium truncate mt-0.5">
+                Order from different home kitchens on different weekdays in 1 subscription
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-1 bg-white text-[#1F7A63] px-3.5 py-2 rounded-xl text-xs font-black shadow-xs group-hover:bg-emerald-50 transition-colors">
+            <span>Try Now</span>
+            <ArrowRight size={14} />
           </div>
         </section>
 

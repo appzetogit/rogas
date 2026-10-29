@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { PantryItemsList } from "./PantryItemsList";
 import { dmbCustomerAPI, dmbExtraCustomerAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
-import { X, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft, Leaf, Shuffle, ShoppingBag, MapPin, Stethoscope } from 'lucide-react';
+import { X, AlertTriangle, Search, Star, UtensilsCrossed, Youtube, ArrowLeft, Leaf, Shuffle, ShoppingBag, MapPin, Stethoscope, ChevronRight } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import { SubscribeSheet } from "./amendment/SubscribeSheet";
 import { useAddresses } from "./amendment/addresses";
@@ -324,28 +324,51 @@ export function PlansScreen({ onGoBack, onSelectPlan, onGoToProfile, dietaryPref
                 </div>
               )}
 
-              {zoneId && (isOn("smartRotation") || isOn("selectMode")) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                  {isOn("smartRotation") && (
-                    <button type="button" onClick={() => navigate("/user/rotation")} className="text-left bg-white rounded-2xl p-4 border border-[#e4e2e1] hover:border-primary/40 flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Shuffle size={20} /></span>
-                      <span>
-                        <span className="block font-extrabold text-[14px]">{t("Smart Rotation")}</span>
-                        <span className="block text-[12px] text-[#6e7a74]">{t("A different maker on different days")}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <button 
+                  type="button" 
+                  onClick={() => navigate("/user/rotation")} 
+                  className="text-left bg-white rounded-2xl p-4 border border-slate-200 hover:border-[#1F7A63] hover:shadow-md transition-all flex items-center gap-3 cursor-pointer group"
+                >
+                  <span className="w-11 h-11 rounded-xl bg-emerald-50 text-[#1F7A63] border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                    <Shuffle size={20} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-black text-[14px] text-slate-900">{t("Smart Rotation")}</span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Multi-Vendor
                       </span>
-                    </button>
-                  )}
-                  {isOn("selectMode") && (
-                    <button type="button" onClick={() => navigate("/user/select")} className="text-left bg-white rounded-2xl p-4 border border-[#e4e2e1] hover:border-primary/40 flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><ShoppingBag size={20} /></span>
-                      <span>
-                        <span className="block font-extrabold text-[14px]">{t("Try a single meal")}</span>
-                        <span className="block text-[12px] text-[#6e7a74]">{t("Order for today or tomorrow, no subscription")}</span>
+                    </div>
+                    <span className="block text-[12px] text-slate-500 font-medium truncate mt-0.5">
+                      {t("Different kitchen on different days")}
+                    </span>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-400 group-hover:text-[#1F7A63] transition-colors shrink-0" />
+                </button>
+
+                <button 
+                  type="button" 
+                  onClick={() => navigate("/user/select")} 
+                  className="text-left bg-white rounded-2xl p-4 border border-slate-200 hover:border-amber-500 hover:shadow-md transition-all flex items-center gap-3 cursor-pointer group"
+                >
+                  <span className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                    <ShoppingBag size={20} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-black text-[14px] text-slate-900">{t("Try a single meal")}</span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        One-Time
                       </span>
-                    </button>
-                  )}
-                </div>
-              )}
+                    </div>
+                    <span className="block text-[12px] text-slate-500 font-medium truncate mt-0.5">
+                      {t("Order for today or tomorrow, no subscription")}
+                    </span>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-400 group-hover:text-amber-600 transition-colors shrink-0" />
+                </button>
+              </div>
 
           {/* Hero Banner */}
           <div className="bg-gradient-to-br from-[#1F7A63] to-[#155a49] rounded-2xl p-5 mb-5 relative overflow-hidden shadow-lg">
