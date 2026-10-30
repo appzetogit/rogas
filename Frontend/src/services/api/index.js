@@ -2061,6 +2061,9 @@ export const publicAPI = {
 
 export const dmbVendorAPI = {
   getTodayOrders: () => restaurantClient.get("/dmb/vendor/today-orders"),
+  /** What (if anything) still blocks deleting this kitchen's account: { canDelete, blockers: [{ code, count }] }. */
+  getAccountStatus: () => restaurantClient.get("/dmb/vendor/account-status"),
+  deleteAccount: () => restaurantClient.delete("/dmb/vendor/account"),
   getOrders: (params = {}) => restaurantClient.get("/dmb/vendor/orders", { params }),
   getForecast: () => restaurantClient.get("/dmb/vendor/forecast"),
   markReady: (deliveryDate, deliverySlot) => restaurantClient.post("/dmb/vendor/mark-ready", { deliveryDate, deliverySlot }),
@@ -2186,7 +2189,7 @@ export const dmbCustomerAPI = {
   /** Undo a cancellation that has not ended the subscription yet ("Keep my subscription"). */
   keepSubscription: (subscriptionId) => userClient.patch(`/dmb/subscriptions/${subscriptionId}/keep`),
   /** GDPR: asks for the account (and personal data) to be deleted within 30 days. */
-  requestAccountDeletion: () => userClient.post("/dmb/customer/gdpr/deletion-request"),
+  requestAccountDeletion: () => userClient.post("/dmb/gdpr/deletion-request"),
   /** Get vendor's available meal plans (for change-meal selection) */
   getVendorMealPlansForSub: (vendorId) => userClient.get(`/dmb/vendor/${vendorId}/menu`),
   /** Rate a delivered order (rating + optional feedback + tip) */
@@ -2372,6 +2375,8 @@ export const dmbExtraAdminAPI = {
   copyAssignments: (body) => adminClient.post(dmbAdmin("/assignments/copy"), body),
   assignmentCell: (params) => adminClient.get(dmbAdmin("/assignments/cell"), { params }),
   moveDelivery: (body) => adminClient.post(dmbAdmin("/assignments/move"), body),
+  dayOrders: (params = {}) => adminClient.get(dmbAdmin("/orders/day"), { params }),
+  orderDetail: (kind, id) => adminClient.get(dmbAdmin(`/orders/detail/${kind}/${id}`)),
   // Driver earnings: delivery rates and promotions
   earningsRates: () => adminClient.get(dmbAdmin("/earnings/rates")),
   createEarningsRate: (body) => adminClient.post(dmbAdmin("/earnings/rates"), body),
@@ -2390,7 +2395,8 @@ export const dmbExtraAdminAPI = {
   runJob: (name) => adminClient.post(dmbAdmin(`/jobs/${name}/run`)),
   // Delivery slot lifecycle (Gap A)
   slotCoverage: (id) => adminClient.get(`/food/admin/delivery-slots/${id}/coverage`),
-  activateSlot: (id) => adminClient.post(`/food/admin/delivery-slots/${id}/activate`),
+  activateSlot: (id, body = {}) => adminClient.post(`/food/admin/delivery-slots/${id}/activate`, body),
+  getSlotEligibleDrivers: (id) => adminClient.get(`/food/admin/delivery-slots/${id}/eligible-drivers`),
   deactivateSlot: (id, body) => adminClient.post(`/food/admin/delivery-slots/${id}/deactivate`, body),
   // Holidays (G), zone fees (K), expansion demand (U)
   holidays: (params) => adminClient.get(dmbAdmin("/holidays"), { params }),

@@ -52,8 +52,8 @@ const DashboardHome = ({
           {stats.online && <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00604c] border-2 border-white rounded-full" />}
         </div>
         <div>
-          <p className="text-xs text-[#3e4945] font-semibold uppercase tracking-wider">{t("FreshDash Partner")}</p>
-          <h1 className="text-lg font-bold text-[#00604c]">{t("Good morning,")} {(stats?.name || "Partner").split(" ")[0]}</h1>
+          <p className="text-xs text-[#3e4945] font-semibold uppercase tracking-wider">{t("DailyMealBox")}</p>
+          <h1 className="text-lg font-bold text-[#00604c]">{(() => { const h = new Date().getHours(); return h < 12 ? t("Good morning") : h < 17 ? t("Good afternoon") : t("Good evening"); })()}, {(stats?.name || "Partner").split(" ")[0]}</h1>
         </div>
       </div>
 

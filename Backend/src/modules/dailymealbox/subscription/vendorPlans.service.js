@@ -114,11 +114,21 @@ const ownedPlan = async (vendorId, planId) => {
 };
 
 const IN_USE = ['active', 'paused', 'pending_payment'];
+/**
+ * The single definition of "a subscriber of this vendor": a subscription being served (active or paused; unpaid checkouts
+ * are not subscribers) where the vendor is the main or a rotation maker. The My Subscribers list and the per-plan counts
+ * on My Subscription Plans both use this, so they cannot disagree.
+ */
+export const LIVE = ['active', 'paused'];
+export const vendorSubscribersFilter = (vendorId) => {
+    const id = new mongoose.Types.ObjectId(String(vendorId)); // aggregate() does not cast strings
+    return { $or: [{ vendorId: id }, { vendorIds: id }], status: { $in: LIVE } };
+};
 
 export const listVendorPlans = async (vendorId) => {
     const plans = await VendorSubscriptionPlan.find({ vendorId }).sort({ createdAt: -1 }).lean();
     const counts = await DMBSubscription.aggregate([
-        { $match: { subscriptionPlanId: { $in: plans.map((p) => p._id) }, status: { $in: IN_USE } } },
+        { $match: { ...vendorSubscribersFilter(vendorId), subscriptionPlanId: { $in: plans.map((p) => p._id) } } },
         { $group: { _id: '$subscriptionPlanId', n: { $sum: 1 } } }
     ]);
     const byPlan = new Map(counts.map((c) => [String(c._id), c.n]));

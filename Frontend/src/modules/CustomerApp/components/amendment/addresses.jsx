@@ -271,11 +271,14 @@ export function AddressBookScreen({ onGoBack, onShowToast }) {
     }
   };
 
+  // "Deliver here": the chosen address becomes the default one used for browsing and new orders, then we go back.
   const makeDefault = async (a) => {
     setBusyId(a._id);
     try {
       await dmbExtraCustomerAPI.setDefaultAddress(a._id);
       await reload();
+      onShowToast?.(t("Delivery address updated"));
+      onGoBack?.();
     } catch (err) {
       setRowError(errorText(err, t("Could not update the address")));
     } finally {
@@ -315,11 +318,15 @@ export function AddressBookScreen({ onGoBack, onShowToast }) {
                     {a.isDefault && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{t("Default")}</span>}
                   </p>
                   <p className="text-[12px] text-[#6e7a74] mt-0.5">{addressLine(a)}</p>
+                  {!a.isDefault && a.zoneId && (
+                    <button type="button" disabled={busyId === a._id} onClick={() => makeDefault(a)} className="mt-2 px-3 py-1.5 rounded-full border border-primary text-primary text-[12px] font-bold hover:bg-primary/5 disabled:opacity-50">
+                      {t("Deliver here")}
+                    </button>
+                  )}
                   {!a.zoneId && <p className="text-[11px] text-amber-700 mt-1">{t("Not checked against our delivery area yet — edit and re-pin it.")}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <button type="button" aria-label={t("Edit")} onClick={() => setEditing(a)} className="p-2 rounded-lg hover:bg-slate-100 text-[#1b1c1c]"><Pencil size={16} /></button>
-                  {!a.isDefault && <button type="button" aria-label={t("Make default")} disabled={busyId === a._id} onClick={() => makeDefault(a)} className="p-2 rounded-lg hover:bg-slate-100 text-amber-600"><Star size={16} /></button>}
                   <button type="button" aria-label={t("Delete")} disabled={busyId === a._id} onClick={() => remove(a)} className="p-2 rounded-lg hover:bg-red-50 text-red-600"><Trash2 size={16} /></button>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   CheckCircle,
   Clock,
-  IndianRupee,
+  Banknote,
   Loader2
 } from 'lucide-react';
 import WeekSelector from '@delivery/components/WeekSelector';

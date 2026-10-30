@@ -53,76 +53,19 @@ export const INITIAL_MEALS = [
 }];
 
 
-export const INITIAL_ORDERS = [
-{
-  id: 'o1',
-  zone: 'Ursynow',
-  itemsName: 'Rosol + Pierogi',
-  type: 'Subscription',
-  status: 'Preparing',
-  code: 'C-009',
-  day: 'Monday 12 May'
-},
-{
-  id: 'o2',
-  zone: 'Ochota',
-  itemsName: 'Bigos',
-  type: 'Subscription',
-  status: 'Ready',
-  code: 'C-007',
-  day: 'Monday 12 May'
-},
-{
-  id: 'o3',
-  zone: 'Ursynow',
-  itemsName: 'Grochowka',
-  type: 'One-time',
-  status: 'Preparing',
-  code: 'C-018',
-  day: 'Monday 12 May'
-},
-{
-  id: 'o4',
-  zone: 'Mokotow',
-  itemsName: 'Kotlet schabowy',
-  type: 'Subscription',
-  status: 'Accepted',
-  code: 'C-012',
-  day: 'Monday 12 May'
-}];
-
-
-export const INITIAL_TRANSACTIONS = [
-{
-  id: 't1',
-  date: 'Mon 12 May',
-  type: 'Delivery',
-  amount: 337,
-  description: '22 deliveries completed',
-  details: 'Daily automated revenue clearance'
-},
-{
-  id: 't2',
-  date: 'Fri 9 May',
-  type: 'Payout',
-  amount: -474,
-  description: 'Payout to bank',
-  details: 'Bank Transfer completed · ID: 9821'
-}];
-
-
+// Empty shape only: every value is filled from the signed-in kitchen's real record.
 export const INITIAL_PROFILE = {
-  name: 'Maria Kowalska',
-  type: 'Home Cook',
-  bio: 'Passionate local chef delivering authentic home-style Polish classics crafted with local seasonal ingredients.',
-  phone: '+48 789 123 456',
-  email: 'maria.k@example.com',
-  city: 'Warsaw — Mokotow',
-  licenseFile: 'licence_food_pl_2026.pdf',
-  partner: 'Independent Vendor',
-  rating: 4.9,
+  name: '',
+  type: '',
+  bio: '',
+  phone: '',
+  email: '',
+  city: '',
+  licenseFile: '',
+  partner: '',
+  rating: 0,
   isRegistered: true,
-  avatarInitials: 'MK'
+  avatarInitials: ''
 };
 
 export const INITIAL_VACATION = {
@@ -144,16 +87,3 @@ export const INITIAL_CUTOFF = {
   closedDays: ['Sun 18 May', 'Mon 19 May']
 };
 
-export const INITIAL_SURPRISE_BOXES = [
-{
-  id: 'sb1',
-  mealId: 'm1',
-  mealName: 'Rosol z kurczaka box',
-  portions: 3,
-  discount: 50,
-  originalPrice: 18.00,
-  discountedPrice: 9.00,
-  closesAt: '14:00 today',
-  claimedCount: 3,
-  status: 'Active'
-}];
