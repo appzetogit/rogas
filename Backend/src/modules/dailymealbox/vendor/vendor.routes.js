@@ -24,6 +24,8 @@ import { upload } from '../../../middleware/upload.js';
 import { assertValidSlotKeys } from '../deliverySlot/deliverySlot.service.js';
 import { msg, translateFor } from '../../i18n/i18n.service.js';
 import { assertCookAgreementAccepted } from '../legal/legal.service.js';
+import { vendorSubscribersFilter, listVendorPlans, createVendorPlan, updateVendorPlan, deleteVendorPlan } from '../subscription/vendorPlans.service.js';
+import { accountBlockers, deleteVendorAccount } from './vendorAccount.service.js';
 
 /** Gap AC: a Track 1 cook who has not accepted the current Cook Agreement (or is paused for Sanepid) cannot trade. */
 const cookAgreementGate = async (req, res, next) => {
@@ -135,6 +137,60 @@ router.post('/mark-ready', authMiddleware, requireRoles('RESTAURANT'), cookAgree
         res.json({ success: true, message: 'Orders marked ready. Drivers notified.', ...result });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Subscription plans (the vendor's own: name, duration, delivery days, discount) ─────────────────────
+// VAT and the platform fee are platform terms: the service sets them, the vendor cannot send them.
+const planError = (res, err) => res.status(err.statusCode || 400).json({ success: false, code: err.code, message: err.message });
+
+router.get('/subscription-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        res.json({ success: true, plans: await listVendorPlans(req.user.userId) });
+    } catch (err) {
+        planError(res, err);
+    }
+});
+
+router.post('/subscription-plans', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        res.status(201).json({ success: true, plan: await createVendorPlan(req.user.userId, req.body || {}) });
+    } catch (err) {
+        planError(res, err);
+    }
+});
+
+router.put('/subscription-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        res.json({ success: true, plan: await updateVendorPlan(req.user.userId, req.params.planId, req.body || {}) });
+    } catch (err) {
+        planError(res, err);
+    }
+});
+
+router.delete('/subscription-plans/:planId', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        res.json({ success: true, ...(await deleteVendorPlan(req.user.userId, req.params.planId)) });
+    } catch (err) {
+        planError(res, err);
+    }
+});
+
+// ─── Delete my account: what (if anything) still blocks it, and the delete itself ───────────────────────────
+router.get('/account-status', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        const blockers = await accountBlockers(req.user.userId);
+        res.json({ success: true, canDelete: blockers.length === 0, blockers });
+    } catch (err) {
+        planError(res, err);
+    }
+});
+
+router.delete('/account', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
+    try {
+        res.json({ success: true, ...(await deleteVendorAccount(req.user.userId)) });
+    } catch (err) {
+        res.status(err.statusCode || 400).json({ success: false, code: err.code, message: err.message, blockers: err.blockers });
     }
 });
 
@@ -540,8 +596,9 @@ router.get('/vat-rates', authMiddleware, requireRoles('RESTAURANT'), async (req,
 // ─── Active Subscribers ───────────────────────────────────────────────────
 router.get('/subscribers', authMiddleware, requireRoles('RESTAURANT'), async (req, res) => {
     try {
-        const subs = await DMBSubscription.find({ vendorId: req.user.userId, status: 'active' })
+        const subs = await DMBSubscription.find(vendorSubscribersFilter(req.user.userId))
             .populate('userId', 'name firstName lastName city deliverySlot phone')
+            .populate('subscriptionPlanId', 'name')
             .populate('mealPlanId', 'name')
             .populate('meals.mealPlanId', 'name')
             .sort({ createdAt: -1 })

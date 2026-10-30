@@ -161,10 +161,26 @@ export const shiftCoverage = async (slot) => {
     return { shiftKey, drivers };
 };
 
-/** draft/disabled/deactivating → active. Refuses a slot whose linked shift has no drivers (no orphan slots). */
-export const activateSlot = async (id, { force = false } = {}) => {
+/** Approved drivers, each flagged with whether they already work this slot's shift — for the "who covers this slot" picker. */
+export const eligibleDriversForSlot = async (slot) => {
+    const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+    const shiftKey = slot.linkedShiftKey || slot.key;
+    const drivers = await FoodDeliveryPartner.find({ status: 'approved' }).select('name phone allowedShifts').sort({ name: 1 }).lean();
+    return { shiftKey, drivers: drivers.map((d) => ({ _id: d._id, name: d.name, phone: d.phone, hasShift: (d.allowedShifts || []).includes(shiftKey) })) };
+};
+
+/**
+ * draft/disabled/deactivating → active. Refuses a slot whose linked shift has no drivers (no orphan slots).
+ * `driverIds` gives the slot's shift to those approved drivers first, so the admin can cover and activate in one step.
+ */
+export const activateSlot = async (id, { force = false, driverIds = [] } = {}) => {
     const slot = await DeliverySlot.findById(id);
     if (!slot) throw new Error('Delivery slot not found');
+    const ids = (Array.isArray(driverIds) ? driverIds : []).map(String).filter((x) => /^[0-9a-f]{24}$/i.test(x));
+    if (ids.length) {
+        const { FoodDeliveryPartner } = await import('../../food/delivery/models/deliveryPartner.model.js');
+        await FoodDeliveryPartner.updateMany({ _id: { $in: ids }, status: 'approved' }, { $addToSet: { allowedShifts: slot.linkedShiftKey || slot.key } });
+    }
     const coverage = await shiftCoverage(slot);
     if (!coverage.drivers && !force) {
         const err = new Error(`No approved driver works the "${coverage.shiftKey}" shift yet. Assign drivers to that shift (Driver Management) or link this slot to a shift that has drivers, then activate.`);

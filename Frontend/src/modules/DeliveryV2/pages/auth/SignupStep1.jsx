@@ -44,7 +44,7 @@ export default function SignupStep1() {
     const base = {
       name: "",
       phone: "",
-      countryCode: "+91",
+      countryCode: "+48",
       ref: "",
       email: "",
       address: "",
@@ -208,7 +208,7 @@ export default function SignupStep1() {
       const details = {
         name: formData.name.trim(),
         phone: String(formData.phone || "").replace(/\D/g, "").slice(0, 15),
-        countryCode: formData.countryCode || "+91",
+        countryCode: formData.countryCode || "+48",
         ref: String(formData.ref || "").trim() || "",
         email: formData.email?.trim() || "",
         address: formData.address.trim(),

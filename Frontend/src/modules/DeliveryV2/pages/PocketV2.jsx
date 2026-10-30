@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Wallet, IndianRupee, ArrowRight,
+  Wallet, Banknote, ArrowRight,
   ShieldCheck, AlertTriangle, HelpCircle,
   Receipt, FileText, LayoutGrid, X, ChevronRight,
   Sparkles, Loader2
@@ -321,7 +321,7 @@ export const PocketV2 = () => {
              <div className="grid grid-cols-2 gap-4">
                 <div onClick={() => navigate('/food/delivery/pocket/payout')} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 active:bg-gray-50">
                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-4 border border-blue-100">
-                      <IndianRupee className="w-5 h-5" />
+                      <Banknote className="w-5 h-5" />
                    </div>
                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Last Payout</p>
                    <p className="text-xl font-black text-black leading-none mb-1">{money(walletState.payoutAmount, { compact: true })}</p>
@@ -364,7 +364,7 @@ export const PocketV2 = () => {
                    
                    <div className="text-center mb-8">
                       <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-orange-100 text-primary">
-                         <IndianRupee className="w-10 h-10" />
+                         <Banknote className="w-10 h-10" />
                       </div>
                       <h3 className="text-2xl font-black text-black mb-1">Deposit Cash</h3>
                       <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Settle Hand Dues</p>
@@ -376,7 +376,7 @@ export const PocketV2 = () => {
                          <span className="text-base font-black text-black">{money(walletState.cashInHand, { compact: true })}</span>
                       </div>
                       <div className="relative">
-                         <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                         <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                          <input 
                             type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
                             placeholder="Enter amount to deposit"

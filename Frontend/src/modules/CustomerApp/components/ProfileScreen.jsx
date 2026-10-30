@@ -6,7 +6,7 @@ import { Trans, useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, CreditCard, Wallet, Star, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck, MapPin, Bell, ShoppingBag } from 'lucide-react';
+import { Loader2, Camera, User, ArrowRight, Globe, ClipboardList, Building2, HelpCircle, Utensils, Receipt, Wallet, Gift, LogOut, Trash2, ArrowLeft, Info, Mail, Phone, Calendar, Lock, CheckCircle2, Sparkles, ShieldCheck, MapPin, Bell, ShoppingBag } from 'lucide-react';
 import { InvoiceDeliveryCard } from "./amendment/settings";
 
 export function ProfileScreen({
@@ -142,9 +142,22 @@ export function ProfileScreen({
     }
   };
 
-  const handleShareReferral = () => {
-    navigator.clipboard.writeText("https://dailymealbox.pl/referral?code=ANNAK");
-    onShowNotificationToast(t("Referral link copied to clipboard! Share with friends to earn PLN 15."));
+  const handleShareReferral = async () => {
+    // The backend's referral code is the user's own id, so older cached profiles without the field still work.
+    const code = currentUser?.referralCode || currentUser?.refCode || currentUser?._id || currentUser?.id;
+    // The signup screen reads ?ref= and sends it with the OTP verification, which credits the referrer.
+    const link = `${window.location.origin}/user/auth/signup${code ? `?ref=${encodeURIComponent(code)}` : ""}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ url: link });
+        return;
+      }
+      await navigator.clipboard.writeText(link);
+      onShowNotificationToast(t("Referral link copied to clipboard! Share with friends to earn PLN 15."));
+    } catch (err) {
+      // Closing the native share sheet rejects with AbortError; that is not a failure.
+      if (err?.name !== "AbortError") onShowNotificationToast(link);
+    }
   };
 
   const handleDangerActionConfirm = async (action) => {
@@ -434,9 +447,9 @@ export function ProfileScreen({
             </div>
 
             <div className="flex flex-col">
-              <h2 className="text-[20px] font-extrabold text-white leading-tight">{currentUser?.name || t("Anna Kowalska")}</h2>
+              <h2 className="text-[20px] font-extrabold text-white leading-tight">{currentUser?.name || ""}</h2>
               <p className="text-sm text-white/90">
-                {currentUser?.city || t("Warsaw")} {t("· Subscriber since")} {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : t("Jan 2026")}
+                {currentUser?.city} {currentUser?.createdAt ? <>{t("· Subscriber since")} {new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</> : null}
               </p>
             </div>
           </div>
@@ -453,7 +466,7 @@ export function ProfileScreen({
               <div>
                 <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Customer Details")}</h3>
                 <p className="text-xs text-on-surface-variant font-medium">
-                  {currentUser?.name || t("Anna Kowalska")} · {currentUser?.email || t("No email set")}
+                  {currentUser?.name || ""} · {currentUser?.email || t("No email set")}
                 </p>
               </div>
             </div>
@@ -639,46 +652,6 @@ export function ProfileScreen({
               <ArrowRight className="text-sm" />
             </button>
           </div>
-
-          {/* Payment card list */}
-          {false && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-xl text-[#1f7a63] flex items-center justify-center">
-                  <CreditCard className="text-[22px]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Payment Methods")}</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">{t("Przelewy24 / BLIK")}</p>
-                </div>
-              </div>
-              <button onClick={() => onShowNotificationToast(t("Payment method settings are securely managed by Przelewy24."))} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-                {/* <span>Manage</span> */}
-                <ArrowRight className="text-sm" />
-              </button>
-            </div>
-          )}
-
-
-
-          {/* Loyalty points card */}
-          {false && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-[#bec9c3]/20 hover:border-primary/30 transition-all">
-              <div className="flex items-center gap-3">
-                <div className="bg-red-50 p-2 rounded-xl text-brand-red flex items-center justify-center">
-                  <Star className="text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#1a1c1a]">{t("Loyalty points")}</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">{t("{{points}} reward pts accumulation", { points })}</p>
-                </div>
-              </div>
-              <button onClick={() => onShowNotificationToast(t("Total available rewards points: {{points}} points.", { points }))} className="text-primary hover:text-primary-container font-extrabold text-xs flex items-center gap-1 active:scale-95 transition-transform">
-                {/* <span>View</span> */}
-                <ArrowRight className="text-sm" />
-              </button>
-            </div>
-          )}
 
           {/* Referral Card */}
           <div className="bg-primary hover:bg-[#155a49] text-white rounded-2xl p-5 shadow-md flex items-center justify-between overflow-hidden relative transition-all duration-300">
