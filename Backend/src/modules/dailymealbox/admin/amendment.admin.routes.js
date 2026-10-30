@@ -644,4 +644,19 @@ router.get('/security/status', requirePermission('systemSettings', 'view'), send
     return securityStatus();
 }));
 
+// ─── Today's Orders: every delivery of a day (subscription, single meal, pre-order, pantry) in one list ───────────────
+router.get('/orders/day', requirePermission('orderManagement', 'view'), send(async (req) => {
+    const { ordersForDay } = await import('../orders/adminOrders.service.js');
+    const { mine } = await assignmentScope(req);
+    const allowedZoneIds = mine ? (await Promise.all(mine.map((c) => zoneIdsForCity(c)))).flat().map(String) : null;
+    return ordersForDay({ date: req.query.date, type: req.query.type, slot: req.query.slot, status: req.query.status, q: req.query.q, allowedZoneIds });
+}));
+
+router.get('/orders/detail/:kind/:id', requirePermission('orderManagement', 'view'), send(async (req) => {
+    const { orderDetail } = await import('../orders/adminOrders.service.js');
+    const result = await orderDetail({ kind: req.params.kind, id: req.params.id });
+    if (result.order.zoneId) await assertZoneInScope(req, result.order.zoneId);
+    return result;
+}));
+
 export default router;

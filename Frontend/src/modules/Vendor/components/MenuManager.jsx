@@ -34,12 +34,9 @@ const toLocalDateStr = (d) => {
 export default function MenuManager({
   vendorType,
   meals,
-  surpriseBoxes,
   onAddMeal,
   onEditMeal,
   onDeleteMeal,
-  onAddSurpriseBox,
-  onEndSurpriseBox,
   onToggleMealStatus
 }) {
   const { t } = useTranslation("vendor");
@@ -385,8 +382,7 @@ export default function MenuManager({
     setMealFat('');
     setMealAllergens([]);
     setMealDietType('No preference');
-    // Provide a nice default delicious image
-    setMealImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ');
+    setMealImageUrl('');
     setMealPortions(12);
     setMealExtra(EMPTY_MEAL_EXTRA);
     setSubView('addEdit');
@@ -409,12 +405,20 @@ export default function MenuManager({
       triggerToast(t("Set the launch date for the pre-order"), 'error');
       return;
     }
-    const priceNum = parseFloat(mealPrice) || 12.00;
+    const priceNum = parseFloat(mealPrice);
+    if (!mealName.trim() || !mealDesc.trim() || !(priceNum > 0)) {
+      triggerToast(t("Please fill all required fields"), 'error');
+      return;
+    }
+    if (!mealImageUrl) {
+      triggerToast(t("Add photo"), 'error');
+      return;
+    }
 
     const payload = {
-      name: mealName || 'New Culinary Secret',
+      name: mealName.trim(),
       price: priceNum,
-      description: mealDesc || 'Freshly prepared delicious item.',
+      description: mealDesc.trim(),
       // Nutrition is optional: send only what was typed (empty means "not provided", customers see nothing).
       calories: mealCal,
       prot: mealProt,
@@ -442,32 +446,6 @@ export default function MenuManager({
       onDeleteMeal(editingMeal.id);
       triggerToast(t("Meal removed from menu"));
     }
-    setSubView('list');
-  };
-
-  const handleCreateSurpriseBox = (e) => {
-    e.preventDefault();
-    const selectedMeal = meals.find((m) => m.id === selectedMealId);
-    if (!selectedMeal) {
-      triggerToast(t("Please select a valid meal"), 'error');
-      return;
-    }
-
-    const calculatedPrice = selectedMeal.price * (1 - discountPercent / 100);
-
-    onAddSurpriseBox({
-      mealId: selectedMeal.id,
-      mealName: `${selectedMeal.name} box`,
-      portions: unsoldPortions,
-      discount: discountPercent,
-      originalPrice: selectedMeal.price,
-      discountedPrice: parseFloat(calculatedPrice.toFixed(2)),
-      closesAt: '14:00 today',
-      claimedCount: 0,
-      status: 'Active'
-    });
-
-    triggerToast(t("Surprise Box Deal Posted! 🌟"));
     setSubView('list');
   };
 
@@ -511,14 +489,6 @@ export default function MenuManager({
               <div className="flex justify-between items-center pt-2">
                 <h2 className="text-[16px] font-bold text-on-surface">{t("Subscription Meals")}</h2>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSubView('surpriseBox')}
-                    className="text-secondary font-bold text-[13px] flex items-center gap-0.5 hover:underline"
-                  >
-                    <Sparkles className="text-[18px]" />
-                    {t("Boxes ({{num}})", { num: surpriseBoxes.filter((s) => s.status === 'Active').length })}
-                  </button>
                   <button
                     type="button"
                     onClick={handleAddClick}
@@ -1029,11 +999,14 @@ export default function MenuManager({
                 htmlFor="meal-photo-upload"
                 className={`relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-all duration-300 block ${isUploadingPhoto ? 'opacity-80 pointer-events-none' : ''}`}
               >
-                <img
-                  alt={t("Meal preview")}
-                  className="w-full h-full object-cover"
-                  src={mealImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'}
-                />
+                {mealImageUrl ? (
+                  <img alt={t("Meal preview")} className="w-full h-full object-cover" src={mealImageUrl} />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant">
+                    <Camera className="text-[32px]" />
+                    <span className="font-bold text-[13px] mt-1">{t("Add photo")}</span>
+                  </div>
+                )}
               
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
@@ -1077,175 +1050,6 @@ export default function MenuManager({
         </form>
       }
 
-      {/* Screen 13: Surprise Boxes management */}
-      {subView === 'surpriseBox' &&
-      <div className="space-y-6 animate-fadeIn">
-          {/* Header bar back button */}
-          <div className="flex items-center justify-between border-b border-outline-variant/25 pb-3 -mx-4 px-4 bg-primary text-on-primary h-14 fixed top-0 left-0 right-0 w-full md:left-64 md:right-0 md:w-auto mx-auto md:mx-0 z-50">
-            <button
-            onClick={() => setSubView('list')}
-            className="flex items-center active:scale-90 transition-transform">
-            
-              <ArrowLeft />
-            </button>
-            <h2 className="text-[16px] font-semibold">{t("Surprise Boxes")}</h2>
-            <div className="w-6"></div>
-          </div>
-
-          <div className="pt-6 space-y-6">
-            {/* Active surprise boxes column list */}
-            <div>
-              <h2 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3">
-                {t("ACTIVE SURPRISE BOXES")}
-              </h2>
-              
-              {surpriseBoxes.filter((s) => s.status === 'Active').length === 0 ?
-            <div className="text-center py-6 bg-white rounded-xl border border-dashed border-outline-variant p-4">
-                  <ShoppingBag className="text-[30px] text-outline" />
-                  <p className="text-[13px] text-outline mt-1 font-bold">{t("No active promotional surprise boxes")}</p>
-                </div> :
-
-            surpriseBoxes.
-            filter((s) => s.status === 'Active').
-            map((box) =>
-            <div
-              key={box.id}
-              className="bg-surface-container-lowest rounded-xl border-l-[5px] border-primary shadow-xs p-4 relative border border-outline-variant/15 text-left transition-transform hover:scale-[1.01]">
-              
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-bold text-[14px] text-on-surface mb-0.5">{box.mealName}</h3>
-                          <p className="text-[12px] text-outline">
-                            {t("{{portions}} portions · {{discount}}% off · Closes 2pm", { portions: box.portions, discount: box.discount })}
-                          </p>
-                        </div>
-                        <div className="bg-primary/10 border border-primary/20 text-primary px-3 py-1 rounded-full text-[11px] font-bold">
-                          {t("{{claimedCount}} claimed", { claimedCount: box.claimedCount })}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-1.5 font-bold text-[13px]">
-                          <span className="text-outline line-through">{t("{{originalPrice}} PLN", { originalPrice: box.originalPrice.toFixed(2) })}</span>
-                          <ArrowRight className="text-primary text-[14px]" />
-                          <span className="text-primary text-[15px]">{t("{{discountedPrice}} PLN", { discountedPrice: box.discountedPrice.toFixed(2) })}</span>
-                        </div>
-                        <button
-                  onClick={() => {
-                    onEndSurpriseBox(box.id);
-                    triggerToast(t("Surprise box campaign ended"));
-                  }}
-                  className="bg-secondary-container text-white px-3.5 py-2 rounded-lg font-bold text-[12px] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
-                  
-                          {t("End deal")}
-                        </button>
-                      </div>
-                    </div>
-            )
-            }
-            </div>
-
-            {/* CREATE NEW SURPRISE BOX card */}
-            <form onSubmit={handleCreateSurpriseBox} className="space-y-4">
-              <h2 className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
-                {t("CREATE NEW SURPRISE BOX")}
-              </h2>
-              
-              <div className="bg-white rounded-xl p-4 border border-outline-variant/20 space-y-4 shadow-xs">
-                {/* Select Meal */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant">{t("SELECT MEAL")}</label>
-                  <div className="relative">
-                    <select
-                    value={selectedMealId}
-                    required
-                    onChange={(e) => setSelectedMealId(e.target.value)}
-                    className="w-full bg-surface border border-outline-variant rounded-lg h-11 px-3 pr-10 text-[13px] font-medium text-on-surface focus:outline-none focus:border-primary appearance-none transition-all">
-                    
-                      <option value="">{t("Choose from today's menu")}</option>
-                      {meals.
-                    filter((m) => m.status === 'Active').
-                    map((m) =>
-                    <option key={m.id} value={m.id}>
-                            {t("{{name}} ({{price}} PLN)", { name: m.name, price: m.price.toFixed(2) })}
-                          </option>
-                    )}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline" />
-                  </div>
-                </div>
-
-                {/* Unsold Portions */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("UNSOLD PORTIONS")}</label>
-                  <div className="flex gap-2.5">
-                    {[1, 2, 3, 4, 5].map((val) => {
-                    const isActive = val === unsoldPortions;
-                    return (
-                      <button
-                        type="button"
-                        key={val}
-                        onClick={() => setUnsoldPortions(val)}
-                        className={`w-9 h-9 rounded-full font-bold text-[13px] flex items-center justify-center transition-all ${
-                        isActive ? 'bg-primary text-on-primary shadow-xs' : 'border border-outline-variant text-outline hover:border-primary bg-white'}`
-                        }>
-                        
-                          {val}
-                        </button>);
-
-                  })}
-                  </div>
-                </div>
-
-                {/* Discount Slider */}
-                <div className="space-y-2 pt-2">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("DISCOUNT %")}</label>
-                  <input
-                  type="range"
-                  min="10"
-                  max="90"
-                  step="5"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(parseInt(e.target.value))}
-                  className="w-full h-2 bg-surface-container-highest rounded-full appearance-none accent-secondary-container cursor-pointer" />
-                
-                  <div className="text-center pt-1">
-                    <p className="font-bold text-on-surface text-[13px]">{t("{{discountPercent}}% off", { discountPercent })}</p>
-                    {selectedMealId && meals.find((m) => m.id === selectedMealId) &&
-                  <div className="flex items-center justify-center gap-2 text-[12px] font-bold text-secondary mt-0.5">
-                        <span className="text-outline line-through">
-                          {meals.find((m) => m.id === selectedMealId).price.toFixed(2)} {t("PLN")}
-                        </span>
-                        <ArrowRight className="text-[14px]" />
-                        <span>
-                          {(meals.find((m) => m.id === selectedMealId).price * (1 - discountPercent / 100)).toFixed(2)} {t("PLN")}
-                        </span>
-                      </div>
-                  }
-                  </div>
-                </div>
-
-                {/* Closing hours */}
-                <div className="flex justify-between items-center py-3 border-t border-outline-variant/20">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">{t("CLOSES AT")}</label>
-                  <div className="flex items-center gap-1.5 font-bold text-[13px] text-on-surface">
-                    <Clock className="text-[#F59E0B] text-[18px]" />
-                    <span>{t("14:00 today")}</span>
-                  </div>
-                </div>
-
-                {/* Submit button */}
-                <button
-                type="submit"
-                className="w-full bg-secondary-container h-12 rounded-xl flex items-center justify-center gap-2 font-bold text-white text-[15px] shadow-md hover:brightness-105 active:scale-95 transition-all cursor-pointer">
-                
-                  <Sparkles />
-                  {t("Submit Surprise Box")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      }
 
       {/* Schedule Custom Dish Overlay Modal */}
       {scheduleModalOpen && selectedMealForSchedule && (
@@ -1313,11 +1117,14 @@ export default function MenuManager({
                 htmlFor="schedule-photo-upload"
                 className={`relative w-full aspect-video rounded-xl overflow-hidden bg-surface-container group cursor-pointer border-2 border-dashed border-outline-variant hover:border-primary transition-all duration-300 block ${isUploadingPhoto ? 'opacity-80 pointer-events-none' : ''}`}
               >
-                <img
-                  alt={t("Schedule preview")}
-                  className="w-full h-full object-cover"
-                  src={photoSchedule || selectedMealForSchedule.imageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ'}
-                />
+                {(photoSchedule || selectedMealForSchedule.imageUrl) ? (
+                  <img alt={t("Schedule preview")} className="w-full h-full object-cover" src={photoSchedule || selectedMealForSchedule.imageUrl} />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant">
+                    <Camera className="text-[32px]" />
+                    <span className="font-bold text-[13px] mt-1">{t("Add photo")}</span>
+                  </div>
+                )}
                 {isUploadingPhoto ? (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white animate-pulse">
                     <Loader2 className="text-[32px] animate-spin" />

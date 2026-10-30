@@ -54,6 +54,14 @@ export default function CustomerAppMain() {
   });
   const isLoggedIn = Boolean(currentUser && localStorage.getItem("user_accessToken"));
 
+  // An invite link (/user/auth/signup?ref=CODE) is remembered until the new account's OTP is verified.
+  useEffect(() => {
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref) {
+      try { sessionStorage.setItem("signup_referral_code", ref.slice(0, 64)); } catch { /* private mode */ }
+    }
+  }, [location.search]);
+
   // ─── Socket.IO & Config State ────────────────────────────────────────────────
   const [socket, setSocket] = useState(null);
   const [appConfig, setAppConfig] = useState(null);
@@ -459,7 +467,7 @@ export default function CustomerAppMain() {
               onToggleMode={() => navigate("/user/auth/signup")}
               onSendOtp={async (phone) => {
                 try {
-                  const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
+                  const fullPhone = phone.startsWith("+") ? phone : "+48" + phone;
                   await authAPI.sendOTP(fullPhone);
                   setAuthMode("login");
                   setPhoneNumber(fullPhone);
@@ -480,7 +488,7 @@ export default function CustomerAppMain() {
               onToggleMode={() => navigate("/user/auth/login")}
               onSendOtp={async (phone) => {
                 try {
-                  const fullPhone = phone.startsWith("+") ? phone : "+91" + phone;
+                  const fullPhone = phone.startsWith("+") ? phone : "+48" + phone;
                   // Pre-validate phone existence
                   const checkRes = await authAPI.checkPhoneRegistered(fullPhone, "USER");
                   if (checkRes.data?.exists || checkRes.exists) {
@@ -517,10 +525,11 @@ export default function CustomerAppMain() {
                     undefined,
                     undefined,
                     undefined,
-                    undefined,
+                    (() => { try { return sessionStorage.getItem("signup_referral_code") || undefined; } catch { return undefined; } })(),
                     null,
                     "web"
                   );
+                  try { sessionStorage.removeItem("signup_referral_code"); } catch { /* private mode */ }
                   const data = res?.data?.data || res?.data;
                   const { accessToken, refreshToken, user, isNewUser } = data;
                   handleLoginSuccess({ accessToken, refreshToken, user });

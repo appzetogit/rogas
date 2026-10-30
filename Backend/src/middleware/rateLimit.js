@@ -54,7 +54,6 @@ export const nipLookupRateLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => String(req.user?.userId || req.user?._id || 'anonymous'),
-    validate: { keyGeneratorIpFallback: false },
     message: {
         success: false,
         message: 'Too many company lookups. Please try again later.'

@@ -8,13 +8,13 @@ import {
   ChevronRight, Flame, Timer, Sparkles, X, ArrowRight, UtensilsCrossed, Check, 
   ShoppingBag, Plus, Minus, Search, Star, MapPin, Calendar, Clock, ShieldCheck, 
   HeartHandshake, Truck, RefreshCw, ChefHat, Award, ArrowUpRight, Store, 
-  AlertCircle, Phone, Info, Leaf, Navigation, Shuffle
+  AlertCircle, Phone, Info, Leaf, Navigation, Shuffle, ChevronDown
 } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import useMoney from "../../../shared/payments/money";
 import { getCurrentLanguage } from "@/shared/i18n";
 import { usePantryCart } from "./PantryCartContext";
-import { useAddresses } from "./amendment/addresses";
+import { useAddresses, addressLine } from "./amendment/addresses";
 import { SubscribeSheet } from "./amendment/SubscribeSheet";
 import { useNavigate } from "react-router-dom";
 
@@ -104,7 +104,15 @@ export function HomeScreen({
   const [zoneId, setZoneId] = useState(
     defaultAddress?.zoneId ? String(defaultAddress.zoneId) : localStorage.getItem("userZoneId") || ""
   );
-  const [zoneName, setZoneName] = useState(defaultAddress?.city || "Indore");
+  const [zoneName, setZoneName] = useState(defaultAddress?.city || "");
+  // Addresses arrive after the first render, and the customer can pick another one: follow the default address.
+  useEffect(() => {
+    if (!defaultAddress?.zoneId) return;
+    const z = String(defaultAddress.zoneId);
+    setZoneId(z);
+    try { localStorage.setItem("userZoneId", z); } catch { /* private mode */ }
+  }, [defaultAddress?.zoneId]);
+  const headerAddress = defaultAddress ? addressLine(defaultAddress) : zoneName;
 
   const [showBanner, setShowBanner] = useState(true);
   const [showPointsHist, setShowPointsHist] = useState(false);
@@ -145,7 +153,7 @@ export function HomeScreen({
             const firstZone = list[0];
             const zId = String(firstZone._id);
             setZoneId(zId);
-            setZoneName(firstZone.name || firstZone.city || "Indore");
+            setZoneName(firstZone.name || firstZone.city || "");
             localStorage.setItem("userZoneId", zId);
           }
         })
@@ -527,13 +535,15 @@ export function HomeScreen({
         <div className="max-w-6xl mx-auto">
           {/* Top Location Bar & Profile */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-semibold">
-              <MapPin size={14} className="text-[#9ef3d7]" />
-              <span className="text-white/90 truncate max-w-[180px] sm:max-w-xs">{zoneName}</span>
-              <button onClick={() => navigate("/user/addresses")} className="text-[#9ef3d7] text-[11px] font-bold hover:underline">
-                Change
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/user/addresses")}
+              className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-semibold active:scale-95 transition-transform min-w-0"
+            >
+              <MapPin size={14} className="text-[#9ef3d7] shrink-0" />
+              <span className="text-white/90 truncate max-w-[200px] sm:max-w-xs">{headerAddress || t("Add address")}</span>
+              <ChevronDown size={14} className="text-[#9ef3d7] shrink-0" />
+            </button>
 
             <button
               onClick={onGoToProfile}
@@ -843,7 +853,7 @@ export function HomeScreen({
                       <div className="absolute bottom-3 left-3 right-3 text-white">
                         <h3 className="text-base font-black truncate">{vendor.restaurantName || vendor.name}</h3>
                         <p className="text-[11px] text-white/80 font-medium truncate flex items-center gap-1">
-                          <MapPin size={11} /> {vendor.city || "Indore"}
+                          <MapPin size={11} /> {vendor.city || ""}
                         </p>
                       </div>
                     </div>
@@ -851,7 +861,7 @@ export function HomeScreen({
                     {/* Kitchen Info & CTA */}
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       <div className="flex flex-wrap gap-1.5">
-                        {(vendor.cuisines || ["North Indian", "Homestyle", "Veg"]).slice(0, 3).map((c, i) => (
+                        {(vendor.cuisines || []).slice(0, 3).map((c, i) => (
                           <span key={i} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                             {typeof c === "string" ? c : c.name || "Meal"}
                           </span>

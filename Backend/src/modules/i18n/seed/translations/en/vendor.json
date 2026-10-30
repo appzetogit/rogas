@@ -4,5 +4,13 @@
  "{{count}} item(s) handled today_one": "{{count}} item handled today",
  "{{count}} item(s) handled today_other": "{{count}} items handled today",
  "{{count}} item(s) to hand over_one": "{{count}} item to hand over",
- "{{count}} item(s) to hand over_other": "{{count}} items to hand over"
+ "{{count}} item(s) to hand over_other": "{{count}} items to hand over",
+ "Active or paused subscribers: {{count}}_one": "Active or paused subscribers: {{count}}",
+ "Active or paused subscribers: {{count}}_other": "Active or paused subscribers: {{count}}",
+ "Orders still to be prepared or delivered: {{count}}_one": "Orders still to be prepared or delivered: {{count}}",
+ "Orders still to be prepared or delivered: {{count}}_other": "Orders still to be prepared or delivered: {{count}}",
+ "Pantry orders with bags still to deliver: {{count}}_one": "Pantry orders with bags still to deliver: {{count}}",
+ "Pantry orders with bags still to deliver: {{count}}_other": "Pantry orders with bags still to deliver: {{count}}",
+ "Pending withdrawal requests: {{count}}_one": "Pending withdrawal requests: {{count}}",
+ "Pending withdrawal requests: {{count}}_other": "Pending withdrawal requests: {{count}}"
 }

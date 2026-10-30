@@ -2,7 +2,7 @@ import useMoney from "@/shared/payments/money";
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, AlertTriangle, Loader2, IndianRupee,
+  ArrowLeft, AlertTriangle, Loader2, Banknote,
   HelpCircle, ChevronRight
 } from 'lucide-react';
 import { deliveryAPI } from '@food/api';

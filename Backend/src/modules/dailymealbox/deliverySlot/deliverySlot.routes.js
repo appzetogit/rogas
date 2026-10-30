@@ -51,6 +51,12 @@ adminSlotRouter.get('/:id/coverage', requirePermission('vendorManagement', 'view
     if (!slot) throw new Error('Delivery slot not found');
     return { coverage: await slotService.shiftCoverage(slot), usage: await slotService.getSlotUsage(slot.key) };
 }));
+adminSlotRouter.get('/:id/eligible-drivers', requirePermission('vendorManagement', 'view'), wrap(async (req) => {
+    const { DeliverySlot } = await import('./deliverySlot.model.js');
+    const slot = await DeliverySlot.findById(req.params.id).lean();
+    if (!slot) throw new Error('Delivery slot not found');
+    return slotService.eligibleDriversForSlot(slot);
+}));
 const audit = async (req, action, slot, extra = {}) => {
     try {
         const { writeAudit } = await import('../../food/admin/services/prdAdmin.service.js');
@@ -58,8 +64,8 @@ const audit = async (req, action, slot, extra = {}) => {
     } catch { /* audit is best-effort */ }
 };
 adminSlotRouter.post('/:id/activate', requirePermission('vendorManagement', 'edit'), wrap(async (req) => {
-    const out = await slotService.activateSlot(req.params.id);
-    await audit(req, 'slot.activate', out.slot, { drivers: out.coverage?.drivers });
+    const out = await slotService.activateSlot(req.params.id, { driverIds: req.body?.driverIds });
+    await audit(req, 'slot.activate', out.slot, { drivers: out.coverage?.drivers, grantedTo: req.body?.driverIds?.length || 0 });
     return out;
 }, { invalidate: true }));
 adminSlotRouter.post('/:id/deactivate', requirePermission('vendorManagement', 'edit'), wrap(async (req) => {

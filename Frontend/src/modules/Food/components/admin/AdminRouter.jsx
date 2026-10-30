@@ -189,6 +189,7 @@ const DmbEco = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) =
 const DmbSpecialisms = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.SpecialismsPage })));
 const DmbTemperature = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.TemperaturePage })));
 const DmbReviews = lazy(() => import("@food/pages/admin/dmb/VendorPages").then((m) => ({ default: m.ReviewModerationPage })));
+const DmbTodaysOrders = lazy(() => import("@food/pages/admin/dmb/TodaysOrders"));
 const DmbStock = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.StockPage })));
 const DmbPantryReturns = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.PantryReturnsPage })));
 const DmbGrowth = lazy(() => import("@food/pages/admin/dmb/ReportPages").then((m) => ({ default: m.GrowthPage })));
@@ -225,6 +226,7 @@ export default function AdminRouter() {
             <Route path="settings" element={<AdminSettings />} />
             
             {/* ORDER MANAGEMENT */}
+            <Route path="orders/today" element={<DmbTodaysOrders />} />
             <Route path="orders/all" element={<OrdersPage statusKey="all" />} />
             <Route path="orders/scheduled" element={<OrdersPage statusKey="scheduled" />} />
             <Route path="orders/pending" element={<OrdersPage statusKey="pending" />} />

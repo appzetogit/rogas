@@ -238,6 +238,30 @@ export default function VendorTiming() {
       showToast('success', `"${slot.name}" is now offered to customers`);
       load();
     } catch (e) {
+      // No driver covers this slot yet: let the admin pick drivers right here instead of sending them to another screen.
+      if (e?.response?.status === 409) { openDriverPicker(slot); return; }
+      showToast('error', e?.response?.data?.message || 'Failed to activate slot');
+    }
+  };
+  const [picker, setPicker] = useState(null);
+  const openDriverPicker = async (slot) => {
+    try {
+      const res = await dmbExtraAdminAPI.getSlotEligibleDrivers(slot._id);
+      setPicker({ slot, drivers: res?.data?.drivers || [], picked: [], saving: false });
+    } catch (e) {
+      showToast('error', e?.response?.data?.message || 'Failed to load drivers');
+    }
+  };
+  const activateWithDrivers = async () => {
+    const { slot, picked } = picker;
+    setPicker({ ...picker, saving: true });
+    try {
+      await dmbExtraAdminAPI.activateSlot(slot._id, { driverIds: picked });
+      setPicker(null);
+      showToast('success', `"${slot.name}" is now offered to customers`);
+      load();
+    } catch (e) {
+      setPicker((p) => p && { ...p, saving: false });
       showToast('error', e?.response?.data?.message || 'Failed to activate slot');
     }
   };
@@ -403,6 +427,35 @@ export default function VendorTiming() {
           onClose={() => setModal(null)}
           onSaved={(msg) => { setModal(null); showToast('success', msg); load(); }}
         />
+      )}
+
+      {picker && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <h3 className="text-lg font-black text-slate-800">Who delivers "{picker.slot.name}"?</h3>
+            <p className="text-sm text-slate-500">A slot can go live only when at least one approved driver works it. Tick the drivers who will cover it, then go live. You assign them to zones on the Driver Assignments page afterwards.</p>
+            <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-xl divide-y">
+              {picker.drivers.length === 0 && <p className="p-4 text-sm text-slate-500">No approved drivers yet. Approve one under New Join Request first.</p>}
+              {picker.drivers.map((d) => (
+                <label key={d._id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={d.hasShift}
+                    checked={d.hasShift || picker.picked.includes(d._id)}
+                    onChange={(e) => setPicker({ ...picker, picked: e.target.checked ? [...picker.picked, d._id] : picker.picked.filter((x) => x !== d._id) })}
+                  />
+                  <span className="font-semibold text-slate-800">{d.name || 'Driver'}</span>
+                  <span className="text-slate-400">{d.phone}</span>
+                  {d.hasShift && <span className="ml-auto text-xs text-emerald-600 font-bold">already works it</span>}
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPicker(null)} className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-sm">Cancel</button>
+              <button onClick={activateWithDrivers} disabled={picker.saving || !picker.picked.length} className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-50">Give shift &amp; go live</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deactivate && (
