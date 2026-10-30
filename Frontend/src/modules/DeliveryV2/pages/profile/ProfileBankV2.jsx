@@ -19,11 +19,13 @@ const FIELD_CONFIG = {
       formatRegex: /^[a-zA-Z\s.'-]{3,100}$/,
       errorMsg: "Enter a valid name (letters only, min 3 characters)"
    },
+   // An IBAN (PL + 26 characters) or a plain 9-18 digit account number.
    accountNumber: {
-      maxLength: 18,
-      typingPattern: /[^0-9]/g,
-      formatRegex: /^[0-9]{9,18}$/,
-      errorMsg: "Account number must be 9-18 digits"
+      maxLength: 34,
+      typingPattern: /[^a-zA-Z0-9]/g,
+      formatRegex: /^([A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}|[0-9]{9,18})$/,
+      errorMsg: "Enter a valid IBAN or account number",
+      transform: (v) => v.toUpperCase()
    },
    ifscCode: {
       maxLength: 11,
@@ -58,10 +60,7 @@ const FIELD_CONFIG = {
 const FIELDS = [
    { label: tKey("Account Holder"), key: "accountHolderName" },
    { label: tKey("Account Number"), key: "accountNumber" },
-   { label: tKey("IFSC Code"), key: "ifscCode" },
-   { label: tKey("Bank Name"), key: "bankName" },
-   { label: tKey("PAN Number"), key: "panNumber" },
-   { label: tKey("UPI ID"), key: "upiId" }
+   { label: tKey("Bank Name"), key: "bankName" }
 ];
 
 export const ProfileBankV2 = () => {
@@ -267,38 +266,6 @@ export const ProfileBankV2 = () => {
                      </div>
                   );
                })}
-
-               {/* QR Code */}
-               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("UPI QR Code")}</label>
-                  {isEditing ? (
-                     <div className="space-y-3">
-                        <input
-                           type="file"
-                           accept="image/png, image/jpeg, image/webp"
-                           onChange={handleFileChange}
-                           className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#ebefeb] file:text-[#1F7A63] hover:file:bg-slate-100"
-                        />
-                        <p className="text-[10px] font-semibold text-gray-400">{t("PNG, JPG or WEBP, max 5MB")}</p>
-                        {qrError && <p className="text-xs font-semibold text-red-500">{qrError}</p>}
-                        {qrPreview && (
-                           <div className="relative w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
-                              <img src={qrPreview} alt={t("QR Code Preview")} className="w-full h-full object-cover" />
-                           </div>
-                        )}
-                     </div>
-                  ) : (
-                     <div>
-                        {qrPreview ? (
-                           <div className="w-32 h-32 border border-gray-100 rounded-xl overflow-hidden bg-slate-50">
-                              <img src={qrPreview} alt={t("QR Code")} className="w-full h-full object-cover" />
-                           </div>
-                        ) : (
-                           <p className="text-sm font-bold text-[#2B2B2B]">{t("Not provided")}</p>
-                        )}
-                     </div>
-                  )}
-               </div>
             </div>
 
             {isEditing && (

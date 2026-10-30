@@ -10,12 +10,9 @@ import { toast } from 'sonner';
 
 import {
   INITIAL_MEALS,
-  INITIAL_ORDERS,
-  INITIAL_TRANSACTIONS,
   INITIAL_PROFILE,
   INITIAL_VACATION,
   INITIAL_CUTOFF,
-  INITIAL_SURPRISE_BOXES
 } from
   './mockData';
 import { VendorWelcomeScreen } from './components/VendorWelcomeScreen';
@@ -84,7 +81,7 @@ const mapPlanToMeal = (p) => ({
         name: p.name,
         price: p.pricePerDay || 15.00,
         description: p.description,
-        imageUrl: p.photos?.[0] || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpWQRQIS01PQ5QzZ92J_MbnhfqpTNe-1MsukLb99JWU83WxSJxZA7MXWhmOq0UpzbJ5Qmcr6fMrU0VWlJ4F9tb_Rpb6dZ5BE3ZZwKf-NMV7z99im4yiprq3W6TBAHmzpoLqjBuizemyCgGnCr9TMbONBFJS2gooGXZ-got7BBRnQmNyCz9ICypYQsq5MJ3ywl5TkqddwGkuvDpdL8QXYkSjX7bMM7odMGUc0Nj45WxtfAFBxrdNiXszPnKkGAJ7evVjitlRk5kOQ',
+        imageUrl: p.photos?.[0] || '',
         calories: nutritionText(p.nutrition, 'calories', 'kcal'),
         prot: nutritionText(p.nutrition, 'protein', 'g'),
         carb: nutritionText(p.nutrition, 'carbs', 'g'),
@@ -115,11 +112,10 @@ export default function App() {
   });
   const [meals, setMeals] = useState([]);
   const [pantryItems, setPantryItems] = useState([]);
-  const [orders, setOrders] = useState([...INITIAL_ORDERS]);
-  const [transactions, setTransactions] = useState([...INITIAL_TRANSACTIONS]);
+  const [orders, setOrders] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [vacation, setVacation] = useState({ ...INITIAL_VACATION });
   const [cutoff, setCutoff] = useState({ ...INITIAL_CUTOFF });
-  const [surpriseBoxes, setSurpriseBoxes] = useState([...INITIAL_SURPRISE_BOXES]);
   const [subscriberCount, setSubscriberCount] = useState(null);
   const [timingConfig, setTimingConfig] = useState(null);
   const { slots: slotList } = useDeliverySlots();
@@ -204,7 +200,7 @@ export default function App() {
               city: userObj.location?.city || userObj.city || '',
               name: userObj.restaurantName || userObj.name || 'Vendor Partner',
               partner: userObj.kitchenPartnerId?.companyName || userObj.kitchenPartnerName || 'Independent Vendor',
-              rating: typeof userObj.rating === 'number' ? userObj.rating : 4.9,
+              rating: typeof userObj.rating === 'number' ? userObj.rating : 0,
               isRegistered: true,
               avatarInitials: (userObj.restaurantName || userObj.name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
             });
@@ -531,8 +527,6 @@ export default function App() {
   };
 
   const handleAddTransaction = (t) => setTransactions((prev) => [t, ...prev]);
-  const handleAddSurpriseBox = (sb) => setSurpriseBoxes((prev) => [{ ...sb, id: 'sb' + (prev.length + 1) }, ...prev]);
-  const handleEndSurpriseBox = (id) => setSurpriseBoxes((prev) => prev.map((s) => s.id === id ? { ...s, status: 'Ended' } : s));
 
   // Task 3: Toggle meal status + backend notifies subscribers
   const handleToggleMealStatus = async (mealId) => {
@@ -877,9 +871,11 @@ export default function App() {
               >
                 <div className="flex flex-col text-right">
                   <span className="text-sm font-bold text-slate-800">{profile.name || tr("Vendor Partner")}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    {tr("Rating: ⭐️ {{rating}}", { rating: profile.rating || '4.9' })}
-                  </span>
+                  {Number(profile.rating) > 0 && (
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      {tr("Rating: ⭐️ {{rating}}", { rating: Number(profile.rating).toFixed(1) })}
+                    </span>
+                  )}
                 </div>
                 <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 overflow-hidden shrink-0 shadow-xs">
                   {profile?.profileImage?.url || (typeof profile?.profileImage === 'string' && profile?.profileImage) ? (
@@ -914,7 +910,7 @@ export default function App() {
               {profile.vendorType === 'pantry_shop' ? (
                 <Route path="/menu" element={<PantryMenuManager items={pantryItems} setItems={setPantryItems} />} />
               ) : (
-                <Route path="/menu" element={<MenuManager vendorType={profile.vendorType} meals={meals} surpriseBoxes={surpriseBoxes} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onAddSurpriseBox={handleAddSurpriseBox} onEndSurpriseBox={handleEndSurpriseBox} onToggleMealStatus={handleToggleMealStatus} />} />
+                <Route path="/menu" element={<MenuManager vendorType={profile.vendorType} meals={meals} onAddMeal={handleAddMeal} onEditMeal={handleEditMeal} onDeleteMeal={handleDeleteMeal} onToggleMealStatus={handleToggleMealStatus} />} />
               )}
               <Route path="/earnings" element={<EarningsManager transactions={transactions} onAddTransaction={handleAddTransaction} />} />
               <Route path="/profile" element={<ProfileSettings profile={profile} vacation={vacation} cutoff={cutoff} onUpdateProfile={(p) => setProfile((pr) => ({ ...pr, ...p }))} onUpdateVacation={handleUpdateVacation} onUpdateCutoff={handleUpdateCutoff} onSignOut={handleSignOut} />} />

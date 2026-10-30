@@ -259,17 +259,13 @@ export const adminSidebarMenu = [
     type: "section",
     label: "ORDER MANAGEMENT",
     items: [
+      { type: "link", label: "Today's Orders", path: "/admin/food/orders/today", icon: "FileText" },
       {
         type: "expandable",
-        label: "Orders",
+        label: "Older Orders",
         icon: "FileText",
         subItems: [
           { label: "All Orders", path: "/admin/food/orders/all" },
-          { label: "Scheduled", path: "/admin/food/orders/scheduled" },
-          { label: "Pending", path: "/admin/food/orders/pending" },
-          { label: "Accepted", path: "/admin/food/orders/accepted" },
-          { label: "Processing", path: "/admin/food/orders/processing" },
-          { label: "On The Way", path: "/admin/food/orders/food-on-the-way" },
           { label: "Delivered", path: "/admin/food/orders/delivered" },
           { label: "Cancelled", path: "/admin/food/orders/canceled" },
           { label: "Refunded", path: "/admin/food/orders/refunded" },
@@ -388,7 +384,6 @@ export const adminSidebarMenu = [
       { type: "link", label: "Transaction Report", path: "/admin/food/transaction-report", icon: "FileText" },
       { type: "link", label: "Order Report", path: "/admin/food/order-report/regular", icon: "FileText" },
       { type: "link", label: "Tax Report", path: "/admin/food/tax-report", icon: "Receipt" },
-      { type: "link", label: "VAT Report", path: "/admin/food/vat-report", icon: "Receipt" },
       { type: "link", label: "Restaurant Report", path: "/admin/food/restaurant-report", icon: "FileText" },
       { type: "link", label: "Feedback Experience", path: "/admin/food/customer-report/feedback-experience", icon: "FileText" },
     ],

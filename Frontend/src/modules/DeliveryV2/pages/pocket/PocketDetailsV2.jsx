@@ -3,7 +3,7 @@ import {
   ArrowLeft,
   Loader2,
   Package,
-  IndianRupee,
+  Banknote,
   Gift,
   Search,
   ChevronRight,

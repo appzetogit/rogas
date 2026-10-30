@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Award, Camera, Edit2, LogOut, CheckCircle2, AlertCircle, Info, FileText, Download, Check, Save, Upload, MapPin, Search, ArrowLeft, ArrowRight, ShieldCheck, HelpCircle, X, Shield, History, Landmark, Wallet, Receipt, AlertTriangle, Locate, UserCheck, Store, ChevronRight, ClipboardCheck, Truck, Hourglass, Users, Headset, Clock, PlusCircle, Plus, Inbox, Ticket, ImagePlus, Send, CheckCircle, Loader2, Star } from 'lucide-react';
 import { Trans, useTranslation } from "react-i18next";
 import LanguageSwitcher from "../../../shared/i18n/LanguageSwitcher";
+import DeleteAccountDialog from "./DeleteAccountDialog";
 import useMoney from "@/shared/payments/money";
 import { getCurrentLanguage } from "@/shared/i18n";
 
@@ -595,6 +596,7 @@ export default function ProfileSettings({
   const { t: tr } = useTranslation("vendor");
   const { money, symbol } = useMoney();
   const navigate = useNavigate();
+  const [showDelete, setShowDelete] = useState(false);
   // The open sub-screen (bank, support, ...) lives in the URL (?view=bank) so the phone's back button goes one
   // screen back inside Profile instead of jumping to Home, and a refresh keeps you where you were.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -681,7 +683,7 @@ export default function ProfileSettings({
     e.preventDefault();
     const nextErrors = {};
     const accountHolderName = String(bankForm.accountHolderName || "").trim();
-    const accountNumber = String(bankForm.accountNumber || "").replace(/\s|-/g, "");
+    const accountNumber = String(bankForm.accountNumber || "").replace(/\s|-/g, "").toUpperCase();
     const confirmAccountNumber = String(bankForm.confirmAccountNumber || "").replace(/\s|-/g, "");
     const ifscCode = String(bankForm.ifscCode || "").trim().toUpperCase();
     const upiId = String(bankForm.upiId || "").trim();
@@ -692,17 +694,15 @@ export default function ProfileSettings({
       if (!accountHolderName) nextErrors.accountHolderName = "Account holder name is required";
       if (!accountNumber) {
         nextErrors.accountNumber = "Account number is required";
-      } else if (!/^\d{9,18}$/.test(accountNumber)) {
-        nextErrors.accountNumber = "Account number must be 9 to 18 digits";
+      } else if (!/^([A-Z]{2}\d{2}[A-Z0-9]{11,30}|\d{9,18})$/.test(accountNumber)) {
+        nextErrors.accountNumber = "Enter a valid IBAN or account number";
       }
       if (!confirmAccountNumber) {
         nextErrors.confirmAccountNumber = "Please confirm account number";
       } else if (confirmAccountNumber !== accountNumber) {
         nextErrors.confirmAccountNumber = "Account numbers do not match";
       }
-      if (!ifscCode) {
-        nextErrors.ifscCode = "IFSC code is required";
-      } else if (!IFSC_REGEX.test(ifscCode)) {
+      if (ifscCode && !IFSC_REGEX.test(ifscCode)) {
         nextErrors.ifscCode = "Invalid IFSC format (e.g. SBIN0018764)";
       }
     }
@@ -1096,7 +1096,7 @@ export default function ProfileSettings({
                 <div className="flex items-center gap-3">
                   <ClipboardCheck className="text-secondary" />
                   <span className="font-bold text-[13px]">
-                    {tr("EU Food Licence")} <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || 'licence_food_pl_2026.pdf')})</span>
+                    {tr("EU Food Licence")} <span className="text-secondary font-semibold text-[11px]">({profile.foodLicenceUrl ? profile.foodLicenceUrl.split('/').pop() : (profile.licenseFile || '')})</span>
                   </span>
                 </div>
                 <ChevronRight className="text-secondary group-active:translate-x-0.5 transition-transform text-[18px]" />
@@ -1223,15 +1223,17 @@ export default function ProfileSettings({
               {tr("Sign out / Exit Partner Account")}
             </button>
             <button
-            onClick={() => triggerToast(tr("Account deactivation is blocked until active prep queues are cleared."))}
+            onClick={() => setShowDelete(true)}
             className="text-error font-bold text-[11px] uppercase tracking-wider mt-1">
             
-              {tr("Deactivate Account")}
+              {tr("Delete Account")}
             </button>
           </div>
         </div>
       </div>
       }
+
+      {showDelete && <DeleteAccountDialog onClose={() => setShowDelete(false)} onDeleted={() => { setShowDelete(false); onSignOut(); }} />}
 
       {subView === 'location' && (
         <LocationZoneSettings
@@ -1605,7 +1607,7 @@ export default function ProfileSettings({
               <input
                 type="text"
                 value={bankForm.accountNumber}
-                onChange={(e) => setBankForm(p => ({ ...p, accountNumber: e.target.value.replace(/[^\d]/g, '') }))}
+                onChange={(e) => setBankForm(p => ({ ...p, accountNumber: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 34) }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
                 placeholder={tr("Enter bank account number")}
               />
@@ -1617,27 +1619,14 @@ export default function ProfileSettings({
               <input
                 type="text"
                 value={bankForm.confirmAccountNumber}
-                onChange={(e) => setBankForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/[^\d]/g, '') }))}
+                onChange={(e) => setBankForm(p => ({ ...p, confirmAccountNumber: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 34) }))}
                 className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
                 placeholder={tr("Confirm bank account number")}
               />
               {bankErrors.confirmAccountNumber && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.confirmAccountNumber}</p>}
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("IFSC Code")}</label>
-              <input
-                type="text"
-                value={bankForm.ifscCode}
-                onChange={(e) => setBankForm(p => ({ ...p, ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-                className="w-full bg-white border border-outline-variant rounded-lg px-3 py-2.5 text-[13px] font-bold"
-                placeholder={tr("e.g. SBIN0018764")}
-                maxLength={11}
-              />
-              {bankErrors.ifscCode && <p className="text-red-500 text-[11px] mt-0.5">{bankErrors.ifscCode}</p>}
-            </div>
-
-            <div>
+                        <div>
               <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">{tr("Account Type")}</label>
               <select
                 value={bankForm.accountType}

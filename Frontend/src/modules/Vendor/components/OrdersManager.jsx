@@ -268,7 +268,8 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
   return (
     <div className="flex-grow pt-4 pb-[99px] md:pb-6 font-sans px-4 select-none max-w-7xl mx-auto w-full text-left">
 
-      {/* View Mode Tabs */}
+      {/* View Mode Tabs: the one-time tab only exists while old-system orders are still listed (single meals appear under Subscription Orders by delivery day) */}
+      {legacyOrders.length > 0 && (
       <div className="flex gap-2 my-3">
         <button
           onClick={() => setViewMode('daily')}
@@ -287,8 +288,9 @@ export default function OrdersManager({ orders: legacyOrders, onUpdateOrderStatu
           <span className="flex items-center justify-center gap-1.5"><Tag className="w-4 h-4" /> {t("One-Time Orders")}</span>
         </button>
       </div>
+      )}
 
-      {viewMode === 'daily' ? (
+      {(viewMode === 'daily' || legacyOrders.length === 0) ? (
         <div className="space-y-4 animate-fadeIn">
 
           {/* Date Selector */}

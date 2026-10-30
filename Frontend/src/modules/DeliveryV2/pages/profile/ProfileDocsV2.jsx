@@ -67,8 +67,7 @@ export const ProfileDocsV2 = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
 
   const docs = [
-    { label: t("Aadhar Card"), field: "aadharPhoto", data: profile?.documents?.aadhar },
-    { label: t("PAN Card"), field: "panPhoto", data: profile?.documents?.pan },
+    { label: t("National ID / Passport"), field: "aadharPhoto", data: profile?.documents?.nationalId || profile?.documents?.aadhar },
     { label: t("Driving License"), field: "drivingLicensePhoto", data: profile?.documents?.drivingLicense }
   ];
 

@@ -159,7 +159,7 @@ export const ViewSupportTicketV2 = () => {
 
          <div className="mt-10 flex flex-col items-center justify-center opacity-20 gap-4">
             <Mail className="w-12 h-12 text-[#2B2B2B]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-center text-[#2B2B2B]">{t("AppZeto Support Fleet")}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-center text-[#2B2B2B]">{t("DailyMealBox")}</p>
          </div>
       </div>
     </div>

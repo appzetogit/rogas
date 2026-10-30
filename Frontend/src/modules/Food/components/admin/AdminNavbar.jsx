@@ -515,7 +515,7 @@ export default function AdminNavbar({ onMenuClick }) {
                 <div className="text-sm text-neutral-500 mb-4">Quick Actions</div>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { icon: Package, label: "Orders", path: "/admin/food/orders/all" },
+                    { icon: Package, label: "Today's Orders", path: "/admin/food/orders/today" },
                     { icon: Users, label: "Users", path: "/admin/food/customers" },
                     { icon: UtensilsCrossed, label: "Products", path: "/admin/food/foods" },
                     { icon: FileText, label: "Reports", path: "/admin/food/transaction-report" },

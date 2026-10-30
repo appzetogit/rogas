@@ -238,17 +238,6 @@ export default function HomeDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column (spans 2 on desktop) */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Amber alert card for cutoff */}
-          <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 flex items-center gap-3 shadow-xs text-left transition-all hover:bg-amber-50 duration-300">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl text-amber-600">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-extrabold text-[14px] text-amber-900">{t("Lunch cutoff in 1h 24min")}</p>
-              <p className="text-[12px] text-amber-700 font-medium mt-0.5">{t("Close orders by 10:00am")}</p>
-            </div>
-          </div>
-
           {/* Driver status card */}
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-100 space-y-4 text-left transition-all hover:shadow-md duration-300">
             <div className="flex items-center justify-between">

@@ -242,7 +242,7 @@ export default function DeliveryOTP() {
         const details = {
           name: "",
           phone: local,
-          countryCode: countryCode || "+91",
+          countryCode: countryCode || "+48",
         };
         localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
         setIsLoading(false);
@@ -556,7 +556,7 @@ export default function DeliveryOTP() {
                         const details = {
                           name: "",
                           phone: local,
-                          countryCode: countryCode || "+91",
+                          countryCode: countryCode || "+48",
                         };
                         localStorage.setItem("deliverySignupDetails", JSON.stringify(details));
                         navigate("/food/delivery/signup/details", { replace: true });

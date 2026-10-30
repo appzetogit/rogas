@@ -332,7 +332,7 @@ export function OneTimeOrdersScreen({ onGoBack }) {
                   <p className="text-[12px] text-[#6e7a74]">{o.vendorId?.restaurantName || ""} · {fmtDay(o.deliveryDate)}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-extrabold text-primary">{money(o.pricing?.totalPrice || 0)}</p>
+                  <p className="font-extrabold text-primary">{money(o.pricing?.totalPrice || 0, { currency: o.pricing?.currency })}</p>
                   <p className="text-[11px] font-bold text-[#6e7a74]">{STATUS_LABEL[o.status] ? t(STATUS_LABEL[o.status]) : t("Pending")}</p>
                 </div>
               </div>

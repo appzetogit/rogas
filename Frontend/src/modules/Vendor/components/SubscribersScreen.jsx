@@ -3,9 +3,10 @@ import { ArrowLeft, Users, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { dmbVendorAPI } from '../../../services/api';
+import { formatPhone } from '../../../shared/utils/phone';
 
 const planName = (s) =>
-  s.mealPlanId?.name || (Array.isArray(s.meals) ? s.meals.map((m) => m.mealPlanId?.name).filter(Boolean).join(', ') : '') || '';
+  s.subscriptionPlanId?.name || s.mealPlanId?.name || (Array.isArray(s.meals) ? s.meals.map((m) => m.mealPlanId?.name).filter(Boolean).join(', ') : '') || '';
 
 /** Vendor > Profile > My Subscribers: the customers who currently have an active subscription with this vendor. */
 export default function SubscribersScreen() {
@@ -47,7 +48,7 @@ export default function SubscribersScreen() {
           {state.list.map((s) => (
             <li key={s._id} className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4">
               <p className="font-bold text-[14px] text-slate-900">{nameOf(s.userId)}</p>
-              <p className="text-[12px] text-slate-500 mt-0.5">{[s.userId?.city, s.userId?.phone].filter(Boolean).join(' · ')}</p>
+              <p className="text-[12px] text-slate-500 mt-0.5">{[s.userId?.city, s.userId?.phone && formatPhone(s.userId.phone)].filter(Boolean).join(' · ')}</p>
               {planName(s) && <p className="text-[12px] text-primary font-semibold mt-1">{planName(s)}</p>}
               {s.startDate && <p className="text-[11px] text-slate-400 mt-1">{t('Since {{date}}', { date: new Date(s.startDate).toLocaleDateString() })}</p>}
             </li>

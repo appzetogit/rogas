@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ArrowLeft, Loader2, IndianRupee, HelpCircle,
+  ArrowLeft, Loader2, Banknote, HelpCircle,
   ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import { deliveryAPI } from '@food/api';

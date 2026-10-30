@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { dmbExtraAdminAPI } from "@food/api";
@@ -24,16 +24,20 @@ export function useLoad(loader, deps = []) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const latest = useRef(0);
   const reload = useCallback(async () => {
+    // A slow older response must never overwrite a newer one (filters changing quickly would flicker back to old data).
+    const mine = ++latest.current;
     setLoading(true);
     try {
       const res = await loader();
+      if (mine !== latest.current) return;
       setData(res.data);
       setError("");
     } catch (e) {
-      setError(errText(e));
+      if (mine === latest.current) setError(errText(e));
     } finally {
-      setLoading(false);
+      if (mine === latest.current) setLoading(false);
     }
   }, deps); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
